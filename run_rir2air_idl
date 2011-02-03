@@ -1,0 +1,8 @@
+;
+;
+;
+restore,filename='rir2air.fnc'
+
+rir2air_comb_view,shotnum=LONG(getenv('shot')),pn=Long(getenv('pn'))
+
+exit

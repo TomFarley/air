@@ -1,0 +1,38 @@
+#! /bin/tcsh -f    
+
+
+setenv shot 8812 
+setenv pn 0 
+
+if (${#argv} >= 1) then
+   setenv shot ${1}
+endif
+if (${#argv} >= 2) then
+   setenv pn ${2}
+endif
+#
+echo  running for shotnumber $shot
+echo  running for passnumber $pn
+
+set shotl = `echo $shot | wc -c `
+echo 'shot number:' $shot 
+set s1 = `echo $shot | cut -c 1`
+set s2 = `echo $shot | cut -c 2`
+set s3 = `echo $shot | cut -c 3`
+set s4 = `echo $shot | cut -c 4`
+if (${shotl} >= 6) then
+set s5 = `echo $shot | cut -c 5`
+endif
+#
+set shotn = `echo 'air00'$s1$s2.$s3$s4`
+
+if (${shotl} >= 6) then
+set shotn = `echo 'air0'$s1$s2$s3.$s4$s5`
+endif
+
+rm $shotn    
+
+
+idl run_rir2air_idl 
+
+

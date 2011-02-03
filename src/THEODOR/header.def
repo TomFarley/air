@@ -1,0 +1,26 @@
+header={header,$
+	ref_size: 0L,$
+	roi_size: 0L,$
+	frame_size: 0L,$
+	para_number: 0L,$
+	pix_per_line: 0L,$
+	line_per_frame: 0L,$
+	frequency: 0L,$
+	integration_time: 0L,$
+	dig_level: 0L,$
+	camera_test: 0L,$
+	camera_guard: 0L,$
+	capacity: 0L,$
+	lower_limit: 0L,$
+	upper_limit: 0L,$
+	active: [0l,0l,0l,0l],$ ; unity if quadrant active
+	start_time: 0L,$
+	ref_time: 0L,$
+	end_time: 0L,$
+	agc : 0l,$
+	run_forever: 0L,$
+	horiz_profile: 0L,$
+	vert_profile: 0L,$
+	sync_on_green: 0L,$
+	color_display: 0L,$
+	start_signal: 0l}
