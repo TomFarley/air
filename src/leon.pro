@@ -1,5 +1,7 @@
 pro leon,sh,t,nuc=nuc,cal=cal,recal=recal,theo=theo,disp=disp,tall,stemp,alltemp,err,numsatpix,mid=mid,targetrate=targetrate,nline=nline,aug=aug
 
+PREFR = 'rir'
+
 ;LEON aligns the camera image with the wireframe model of MAST
 ;theo - is the analysis path (read in from ldef if iranalysis)
 
@@ -25,15 +27,25 @@ err=''
 ;as required
 ftype=size(sh,/type)
 if(ftype ne 7) then begin
-   shotstring = strtrim(string(sh),1)
-   shotnr = sh
-   shot_int1=shotnr/100
-   shot_int2=shotnr-shot_int1*100
-   shot_str=STRING(FORMAT='(i4.4, a1, i2.2)', shot_int1, '.', shot_int2)
-   fname='rir'+shot_str
-    if (keyword_set(aug)) then fname='rir0'+shotstring+'.ipx'
-	filename='$MAST_DATA/'+shotstring+'/Images/rir0'+shotstring+'.ipx'
-    if (keyword_set(aug)) then filename='$MAST_IMAGES/rir/'+fname
+   shotnr = strtrim(string(sh),1)
+   k_shot = str(shotnr/1000,formstat='(i3.3)')
+   i_shot = str(shotnr,formstat='(i6.6)')
+   fname  = PREFR+i_shot+'.ipx'
+
+   filename = getidampath(shotnr,PREFR)
+   type_check = size(filename,/type)
+   print,'type_check = ',type_check
+
+   if (type_check eq 3) then begin
+; Type returned is LONG - ie ERROR
+     filename = '$MAST_DATA'+'/'+k_shot+'/'+shotnr+'/'+'LATEST'+'/'+fname
+     if (keyword_set(aug)) then begin
+       filename='$MAST_IMAGES'+'/'+PREFR+'/'+fname
+     endif
+     print,'RAW FILE USED [',filename,']'
+   endif else begin
+     print,'IDAM FILE OK [',filename,'] - Continue...'
+   endelse
 
     get_lun,lun
         openr,lun,filename,error=err
