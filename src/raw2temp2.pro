@@ -4,7 +4,7 @@ function raw2temp_aug,sh,d,integtime, aug=aug
 ;tile (emissivity)
 
 ;data for number of photons at a given temperature in correct wavelength range
-OPENR, lun, '/funsrv1/home/gdt/MAST_IR/calib_aug/planckBB.dat', /GET_LUN
+OPENR, lun, './calib/planckBB.dat', /GET_LUN
 
 bbtable = fltarr(2,601)
 READF, lun, bbtable
