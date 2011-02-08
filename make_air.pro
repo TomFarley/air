@@ -6,6 +6,8 @@
 .r load_knl
 load_knl
 
+print, 'Hello'
+
 .r invessel
 .r str
 .r geo_transform
