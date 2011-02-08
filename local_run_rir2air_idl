@@ -2,7 +2,7 @@
 ;
 ;
 ;restore,filename='rir2air.fnc'
-@src/make_air2
+@make_air
 
 rir2air_comb_view,shotnum=LONG(getenv('shot')),pn=Long(getenv('pn'))
 

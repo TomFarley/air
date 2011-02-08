@@ -1,4 +1,11 @@
+!path='src:' $
+     +'THEODOR:' $
+     +'calib:' $
+     +!path
+
+.r load_knl
 load_knl
+
 .r invessel
 .r str
 .r geo_transform
@@ -35,5 +42,5 @@ load_knl
 .r ccd_image_at
 .r getframevalues
 
-save, filename='../rir2air.fnc', /ROUTINES
+save, filename='./rir2air.fnc', /ROUTINES
 EXIT
