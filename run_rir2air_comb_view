@@ -33,6 +33,6 @@ endif
 rm $shotn    
 
 
-idl run_rir2air_idl 
+idl local_run_rir2air_idl 
 
 
