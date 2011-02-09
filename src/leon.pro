@@ -157,8 +157,15 @@ if(n_elements(nuc) ne 0) then begin
 	openr,lun,fname,error=err
 	close,/all
 
-	if(err eq 0 and (not keyword_set(cal))) then begin
-		restore,fname,/verb
+	if (err eq 0 and (not keyword_set(cal))) then begin
+;.... MODIFIED code to use SAVE file extraction of HEADER info.
+	  sObj = OBJ_NEW('IDL_Savefile' ,fname)
+	  sContents = sObj->Contents()
+	  print ,"Calib file [",fname,"]"
+	  print ,"Created : [",sContents.user,"-",sContents.date ,"]"
+	  restore ,fname
+
+
 		;********************* GFC ***********************
 		ptco=(l(0)-o(0))/n(0)
 		update_dist,ptco              ;FL:updates distortion common block
