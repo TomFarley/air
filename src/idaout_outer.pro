@@ -3,10 +3,12 @@
 
 @ida3
 
+    nalpha = n_elements(alphaconst)
 ;
 ;   time offset now handled in readimg_fast in heat.pro
 ;
 	qprofiles=reform(qproarray(*,*,0))
+	if (nalpha gt 1) then qprofiles_ELM=reform(qproarray(*,*,1))
 
 ;
    fshot=STRING(FORMAT='(i6.6)', shotnr)
@@ -63,13 +65,14 @@
          zcoord = reverse(zcoord)
          tprofiles=reverse(tprofiles)
          qprofiles=reverse(qprofiles)
-;
+         if (nalpha gt 1) then qprofiles_ELM=reverse(qprofiles_ELM);
 ;     look on p5 upper
 ;
          a=where(zcoord gt 0.45 and zcoord lt 0.6)
          zcoord = zcoord(a)
          tprofiles = tprofiles(a,*)
          qprofiles = qprofiles(a,*)
+         if (nalpha gt 1) then qprofiles_ELM = qprofiles_ELM(a,*)
       endif
    endif
 
@@ -83,6 +86,7 @@
    dt=time(1)-time(0)
    powertmp=0
    power=fltarr(max_times)
+   if (nalpha gt 1) then power_ELM=fltarr(max_times)
    
 ;   for i=0l,max_times-1 do begin
 ;      power(i)=total(qprofiles(*,i)*rcoord(*)*2*3.1415926*ds)
@@ -91,12 +95,14 @@
 ; NEW VERSION AS FOLLOWS 3/8/2005
    for i=0l,max_times-1 do begin
       power(i)=0.5*total((qprofiles(1:n_scoord-1,i)+qprofiles(0:n_scoord-2,i))*!pi*(rcoord(1:n_scoord-1)+rcoord(0:n_scoord-2))*(scoord(1:n_scoord-1)-scoord(0:n_scoord-2)))
+      if (nalpha gt 1) then power_ELM(i)=0.5*total((qprofiles_ELM(1:n_scoord-1,i)+qprofiles_ELM(0:n_scoord-2,i))*!pi*(rcoord(1:n_scoord-1)+rcoord(0:n_scoord-2))*(scoord(1:n_scoord-1)-scoord(0:n_scoord-2)))
 
    endfor
 ;print,(scoord(1:n_scoord-1)-scoord(0:n_scoord-2));0.5*(rcoord(1:n_scoord-1)+rcoord(0:n_scoord-2))
 
 
    energy=total(power,/cumulative,/double)*dt  ; this is more accurate as in dbe
+   if (nalpha gt 1) then energy_ELM=total(power_ELM,/cumulative,/double)*dt  ; this is more accurate as in dbe
 
 ;  energy=fltarr(max_times)
 ;  energy(0) = 0
@@ -107,6 +113,11 @@
    power=power/1e6
    energy=float(energy/1e6)
    qprofiles=qprofiles/1e6   
+   if (nalpha gt 1) then begin
+      power_ELM=power_ELM/1e6
+      energy_ELM=float(energy_ELM/1e6)
+      qprofiles_ELM=qprofiles_ELM/1e6   
+   endif
 
 
    nelem=1
@@ -130,6 +141,16 @@
    ok = ida_set_structure(item, ida_dct, 1, ida_d4+ida_real, xtsams=nelem)
    ok = ida_set_dinfo(item, 0.0, 1.0, 0, 1.0, 0.0, 'alpha', 'alpha')
    ok = ida_set_data(item, s, ida_d4+ida_real+ida_valu)
+
+   if (nalpha gt 1) then begin
+      nelem=1
+      s=fltarr(nelem)
+      s(0)=alphaconst(1)  
+      item = ida_create(fid, fprefix+'_ALPHACONST_osp_ELM', fshot)
+      ok = ida_set_structure(item, ida_dct, 1, ida_d4+ida_real, xtsams=nelem)
+      ok = ida_set_dinfo(item, 0.0, 1.0, 0, 1.0, 0.0, 'alpha', 'alpha')
+      ok = ida_set_data(item, s, ida_d4+ida_real+ida_valu)
+   endif
 ;
 ;  write out the rstart         
 ;
@@ -209,14 +230,24 @@
 ;   ptot=fltarr(max_times)
    etot=fltarr(max_times)
    etotsum=fltarr(max_times)
+;
+   if (nalpha gt 1) then begin
+      qmax_ELM=fltarr(max_times)
+      qmin_ELM=fltarr(max_times)
+      etot_ELM=fltarr(max_times)
+      etotsum_ELM=fltarr(max_times)
+   endif
    
         
    rcnew=reform(rcoord);FL Added for easier comparisons (lamsol etc)
    zcnew=reform(zcoord)
 
- ptot=power  
+   ptot=power
+   if (nalpha gt 1) then ptot_ELM = power_ELM
         
    for i=1l,max_times-1 do begin
+      if (nalpha gt 1) then qmax_ELM(i)=max(qprofiles_ELM(*,i),tmploc,MIN=tmp,/NAN)
+
       qmax(i)=max(qprofiles(*,i),tmploc,MIN=tmp,/NAN)	
 ;
       rqmax(i)=rcoord(tmploc)
@@ -226,6 +257,11 @@
 ;
       etot(i)=ptot(i)*dt; FL: ETOT is instantaneous energy
       etotsum(i)=total(etot(1:i))
+      if (nalpha gt 1) then begin
+         etot_ELM(i)=ptot_ELM(i)*dt; FL: ETOT is instantaneous energy
+         etotsum_ELM(i)=total(etot_ELM(1:i))
+      endif
+
 
       peak=where(qprofiles(*,i) eq qmax(i),noel)
       lam=where(qprofiles(*,i) ge qmax(i)/exp(1),noel2);OLD measure of lambda
@@ -273,7 +309,9 @@
 
       endelse
           
-        
+
+      if (nalpha gt 1) then qmin_ELM(i)=min(qprofiles_ELM(*,i),/NAN)
+
       qmin(i)=min(qprofiles(*,i),/NAN); FL changed from tmp
 
    endfor	
@@ -284,12 +322,19 @@
    sti = 0
    eti = max_times-1
 
-   err = GC_PUTIT(fid, shotnr, fprefix+'_minpower_density_osp', 'kWm-2',$
-               tout, 1.e3*qmin(sti:eti))
+   err = GC_PUTIT(fid, shotnr, fprefix+'_minpower_density_osp', 'MWm-2',$
+               tout, qmin(sti:eti))
 ;
-   err = GC_PUTIT(fid, shotnr, fprefix+'_pkpower_density_osp', 'kWm-2',$
-                       tout, 1.e3*qmax(sti:eti))
+   err = GC_PUTIT(fid, shotnr, fprefix+'_pkpower_density_osp', 'MWm-2',$
+                       tout, qmax(sti:eti))
 ;
+   if (nalpha gt 1) then begin
+   err = GC_PUTIT(fid, shotnr, fprefix+'_minpow_dens_osp_ELM', 'MWm-2',$
+                       tout, qmin_ELM(sti:eti))
+;
+      err = GC_PUTIT(fid, shotnr, fprefix+'_pkpow_dens_osp_ELM', 'MWm-2',$
+                       tout, qmax_ELM(sti:eti))
+   endif
 ;
 ;
    err = GC_PUTIT(fid, shotnr, fprefix+'_peakpower_pos_osp', 'm',$
@@ -333,7 +378,7 @@
      endif
 
 ;
-   err = put_trace_dt(fid,shotnr,fprefix+'_qprofile_osp','kW m-2', $ 
+   err = put_trace_dt(fid,shotnr,fprefix+'_qprofile_osp','MW m-2', $ 
            'IR power profiles',rout_norm,tout,qprofiles)
 ;
    err = put_trace_dt(fid,shotnr,fprefix+'_tprofile_osp','Degree C', $
@@ -342,6 +387,12 @@
 
    err = GC_PUTIT(fid, shotnr, fprefix+'_satpixels_osp', 'number',$ 
  	tout, numsatpix)
+
+   if (nalpha gt 1) then begin
+;
+      err = put_trace_dt(fid,shotnr,fprefix+'_qprofile_osp_ELM','MW m-2', $
+           'IR power profiles',rout_norm,tout,qprofiles_ELM)
+   endif
 
 
 ;
@@ -356,12 +407,22 @@
 
 
 ;FL 24/11/2003: adding PTOT and ETOT trace
-    err = GC_PUTIT(fid, shotnr, fprefix+'_ptot_osp', 'kW',$ 
-                   tout, 1.e3*ptot(sti:eti))
+    err = GC_PUTIT(fid, shotnr, fprefix+'_ptot_osp', 'MW',$ 
+                   tout, ptot(sti:eti))
     err = GC_PUTIT(fid, shotnr, fprefix+'_etot_osp', 'kJ',$ 
                    tout, 1.e3*etot(sti:eti))
     err = GC_PUTIT(fid, shotnr, fprefix+'_etotsum_osp', 'kJ',$ 
                    tout, 1.e3*etotsum(sti:eti))
+    if (nalpha gt 1) then begin
+       err = GC_PUTIT(fid, shotnr, fprefix+'_ptot_osp_ELM', 'MW',$
+                   tout, ptot_ELM(sti:eti))
+       err = GC_PUTIT(fid, shotnr, fprefix+'_etot_osp_ELM', 'kJ',$
+                   tout, 1.e3*etot_ELM(sti:eti))
+       err = GC_PUTIT(fid, shotnr, fprefix+'_etotsum_osp_ELM', 'kJ',$
+                   tout, 1.e3*etotsum_ELM(sti:eti))
+   endif
+
+
       
 ; Some Info about the TEMPERATURE
 
@@ -380,4 +441,3 @@
 SKIP:
 
 end
-
