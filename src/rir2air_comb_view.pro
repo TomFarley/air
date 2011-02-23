@@ -109,7 +109,7 @@ endelse
 ;set the outer target alpha constants
 if (camera_view eq 3) then begin
       iview = 3
-      alphaconst = [30000]
+      alphaconst = [70000,30000]
 endif
 if (camera_view eq 4) then begin
       iview = 4
@@ -158,7 +158,7 @@ if (inner eq 1) then begin
 ;set inner target alpha values
    if (camera_view eq 3) then begin
       iview = 1
-      alphaconst = [30000]
+      alphaconst = [70000,30000]
    endif
    if (camera_view eq 4) then begin
       iview = 2
