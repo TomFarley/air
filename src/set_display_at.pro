@@ -72,8 +72,8 @@ if(n_elements(w) ne 0) then begin
 		;wireframe is white
 		q=where(comp eq 255)
 		r=where(comp eq 0)
-		comp[q]=0
-		comp[r]=255
+		if q[0] ne -1 then comp[q]=0
+		if r[0] ne -1 then comp[r]=255
 		
 		re=comp+re<255
 
