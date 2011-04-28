@@ -215,7 +215,7 @@ endif
 
 top:
 erase
-ccd_image,o,p,i,j,n,l,ribs,boxs,p2,cc
+ccd_image_at,o,p,i,j,n,l,ribs,boxs,p2,cc
 if (keyword_set(disp)) then comp=tvrd()
 set_display_at,w=1
 
