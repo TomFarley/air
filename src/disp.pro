@@ -376,7 +376,7 @@ pro display
 ;set up the scale on the images - upper and lower, based on the brightness of
 ;the image
 
-set_display,/scon,w=0 ;image is TVed in here?
+set_display_at,/scon,w=0 ;image is TVed in here?
 
 base1 = WIDGET_BASE(/column)
 slide1=WIDGET_SLIDER(base1,title='lower',value=0,uvalue='lower')    
@@ -395,8 +395,8 @@ WIDGET_CONTROL, ev.top
 WIDGET_CONTROL, ev.id, GET_UVALUE=uval
 
 case uval of
-	'lower': set_display,b=ev.value,/scon
-	'upper': set_display,c=ev.value,/scon
+	'lower': set_display_at,b=ev.value,/scon
+	'upper': set_display_at,c=ev.value,/scon
 	'done': widget_control,ev.top,/destroy
 endcase
 
@@ -426,7 +426,7 @@ WIDGET_CONTROL, ev.id, GET_UVALUE=uval
 
 case uval of
 	'toggle': begin
-          set_display,w=tog
+          set_display_at,w=tog
           tog=(tog+1) mod 2
           end
 	'new': widget_control,ev.top,/destroy
@@ -442,7 +442,7 @@ pro set_frame
 
 common toggle,tog
 
-set_display,w=tog
+set_display_at,w=tog
 tog=(tog+1) mod 2
 
 end

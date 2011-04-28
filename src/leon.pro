@@ -142,7 +142,7 @@ if(n_elements(nuc) ne 0) then begin
 						;removed). Definition is also
 						;used in get_line.pro
 	xst=xst*2 ;x offset - image is rebinned to twice orig. size in
-		  ;set_display, hence the *2
+		  ;set_display_at, hence the *2
 	bset=0.0 ;set the brightness top level
 	cset=100.0 ;set the lower level
 	bcut=-1e38
@@ -186,7 +186,7 @@ if(n_elements(nuc) ne 0) then begin
 		plot,[100],[100],xr=[-320,320]/2*30e-6,yr=[-256,256]/2*30e-6,xs=5,ys=5,/noerase
 
 		;this draws the wireframe
-		ccd_image,o,p,i,j,n,l,ribs,boxs,p2,cc
+		ccd_image_at,o,p,i,j,n,l,ribs,boxs,p2,cc
 
 	if (keyword_set(disp)) then comp=tvrd()
 endif
@@ -215,7 +215,7 @@ if(keyword_set(cal) or keyword_set(recal)) then begin
                   if(n_elements(f) ne 1) then begin
                     find_vectors,ptco,o,p,i,j,n,l,ribs,boxs,p2,cc,f,obj,img,close,/new,/disp
                     print,'closeness is ',close
-                    set_display,w=0
+                    set_display_at,w=0
                     frame
                   endif
                 endif
@@ -225,7 +225,7 @@ if(keyword_set(cal) or keyword_set(recal)) then begin
                   if(n_elements(f) ne 1) then begin
                     find_vectors,ptco,o,p,i,j,n,l,ribs,boxs,p2,cc,f,obj,img,close,/disp
                     print,'closeness is ',close
-                    set_display,w=0
+                    set_display_at,w=0
                     frame
                   endif
                 endif
@@ -267,7 +267,7 @@ for tr=t(0),t(n_elements(t)-1),1.0/framerate do begin
 	tset=tr
 	get_ir,sh,time,data,tset,d,integtime,cphot,framerate $
 		,rawd,lambda,rawnuc=rawnuc
-	if(keyword_set(disp)) then set_display,w=1
+	if(keyword_set(disp)) then set_display_at,w=1
 	if(n_elements(theo) ne 0) then begin
 		get_trace,d,rawd,theo,temp,stemp,o,n,i,j,l,satpix
 		if(keyword_set(disp)) then begin

@@ -123,9 +123,9 @@ if(err ne '') then return
 !p.multi=0
 plot,[100],[100],xr=[-320,320]/2*30e-6,yr=[-256,256]/2*30e-6,xs=5,ys=5,/noerase
 erase
-set_display,w=0
+set_display_at,w=0
 ;print,'in vectors ',ptc1,r1,phi1,z1,a1,b1,g1
-ccd_image,o,p,i,j,n,l,ribs,boxs,p2,cc
+ccd_image_at,o,p,i,j,n,l,ribs,boxs,p2,cc
 
 end
 
@@ -144,7 +144,7 @@ while(1) do begin
   ydo=-1.0
   xd=1.0
   yd=1.0
-  set_display,w=0
+  set_display_at,w=0
   frame
   if(search) then begin
     if(n_elements(f(0,*)) eq 1) then begin
@@ -161,7 +161,7 @@ while(1) do begin
     xdo=xd
     ydo=yd
     erase
-    set_display,w=1
+    set_display_at,w=1
     plots,xd,yd,col=1,psym=8
     cursor,xc,yc,/device,/up
     delay
@@ -169,7 +169,7 @@ while(1) do begin
     
     find_bestvec,xc,yc,o,p,i,j,n,l,ribs,boxs,p2,cc,bestvec
     image,bestvec,o,n,i,j,l,r,xd,yd,err
-    plots,xd,yd,col=1,psym=8
+    plots,xd,yd,col=truecolor('royalblue'),psym=8
   endwhile
 
   obj=[[obj],[xd,yd]]
@@ -185,7 +185,7 @@ while(1) do begin
     xdo=xd
     ydo=yd
     erase
-    set_display,w=0
+    set_display_at,w=0
     plots,xc,yc,col=1,psym=8
     cursor,xc,yc,/device,/up
     delay
@@ -217,7 +217,7 @@ top:
 erase
 ccd_image,o,p,i,j,n,l,ribs,boxs,p2,cc
 if (keyword_set(disp)) then comp=tvrd()
-set_display,w=1
+set_display_at,w=1
 
 test_vec,o,i,j,n,l,f,obj,img,gm,cm,dg,ddg,dm,ddm,hmin
 
