@@ -74,7 +74,27 @@ if (strpos(strupcase(view),'#') ge 0 ) then begin
         sv = strsplit(view,'#',/extract)
         sloc = strmid(sv(1),0,1)   ; sometimes it is written as #1" and the " causes problems
         if (sloc  eq '4' or sloc  eq '1') then outer = 1
-        if (sloc  eq '1') then inner = 1
+;AT mods for incorrect IPX headers 24/05/11
+        if (sloc  eq '1') then begin
+		inner = 1
+	endif else begin
+		;sometimes the header is not correct, and the view
+		;covers the inner and the outer
+		;if there is an ISP analysis line defined in the
+		;align file then set inner=1
+		alignarr=readtxtarray('align.dat',3)
+		leshot=where(alignarr(0,*) le shotnum,noel)
+		tmp=max(fix(alignarr(0,leshot)),loc)
+		alignment=alignarr(2,loc)
+		if alignment eq '' then begin
+			inner=0
+		endif else begin
+			print, 'ISP analysis path will be run: IPX header incorrect'
+			inner=1
+		endelse
+
+	endelse
+;AT incorrect header mods end.
         if (inner+outer eq 0 ) then begin 
             print,' cannot work out view',view
             iflag = -3
