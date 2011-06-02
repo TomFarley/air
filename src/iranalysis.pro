@@ -41,8 +41,8 @@ if keyword_set(disp) then begin
 endif
 
 ;setup the display if plotting to screen (/disp set)
-loadct,5
 if (keyword_set(disp)) then begin 
+	loadct,5
    window,xs=400,ys=400   ; not active
    !x.style=1
    !y.style=1
