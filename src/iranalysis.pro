@@ -35,8 +35,10 @@ endif
 heat,sh,trange,ldef,t,s,h,qpro,numsatpix,alphaconst,disp=disp,print=print,tsmooth=tsmooth,tbgnd=tbgnd,targetrate=targetrate,nline=nline,aug=aug
 
 ; I have added these two line which were previously in infra (AK 18/11/03)
-device,retain=2
-device,decompose=0
+if keyword_set(disp) then begin
+	device,retain=2
+	device,decompose=0
+endif
 
 ;setup the display if plotting to screen (/disp set)
 loadct,5
