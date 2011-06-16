@@ -65,7 +65,7 @@ endif else begin
 		sval=fix(s*1000)/1000.0
 		a=indgen(n_elements(sval)-1)
 		b=a+1
-		ns=where(sval(b)-sval(a) gt 0.001)
+		ns=where(sval(b)-sval(a) gt 0.0005) ;AT 16/06/11 0.001 to 0.0005
 		ns=[ns,n_elements(sval)-1] ;not sure this properly accounts for 
 					   ;all quantised s values
 

@@ -1,13 +1,22 @@
-pro get_line,theo,o,n,i,j,l,r,sl,pixl,disp=disp
+FUNCTION get_extent,theo,o,n,i,j,l,r
+
+;program to determine the extent of the analysis line across the
+;CCD image
+
+;the purpose is to determine the number of pixels crossed and 
+;hence the maximum number of steps along the analysis path
+;which can be used.
+
+;For now, simply run the code with a large number of steps
+;and find the range over which the data is to be extracted.
+;Feed the range back into the get_line program and repeat
+;with the correct number of steps.
 
 common data,d,width,height,xst,yst,comp,dnuc,pix,s
 
-;Define the number of segments the analysis path is to
-;be split into - needs to be integer (as loop 
-;variable later)
-steps=fix(get_extent(theo,o,n,i,j,l,r))
+steps=200
 
-cx=[-320,320]/2*30e-6
+cx=[-256,256]/2*30e-6
 cy=[-256,256]/2*30e-6
 
 start=rtptoxyz(theo(*,0))
@@ -53,26 +62,20 @@ for ik=0,n_elements(pixl(*,0))-1 do begin
   endif
 endfor
 
-;pix2 = location in CCD image of the pixels to extract (x,y)
-;s2 = real radius of the pixels defined in s2.
+;the analysis path may lie in the y direction
+;or the x direction - find the largest
+;is this the best way - does the largest direction
+;always go in the direction of increasing radius?
 
-stop
+;first element of pix2 is zero - remove this
+pix2_cut=pix2[*,1:n_elements(pix2[0,*])-1]
+range_x_direction=max(pix2_cut[0,*])-min(pix2_cut[0,*])
+range_y_direction=max(pix2_cut[1,*])-min(pix2_cut[1,*])
 
-;   whatever happens we want to see the line  mod by ak on 7/12/06
-  if(keyword_set(disp)) then begin
-    wset,0
-    plots,mul(*,0),mul(*,1),col=truecolor('firebrick')
-  endif
+step=[range_x_direction,range_y_direction]
 
-if(n_elements(s2) gt 1) then begin
-  pixl=transpose(pix2(*,1:*))
-  sl=s2(1:*)
-  if(keyword_set(disp)) then begin
-    wset,0
-    plots,mul(*,0),mul(*,1),col=truecolor('firebrick')
-  endif
-endif else begin
-  pixl=[0,0]
-  sl=[0.0]
-endelse
-end
+line_segments=max(step)
+
+return, line_segments
+
+END
