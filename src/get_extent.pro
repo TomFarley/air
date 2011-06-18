@@ -76,6 +76,41 @@ step=[range_x_direction,range_y_direction]
 
 line_segments=max(step)
 
-return, line_segments
+;line segments is the number of pixels which overlap with
+;the ccd image - However, the analysis line can by longer
+;than this. Need to determine how many steps are required
+;to give steps=line_segments aross the WHOLE analysis line
+
+
+;ATHORN (16/06/11) first go - end up with too many elements...
+;so remove and try another method...
+
+	;determine the delta_r over which there is overlap of the
+	;number of pixels given by line_segments
+	;delta_r=s2[n_elements(s2)-1]-s2[1]
+	;compute the radial resolution of the overlapping line
+	;and image
+	;resolution_overlapping=delta_r/line_segments
+
+	;compute the length of the WHOLE analysis line
+	;delta_whole_line=sl[n_elements(sl)-1]-sl[1]
+	
+	;determine the number of steps along the WHOLE line to
+	;match the radial resolution of the overlapped region
+	;final_segments=delta_whole_line/resolution_overlapping
+
+;ATHORN (17/06/11) second (simpler) go
+
+;determine the ratio of the number of elements of sl to s2
+ratio=float(n_elements(sl))/float(n_elements(s2))
+
+;scale the number of segments the line is to be split into
+;by the ratio defined above.
+final_segments=ratio*float(line_segments)
+;final_segments=line_segments
+
+;print, final_segments
+;stop
+return, final_segments
 
 END

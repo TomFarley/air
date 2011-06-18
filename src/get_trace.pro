@@ -5,10 +5,22 @@ common data,d,width,height,xst,yst,comp,dnuc,pix,s
 ;initialise variables
 satpix = 0
 
+;ATHORN mods - 18/06/11 - determine the number of steps the analysis line can be
+;split into before performing the analysis. Feed the number of steps back into
+;the get_line function, by adding the steps variable to the call to the procedure
+
+;need to decide the number of steps outside get_line as the number determined inside
+;get_line will vary.
+
+;use the get_extent function
+steps=get_extent(theo,o,n,i,j,l,r)
+;print, 'Number of analysis line segments: ', fix(steps)
+;ATHORN mods end
+
 if(keyword_set(line) or keyword_set(area)) then begin
 	if(not keyword_set(area)) then begin
-		if(keyword_set(disp)) then get_line,theo,o,n,i,j,l,r,s,pix,$
-				/disp else get_line,theo,o,n,i,j,l,r,s,pix
+		if(keyword_set(disp)) then get_line,theo,o,n,i,j,l,r,steps,s,pix,$
+				/disp else get_line,theo,o,n,i,j,l,r,steps,s,pix
   	endif else begin
 		;loop through theo lines theo((r,phi,z),(dr,dphi,dz),(start,end))
 		if not keyword_set(nline) then nline=20
@@ -21,8 +33,8 @@ if(keyword_set(line) or keyword_set(area)) then begin
 
 		theol=[[rr(0),phir(0),zr(0)],[drr(0),dphir(0),dzr(0)]]
 
-		if(keyword_set(disp)) then get_line,theol,o,n,i,j,l,r,sl,pixl,/disp $
-					else get_line,theol,o,n,i,j,l,r,sl,pixl
+		if(keyword_set(disp)) then get_line,theol,o,n,i,j,l,r,steps,sl,pixl,/disp $
+					else get_line,theol,o,n,i,j,l,r,steps,sl,pixl
     		pixall=pixl
 		sall=sl
 		
@@ -32,8 +44,8 @@ if(keyword_set(line) or keyword_set(area)) then begin
 
 		for it=1,n_elements(rr)-1 do begin
 			theol=[[rr(it),phir(it),zr(it)],[drr(it),dphir(it),dzr(it)]]
-			if(keyword_set(disp)) then get_line,theol,o,n,i,j,l,r,sl, $ 
-				pixl,/disp else get_line,theol,o,n,i,j,l,r,sl,pixl
+			if(keyword_set(disp)) then get_line,theol,o,n,i,j,l,r,steps,sl, $ 
+				pixl,/disp else get_line,theol,o,n,i,j,l,r,steps,sl,pixl
 
 			if(n_elements(pixl) gt 2) then begin
 				if not keyword_set(run_check) then begin
