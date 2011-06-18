@@ -16,7 +16,7 @@ common data,d,width,height,xst,yst,comp,dnuc,pix,s
 
 steps=200
 
-cx=[-256,256]/2*30e-6
+cx=[-320,320]/2*30e-6
 cy=[-256,256]/2*30e-6
 
 start=rtptoxyz(theo(*,0))
