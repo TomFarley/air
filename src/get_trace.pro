@@ -114,7 +114,6 @@ endif else begin
 		temp=temps_even
 		;AT mods end
 
-		;stop
 		;determine the number of saturated pixels looking at the raw data
 		;and put a cut at 15000
 		ee=reverse((rawd),2)>0.0
