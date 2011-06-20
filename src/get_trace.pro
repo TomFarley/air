@@ -85,17 +85,38 @@ endif else begin
 		e=reverse((dim-dnuc),2)>0.0
 		temp=[0]
 
-		for is=0,n_elements(snew)-1 do begin
-			ms=where(sval eq snew(is))
-			temp=[temp,mean(e(pix(ms,0),pix(ms,1)))]
-		endfor
+		interpolated=1
 
-		temp=temp(1:*)
+		if interpolated eq 0 then begin
+			for is=0,n_elements(snew)-1 do begin
+				ms=where(sval eq snew(is))
+				temp=[temp,mean(e(pix(ms,0),pix(ms,1)))]
+			endfor
+
+			temp=temp(1:*)
+
+		endif
+
+		if interpolated eq 1 then begin
+			temp=interpolate(e,pix[ns,0],pix[ns,1])
+		endif			
+
+		;AT 19/06/11 - need regularly gridded data...
+		min_sl=min(snew)
+		max_sl=max(snew)
+		range=max_sl-min_sl
+		segments=max(pix[ns,0])-min(pix[ns,0])
+		sl_even_space=((findgen(segments+1)/(segments))*range)+min_sl
+
+		temps_even=spline(snew,temp,sl_even_space)
+		;transfer the evenly gridded data to the old variables
+		snew=sl_even_space
+		temp=temps_even
+		;AT mods end
 
 		;stop
 		;determine the number of saturated pixels looking at the raw data
 		;and put a cut at 15000
-
 		ee=reverse((rawd),2)>0.0
 		rawl=ee(pix(*,0),pix(*,1))
 		sat = where(rawl gt 15000,satpix)

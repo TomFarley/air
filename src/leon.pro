@@ -295,8 +295,8 @@ endfor
 snew=findgen(n_elements(s)*2)/(n_elements(s)*2-1)*(s(n_elements(s)-1)-s(0))+s(0)
 alltempn=fltarr(n_elements(snew),n_elements(alltemp(0,*)))
 
-for itall=0,n_elements(alltemp(0,*))-1 do begin
-	alltempn(*,itall)=spline(s,alltemp(*,itall),snew)
-endfor
+;for itall=0,n_elements(alltemp(0,*))-1 do begin
+;	alltempn(*,itall)=spline(s,alltemp(*,itall),snew)
+;endfor
 
 end
