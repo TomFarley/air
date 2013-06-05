@@ -4,6 +4,7 @@ pro rir2air_comb_view,shotnum=shotnum,pn=pn
 ;   error flag: -1 can not open raw file
 ;               -2  can not determine whether upper or lower view
 ;               -3  can not determine whether inboard and/or outboard
+;		-4 The time base of the data is incorrect.
 ;               10+ inboard target
 ;              100+ outboard target
 ;
