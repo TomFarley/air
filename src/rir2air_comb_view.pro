@@ -74,7 +74,7 @@ if (strpos(strupcase(view),'#') ge 0 ) then begin
 ;     #1 means outer + inner #4 means outer only
         sv = strsplit(view,'#',/extract)
         sloc = strmid(sv(1),0,1)   ; sometimes it is written as #1" and the " causes problems
-        if (sloc  eq '4' or sloc  eq '1') then outer = 1
+        if (sloc  eq '4' or sloc  eq '1' or sloc eq '6') then outer = 1
 ;AT mods for incorrect IPX headers 24/05/11
         if (sloc  eq '1') then begin
 		inner = 1
