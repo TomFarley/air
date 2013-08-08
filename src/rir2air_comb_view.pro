@@ -139,7 +139,7 @@ endif
 print,'using alpha = ',alphaconst
 
    startime = 0.0   
-   endtime = 0.6  
+   endtime = 0.75  
 ;
 print,'Processing shotnum ',shotnum,' Pass ',pn,' alignment ',alignment
 ;
@@ -188,7 +188,7 @@ if (inner eq 1) then begin
    print,'using alpha = ',alphaconst
 
    startime = 0.0   
-   endtime = 0.7  
+   endtime = 0.75 
 ;
    print,'Processing shotnum ',shotnum,' Pass ',pn,' alignment ',alignment
 ;
