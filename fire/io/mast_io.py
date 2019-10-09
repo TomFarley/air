@@ -83,7 +83,7 @@ def get_ipx_frames(ipx_path: Union[str, Path], transforms: Iterable[str]=()) -> 
 
 
 if __name__ == '__main__':
-    ipx_path = Path('test_data/mast/')
+    ipx_path = Path('../../tests/test_data/mast/')
     ipx_fn = 'rir030378.ipx'
     ipx_path_fn = ipx_path / ipx_fn
     ipx_meta_data = get_ipx_meta_data(ipx_path_fn)
