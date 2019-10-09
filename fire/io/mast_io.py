@@ -26,42 +26,41 @@ def get_ipx_meta_data(path_fn: Union[str, Path], transforms: Iterable[str]=()) -
     :return: Dictionary of ipx file information
     :type: dict
     """
-    ipx_meta_data = {'movie_format': '.ipx'}
-    n = 0
-    step = 100
-
-    # Establish how many frames in movie - first pass in large steps
+    # Read file header and first frame
     vid = ipxReader(filename=path_fn)
     file_header = vid.file_header
     ret, frame0, frame_header0 = vid.read(transforms=transforms)
-    while ret:
-        n += step
-        vid.set_frame_number(n)
-        ret, frame, frame_header = vid.read(transforms=transforms)
-    n_end = n
 
-    # Establish how many frames in movie - second pass one frame at a time
-    vid = ipxReader(filename=path_fn)
-    n -= step
-    vid.set_frame_number(n)
-    ret = True
-    while ret:
-        n += 1
-        ret, frame, frame_header = vid.read(transforms=transforms)  # auto advances vid frame number
+    # Establish how many frames in movie in multiple passes
+    n_end = 0
+    steps = [100, 1]
+    for step in steps:
+        vid.set_frame_number(n_end)
+        while ret:
+            n_end += step
+            vid.set_frame_number(n_end)
+            ret, frame, frame_header = vid.read(transforms=transforms)
+        n_end -= step
+
     # TODO: Fix problem with seeking to final frame   -2 => -1
-    n -= 2  # Go to last frame that returned True
+    n_end -= 1  # Go to last frame that returned True
 
+    # Read last frame
     vid = ipxReader(filename=path_fn)
-    vid.set_frame_number(n)
-    ret, frame, frame_header = vid.read(transforms=transforms)
+    vid.set_frame_number(n_end)
+    ret, frame_end, frame_header_end = vid.read(transforms=transforms)
     vid.release()
 
+    print(n_end)
+    print(file_header)
+
     # Collect summary of ipx file meta data
+    ipx_meta_data = {'movie_format': '.ipx'}
     ipx_meta_data['ipx_header'] = file_header
-    ipx_meta_data['frame_range'] = [0, n]
-    ipx_meta_data['t_range'] = [frame_header0['time_stamp'], frame_header['time_stamp']]
+    ipx_meta_data['frame_range'] = [0, n_end]
+    ipx_meta_data['t_range'] = [frame_header0['time_stamp'], frame_header_end['time_stamp']]
     ipx_meta_data['frame_shape'] = frame0.shape
-    ipx_meta_data['fps'] = (n + 1) / (frame_header['time_stamp'] - frame_header0['time_stamp'])
+    ipx_meta_data['fps'] = (n_end + 1) / (frame_header_end['time_stamp'] - frame_header0['time_stamp'])
     return ipx_meta_data
 
 def get_ipx_frames(ipx_path: Union[str, Path], transforms: Iterable[str]=()) -> np.ndarray:
