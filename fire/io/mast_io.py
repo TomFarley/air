@@ -14,6 +14,8 @@ import xarray as xr
 
 from pyIpx.movieReader import ipxReader
 
+def return_true():
+    return True
 
 def get_ipx_meta_data(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
     """Read frame data from MAST IPX movie file format.
@@ -37,10 +39,10 @@ def get_ipx_meta_data(path_fn: Union[str, Path], transforms: Iterable[str]=()) -
     for step in steps:
         vid.set_frame_number(n_end)
         while ret:
-            n_end += step
             vid.set_frame_number(n_end)
             ret, frame, frame_header = vid.read(transforms=transforms)
-        n_end -= step
+            if ret:
+                n_end += step
 
     # TODO: Fix problem with seeking to final frame   -2 => -1
     n_end -= 1  # Go to last frame that returned True
