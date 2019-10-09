@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 
-from fire.io.mast_io import read_local_ipx_file
+from fire.io.mast_io import get_ipx_meta_data, get_ipx_frames
 
 ipx_path = Path('test_data/mast/')
 
@@ -13,6 +13,8 @@ def expected_ouput():
 	return [aa,bb,cc]
 
 @pytest.mark.set1
-def test_read_local_ipx_file(expected_ouput):
+def test_get_ipx_meta_data(expected_ouput):
 	ipx_fn = 'rir030378.ipx'
 	ipx_path_fn = ipx_path / ipx_fn
+	ipx_meta_data = get_ipx_meta_data(ipx_path_fn)
+	assert isinstance(ipx_meta_data, dict)
