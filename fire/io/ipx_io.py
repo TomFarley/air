@@ -14,8 +14,10 @@ import xarray as xr
 
 from pyIpx.movieReader import ipxReader
 
-def return_true():
-    return True
+def get_freia_ipx_path(shot, camera):
+    shot = str(shot)
+    ipx_path_fn = f"/net/fuslsa/data/MAST_IMAGES/0{shot[0:2]}/{shot}/{camera}0{shot}.ipx"
+    return ipx_path_fn
 
 def get_ipx_meta_data(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
     """Read frame data from MAST IPX movie file format.
@@ -82,7 +84,6 @@ def get_ipx_frames(ipx_path: Union[str, Path], transforms: Iterable[str]=()) -> 
     vid = ipxReader(ipx_path, transforms)
     return frames
 
-def get_frames_uda():
 
 if __name__ == '__main__':
     ipx_path = Path('test_data/mast/')
