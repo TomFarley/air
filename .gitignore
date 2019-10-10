@@ -3,4 +3,4 @@ settings/user/*
 fire.egg-info/
 .eggs/
 **/__pycache__
-
+.coverage
