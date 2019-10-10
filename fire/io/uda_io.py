@@ -39,7 +39,7 @@ def get_frames_uda(shot: int, camera: str, n_start:Optional[int]=None, n_end:Opt
     if not isinstance(camera, str) or len(camera) != 3:
         raise ValueError(f'canera argument shoudl be MAST-U camera 3-letter diagnostic code (e.g. rir, rbb etc.)')
 
-    command_str = f'NEWIPX::read(filename=/net/fuslsc/data/MAST_Data/{shot}/LATEST/{camera}0{shot}.ipx)
+    command_str = f'NEWIPX::read(filename=/net/fuslsc/data/MAST_Data/{shot}/LATEST/{camera}0{shot}.ipx)'
     if n_start is not None:
         command_str += f', first={n_start}'
     if n_end is not None:

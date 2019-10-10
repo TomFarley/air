@@ -14,6 +14,9 @@ import xarray as xr
 
 from pyIpx.movieReader import ipxReader
 
+def return_true():
+    return True
+
 def get_freia_ipx_path(shot, camera):
     shot = str(shot)
     ipx_path_fn = f"/net/fuslsa/data/MAST_IMAGES/0{shot[0:2]}/{shot}/{camera}0{shot}.ipx"
