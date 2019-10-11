@@ -36,23 +36,29 @@ def get_ipx_meta_data(path_fn: Union[str, Path], transforms: Iterable[str]=()) -
     # Read file header and first frame
     vid = ipxReader(filename=path_fn)
     file_header = vid.file_header
-    n_frames = file_header['numFrames'] - 1
-
     ret, frame0, frame_header0 = vid.read(transforms=transforms)
+    last_frame = file_header['numFrames'] - 1
 
-    # Read last frame
-    vid = ipxReader(filename=path_fn)
-    vid.set_frame_number(n_frames)
-    ret, frame_end, frame_header_end = vid.read(transforms=transforms)
+    # Last frame doesn't always load, so work backwards to last successfully loaded frame
+    ret = False
+    while not ret:
+        # Read last frame
+        vid.set_frame_number(last_frame)
+        ret, frame_end, frame_header_end = vid.read(transforms=transforms)
+        if not ret:
+            # File closes when it fails to load a frame, so re-open
+            vid = ipxReader(filename=path_fn)
+            last_frame -= 1
     vid.release()
 
     # Collect summary of ipx file meta data
+    file_header['ipx_version'] = vid.ipx_type
     ipx_meta_data = {'movie_format': '.ipx'}
     ipx_meta_data['ipx_header'] = file_header
-    ipx_meta_data['frame_range'] = [0, n_frames]
-    ipx_meta_data['t_range'] = [frame_header0['time_stamp'], frame_header_end['time_stamp']]
+    ipx_meta_data['frame_range'] = np.array([0, last_frame])
+    ipx_meta_data['t_range'] = np.array([float(frame_header0['time_stamp']), float(frame_header_end['time_stamp'])])
     ipx_meta_data['frame_shape'] = frame0.shape
-    ipx_meta_data['fps'] = (n_frames + 1) / (frame_header_end['time_stamp'] - frame_header0['time_stamp'])
+    ipx_meta_data['fps'] = (last_frame + 1) / np.ptp(ipx_meta_data['t_range'])
     return ipx_meta_data
 
 def get_ipx_frames(ipx_path: Union[str, Path], transforms: Iterable[str]=()) -> np.ndarray:
