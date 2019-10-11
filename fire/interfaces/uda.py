@@ -57,5 +57,13 @@ def get_frames_uda(shot: int, camera: str, n_start:Optional[int]=None, n_end:Opt
 
     return vid
 
-    if __name__ == '__main__':
-        pass
+if __name__ == '__main__':
+    n_start, n_end = 100, 110
+    vid = get_frames_uda(30378, 'rir', n_start=n_start, n_end=n_end)
+    import pdb; pdb.set_trace()
+    print(vid)
+    print(vid.frames)
+    print(vid.time)
+    print(vid.k)
+    print(dir(vid))
+    pass
