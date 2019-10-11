@@ -12,6 +12,13 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
+import calcam
+
+from fire.data_structures import init_data_structures
+from fire.interfaces.interfaces import (load_user_defaults, identify_input_files, read_movie_meta_data,
+    read_movie_data, generate_shot_id_strings)
+from fire.utils import update_call_args
+
 def scheduler_workflow(shot:Union[int, str], camera:str='rir', pass_no:int=0, machine:str='MAST', shceduler:bool=False,
                        magnetics:bool=False):
     """Primary analysis workflow for MAST-U/JET IR scheduler analysis.
@@ -25,16 +32,31 @@ def scheduler_workflow(shot:Union[int, str], camera:str='rir', pass_no:int=0, ma
     :return: Error code
     """
     # Set up data structures
+    settings, files, data, meta_data = init_data_structures()
 
+    # Load user's default call arguments
+    settings['user_defaults'] = load_user_defaults()
+    shot, camera, machine = update_call_args(settings['user_defaults'], shot, camera, machine)
+
+    # Generate id_strings
+    meta_data['id_strings'] = generate_shot_id_strings(shot, camera, machine, pass_no)
 
     # Idenify and check existence of input files
+    files = identify_input_files(shot, camera, machine)
 
+    # Load camera state
+    # settings['camera_state'] = get_camera_state(shot, camera, machine)
 
-    # Load raw IR data
+    # Load movie meta data
+    meta_data = read_movie_meta_data(shot, camera, machine)
 
+    # Validate frame range etc
+
+    # Load raw frame data
+    frame_nos, frame_times, frame_data = read_movie_data(shot, camera, machine)
 
     # Load calcam spatial camera calibration
-
+    meta_data['calcam_calib'] = calcam.Calibration(load_filename=files['calcam_calib'])
 
     # Segment/mask image if contains sub-views
 
