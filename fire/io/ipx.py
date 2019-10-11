@@ -36,38 +36,23 @@ def get_ipx_meta_data(path_fn: Union[str, Path], transforms: Iterable[str]=()) -
     # Read file header and first frame
     vid = ipxReader(filename=path_fn)
     file_header = vid.file_header
+    n_frames = file_header['numFrames'] - 1
+
     ret, frame0, frame_header0 = vid.read(transforms=transforms)
-
-    # Establish how many frames in movie in multiple passes
-    n_end = 0
-    steps = [100, 1]
-    for step in steps:
-        vid.set_frame_number(n_end)
-        while ret:
-            vid.set_frame_number(n_end)
-            ret, frame, frame_header = vid.read(transforms=transforms)
-            if ret:
-                n_end += step
-
-    # TODO: Fix problem with seeking to final frame   -2 => -1
-    n_end -= 1  # Go to last frame that returned True
 
     # Read last frame
     vid = ipxReader(filename=path_fn)
-    vid.set_frame_number(n_end)
+    vid.set_frame_number(n_frames)
     ret, frame_end, frame_header_end = vid.read(transforms=transforms)
     vid.release()
-
-    print(n_end)
-    print(file_header)
 
     # Collect summary of ipx file meta data
     ipx_meta_data = {'movie_format': '.ipx'}
     ipx_meta_data['ipx_header'] = file_header
-    ipx_meta_data['frame_range'] = [0, n_end]
+    ipx_meta_data['frame_range'] = [0, n_frames]
     ipx_meta_data['t_range'] = [frame_header0['time_stamp'], frame_header_end['time_stamp']]
     ipx_meta_data['frame_shape'] = frame0.shape
-    ipx_meta_data['fps'] = (n_end + 1) / (frame_header_end['time_stamp'] - frame_header0['time_stamp'])
+    ipx_meta_data['fps'] = (n_frames + 1) / (frame_header_end['time_stamp'] - frame_header0['time_stamp'])
     return ipx_meta_data
 
 def get_ipx_frames(ipx_path: Union[str, Path], transforms: Iterable[str]=()) -> np.ndarray:
@@ -89,7 +74,7 @@ def get_ipx_frames(ipx_path: Union[str, Path], transforms: Iterable[str]=()) -> 
 
 
 if __name__ == '__main__':
-    ipx_path = Path('test_data/mast/')
+    ipx_path = Path('../../tests/test_data/mast/').resolve()
     ipx_fn = 'rir030378.ipx'
     ipx_path_fn = ipx_path / ipx_fn
     ipx_meta_data = get_ipx_meta_data(ipx_path_fn)
