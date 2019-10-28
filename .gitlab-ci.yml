@@ -5,7 +5,6 @@ variables:
 before_script:
   - pip install --upgrade pip setuptools
   # - pip3 install dependencies/pyIpx/
-  - pip install git+https://git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
   - export PYTHONPATH=$PWD
   - export IN_DOCKER=True
 
@@ -27,6 +26,7 @@ stages:
     stage: test
     before_script:
     - pip install pytest-cov
+    - pip install git+https://git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     script:
     - pip install .
     - python setup.py test
