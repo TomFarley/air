@@ -40,7 +40,7 @@ def get_uda_movie_obj(shot: int, camera: str, n_start:Optional[int]=None, n_end:
     :return: UDA movie object?
     """
     if not isinstance(camera, str) or len(camera) != 3:
-        raise ValueError(f'canera argument shoudl be MAST-U camera 3-letter diagnostic code (e.g. rir, rbb etc.)')
+        raise ValueError(f'Camera argument should be MAST-U camera 3-letter diagnostic code (e.g. rir, rbb etc.)')
 
     command_str = f'NEWIPX::read(filename=/net/fuslsc/data/MAST_Data/{shot}/LATEST/{camera}0{shot}.ipx'
     if n_start is not None:
@@ -76,13 +76,12 @@ def read_movie_meta_uda(shot: int, camera: str, n_start:Optional[int]=None, n_en
     last_frame = video.n_frames - 1
     times = vid.frame_times
 
-    movie_meta = {}
-    meta_data = {'movie_format': '.ipx'}
-    meta_data['ipx_header'] = ipx_header
-    meta_data['frame_range'] = np.array([0, last_frame])
-    meta_data['t_range'] = np.array([times[0], times[-1]])
-    meta_data['frame_shape'] = (video.height, video.width)
-    meta_data['fps'] = (last_frame + 1) / np.ptp(meta_data['t_range'])
+    movie_meta = {'movie_format': '.ipx'}
+    movie_meta['ipx_header'] = ipx_header
+    movie_meta['frame_range'] = np.array([0, last_frame])
+    movie_meta['t_range'] = np.array([times[0], times[-1]])
+    movie_meta['frame_shape'] = (video.height, video.width)
+    movie_meta['fps'] = (last_frame) / np.ptp(movie_meta['t_range'])
     return movie_meta
 
 def read_movie_data_uda(shot: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
@@ -123,9 +122,16 @@ def read_movie_data_uda(shot: int, camera: str, n_start:Optional[int]=None, n_en
 if __name__ == '__main__':
     shot = 30378
     camera = 'rir'
+    # camera = 'air'
     n_start, n_end = 100, 110
     vid = get_uda_movie_obj(shot, camera, n_start=n_start, n_end=n_end)
     # import pdb; pdb.set_trace()
     meta_data = read_movie_meta_uda(shot, camera, n_start, n_end)
     frame_nos, frame_times, frame_data = read_movie_data_uda(shot, camera, n_start, n_end)
+
+    r = client.list(pyuda.ListType.SIGNALS, shot=shot, alias='air')
+    signals = {}
+    for d in r:
+        signals[d.signal_name] = d.description
+    print(signals)
     pass
