@@ -33,6 +33,8 @@ def identify_input_files(shot, camera, machine):
     files = {}
     files['calcam_calib'] = get_calcam_calib_path_fn(shot, camera, machine)
 
+    # TODO: check path characters are safe (see setpy datafile code)
+
     return files
 
 def read_movie_meta_data(shot, camera, machine):
