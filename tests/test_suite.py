@@ -1,7 +1,7 @@
 import unittest
 
-import test_io_ipx
-import test_io_uda
+from . import test_io_ipx
+from . import test_io_uda
 
 # from .test_uda_io import TestUdaIO
 # from .test_ipx_io import TestIpxIO
