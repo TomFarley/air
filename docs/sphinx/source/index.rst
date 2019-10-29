@@ -3,17 +3,35 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Fusion Infra-Red Experiments's documentation
-=======================================================
+FIRE Documentation Index
+========================
+
+Welcome to the FIRE (Fusion Infra-Red Experiments) documentation index page.
+Key links can be found below, while the full set of documentation pages are accessible via the index on the left hand
+side of this page.
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :caption: Introduction
+   :maxdepth: 1
+   :name: maintoc
 
+   usage/introduction
    usage/installation
    usage/quick_start
+
+.. toctree::
+   :caption: API User Guide
+   :maxdepth: 1
+   :name: apitoc
+
    api/io
 
+.. toctree::
+   :caption: Developer Documentation
+   :maxdepth: 1
+   :name: devtoc
+
+   development/machines
 
 Indices and tables
 ==================

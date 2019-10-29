@@ -1,4 +1,6 @@
 ===
 I/O
 ===
-.. autofunction:: io.open
+
+.. automodule:: fire.interfaces.interfaces
+   :members:
