@@ -20,7 +20,7 @@ stages:
     script:
     - cd docs/sphinx/
     - make html
-    - mv build/html ../../public
+    - cp -r build/html ../../public
     # Docs at: https://MAST-U_Scheduler/.gitpages.ccfe.ac.uk/air
 
     stage: test
