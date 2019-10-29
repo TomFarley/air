@@ -17,46 +17,46 @@ def load_user_defaults():
     :return: Dict of user's default settings
     :rtype: dict
     """
-    user_defaults = {'machine': 'MAST', 'camera': 'rit', 'shot': 23586}
+    user_defaults = {'machine': 'MAST', 'camera': 'rit', 'pulse': 23586}
     return user_defaults
 
-def identify_input_files(shot, camera, machine):
+def identify_input_files(pulse, camera, machine):
     """Return dict of paths to files needed for IR analysis
 
-    :param shot: Shot/pulse number or string name for synthetic movie data
+    :param pulse: Shot/pulse number or string name for synthetic movie data
     :param camera: Name of camera to analyse (unique name of camera or diagnostic code)
     :param machine: Tokamak that the data originates from
     :return: Dict of filepaths
     """
     files = {}
-    files['calcam_calib'] = get_calcam_calib_path_fn(shot, camera, machine)
+    files['calcam_calib'] = get_calcam_calib_path_fn(pulse, camera, machine)
 
     # TODO: check path characters are safe (see setpy datafile code)
 
     return files
 
-def read_movie_meta_data(shot, camera, machine):
+def read_movie_meta_data(pulse, camera, machine):
     if machine == 'MAST':
         from fire.interfaces.ipx import read_movie_meta_ipx
         from fire.interfaces.uda import read_movie_meta_uda
-        meta_data = read_movie_meta_uda(shot, camera)
+        meta_data = read_movie_meta_uda(pulse, camera)
     else:
         raise NotImplementedError(f'Camera data acquisition not implemented for machine: "{machine}"')
     return meta_data
 
-def read_movie_data(shot, camera, machine):
+def read_movie_data(pulse, camera, machine):
     if machine == 'MAST':
         from fire.interfaces.ipx import read_movie_data_ipx
         from fire.interfaces.uda import read_movie_data_uda
-        frame_nos, frame_times, frame_data = read_movie_data_uda(shot, camera)
+        frame_nos, frame_times, frame_data = read_movie_data_uda(pulse, camera)
     else:
         raise NotImplementedError(f'Camera data acquisition not implemented for machine: "{machine}"')
     return frame_nos, frame_times, frame_data
 
-def generate_shot_id_strings(shot, camera, machine, pass_no, lens, t_int):
+def generate_pulse_id_strings(pulse, camera, machine, pass_no, lens, t_int):
     """Return standardised ID strings used for consistency in filenames and data labels
 
-    :param shot: Shot/pulse number or string name for synthetic movie data
+    :param pulse: Shot/pulse number or string name for synthetic movie data
     :param camera: Name of camera to analyse (unique name of camera or diagnostic code)
     :param machine: Tokamak that the data originates from
     :param pass_no: Scheduler pass number
@@ -64,12 +64,12 @@ def generate_shot_id_strings(shot, camera, machine, pass_no, lens, t_int):
     :param t_int: Integration time of camera in seconds
     :return: Dict of ID strings
     """
-    shot_id = f'{machine}-{shot}'
-    camera_id = f'{shot_id}-{camera}'
+    pulse_id = f'{machine}-{pulse}'
+    camera_id = f'{pulse_id}-{camera}'
 
     # calcam_id = f'{machine}-{camera}-{calib_date}-{pass_no}'
 
-    id_strings = {'shot_id': shot_id,
+    id_strings = {'pulse_id': pulse_id,
                   'camera_id': camera_id}
 
     return id_strings
@@ -77,7 +77,7 @@ def generate_shot_id_strings(shot, camera, machine, pass_no, lens, t_int):
 def generate_camera_id_strings(camera_id_strings, lens, t_int):
     """Return standardised ID strings used for consistency in filenames and data labels
 
-    :param shot: Shot/pulse number or string name for synthetic movie data
+    :param pulse: Shot/pulse number or string name for synthetic movie data
     :param camera: Name of camera to analyse (unique name of camera or diagnostic code)
     :param machine: Tokamak that the data originates from
     :param pass_no: Scheduler pass number
@@ -97,7 +97,7 @@ def generate_frame_id_strings(camera_id_strings, frame_no, frame_time):
     """Return ID strings for specific analysis frame
 
     :param camera_id_string: Strings output by generate_camera_id_strings()
-    :param shot: Shot/pulse number or string name for synthetic movie data
+    :param pulse: Shot/pulse number or string name for synthetic movie data
     :param camera: Name of camera to analyse (unique name of camera or diagnostic code)
     :param machine: Tokamak that the data originates from
     :param pass_no: Scheduler pass number
@@ -106,10 +106,10 @@ def generate_frame_id_strings(camera_id_strings, frame_no, frame_time):
     :return:
     """
     camera_id = camera_id_strings['camera_id']
-    shot_id = camera_id_strings['shot_id']
+    pulse_id = camera_id_strings['pulse_id']
 
     frame_id = f'{camera_id}-{frame_no}'
-    time_id = f'{shot_id}-{time}'
+    time_id = f'{pulse_id}-{time}'
 
     id_strings = {'frame_id': frame_id,
                     'time_id': time_id, }

@@ -7,8 +7,8 @@ Analysis code called by the MAST-U and JET schedulers after each discharge to pr
 
 Documentation
 --------------
-If you are on the ukaea network, the full FIRE documentation can be found [here](https://git.ccfe.ac
-.uk/MAST-U_Scheduler/air.gitlab.io/fire/docs/sphinx/build/html) at:
+If you are on the ukaea network, the full FIRE documentation can be found
+[here](https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/docs/sphinx/build/html) at:
 [https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/](https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/)
 
 Alternatively open [``docs/sphinx/build/html/index.html``](docs/sphinx/build/html/index.html) from this repository.
