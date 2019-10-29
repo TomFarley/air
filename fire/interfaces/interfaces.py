@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 """
-Functions for interfacing with other codes and files
-
-Created: 10-10-2019
+The `interfaces` module contains functions for interfacing with other codes and files.
 """
 
 from typing import Union, Iterable, Optional
@@ -72,8 +70,7 @@ def generate_shot_id_strings(shot, camera, machine, pass_no, lens, t_int):
     # calcam_id = f'{machine}-{camera}-{calib_date}-{pass_no}'
 
     id_strings = {'shot_id': shot_id,
-                         'camera_id': camera_id,
-
+                  'camera_id': camera_id}
 
     return id_strings
 
@@ -100,11 +97,12 @@ def generate_frame_id_strings(camera_id_strings, frame_no, frame_time):
     """Return ID strings for specific analysis frame
 
     :param camera_id_string: Strings output by generate_camera_id_strings()
-    :param shot:
-    :param camera:
-    :param machine:
-    :param lens:
-    :param t_int:
+    :param shot: Shot/pulse number or string name for synthetic movie data
+    :param camera: Name of camera to analyse (unique name of camera or diagnostic code)
+    :param machine: Tokamak that the data originates from
+    :param pass_no: Scheduler pass number
+    :param lens: Lens on camera
+    :param t_int: Integration time of camera in seconds
     :return:
     """
     camera_id = camera_id_strings['camera_id']
