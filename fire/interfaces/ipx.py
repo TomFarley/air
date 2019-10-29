@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
 """
-Functions for loading and interacting with IR camera data from the MAST tokamak (2000-2013).
-
-Created: 09-10-2019
+This module defines functions for interfacing with MAST (2000-2013) data archives and systems.
 """
 
 import logging
@@ -18,12 +16,15 @@ from pyIpx.movieReader import ipxReader
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def return_true():
-    return True
+def get_freia_ipx_path(pulse, camera):
+    """Return path to ipx file on UKAEA freia cluster
 
-def get_freia_ipx_path(shot, camera):
-    shot = str(shot)
-    ipx_path_fn = f"/net/fuslsa/data/MAST_IMAGES/0{shot[0:2]}/{shot}/{camera}0{shot}.ipx"
+    :param pulse: Shot/pulse number or string name for synthetic movie data
+    :param camera: Name of camera to analyse (unique name of camera or diagnostic code)
+    :return: Path to ipx files
+    """
+    pulse = str(pulse)
+    ipx_path_fn = f"/net/fuslsa/data/MAST_IMAGES/0{pulse[0:2]}/{pulse}/{camera}0{pulse}.ipx"
     return ipx_path_fn
 
 def read_movie_meta_ipx(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:

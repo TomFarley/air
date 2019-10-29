@@ -16,14 +16,14 @@ import calcam
 
 from fire.data_structures import init_data_structures
 from fire.interfaces.interfaces import (load_user_defaults, identify_input_files, read_movie_meta_data,
-    read_movie_data, generate_shot_id_strings)
+    read_movie_data, generate_pulse_id_strings)
 from fire.utils import update_call_args
 
-def scheduler_workflow(shot:Union[int, str], camera:str='rir', pass_no:int=0, machine:str='MAST', shceduler:bool=False,
+def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, machine:str='MAST', shceduler:bool=False,
                        magnetics:bool=False):
     """Primary analysis workflow for MAST-U/JET IR scheduler analysis.
 
-    :param shot: Shot/pulse number or string name for synthetic movie data
+    :param pulse: Shot/pulse number or string name for synthetic movie data
     :param camera: Name of camera to analyse (unique name of camera or diagnostic code)
     :param pass_no: Scheduler pass number
     :param machine: Tokamak that the data originates from
@@ -36,24 +36,24 @@ def scheduler_workflow(shot:Union[int, str], camera:str='rir', pass_no:int=0, ma
 
     # Load user's default call arguments
     settings['user_defaults'] = load_user_defaults()
-    shot, camera, machine = update_call_args(settings['user_defaults'], shot, camera, machine)
+    pulse, camera, machine = update_call_args(settings['user_defaults'], pulse, camera, machine)
 
     # Generate id_strings
-    meta_data['id_strings'] = generate_shot_id_strings(shot, camera, machine, pass_no)
+    meta_data['id_strings'] = generate_pulse_id_strings(pulse, camera, machine, pass_no)
 
     # Idenify and check existence of input files
-    files = identify_input_files(shot, camera, machine)
+    files = identify_input_files(pulse, camera, machine)
 
     # Load camera state
-    # settings['camera_state'] = get_camera_state(shot, camera, machine)
+    # settings['camera_state'] = get_camera_state(pulse, camera, machine)
 
     # Load movie meta data
-    meta_data = read_movie_meta_data(shot, camera, machine)
+    meta_data = read_movie_meta_data(pulse, camera, machine)
 
     # Validate frame range etc
 
     # Load raw frame data
-    frame_nos, frame_times, frame_data = read_movie_data(shot, camera, machine)
+    frame_nos, frame_times, frame_data = read_movie_data(pulse, camera, machine)
 
     # Load calcam spatial camera calibration
     meta_data['calcam_calib'] = calcam.Calibration(load_filename=files['calcam_calib'])

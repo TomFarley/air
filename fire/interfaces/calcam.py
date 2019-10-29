@@ -19,15 +19,15 @@ logger.setLevel(logging.DEBUG)
 
 calcam_calib_dir = Path('/home/tfarley/calcam2/calibrations/')
 
-def get_calcam_calib_path_fn(shot: int, camera: str, machine: str):
+def get_calcam_calib_path_fn(pulse: int, camera: str, machine: str):
     """Return path to calcam calibration file for given discharge and camera
 
-    :param shot: Shot/pulse number
+    :param pulse: Shot/pulse number
     :param camera: Camera to look up calbration for
     :param machine: Tokamak under analysis
     :return: calib_path_fn
     """
-    if (shot == 23586) and (camera=='rit') and (machine=='MAST'):
+    if (pulse == 23586) and (camera=='rit') and (machine=='MAST'):
         fn = 'MAST-rit-p23586-n217-enhanced_1-rough_test.ccc'
         calib_path_fn = calcam_calib_dir / fn
     else:
