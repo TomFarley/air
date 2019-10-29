@@ -12,8 +12,9 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../..'))
-
+project_path = os.path.abspath('../../..')
+sys.path.insert(0, project_path)
+#print(f'Adding project root directory to python path for sphinx documentation: {project_path}')
 
 # -- Project information -----------------------------------------------------
 
@@ -68,7 +69,7 @@ html_theme = 'sphinx_rtd_theme'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = []  # ['_static']
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
