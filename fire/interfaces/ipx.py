@@ -7,6 +7,7 @@ This module defines functions for interfacing with MAST (2000-2013) data archive
 import logging
 from typing import Union, Iterable, Tuple, Optional
 from pathlib import Path
+import numbers
 
 import numpy as np
 import xarray as xr
@@ -67,8 +68,8 @@ def read_movie_meta_ipx(path_fn: Union[str, Path], transforms: Iterable[str]=())
     return meta_data
 
 
-def read_movie_data_ipx(ipx_path_fn: Union[str, Path], frame_nos: Optional[Iterable]=None,
-                        transforms: Optional[Iterable[str]]=()) -> Tuple[bool,dict,np.ndarray]:
+def read_movie_data_ipx(ipx_path_fn: Union[str, Path], frame_nos: Optional[Union[Iterable, int]]=None,
+                        transforms: Optional[Iterable[str]]=()) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Read frame data from MAST IPX movie file format.
 
     :param ipx_path_fn: Path to IPX movie file
@@ -82,21 +83,29 @@ def read_movie_data_ipx(ipx_path_fn: Union[str, Path], frame_nos: Optional[Itera
     :type: (np.array, np.array ,np.ndarray)
     """
     ipx_path_fn = Path(ipx_path_fn)
-    assert ipx_path_fn.exists()
+    if not ipx_path_fn.exists():
+        raise FileNotFoundError(f'Ipx file not found: {ipx_path_fn}')
     vid = ipxReader(filename=ipx_path_fn)
     ipx_header = vid.file_header
     n_frames_movie = ipx_header['numFrames']
     if frame_nos is None:
-        frame_nos = np.arange(n_frames_movie)
+        frame_nos = np.arange(n_frames_movie, dtype=int)
+    elif isinstance(frame_nos, numbers.Number):
+        frame_nos = np.array([frame_nos])
+    else:
+        frame_nos = np.array(frame_nos)
+    frame_nos[frame_nos < 0] += n_frames_movie
     if any((frame_nos >= n_frames_movie)):
         raise ValueError(f'Requested frame numbers outside of movie range: '
                          f'{frame_nos[(frame_nos >= vid.file_header["numFrames"])]}')
+    if any(np.fmod(frame_nos, 1) > 1e-5):
+        raise ValueError(f'Fractional frame numbers requested from ipx file: {frame_nos}')
     # Allocate memory for frames
     frame_data = np.zeros((len(frame_nos), ipx_header['height'], ipx_header['width']))
     frame_times = np.zeros_like(frame_nos, dtype=float)
 
     # To efficiently read the video the frames should be loaded in monotonically increasing order
-    frame_nos = np.sort(frame_nos)
+    frame_nos = np.sort(frame_nos).astype(int)
     n, n_end = frame_nos[0], frame_nos[-1]
 
     i_data = 0
