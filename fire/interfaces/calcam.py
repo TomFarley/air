@@ -27,7 +27,7 @@ def get_calcam_calib_path_fn(shot: int, camera: str, machine: str):
     :param machine: Tokamak under analysis
     :return: calib_path_fn
     """
-    if (shot == 23586) and (camera='rit') and (machine=='MAST'):
+    if (shot == 23586) and (camera=='rit') and (machine=='MAST'):
         fn = 'MAST-rit-p23586-n217-enhanced_1-rough_test.ccc'
         calib_path_fn = calcam_calib_dir / fn
     else:
