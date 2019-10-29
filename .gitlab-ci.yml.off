@@ -1,0 +1,47 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  GET_SOURCES_ATTEMPTS: 3
+
+before_script:
+  - pip install --user --upgrade pip setuptools
+  # - pip3 install dependencies/pyIpx/
+  - export PYTHONPATH=$PWD
+  - export IN_DOCKER=True
+
+stages:
+  - deploy
+  - test
+
+.my_template: &MY_TEMPLATE
+    stage: deploy
+    before_script:
+    - apt install make
+    - apt-get install python3-sphinx
+    script:
+    - cd docs/sphinx/
+    - make html
+    - cp -r build/html ../../public
+    # Docs at: https://MAST-U_Scheduler/.gitpages.ccfe.ac.uk/air
+
+    stage: test
+    before_script:
+    - pip install --user pytest-cov
+    - pip install --user git+https://git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    script:
+    - pip --user install .
+    - python setup.py test
+    tags:
+    - docker
+
+build_python3.5:
+    <<: *MY_TEMPLATE
+    image: python:3.5-slim
+
+build_python3.7:
+    <<: *MY_TEMPLATE
+    image: python:3.7-slim
+
+build_freia:
+    <<: *MY_TEMPLATE
+    tags:
+      - freia
