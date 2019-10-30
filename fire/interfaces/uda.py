@@ -78,7 +78,7 @@ def read_movie_meta_uda(pulse: int, camera: str, n_start:Optional[int]=None, n_e
         raise ValueError(f'UDA video object does not contain any of the required meta data fields: '
                          f'{uda_ipx_header_fields}')
     last_frame = video.n_frames - 1
-    times = vid.frame_times
+    times = video.frame_times
 
     movie_meta = {'movie_format': '.ipx'}
     movie_meta['ipx_header'] = ipx_header
