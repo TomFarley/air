@@ -90,7 +90,7 @@ class TestIoIpx(unittest.TestCase):
                                         [[593, 596, 586], [590, 595, 594], [592, 602, 594]]])
         np.testing.assert_array_equal(frame_data[[895, 1597], ::3, ::150], frame_data_expected)
 
-        # Read whole movie
+        # Read specific frames
         frames = [5, 150, 177, 1595, 3749]
         nframes = len(frames)
         frame_nos, frame_times, frame_data = read_movie_data_ipx(ipx_path_fn, frame_nos=frames)
