@@ -1,4 +1,4 @@
 [submodule "dependencies/pyIpx"]
 	path = dependencies/pyIpx
 	url = ../../SOL_Transport/pyIpx.git
-	branch = python3
+	branch = ipx2_pip
