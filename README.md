@@ -7,9 +7,12 @@ Analysis code called by the MAST-U and JET schedulers after each discharge to pr
 
 Documentation
 --------------
-If you are on the ukaea network, the full calcam documentation can be found at:  
-https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/
+If you are on the ukaea network, the full FIRE documentation can be found
+[here](https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/docs/sphinx/build/html) at:
+[https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/](https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/)
 
-Alternatively open ``docs/sphinx/source/index.html`` from this repository.
+Alternatively open [``docs/sphinx/build/html/index.html``](docs/sphinx/build/html/index.html) from this repository.
+
+Gitlab pages path should be: https://mast-u_scheduler.gitpages.ccfe.ac.uk/air?
 
 For authorship information see AUTHORS.txt, and for details of how to cite the code in academic publications see CITE.txt.
