@@ -19,7 +19,7 @@ logger.setLevel(logging.DEBUG)
 client = pyuda.Client()
 
 uda_ipx_header_fields = {'board_temp', 'camera', 'ccd_temp', 'datetime', 'depth', 'exposure', 'filter', 'frame_times',
-                         'gain', 'hbin', 'height', 'is_color', 'left', 'lens', 'n_frames', 'offset', 'preexp', 'pulse',
+                         'gain', 'hbin', 'height', 'is_color', 'left', 'lens', 'n_frames', 'offset', 'preexp', 'shot',
                          'taps', 'top', 'vbin', 'view', 'width'}
 
 def get_uda_movie_obj(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
@@ -70,7 +70,13 @@ def read_movie_meta_uda(pulse: int, camera: str, n_start:Optional[int]=None, n_e
     video = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
     ipx_header = {}
     for key in uda_ipx_header_fields:
-        ipx_header[key] = getattr(video, key)
+        try:
+            ipx_header[key] = getattr(video, key)
+        except AttributeError as e:
+            logger.warning(f'UDA video object does not have attribute: {key}')
+    if len(ipx_header) == 0:
+        raise ValueError(f'UDA video object does not contain any of the required meta data fields: '
+                         f'{uda_ipx_header_fields}')
     last_frame = video.n_frames - 1
     times = vid.frame_times
 
@@ -102,12 +108,18 @@ def read_movie_data_uda(pulse: int, camera: str, n_start:Optional[int]=None, n_e
     :return: UDA movie object?
     """
     video = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
+    if n_start is None:
+        n_start = 0
+    if n_end is None:
+        n_end = video.n_frames - 1
+    if stride is None:
+        stride = 1
     frame_nos = np.arange(n_start, n_end+1, stride)
 
     # Allocate memory for frames
     frame_data = np.zeros((len(frame_nos), video.height, video.width))
 
-    frame_times = video.frame_times
+    frame_times = video.frame_times[n_start:n_end+1:stride]
 
     for n, frame in enumerate(video.frames):
         frame_data[n, :, :] = frame.k
