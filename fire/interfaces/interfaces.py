@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from fire.interfaces.calcam import get_calcam_calib_path_fn
+from fire.interfaces.calcam_calibs import get_calcam_calib_path_fn
 
 def load_user_defaults():
     """Return user's default settings
@@ -53,15 +53,12 @@ def read_movie_data(pulse, camera, machine):
         raise NotImplementedError(f'Camera data acquisition not implemented for machine: "{machine}"')
     return frame_nos, frame_times, frame_data
 
-def generate_pulse_id_strings(pulse, camera, machine, pass_no, lens, t_int):
+def generate_pulse_id_strings(id_strings, pulse, camera, machine):
     """Return standardised ID strings used for consistency in filenames and data labels
-
+    :param id_strings: Dict of string_ids to update/populate
     :param pulse: Shot/pulse number or string name for synthetic movie data
     :param camera: Name of camera to analyse (unique name of camera or diagnostic code)
     :param machine: Tokamak that the data originates from
-    :param pass_no: Scheduler pass number
-    :param lens: Lens on camera
-    :param t_int: Integration time of camera in seconds
     :return: Dict of ID strings
     """
     pulse_id = f'{machine}-{pulse}'
@@ -69,50 +66,43 @@ def generate_pulse_id_strings(pulse, camera, machine, pass_no, lens, t_int):
 
     # calcam_id = f'{machine}-{camera}-{calib_date}-{pass_no}'
 
-    id_strings = {'pulse_id': pulse_id,
-                  'camera_id': camera_id}
+    id_strings.update({'pulse_id': pulse_id,
+                       'camera_id': camera_id})
 
     return id_strings
 
-def generate_camera_id_strings(camera_id_strings, lens, t_int):
+def generate_camera_id_strings(id_strings, lens, t_int):
     """Return standardised ID strings used for consistency in filenames and data labels
 
-    :param pulse: Shot/pulse number or string name for synthetic movie data
-    :param camera: Name of camera to analyse (unique name of camera or diagnostic code)
-    :param machine: Tokamak that the data originates from
-    :param pass_no: Scheduler pass number
+    :param id_strings: Dict of string_ids to update/populate
     :param lens: Lens on camera
     :param t_int: Integration time of camera in seconds
     :return: Dict of ID strings
     """
-    camera_id = camera_id_strings['camera_id']
+    camera_id = id_strings['camera_id']
     lens_id = f'{camera_id}-{lens}'
     t_int_id = f'{lens_id}-{t_int}'
 
-    id_strings = {'lens_id': lens_id,
-                    't_int_id': t_int_id, }
+    id_strings.update({'lens_id': lens_id,
+                       't_int_id': t_int_id, })
     return id_strings
 
-def generate_frame_id_strings(camera_id_strings, frame_no, frame_time):
+def generate_frame_id_strings(id_strings, frame_no, frame_time):
     """Return ID strings for specific analysis frame
 
-    :param camera_id_string: Strings output by generate_camera_id_strings()
-    :param pulse: Shot/pulse number or string name for synthetic movie data
-    :param camera: Name of camera to analyse (unique name of camera or diagnostic code)
-    :param machine: Tokamak that the data originates from
-    :param pass_no: Scheduler pass number
-    :param lens: Lens on camera
-    :param t_int: Integration time of camera in seconds
-    :return:
+    :param id_strings: Dict of string_ids to update/populate
+    :param frame_no: Frame number from movie meta data
+    :param frame_time: Frame time from movie meta data
+    :return: Dict of ID strings
     """
-    camera_id = camera_id_strings['camera_id']
-    pulse_id = camera_id_strings['pulse_id']
+    camera_id = id_strings['camera_id']
+    pulse_id = id_strings['pulse_id']
 
     frame_id = f'{camera_id}-{frame_no}'
-    time_id = f'{pulse_id}-{time}'
+    time_id = f'{pulse_id}-{frame_time}'
 
-    id_strings = {'frame_id': frame_id,
-                    'time_id': time_id, }
+    id_strings.update({'frame_id': frame_id,
+                       'time_id': time_id, })
     return id_strings
 
 
