@@ -35,7 +35,9 @@ stages:
     - apt-get install -y  python3-pip
     - pip install --user --upgrade pip setuptools
     - pip install --user pytest-cov
-    - pip install --user git+git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
+#    - pip install --user git+git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
+#    - pip install --user git+https://gitlab-ci-token:7sHGos9smHycA5PjX3R6@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user git+$AUTH_TOKEN@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
     script:
       - pip --user install .
       - python setup.py test
@@ -62,20 +64,34 @@ build_python3.7:
     <<: *TEST
     image: python:3.7-slim
 
-#build_freia:
-#  script:
-##    - yum install python3.5-pip-python
-##    - module unload python
-##    - module load python/3.5
-##    - yum install rh-python35
+build_freia:
+  script:
+#    - yum install python3.5-pip-python
+#    - module unload python
+#    - module load python/3.5
+#    - yum install rh-python35
 #    - mkdir yum_tmp
 #    - export TMPDIR=yum_tmp
 #    - yum update
 #    - TMPDIR=yum_tmp yum install http://mirror.centos.org/centos/7/sclo/x86_64/rh/rh-python35/rh-python35-2.0-2.el7.x86_64.rpm
-#    - pip install --user --upgrade pip setuptools
-#    #- rpm install -y pip
-#    - pip install --user git+https://git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
-#    - pip --user install .
-#    - python3.5 setup.py test
-#  tags:
-#      - freia
+    #- rpm install -y pip
+    - export USER=root
+    - export LOGNAME=root
+    - source /etc/profile.d/modules.sh
+    - module use /usr/local/modules/default
+    - module unload python
+    - module load python/3.5
+    - module load uda/2.2.2
+    - echo ld_library_path=$LD_LIBRARY_PATH
+    - echo pythonpath=$PYTHONPATH
+    - ls /usr/local/depot/Python-3.3.5/lib
+    - pip install --user --upgrade pip setuptools pytest-cov
+    - pip install coverage --user
+    #    - python -m run_asj 25500
+    #    - python3 -m coverage run -m unittest discover -s ./tests/
+    #    - python3 -m coverage report -m --include="./*"
+    - pip install --user git+https://$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - pip --user install .
+    - python3.5 setup.py test
+  tags:
+      - freia
