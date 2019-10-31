@@ -8,6 +8,7 @@ import logging
 from typing import Union, Iterable, Tuple, Optional
 from pathlib import Path
 import numbers
+from copy import copy
 
 import numpy as np
 import xarray as xr
@@ -42,8 +43,9 @@ def read_movie_meta_ipx(path_fn: Union[str, Path], transforms: Iterable[str]=())
     # Read file header and first frame
     vid = ipxReader(filename=path_fn)
     ipx_header = vid.file_header
+    ipx_header = convert_ipx_header_to_uda_conventions(ipx_header)
     ret, frame0, frame_header0 = vid.read(transforms=transforms)
-    last_frame = ipx_header['numFrames'] - 1
+    last_frame = ipx_header['n_frames'] - 1
 
     # Last frame doesn't always load, so work backwards to last successfully loaded frame
     ret = False
@@ -67,6 +69,33 @@ def read_movie_meta_ipx(path_fn: Union[str, Path], transforms: Iterable[str]=())
     meta_data['fps'] = (last_frame) / np.ptp(meta_data['t_range'])
     return meta_data
 
+def convert_ipx_header_to_uda_conventions(header: dict) -> dict:
+    """
+
+    :param header: Ipx header dict with each parameter a separate scalar value
+    :return: Reformatted header dict
+    """
+    header = copy(header)  # Prevent changes to pyIpx movieReader attribute still used for reading video
+    key_map = {'numFrames': 'n_frames', 'color': 'is_color', 'ID': 'ipx_version', 'hBin': 'hbin', 'vBin': 'vbin',
+               'date_time': 'datetime', 'preExp': 'preexp'}
+    for old_key, new_key in key_map.items():
+        try:
+            header[new_key] = header.pop(old_key)
+            logger.debug(f'Rename ipx header parameter to "{new_key}" from "{old_key}".')
+        except KeyError as e:
+            logger.warning(f'Could not rename ipx header parameter to "{new_key}" as paremeter "{old_key}" not found.')
+    try:
+        header['gain'] = [header.pop('gain_0'), header.pop('gain_1')]
+    except KeyError as e:
+        logger.warning(f'Could not reformat ipx header parameter "gain" to array as scalar params not found')
+    try:
+        header['offset'] = [header.pop('offset_0'), header.pop('offset_1')]
+    except KeyError as e:
+        logger.warning(f'Could not reformat ipx header parameter "offset" to array as scalar params not found')
+
+    # header['bottom'] = header.pop('top') - header.pop('height')  # TODO: check - not +
+    # header['right'] = header.pop('left') + header.pop('width')
+    return header
 
 def read_movie_data_ipx(ipx_path_fn: Union[str, Path], frame_nos: Optional[Union[Iterable, int]]=None,
                         transforms: Optional[Iterable[str]]=()) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
