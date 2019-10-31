@@ -69,6 +69,7 @@ build_freia:
 #    - module load python/3.5
 #    - yum install rh-python35
     - mkdir yum_tmp
+    - export TMPDIR=yum_tmp
     - TMPDIR=yum_tmp yum install http://mirror.centos.org/centos/7/sclo/x86_64/rh/rh-python35/rh-python35-2.0-2.el7.x86_64.rpm
     - pip install --user --upgrade pip setuptools
     #- rpm install -y pip
