@@ -3,7 +3,6 @@ variables:
   GET_SOURCES_ATTEMPTS: 3
 
 before_script:
-  - pip install --user --upgrade pip setuptools
   # - pip3 install dependencies/pyIpx/
   - export PYTHONPATH=$PWD
   - export IN_DOCKER=True
@@ -15,6 +14,10 @@ stages:
 .my_template: &DEPLOY
     stage: deploy
     before_script:
+    - apt-get update -y
+    - apt-get install -y git
+    - apt-get install -y  python3-pip
+    - pip install --user --upgrade pip setuptools
     - apt-get update
     - apt-get install -y make
     - apt-get install -y python3-sphinx
@@ -30,6 +33,7 @@ stages:
     - apt-get update -y
     - apt-get install -y git
     - apt-get install -y  python3-pip
+    - pip install --user --upgrade pip setuptools
     - pip install --user pytest-cov
     - pip install --user git+https://git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     script:
@@ -37,30 +41,31 @@ stages:
       - python setup.py test
 
 
-build_python3.5:
-    <<: *DEPLOY
-    image: python:3.5-slim
-
-build_python3.7:
-    <<: *DEPLOY
-    image: python:3.7-slim
-
-build_freia:
-    <<: *DEPLOY
-    tags:
-      - freia
-
-build_python3.5:
-    <<: *TEST
-    image: python:3.5-slim
-
-build_python3.7:
-    <<: *TEST
-    image: python:3.7-slim
+#build_python3.5:
+#    <<: *DEPLOY
+#    image: python:3.5-slim
+#
+#build_python3.7:
+#    <<: *DEPLOY
+#    image: python:3.7-slim
+#
+#build_freia:
+#    <<: *DEPLOY
+#    tags:
+#      - freia
+#
+#build_python3.5:
+#    <<: *TEST
+#    image: python:3.5-slim
+#
+#build_python3.7:
+#    <<: *TEST
+#    image: python:3.7-slim
 
 build_freia:
   script:
     - yum install python3.5-pip-python
+    - pip install --user --upgrade pip setuptools
     #- rpm install -y pip
     - pip install --user git+https://git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     - pip --user install .
