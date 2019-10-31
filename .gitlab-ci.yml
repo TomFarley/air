@@ -12,38 +12,53 @@ stages:
   - deploy
   - test
 
-.my_template: &MY_TEMPLATE
+.my_template: &DEPLOY
     stage: deploy
     before_script:
-    - apt install make
-    - apt-get install python3-sphinx
+    - apt-get update
+    - apt-get install -y make
+    - apt-get install -y python3-sphinx
     script:
     - cd docs/sphinx/
     - make html
     - cp -r build/html ../../public
     # Docs at: https://MAST-U_Scheduler/.gitpages.ccfe.ac.uk/air
 
+.my_template: &TEST
     stage: test
     before_script:
-    - apt-get install git
-    - apt-get install python3-pip
+    - apt-get update -y
+    - apt-get install -y git
+    - apt-get install -y  python3-pip
     - pip install --user pytest-cov
     - pip install --user git+https://git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     script:
-    - pip --user install .
-    - python setup.py test
-    tags:
-    - docker
+      - pip --user install .
+      - python setup.py test
+
 
 build_python3.5:
-    <<: *MY_TEMPLATE
+    <<: *DEPLOY
     image: python:3.5-slim
 
 build_python3.7:
-    <<: *MY_TEMPLATE
+    <<: *DEPLOY
     image: python:3.7-slim
 
 build_freia:
-    <<: *MY_TEMPLATE
+    <<: *DEPLOY
+    tags:
+      - freia
+
+build_python3.5:
+    <<: *TEST
+    image: python:3.5-slim
+
+build_python3.7:
+    <<: *TEST
+    image: python:3.7-slim
+
+build_freia:
+    <<: *TEST
     tags:
       - freia
