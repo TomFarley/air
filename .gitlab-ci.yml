@@ -59,6 +59,9 @@ build_python3.7:
     image: python:3.7-slim
 
 build_freia:
-    <<: *TEST
-    tags:
+  script:
+    - pip install --user git+https://git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - pip --user install .
+    - python setup.py test
+  tags:
       - freia
