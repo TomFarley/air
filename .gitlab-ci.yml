@@ -25,8 +25,8 @@ stages:
 
     stage: test
     before_script:
-    - apt install -y git
-    - apt install -y python3-pip
+    - apt install git
+    - apt install python3-pip
     - pip install --user pytest-cov
     - pip install --user git+https://git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     script:
