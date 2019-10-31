@@ -37,7 +37,7 @@ stages:
     - pip install --user pytest-cov
 #    - pip install --user git+git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
 #    - pip install --user git+https://gitlab-ci-token:7sHGos9smHycA5PjX3R6@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
-    - pip install --user git+$AUTH_TOKEN@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     script:
       - pip --user install .
       - python setup.py test
@@ -85,12 +85,12 @@ build_freia:
     - echo ld_library_path=$LD_LIBRARY_PATH
     - echo pythonpath=$PYTHONPATH
     - ls /usr/local/depot/Python-3.3.5/lib
-    - pip install --user --upgrade pip setuptools pytest-cov
-    - pip install coverage --user
+    - pip install --user --upgrade pip
+    - pip install --user --upgrade setuptools pytest-cov
     #    - python -m run_asj 25500
     #    - python3 -m coverage run -m unittest discover -s ./tests/
     #    - python3 -m coverage report -m --include="./*"
-    - pip install --user git+https://$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     - pip --user install .
     - python3.5 setup.py test
   tags:
