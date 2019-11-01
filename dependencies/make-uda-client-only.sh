@@ -6,6 +6,7 @@ UDA_INSTALL_DIR=$PWD/uda-install-2.2.6
 
 # SWIG location, needed on Freia but not if swig is system installed
 # SWIG_DIR=/common/projects/UDA/swig/bin/swig
+SWIG_DIR=`swig -swiglib`
 
 echo SWIG_DIR=$SWIG_DIR
 
