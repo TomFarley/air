@@ -51,7 +51,11 @@ stages:
     - ls
     - ls build
     - ls uda-install-2.2.6
+    - ls uda-install-2.2.6/lib
     - ls uda-release-2.2.6
+    - ls uda-release-2.2.6/source
+    - ls uda-release-2.2.6/build
+    - ls
     - cd build/python_installer
     - pip install --user .
 
