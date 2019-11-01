@@ -5,6 +5,7 @@ variables:
 before_script:
   # - pip3 install dependencies/pyIpx/
   - export PYTHONPATH=$PWD
+  - export MODULE_PATH=$PWD
   - export IN_DOCKER=True
 
 stages:
@@ -90,6 +91,7 @@ stages:
 .my_template: &TEST
     stage: test
     script:
+      - cd $MODULE_PATH
       - python setup.py test
 
 .my_template: &TEST_FAST
