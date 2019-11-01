@@ -3,7 +3,6 @@ variables:
   GET_SOURCES_ATTEMPTS: 3
 
 before_script:
-  - pip install --user --upgrade pip setuptools
   # - pip3 install dependencies/pyIpx/
   - export PYTHONPATH=$PWD
   - export IN_DOCKER=True
@@ -12,36 +11,87 @@ stages:
   - deploy
   - test
 
-.my_template: &MY_TEMPLATE
+.my_template: &DEPLOY
     stage: deploy
     before_script:
-    - apt install make
-    - apt-get install python3-sphinx
+    - apt-get update -y
+    - apt-get install -y git
+    - apt-get install -y  python3-pip
+    - pip install --user --upgrade pip setuptools
+    - apt-get update
+    - apt-get install -y make
+    - apt-get install -y python3-sphinx
     script:
     - cd docs/sphinx/
     - make html
     - cp -r build/html ../../public
     # Docs at: https://MAST-U_Scheduler/.gitpages.ccfe.ac.uk/air
 
+.my_template: &TEST
     stage: test
     before_script:
+    - apt-get update -y
+    - apt-get install -y git
+    - apt-get install -y  python3-pip
+    - pip install --user --upgrade pip setuptools
     - pip install --user pytest-cov
-    - pip install --user git+https://git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+#    - pip install --user git+git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
+#    - pip install --user git+https://gitlab-ci-token:7sHGos9smHycA5PjX3R6@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     script:
-    - pip --user install .
-    - python setup.py test
-    tags:
-    - docker
+      - pip install --user .
+      - python setup.py test
 
-build_python3.5:
-    <<: *MY_TEMPLATE
-    image: python:3.5-slim
 
+#build_python3.5:
+#    <<: *DEPLOY
+#    image: python:3.5-slim
+#
+#build_python3.7:
+#    <<: *DEPLOY
+#    image: python:3.7-slim
+#
+#build_freia:
+#    <<: *DEPLOY
+#    tags:
+#      - freia
+#
+#build_python3.5:
+#    <<: *TEST
+#    image: python:3.5-slim
+#
 build_python3.7:
-    <<: *MY_TEMPLATE
+    <<: *TEST
     image: python:3.7-slim
 
 build_freia:
-    <<: *MY_TEMPLATE
-    tags:
+  script:
+#    - yum install python3.5-pip-python
+#    - module unload python
+#    - module load python/3.5
+#    - yum install rh-python35
+#    - mkdir yum_tmp
+#    - export TMPDIR=yum_tmp
+#    - yum update
+#    - TMPDIR=yum_tmp yum install http://mirror.centos.org/centos/7/sclo/x86_64/rh/rh-python35/rh-python35-2.0-2.el7.x86_64.rpm
+    #- rpm install -y pip
+    - export USER=root
+    - export LOGNAME=root
+    - source /etc/profile.d/modules.sh
+    - module use /usr/local/modules/default
+    - module unload python
+    - module load python/3.5
+    - module load uda
+    - echo ld_library_path=$LD_LIBRARY_PATH
+    - echo pythonpath=$PYTHONPATH
+    - ls /usr/local/depot/Python-3.3.5/lib
+#    - pip install --user --upgrade pip
+    - pip install --user --upgrade setuptools pytest-cov
+    #    - python -m run_asj 25500
+    #    - python3 -m coverage run -m unittest discover -s ./tests/
+    #    - python3 -m coverage report -m --include="./*"
+    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user .
+    - python setup.py test
+  tags:
       - freia
