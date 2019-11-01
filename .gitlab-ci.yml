@@ -105,9 +105,8 @@ test_python3.7:
     image: python:3.7-slim
 
 test_freia:
-  script:
     <<: *PREPARE_TESTING_FREIA
     <<: *PREPARE_TESTS
     <<: *TEST
-  tags:
+    tags:
       - freia
