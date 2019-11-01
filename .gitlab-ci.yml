@@ -27,7 +27,6 @@ stages:
     - pip install --user --upgrade setuptools pytest-cov
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     - pip install --user .
-    - python setup.py test
 
 .my_template: &PREPARE_TESTING_UBUNTU
     stage: test
@@ -109,6 +108,12 @@ test_python3.7:
     <<: *PREPARE_TESTS
     <<: *TEST
     image: python:3.7-slim
+
+update_docs:
+    <<: *PREPARE_TESTING_FREIA
+    <<: *SPHINX
+    tags:
+      - freia
 
 test_freia:
     <<: *PREPARE_TESTING_FREIA
