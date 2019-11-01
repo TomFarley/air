@@ -54,6 +54,7 @@ stages:
 
 .my_template: &PREPARE_TESTS
     stage: test
+    script:
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     - pip install --user .
 
@@ -76,7 +77,6 @@ stages:
 .my_template: &TEST
     stage: test
     script:
-
       - python setup.py test
 
 .my_template: &TEST_FAST
