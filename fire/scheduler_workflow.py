@@ -19,7 +19,7 @@ from fire.interfaces.interfaces import (load_user_defaults, identify_input_files
     read_movie_data, generate_pulse_id_strings)
 from fire.utils import update_call_args
 
-def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, machine:str='MAST', shceduler:bool=False,
+def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, machine:str='MAST', scheduler:bool=False,
                        magnetics:bool=False):
     """Primary analysis workflow for MAST-U/JET IR scheduler analysis.
 
@@ -39,7 +39,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     pulse, camera, machine = update_call_args(settings['user_defaults'], pulse, camera, machine)
 
     # Generate id_strings
-    meta_data['id_strings'] = generate_pulse_id_strings(pulse, camera, machine, pass_no)
+    meta_data['id_strings'] = generate_pulse_id_strings({}, pulse, camera, machine, pass_no)
 
     # Idenify and check existence of input files
     files = identify_input_files(pulse, camera, machine)
@@ -97,3 +97,12 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     return 0
 
 
+if __name__ == '__main__':
+    pulse = 30378
+    camera = 'ait'
+    pass_no = 0
+    machine = 'MAST'
+    scheduler = False
+    magnetics = False
+    scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
+                       magnetics=magnetics)
