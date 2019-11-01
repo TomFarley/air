@@ -39,6 +39,7 @@ stages:
 #    - pip install --user git+git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
 #    - pip install --user git+https://gitlab-ci-token:7sHGos9smHycA5PjX3R6@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
     - apt-get install -y cmake swig
+    - apt-get install -y boost
     - apt-get install -y openssl libssl-dev
     - pwd
     - ls
