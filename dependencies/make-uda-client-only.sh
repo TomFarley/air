@@ -8,7 +8,8 @@ UDA_INSTALL_DIR=$PWD/uda-install-2.2.6
 SWIG_DIR=/common/projects/UDA/swig/bin/swig
 
 # Clone UDA repo
-git clone https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk:MAST-U/UDA.git -b $UDA_TAG $UDA_RELEASE_DIR || die "failed to clone UDA repo"
+git clone https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/MAST-U/UDA.git -b $UDA_TAG $UDA_RELEASE_DIR || die "failed to clone
+UDA repo"
 
 # configure, make and install into $UDA_INSTALL_DIR
 cd $UDA_RELEASE_DIR
