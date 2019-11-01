@@ -49,13 +49,13 @@ stages:
     - ./make-uda-client-only.sh
     - cd uda-install-2.2.6/python_installer
     - pip install --user .
-    - cd ../../..
-    - pwd
     - export UDA_HOST=idam3.mast.ccfe.ac.uk
     - export UDA_PORT=56565
-    - export LD_LIBRARY_PATH=<uda-install-2.2.6-location>/lib:$LD_LIBRARY_PATH
+    - export LD_LIBRARY_PATH=/builds/MAST-U_Scheduler/air/dependencies/uda-install-2.2.6/lib:$LD_LIBRARY_PATH
     - export CPF_HOST=idam3.mast.ccfe.ac.uk
     - export CPF_PORT=8000
+    - cd ../../..
+    - pwd
 
 .my_template: &PREPARE_TESTS
     stage: test
