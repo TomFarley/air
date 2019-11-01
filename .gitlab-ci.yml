@@ -40,10 +40,11 @@ stages:
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     - apt-get install -y cmake swig
     - mkdir build_uda
-    - cd build_uda
+    - cd builds
     - cp ../tests/make-uda-client-only.sh .
-    - make make-uda-client-only.sh
     - pwd
+    - ls
+    - ./make-uda-client-only.sh
     - ls
     - cd python_installer
     - pip install --user .
