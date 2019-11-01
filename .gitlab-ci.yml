@@ -43,6 +43,8 @@ stages:
     - cd build_uda
     - cp ../tests/make-uda-client-only.sh .
     - make make-uda-client-only.sh
+    - pwd
+    - ls
     - cd python_installer
     - pip install --user .
     script:
