@@ -5,3 +5,4 @@ fire.egg-info/
 **/__pycache__
 .coverage
 **/.directory
+tests/htmlcov
