@@ -21,6 +21,9 @@ print(f'ipx test files path: {ipx_path}')
 
 class TestIoIpx(unittest.TestCase):
 
+    def setUp(self):
+        self.maxDiff = None
+
     def test_get_uda_movie_obj(self):
         pulse = 30378
         camera = 'rir'
@@ -44,17 +47,16 @@ class TestIoIpx(unittest.TestCase):
         self.assertEqual(meta_data['frame_shape'], (8, 320))
         self.assertAlmostEqual(meta_data['fps'], 5000.006668453812)
 
-        ipx_header_expected = {'ID': 'IPX 01', 'size': 286, 'codec': 'JP2', 'date_time': '23/09/2013 15:22:20',
-                               'shot': 30378, 'trigger': -0.10000000149011612, 'lens': '50mm', 'filter': 'LP4500nm',
-                               'view': 'Lower divertor view#6', 'numFrames': 3750,
-                               'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu',
-                               'width': 320, 'height': 8, 'depth': 14, 'orient': 0, 'taps': 4, 'color': 0, 'hBin': 0,
-                               'left': 1,
-                               'right': 320, 'vBin': 0, 'top': 185, 'bottom': 192, 'offset_0': 170, 'offset_1': 170,
-                               'gain_0': 2.0,
-                               'gain_1': 2.0, 'preExp': 28, 'exposure': 28, 'strobe': 0, 'board_temp': 50.5,
-                               'ccd_temp': 73.47895050048828}
-        self.assertEqual(meta_data['ipx_header'], ipx_header_expected)
+        ipx_header_expected = {
+            'board_temp': 50.5, 'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu',
+            'ccd_temp': 73.47895050048828, 'datetime': '2013-10-23T15:22:20Z', 'depth': 14, 'exposure': 28.0,
+            'filter': 'LP4500nm', 'gain': np.array([2., 2.]), 'hbin': 0, 'height': 8, 'is_color': 0, 'left': 1,
+            'lens': '50mm', 'n_frames': 3750, 'offset': np.array([170., 170.]), 'preexp': 28.0, 'shot': 30378,
+            'taps': 4, 'top': 185, 'vbin': 0, 'view': 'Lower divertor view#6', 'width': 320, 'bottom': 177, 'right': 321
+        }
+        meta_data['ipx_header'].pop('frame_times')
+        self.assertTrue(np.all([np.all(meta_data['ipx_header'][key] == ipx_header_expected[key])
+                                for key in ipx_header_expected]))
 
         n_start, n_end = 100, 110
         meta_data = read_movie_meta_uda(pulse, camera, n_start, n_end)
@@ -63,21 +65,13 @@ class TestIoIpx(unittest.TestCase):
         self.assertEqual(len(meta_data), 6)
 
         self.assertTrue(np.all(meta_data['frame_range'] == np.array([n_start, n_end])))
-        self.assertTrue(np.all(meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
+        np.testing.assert_almost_equal(meta_data['t_range'], np.array([-0.029971, -0.027971]))
         self.assertEqual(meta_data['frame_shape'], (8, 320))
         self.assertAlmostEqual(meta_data['fps'], 5000.006668453812)
 
-        ipx_header_expected = {'ID': 'IPX 01', 'size': 286, 'codec': 'JP2', 'date_time': '23/09/2013 15:22:20',
-                               'shot': 30378, 'trigger': -0.10000000149011612, 'lens': '50mm', 'filter': 'LP4500nm',
-                               'view': 'Lower divertor view#6', 'numFrames': 3750,
-                               'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu',
-                               'width': 320, 'height': 8, 'depth': 14, 'orient': 0, 'taps': 4, 'color': 0, 'hBin': 0,
-                               'left': 1,
-                               'right': 320, 'vBin': 0, 'top': 185, 'bottom': 192, 'offset_0': 170, 'offset_1': 170,
-                               'gain_0': 2.0,
-                               'gain_1': 2.0, 'preExp': 28, 'exposure': 28, 'strobe': 0, 'board_temp': 50.5,
-                               'ccd_temp': 73.47895050048828}
-        self.assertEqual(meta_data['ipx_header'], ipx_header_expected)
+        meta_data['ipx_header'].pop('frame_times')
+        self.assertTrue(np.all([np.all(meta_data['ipx_header'][key] == ipx_header_expected[key])
+                                for key in ipx_header_expected]))
 
     def test_read_movie_data_uda_rir030378(self):
         # Ipx 1 file
@@ -117,22 +111,22 @@ class TestIoIpx(unittest.TestCase):
                                         [[595., 588., 593.], [592., 592., 590.], [591., 597., 591.]]])
         np.testing.assert_array_equal(frame_data[[1, 3], ::3, ::150], frame_data_expected)
 
-        if False:
-            # Read single frame
-            n_start, n_end = 2678, 2678
-            frames = [2678]
-            nframes = 1
-            frame_nos, frame_times, frame_data = read_movie_data_uda(pulse, camera, n_start=n_start, n_end=n_end)
-            self.assertTrue(isinstance(frame_data, np.ndarray))
-            self.assertTrue(isinstance(frame_nos, np.ndarray))
-            self.assertTrue(isinstance(frame_times, np.ndarray))
-            self.assertEqual(frame_data.shape, (nframes, 8, 320))
-            self.assertEqual(frame_times.shape, (nframes,))
-            self.assertEqual(frame_nos.shape, (nframes,))
-            np.testing.assert_array_equal(frame_nos, frames)
-            np.testing.assert_array_equal(frame_times, [0.485628])
-            frame_data_expected = np.array([[594., 660., 586.], [589., 662., 591.], [594., 660., 594.]])
-            np.testing.assert_array_equal(frame_data[0, ::3, ::150], frame_data_expected)
+
+        # Read single frame
+        n_start, n_end = 2678, 2678
+        frames = [2678]
+        nframes = 1
+        frame_nos, frame_times, frame_data = read_movie_data_uda(pulse, camera, n_start=n_start, n_end=n_end)
+        self.assertTrue(isinstance(frame_data, np.ndarray))
+        self.assertTrue(isinstance(frame_nos, np.ndarray))
+        self.assertTrue(isinstance(frame_times, np.ndarray))
+        self.assertEqual(frame_data.shape, (nframes, 8, 320))
+        self.assertEqual(frame_times.shape, (nframes,))
+        self.assertEqual(frame_nos.shape, (nframes,))
+        np.testing.assert_array_equal(frame_nos, frames)
+        np.testing.assert_array_equal(frame_times, [0.485628])
+        frame_data_expected = np.array([[594., 660., 586.], [589., 662., 591.], [594., 660., 594.]])
+        np.testing.assert_array_equal(frame_data[0, ::3, ::150], frame_data_expected)
 
         # with self.assertRaises(TypeError):
         #     read_movie_data_ipx(None, frame_nos=frames)
@@ -141,27 +135,34 @@ class TestIoIpx(unittest.TestCase):
         # with self.assertRaises(ValueError):
         #     read_movie_data_ipx(ipx_path_fn, frame_nos=np.linspace(15, 30, 20))
 
-    def test_get_ipx_meta_data_rit030378(self):
+    def test_get_uda_meta_data_rit030378(self):
         # Ipx 2 file
         pulse = 30378
-        camera = 'rir'
+        camera = 'rit'
         ipx_meta_data = read_movie_meta_uda(pulse, camera)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
         self.assertEqual(len(ipx_meta_data), 6)
 
-        self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 623])))
-        self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.048749,  0.69885 ])))
+        self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 624])))
+        self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.049949,  0.69885])))
         self.assertEqual(ipx_meta_data['frame_shape'], (32, 256))
-        self.assertAlmostEqual(ipx_meta_data['fps'], 833.3344480129053)
+        self.assertAlmostEqual(ipx_meta_data['fps'], 833.3344480129053, places=5)
 
-        ipx_header_expected = {'ID': 'IPX 02', 'width': 256, 'height': 32, 'depth': 14, 'codec': 'jp2',
-                               'datetime': '2013-09-23T15:37:29', 'shot': 30378, 'trigger': -0.5,
-                               'view': 'HL01 Upper divertor view#1', 'camera': 'Thermosensorik CMT 256 SM HS',
-                               'top': 153, 'bottom': 184, 'offset': 0.0, 'exposure': 50.0, 'ccdtemp': 59.0,
-                               'frames': 625, 'size': 239, 'numFrames': 625}
+        # ipx_header_expected = {'ID': 'IPX 02', 'width': 256, 'height': 32, 'depth': 14, 'codec': 'jp2',
+        #                        'datetime': '2013-09-23T15:37:29', 'shot': 30378, 'trigger': -0.5,
+        #                        'view': 'HL01 Upper divertor view#1', 'camera': 'Thermosensorik CMT 256 SM HS',
+        #                        'top': 153, 'bottom': 184, 'offset': 0.0, 'exposure': 50.0, 'ccdtemp': 59.0,
+        #                        'frames': 625, 'size': 239, 'n_frames': 625}
+        ipx_header_expected = {'board_temp': 0.0, 'camera': 'Thermosensorik CMT 256 SM HS', 'ccd_temp': 59.0,
+         'datetime': '2013-10-23T15:37:29Z', 'depth': 14, 'exposure': 50.0, 'filter': '', 'gain': np.array([0., 0.]),
+         'hbin': 0, 'height': 32, 'is_color': 0, 'left': 0, 'lens': '', 'n_frames': 625, 'offset': np.array([0., 0.]),
+         'preexp': 0.0, 'shot': 30378, 'taps': 0, 'top': 153, 'vbin': 0, 'view': 'HL01 Upper divertor view#1',
+         'width': 256, 'bottom': 121, 'right': 256}
 
-        self.assertEqual(ipx_meta_data['ipx_header'], ipx_header_expected)
+        ipx_meta_data['ipx_header'].pop('frame_times')
+        self.assertTrue(np.all([np.all(ipx_meta_data['ipx_header'][key] == ipx_header_expected[key]) for key in
+                                ipx_header_expected]))
 
     def test_get_uda_movie_data_rir030378(self):
         # Ipx 2 file
@@ -201,22 +202,21 @@ class TestIoIpx(unittest.TestCase):
                                         [[595., 588., 593.], [592., 592., 590.], [591., 597., 591.]]])
         np.testing.assert_array_equal(frame_data[[1, 3], ::3, ::150], frame_data_expected)
 
-        if False:
-            # Read single frame
-            n_start, n_end = 2678, 2678
-            frames = [2678]
-            nframes = 1
-            frame_nos, frame_times, frame_data = read_movie_meta_uda(pulse, camera, n_start=n_start, n_end=n_end)
-            self.assertTrue(isinstance(frame_data, np.ndarray))
-            self.assertTrue(isinstance(frame_nos, np.ndarray))
-            self.assertTrue(isinstance(frame_times, np.ndarray))
-            self.assertEqual(frame_data.shape, (nframes, 8, 320))
-            self.assertEqual(frame_times.shape, (nframes,))
-            self.assertEqual(frame_nos.shape, (nframes,))
-            np.testing.assert_array_equal(frame_nos, frames)
-            np.testing.assert_array_equal(frame_times, [0.485628])
-            frame_data_expected = np.array([[594., 660., 586.], [589., 662., 591.], [594., 660., 594.]])
-            np.testing.assert_array_equal(frame_data[0, ::3, ::150], frame_data_expected)
+        # Read single frame
+        n_start, n_end = 2678, 2678
+        frames = [2678]
+        nframes = 1
+        frame_nos, frame_times, frame_data = read_movie_data_uda(pulse, camera, n_start=n_start, n_end=n_end)
+        self.assertTrue(isinstance(frame_data, np.ndarray))
+        self.assertTrue(isinstance(frame_nos, np.ndarray))
+        self.assertTrue(isinstance(frame_times, np.ndarray))
+        self.assertEqual(frame_data.shape, (nframes, 8, 320))
+        self.assertEqual(frame_times.shape, (nframes,))
+        self.assertEqual(frame_nos.shape, (nframes,))
+        np.testing.assert_array_equal(frame_nos, frames)
+        np.testing.assert_array_equal(frame_times, [0.485628])
+        frame_data_expected = np.array([[594., 660., 586.], [589., 662., 591.], [594., 660., 594.]])
+        np.testing.assert_array_equal(frame_data[0, ::3, ::150], frame_data_expected)
 
         # TODO test transforms
 

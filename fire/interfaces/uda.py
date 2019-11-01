@@ -18,9 +18,14 @@ logger.setLevel(logging.DEBUG)
 
 client = pyuda.Client()
 
-uda_ipx_header_fields = {'board_temp', 'camera', 'ccd_temp', 'datetime', 'depth', 'exposure', 'filter', 'frame_times',
+uda_ipx_header_fields = ('board_temp', 'camera', 'ccd_temp', 'datetime', 'depth', 'exposure', 'filter', 'frame_times',
                          'gain', 'hbin', 'height', 'is_color', 'left', 'lens', 'n_frames', 'offset', 'preexp', 'shot',
-                         'taps', 'top', 'vbin', 'view', 'width'}
+                         'taps', 'top', 'vbin', 'view', 'width')
+# uda_ipx_header_fields = ('board_temp', 'camera', 'ccd_temp', 'datetime', 'depth', 'exposure', 'filter', 'frame_times',
+#                          'gain', 'hbin', 'height', 'is_color', 'left', 'lens', 'n_frames', 'offset', 'preexp', 'shot',
+#                          'taps', 'top', 'vbin', 'view', 'width')
+# uda_ipx_header_fields += ('ID', 'size', 'codec', 'date_time', 'trigger', 'orient', 'color', 'hBin',
+#                           'right', 'vBin', 'bottom', 'offset_0', 'offset_1', 'gain_0', 'gain_1', 'preExp', 'strobe')
 
 def get_uda_movie_obj(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
                       stride:Optional[int]=1):
@@ -41,12 +46,15 @@ def get_uda_movie_obj(pulse: int, camera: str, n_start:Optional[int]=None, n_end
         raise ValueError(f'Camera argument should be MAST-U camera 3-letter diagnostic code (e.g. rir, rbb etc.)')
 
     command_str = f'NEWIPX::read(filename=/net/fuslsc/data/MAST_Data/{pulse}/LATEST/{camera}0{pulse}.ipx'
-    if n_start is not None:
-        command_str += f', first={n_start}'
-    if n_end is not None:
-        command_str += f', last={n_end}'
-    if stride not in (None, 1):
-        command_str += f', stride={stride}'
+    if (n_start is not None) and (n_start == n_end):
+        command_str += f', frame={n_start}'
+    else:
+        if n_start is not None:
+            command_str += f', first={n_start}'
+        if n_end is not None:
+            command_str += f', last={n_end}'
+        if stride not in (None, 1):
+            command_str += f', stride={stride}'
     command_str += ')'
     # Read file
     vid = client.get(command_str, '')
@@ -77,15 +85,22 @@ def read_movie_meta_uda(pulse: int, camera: str, n_start:Optional[int]=None, n_e
     if len(ipx_header) == 0:
         raise ValueError(f'UDA video object does not contain any of the required meta data fields: '
                          f'{uda_ipx_header_fields}')
+    ipx_header['bottom'] = ipx_header['top'] - ipx_header['height']  # TODO: check - not +
+    ipx_header['right'] = ipx_header['left'] + ipx_header['width']
+
     last_frame = video.n_frames - 1
+    if n_start is None:
+        n_start = 0
+    if n_end is None:
+        n_end = last_frame
     times = video.frame_times
 
     movie_meta = {'movie_format': '.ipx'}
     movie_meta['ipx_header'] = ipx_header
-    movie_meta['frame_range'] = np.array([0, last_frame])
-    movie_meta['t_range'] = np.array([times[0], times[-1]])
+    movie_meta['frame_range'] = np.array([n_start, n_end])
+    movie_meta['t_range'] = np.array([times[n_start], times[n_end]])
     movie_meta['frame_shape'] = (video.height, video.width)
-    movie_meta['fps'] = (last_frame) / np.ptp(movie_meta['t_range'])
+    movie_meta['fps'] = (video.n_frames - 1) / np.ptp(times)
     return movie_meta
 
 def read_movie_data_uda(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,

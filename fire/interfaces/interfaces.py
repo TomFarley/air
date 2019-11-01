@@ -53,7 +53,7 @@ def read_movie_data(pulse, camera, machine):
         raise NotImplementedError(f'Camera data acquisition not implemented for machine: "{machine}"')
     return frame_nos, frame_times, frame_data
 
-def generate_pulse_id_strings(id_strings, pulse, camera, machine):
+def generate_pulse_id_strings(id_strings, pulse, camera, machine, pass_no=0):
     """Return standardised ID strings used for consistency in filenames and data labels
     :param id_strings: Dict of string_ids to update/populate
     :param pulse: Shot/pulse number or string name for synthetic movie data
@@ -63,11 +63,13 @@ def generate_pulse_id_strings(id_strings, pulse, camera, machine):
     """
     pulse_id = f'{machine}-{pulse}'
     camera_id = f'{pulse_id}-{camera}'
+    pass_id = f'{pulse_id}-{pass_no}'
 
     # calcam_id = f'{machine}-{camera}-{calib_date}-{pass_no}'
 
     id_strings.update({'pulse_id': pulse_id,
-                       'camera_id': camera_id})
+                       'camera_id': camera_id,
+                       'pass_id': pass_id})
 
     return id_strings
 
