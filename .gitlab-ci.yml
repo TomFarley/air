@@ -8,8 +8,8 @@ before_script:
   - export IN_DOCKER=True
 
 stages:
-  - documentation
   - test
+  - documentation
 
 .my_template: &PREPARE_TESTING_FREIA
     stage: test
