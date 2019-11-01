@@ -81,12 +81,12 @@ build_freia:
     - module use /usr/local/modules/default
     - module unload python
     - module load python/3.5
-    - module load uda/2.2.2
+    - module load uda
     - echo ld_library_path=$LD_LIBRARY_PATH
     - echo pythonpath=$PYTHONPATH
     - ls /usr/local/depot/Python-3.3.5/lib
     - pip install --user --upgrade pip
-    - pip install --user --upgrade setuptools pytest-cov
+#    - pip install --user --upgrade setuptools pytest-cov
     #    - python -m run_asj 25500
     #    - python3 -m coverage run -m unittest discover -s ./tests/
     #    - python3 -m coverage report -m --include="./*"
