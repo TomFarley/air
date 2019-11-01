@@ -92,8 +92,8 @@ stages:
 .my_template: &TEST
     stage: test
     script:
-     - pwd
-     - echo MODULE_PATH=$MODULE_PATH
+      - pwd
+      - echo MODULE_PATH=$MODULE_PATH
 #      - cd $MODULE_PATH
       - pwd
       - ls
