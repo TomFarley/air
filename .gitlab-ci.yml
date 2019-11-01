@@ -16,6 +16,7 @@ stages:
 .my_template: &PREPARE_TESTING_FREIA
     stage: test
     before_script:
+    - pwd
     - export USER=root
     - export LOGNAME=root
     - source /etc/profile.d/modules.sh
@@ -33,6 +34,7 @@ stages:
 .my_template: &PREPARE_TESTING_UBUNTU
     stage: test
     before_script:
+    - pwd
     - apt-get update -y
     - apt-get install -y git
     - apt-get install -y  python3-pip
@@ -58,12 +60,14 @@ stages:
 .my_template: &PREPARE_TESTS
     stage: test
     script:
+    - pwd
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     - pip install --user .
 
 .my_template: &SPHINX
     stage: documentation
     before_script:
+    - pwd
 #    - apt-get update -y
 #    - apt-get install -y git
     - apt-get install -y  python3-pip
@@ -88,7 +92,8 @@ stages:
 .my_template: &TEST
     stage: test
     script:
-      - echo MODULE_PATH=$MODULE_PATH
+     - pwd
+     - echo MODULE_PATH=$MODULE_PATH
 #      - cd $MODULE_PATH
       - pwd
       - ls
@@ -97,12 +102,14 @@ stages:
 .my_template: &TEST_FAST
     stage: test
     script:
+      - pwd
       - pip install --user .
       - pytest tests/test_suite_fast.py
 
 .my_template: &TEST_SLOW
     stage: test
     script:
+      - pwd
       - pip install --user .
       - pytest tests/test_suite_slow.py
 
