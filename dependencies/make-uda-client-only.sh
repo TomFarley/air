@@ -7,6 +7,8 @@ UDA_INSTALL_DIR=$PWD/uda-install-2.2.6
 # SWIG location, needed on Freia but not if swig is system installed
 # SWIG_DIR=/common/projects/UDA/swig/bin/swig
 
+echo SWIG_DIR=$SWIG_DIR
+
 # Define die function
 die() { echo “$*” 1>&2; exit 1; }
 
