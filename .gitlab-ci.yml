@@ -39,6 +39,7 @@ stages:
     - apt-get install -y git
     - apt-get install -y  python3-pip
     - pip install --user --upgrade pip setuptools
+    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     - pip install --user pytest-cov
 #    - pip install --user git+git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
 #    - pip install --user git+https://gitlab-ci-token:7sHGos9smHycA5PjX3R6@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
@@ -56,6 +57,7 @@ stages:
     - export CPF_PORT=8000
     - cd ../../..
     - pwd
+    - pip install --user .
 
 .my_template: &PREPARE_TESTS
     stage: test
@@ -115,19 +117,19 @@ stages:
 
 test_python3.7:
     <<: *PREPARE_TESTING_UBUNTU
-    <<: *PREPARE_TESTS
+#    <<: *PREPARE_TESTS
     <<: *TEST
     image: python:3.7-slim
+
+test_freia:
+    <<: *PREPARE_TESTING_FREIA
+#    <<: *PREPARE_TESTS
+    <<: *TEST
+    tags:
+      - freia
 
 update_docs:
     <<: *PREPARE_TESTING_FREIA
     <<: *SPHINX
-    tags:
-      - freia
-
-test_freia:
-    <<: *PREPARE_TESTING_FREIA
-    <<: *PREPARE_TESTS
-    <<: *TEST
     tags:
       - freia
