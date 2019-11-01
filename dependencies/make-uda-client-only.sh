@@ -7,9 +7,8 @@ UDA_INSTALL_DIR=$PWD/uda-install-2.2.6
 # SWIG location, needed on Freia but not if swig is system installed
 # SWIG_EXECUTABLE=/common/projects/UDA/swig/bin/swig
 # SWIG_EXECUTABLE=`swig -swiglib`
-SWIG_EXECUTABLE=/usr/bin/swig
-
-echo SWIG_EXECUTABLE=$SWIG_EXECUTABLE
+# SWIG_EXECUTABLE=/usr/bin/swig
+# echo SWIG_EXECUTABLE=$SWIG_EXECUTABLE
 
 # Define die function
 die() { echo “$*” 1>&2; exit 1; }
@@ -22,8 +21,8 @@ UDA repo"
 cd $UDA_RELEASE_DIR
 CC=gcc CXX=g++ cmake -Bbuild -H. -DCMAKE_BUILD_TYPE=Debug -DTARGET_TYPE=MAST \
    -DCMAKE_INSTALL_PREFIX=$UDA_INSTALL_DIR \
-   -DCLIENT_ONLY=TRUE \
-   -DSWIG_EXECUTABLECUTABLE=$SWIG_EXECUTABLE || die "failed to configure UDA"
+   -DCLIENT_ONLY=TRUE  || die "failed to configure UDA" #\
+#   -DSWIG_EXECUTABLECUTABLE=$SWIG_EXECUTABLE
 cmake --build build/ || die "failed to build UDA"
 cmake --build build/ --target install || die "failed to install UDA"
 
