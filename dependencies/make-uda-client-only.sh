@@ -16,7 +16,7 @@ UDA repo"
 
 # configure, make and install into $UDA_INSTALL_DIR
 cd $UDA_RELEASE_DIR
-CC=gcc CXX=g++ cmake3 -Bbuild -H. -DCMAKE_BUILD_TYPE=Debug -DTARGET_TYPE=MAST \
+CC=gcc CXX=g++ cmake -Bbuild -H. -DCMAKE_BUILD_TYPE=Debug -DTARGET_TYPE=MAST \
    -DCMAKE_INSTALL_PREFIX=$UDA_INSTALL_DIR \
    -DCLIENT_ONLY=TRUE \
    -DSWIG_EXECUTABLE=$SWIG_DIR || die "failed to configure UDA"
