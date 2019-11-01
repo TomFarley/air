@@ -56,7 +56,7 @@ stages:
     - ls uda-release-2.2.6/source
     - ls uda-release-2.2.6/build
     - ls
-    - cd build/python_installer
+    - cd uda-install-2.2.6/python_installer
     - pip install --user .
 
 .my_template: &PREPARE_TESTS
@@ -66,13 +66,12 @@ stages:
     - pip install --user .
 
 .my_template: &SPHINX
-    stage: test
+    stage: documentation
     before_script:
-    - apt-get update -y
-    - apt-get install -y git
+#    - apt-get update -y
+#    - apt-get install -y git
     - apt-get install -y  python3-pip
-    - pip install --user --upgrade pip setuptools
-    - apt-get update
+#    - pip install --user --upgrade pip setuptools
     - apt-get install -y make
     - apt-get install -y python3-sphinx
     script:
@@ -80,6 +79,13 @@ stages:
     - make html
     - cp -r build/html ../../public
     # Docs at: https://MAST-U_Scheduler/.gitpages.ccfe.ac.uk/air
+    artifacts:
+      paths:
+      - public
+    only:
+    - ci
+
+
 
 .my_template: &TEST
     stage: test
