@@ -7,6 +7,7 @@ before_script:
   - export PYTHONPATH=$PWD
   - export MODULE_PATH=$PWD
   - export IN_DOCKER=True
+  - echo MODULE_PATH=$MODULE_PATH
 
 stages:
   - test
@@ -42,21 +43,8 @@ stages:
     - apt-get install -y cmake swig
     - apt-get install -y libboost-dev
     - apt-get install -y openssl libssl-dev
-    - pwd
-    - ls
     - cd dependencies/
-    - mkdir build/
-    - pwd
-    - ls
     - ./make-uda-client-only.sh
-    - ls
-    - ls build
-    - ls uda-install-2.2.6
-    - ls uda-install-2.2.6/lib
-    - ls uda-release-2.2.6
-    - ls uda-release-2.2.6/source
-    - ls uda-release-2.2.6/build
-    - ls
     - cd uda-install-2.2.6/python_installer
     - pip install --user .
 
@@ -92,6 +80,8 @@ stages:
     stage: test
     script:
       - cd $MODULE_PATH
+      - pwd
+      - ls
       - python setup.py test
 
 .my_template: &TEST_FAST
