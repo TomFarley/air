@@ -41,7 +41,7 @@ stages:
     - apt-get install -y cmake swig
     - mkdir build_uda
     - cd build_uda
-    - cp ../tests/make-uda-client-only.sh
+    - cp ../tests/make-uda-client-only.sh .
     - make make-uda-client-only.sh
     - cd python_installer
     - pip install --user .
@@ -91,7 +91,7 @@ test_freia:
     - module load uda
     - echo ld_library_path=$LD_LIBRARY_PATH
     - echo pythonpath=$PYTHONPATH
-    - ls /usr/local/depot/Python-3.3.5/lib
+#    - ls /usr/local/depot/Python-3.3.5/lib
 #    - pip install --user --upgrade pip
     - pip install --user --upgrade setuptools pytest-cov
     #    - python -m run_asj 25500
