@@ -9,8 +9,8 @@ loader = unittest.TestLoader()
 suite  = unittest.TestSuite()
 
 # add tests to the test suite
-suite.addTests(loader.loadTestsFromTestCase(test_io_uda.TestIoUdaFast))
-suite.addTests(loader.loadTestsFromTestCase(test_io_ipx.TestIoIpxFast))
+# suite.addTests(loader.loadTestsFromTestCase(test_io_uda.TestIoIpxFast))
+# suite.addTests(loader.loadTestsFromTestCase(test_io_ipx.TestIoIpxFast))
 # suite.addTests(loader.loadTestsFromModule(test_io_uda))
 suite.addTests(loader.loadTestsFromModule(test_interfaces))
 suite.addTests(loader.loadTestsFromModule(test_calcam))
