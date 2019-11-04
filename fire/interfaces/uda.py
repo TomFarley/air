@@ -160,7 +160,7 @@ if __name__ == '__main__':
     pulse = 30378
     camera = 'rir'
     # camera = 'air'
-    n_start, n_end = 100, 110000
+    n_start, n_end = 100, 110
     vid = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end)
     # import pdb; pdb.set_trace()
     meta_data = read_movie_meta_uda(pulse, camera, n_start, n_end)
