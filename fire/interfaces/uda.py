@@ -6,6 +6,7 @@ Author: T. Farley
 
 import logging
 from typing import Dict, Iterable, Optional
+from copy import copy
 
 import numpy as np
 import xarray as xr
@@ -45,7 +46,8 @@ def get_uda_movie_obj(pulse: int, camera: str, n_start:Optional[int]=None, n_end
     if not isinstance(camera, str) or len(camera) != 3:
         raise ValueError(f'Camera argument should be MAST-U camera 3-letter diagnostic code (e.g. rir, rbb etc.)')
 
-    command_str = f'NEWIPX::read(filename=/net/fuslsc/data/MAST_Data/{pulse}/LATEST/{camera}0{pulse}.ipx'
+    command_str_base = f'NEWIPX::read(filename=/net/fuslsc/data/MAST_Data/{pulse}/LATEST/{camera}0{pulse}.ipx'
+    command_str = copy(command_str_base)
     if (n_start is not None) and (n_start == n_end):
         command_str += f', frame={n_start}'
     else:
@@ -57,7 +59,17 @@ def get_uda_movie_obj(pulse: int, camera: str, n_start:Optional[int]=None, n_end
             command_str += f', stride={stride}'
     command_str += ')'
     # Read file
-    vid = client.get(command_str, '')
+    try:
+        vid = client.get(command_str, '')
+    except Exception as e:
+        if n_end is not None:
+            # Try getting video object without frame arguments
+            vid = get_uda_movie_obj(pulse, camera)
+            if n_end > vid.n_frames:
+                raise ValueError(f'Attempted to read movie (n_frames={vid.n_frames}) with invalid frame range: '
+                                 f'{command_str}')
+        logger.error(f'Failed to read data from uda with command: {command_str}')
+        raise e
     return vid
 
 def read_movie_meta_uda(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
@@ -148,13 +160,13 @@ if __name__ == '__main__':
     pulse = 30378
     camera = 'rir'
     # camera = 'air'
-    n_start, n_end = 100, 110
+    n_start, n_end = 100, 110000
     vid = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end)
     # import pdb; pdb.set_trace()
     meta_data = read_movie_meta_uda(pulse, camera, n_start, n_end)
     frame_nos, frame_times, frame_data = read_movie_data_uda(pulse, camera, n_start, n_end)
 
-    r = client.list(pyuda.ListType.SIGNALS, pulse=pulse, alias='air')
+    r = client.list(pyuda.ListType.SIGNALS, shot=pulse, alias='air')
     signals = {}
     for d in r:
         signals[d.signal_name] = d.description
