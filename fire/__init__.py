@@ -5,8 +5,14 @@ import pandas as pd
 # Store important paths for quick reference
 fire_paths = {'root': Path(__file__).parent}
 fire_paths['input_files'] = fire_paths['root'] / 'input_files'
-fire_paths['user_inputs'] = fire_paths['input_files'] / 'user'
+fire_paths['config'] = Path('~/.fire_config.json').expanduser()
 
+if not fire_paths['config'].exists():
+    # Set up fire config file
+    # TODO: skip if on scheduler?
+    fire_config_template_path_fn = fire_paths['input_files'] / 'user' / 'fire_config.json'
+    fire_paths['config'].write_text(fire_config_template_path_fn.read_text())
+    print(f'Coppied template fire config to "{fire_paths["config"]}" from "{fire_config_template_path_fn}"')
 
 # Update pandas display settings
 # Double max width of displayed output in terminal so doesn't wrap over many lines
