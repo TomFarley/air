@@ -18,6 +18,9 @@ from pyIpx.movieReader import ipxReader
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+movie_plugin_name = 'ipx'
+plugin_info = {'description': 'This plugin reads IPX1/2 format MAST movie files'}
+
 def get_freia_ipx_path(pulse, camera):
     """Return path to ipx file on UKAEA freia cluster
 
@@ -29,7 +32,7 @@ def get_freia_ipx_path(pulse, camera):
     ipx_path_fn = f"/net/fuslsa/data/MAST_IMAGES/0{pulse[0:2]}/{pulse}/{camera}0{pulse}.ipx"
     return ipx_path_fn
 
-def read_movie_meta_ipx(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
+def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
     """Read frame data from MAST IPX movie file format.
 
     :param path_fn: Path to IPX movie file
@@ -97,12 +100,12 @@ def convert_ipx_header_to_uda_conventions(header: dict) -> dict:
     # header['right'] = header.pop('left') + header.pop('width')
     return header
 
-def read_movie_data_ipx(ipx_path_fn: Union[str, Path], frame_nos: Optional[Union[Iterable, int]]=None,
-                        transforms: Optional[Iterable[str]]=()) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def read_movie_data(path_fn: Union[str, Path], frame_nos: Optional[Union[Iterable, int]]=None,
+                    transforms: Optional[Iterable[str]]=()) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Read frame data from MAST IPX movie file format.
 
-    :param ipx_path_fn: Path to IPX movie file
-    :type ipx_path_fn: str, Path
+    :param path_fn: Path to IPX movie file
+    :type path_fn: str, Path
     :param frame_nos: Frame numbers to read (should be monotonically increasing)
     :type frame_nos: Iterable[int]
     :param transforms: List of of strings describing transformations to apply to frame data. Options are:
@@ -111,10 +114,10 @@ def read_movie_data_ipx(ipx_path_fn: Union[str, Path], frame_nos: Optional[Union
     :return: frame_nos, times, data_frames,
     :type: (np.array, np.array ,np.ndarray)
     """
-    ipx_path_fn = Path(ipx_path_fn)
-    if not ipx_path_fn.exists():
+    path_fn = Path(path_fn)
+    if not path_fn.exists():
         raise FileNotFoundError(f'Ipx file not found: {ipx_path_fn}')
-    vid = ipxReader(filename=ipx_path_fn)
+    vid = ipxReader(filename=path_fn)
     ipx_header = vid.file_header
     n_frames_movie = ipx_header['numFrames']
     if frame_nos is None:
@@ -162,6 +165,6 @@ if __name__ == '__main__':
     ipx_path = Path('../../tests/test_data/mast/').resolve()
     ipx_fn = 'rir030378.ipx'
     ipx_path_fn = ipx_path / ipx_fn
-    meta_data = read_movie_meta_ipx(ipx_path_fn)
-    frame_nos, frame_times, frame_data = read_movie_data_ipx(ipx_path_fn)
+    meta_data = read_movie_meta(ipx_path_fn)
+    frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn)
     print(meta_data)

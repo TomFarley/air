@@ -11,13 +11,20 @@ from copy import copy
 import numpy as np
 import xarray as xr
 
-import pyuda
-
 # fileConfig('../logging_config.ini')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-client = pyuda.Client()
+try:
+    import pyuda
+    client = pyuda.Client()
+except ImportError as e:
+    logger.warning(f'Failed to import pyuda. ')
+    pyuda = False
+
+movie_plugin_name = 'uda'
+plugin_info = {'description': 'This plugin reads movie data from UDA (Universal Data Access)',
+               'arg_name_mapping': {'camera': 'camera'}}
 
 uda_ipx_header_fields = ('board_temp', 'camera', 'ccd_temp', 'datetime', 'depth', 'exposure', 'filter', 'frame_times',
                          'gain', 'hbin', 'height', 'is_color', 'left', 'lens', 'n_frames', 'offset', 'preexp', 'shot',
@@ -72,8 +79,8 @@ def get_uda_movie_obj(pulse: int, camera: str, n_start:Optional[int]=None, n_end
         raise e
     return vid
 
-def read_movie_meta_uda(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
-                  stride:Optional[int]=1):
+def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
+                    stride:Optional[int]=1):
     """Return UDA movie object for given pulse, camera and frame range
 
     :param pulse: MAST-U pulse number
@@ -115,8 +122,8 @@ def read_movie_meta_uda(pulse: int, camera: str, n_start:Optional[int]=None, n_e
     movie_meta['fps'] = (video.n_frames - 1) / np.ptp(times)
     return movie_meta
 
-def read_movie_data_uda(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
-                  stride:Optional[int]=1, transforms: Iterable[str]=None):
+def read_movie_data(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
+                    stride:Optional[int]=1, transforms: Iterable[str]=None):
     """Return UDA movie object for given pulse, camera and frame range
 
     :param pulse: MAST-U pulse number
@@ -163,8 +170,8 @@ if __name__ == '__main__':
     n_start, n_end = 100, 110
     vid = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end)
     # import pdb; pdb.set_trace()
-    meta_data = read_movie_meta_uda(pulse, camera, n_start, n_end)
-    frame_nos, frame_times, frame_data = read_movie_data_uda(pulse, camera, n_start, n_end)
+    meta_data = read_movie_meta(pulse, camera, n_start, n_end)
+    frame_nos, frame_times, frame_data = read_movie_data(pulse, camera, n_start, n_end)
 
     r = client.list(pyuda.ListType.SIGNALS, shot=pulse, alias='air')
     signals = {}
