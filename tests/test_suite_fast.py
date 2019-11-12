@@ -4,12 +4,20 @@ from .unit import test_io_uda
 from .unit import test_io_ipx
 from .unit import test_interfaces, test_calcam, test_utils
 
+try:
+    import pyuda
+    client = pyuda.Client()
+except ImportError as e:
+    print(f'Failed to import pyuda. ')
+    pyuda = False
+
 # initialize the test suite
 loader = unittest.TestLoader()
 suite  = unittest.TestSuite()
 
 # add tests to the test suite
-suite.addTests(loader.loadTestsFromTestCase(test_io_uda.TestIoUdaFast))
+if pyuda:
+    suite.addTests(loader.loadTestsFromTestCase(test_io_uda.TestIoUdaFast))
 suite.addTests(loader.loadTestsFromTestCase(test_io_ipx.TestIoIpxFast))
 # suite.addTests(loader.loadTestsFromModule(test_io_uda))
 suite.addTests(loader.loadTestsFromModule(test_interfaces))
