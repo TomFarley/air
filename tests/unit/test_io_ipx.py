@@ -1,10 +1,9 @@
-import pytest
 import unittest
 from pathlib import Path
 
 import numpy as np
 
-from fire.interfaces.ipx import get_freia_ipx_path, read_movie_meta_ipx, read_movie_data_ipx
+from fire.interfaces.movie_plugins.ipx import get_freia_ipx_path, read_movie_meta, read_movie_data
 
 pwd = Path(__file__).parent
 ipx_path = (pwd / '../test_data/mast/').resolve()
@@ -30,7 +29,7 @@ class TestIoIpxFast(unittest.TestCase):
     def test_get_ipx_meta_data_rir030378(self):
         ipx_fn = 'rir030378.ipx'
         ipx_path_fn = ipx_path / ipx_fn
-        ipx_meta_data = read_movie_meta_ipx(ipx_path_fn)
+        ipx_meta_data = read_movie_meta(ipx_path_fn)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
         self.assertEqual(len(ipx_meta_data), 6)
@@ -54,7 +53,7 @@ class TestIoIpxFast(unittest.TestCase):
     def test_get_ipx_meta_data_rit030378(self):
         ipx_fn = 'rit030378.ipx'
         ipx_path_fn = ipx_path / ipx_fn
-        ipx_meta_data = read_movie_meta_ipx(ipx_path_fn)
+        ipx_meta_data = read_movie_meta(ipx_path_fn)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
         self.assertEqual(len(ipx_meta_data), 6)
@@ -94,7 +93,7 @@ class TestIoIpxFast(unittest.TestCase):
         # Read specific frames
         frames = [5, 150, 177, 1595, 3749]
         nframes = len(frames)
-        frame_nos, frame_times, frame_data = read_movie_data_ipx(ipx_path_fn, frame_nos=frames)
+        frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn, frame_nos=frames)
         self.assertTrue(isinstance(frame_data, np.ndarray))
         self.assertTrue(isinstance(frame_nos, np.ndarray))
         self.assertTrue(isinstance(frame_times, np.ndarray))
@@ -110,7 +109,7 @@ class TestIoIpxFast(unittest.TestCase):
         # Read single frame
         frames = 2678
         nframes = 1
-        frame_nos, frame_times, frame_data = read_movie_data_ipx(ipx_path_fn, frame_nos=frames)
+        frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn, frame_nos=frames)
         self.assertTrue(isinstance(frame_data, np.ndarray))
         self.assertTrue(isinstance(frame_nos, np.ndarray))
         self.assertTrue(isinstance(frame_times, np.ndarray))
@@ -123,11 +122,11 @@ class TestIoIpxFast(unittest.TestCase):
         np.testing.assert_array_equal(frame_data[0, ::3, ::150], frame_data_expected)
 
         with self.assertRaises(TypeError):
-            read_movie_data_ipx(None, frame_nos=frames)
+            read_movie_data(None, frame_nos=frames)
         with self.assertRaises(FileNotFoundError):
-            read_movie_data_ipx('not a path', frame_nos=frames)
+            read_movie_data('not a path', frame_nos=frames)
         with self.assertRaises(ValueError):
-            read_movie_data_ipx(ipx_path_fn, frame_nos=np.linspace(15, 30, 20))
+            read_movie_data(ipx_path_fn, frame_nos=np.linspace(15, 30, 20))
 
         # TODO test transforms
 
@@ -142,7 +141,7 @@ class TestIoIpxSlow(unittest.TestCase):
         ipx_path_fn = ipx_path / ipx_fn
 
         # Read whole movie
-        frame_nos, frame_times, frame_data = read_movie_data_ipx(ipx_path_fn)
+        frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn)
         self.assertTrue(isinstance(frame_data, np.ndarray))
         self.assertTrue(isinstance(frame_nos, np.ndarray))
         self.assertTrue(isinstance(frame_times, np.ndarray))
