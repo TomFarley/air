@@ -26,17 +26,17 @@ PathList = Sequence[Union[Path, str]]
 
 calcam_calib_dir = Path('~/calcam2/calibrations/').expanduser()
 
-def get_calcam_calib(calcam_calib_fn, calcam_path='~/calcam2/'):
+def get_calcam_calib(calcam_calib_fn, calcam_calib_path='~/calcam/calibrations/'):
     """Return calcam Calibration object for given calibration filename and path
 
     :param calcam_calib_fn: Calibration filename
-    :param calcam_path: Calcam calibrations path
+    :param calcam_calib_path: Calcam calibrations path
     :return: Calibration object
     """
     try:
         # Calcam 2.0+
         from calcam import Calibration
-        calcam_calib_path_fn = Path(calcam_path).expanduser() / 'calibrations' / calcam_calib_fn
+        calcam_calib_path_fn = Path(calcam_calib_path).expanduser() / calcam_calib_fn
         if calcam_calib_path_fn.suffix != '.ccc':
             calcam_calib_path_fn = calcam_calib_path_fn.with_suffix(calcam_calib_path_fn.suffix + '.ccc')
         calcam_calib = Calibration(calcam_calib_path_fn)
