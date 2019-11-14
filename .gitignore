@@ -7,3 +7,4 @@ fire.egg-info/
 **/.directory
 tests/htmlcov
 htmlcov
+requirements_freia_all.txt
