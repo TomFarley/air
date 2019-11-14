@@ -19,40 +19,89 @@ logger.setLevel(logging.INFO)
 
 PathList = Sequence[Union[Path, str]]
 
-def identify_input_files(pulse, camera, machine, search_paths=None, filename_patterns=None, params=None):
-    """Return dict of paths to files needed for IR analysis
+def format_path(path: Union[str, Path] , **kwargs) -> Path:
+    kwargs.update({'fire_path': fire_paths['root']})
+    path = Path(str(path).format(**kwargs)).expanduser()
+    return path
+
+def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns_inputs=None,
+                   paths_output=None, fn_pattern_output=None,
+                   params=None):
+    """Return dict of paths to input files needed for IR analysis
 
     :param pulse: Shot/pulse number or string name for synthetic movie data
     :param camera: Name of camera to analyse (unique name of camera or diagnostic code)
     :param machine: Tokamak that the data originates from
     :return: Dict of filepaths
     """
-    if search_paths is None:
-        search_paths = ["~/fire/input_files/{machine}/", "{fire_path}/input_files/{machine}/", "~/calcam/calibrations/"]
-    if filename_patterns is None:
+    if search_paths_inputs is None:
+        search_paths_inputs = ["~/fire/input_files/{machine}/", "{fire_path}/input_files/{machine}/", "~/calcam/calibrations/"]
+    if fn_patterns_inputs is None:
         # TODO: UPDATE
-        filename_patterns = {"calcam_calibs": ["calcam_calibs-{machine}-{camera}-defaults.csv"],
+        fn_patterns_inputs = {"calcam_calibs": ["calcam_calibs-{machine}-{camera}-defaults.csv"],
                              "analysis_paths": ["analysis_paths-{machine}-{camera}-defaults.json"],
                              "surface_props": ["surface_props-{machine}-{camera}-defaults.json"]}
+    if params is None:
+        params = {}
+    params.update({'pulse': pulse, 'camera': camera, 'machine': machine, 'fire_path': fire_paths['root']})
 
     files = {}
+    # Locate lookup files and info for pulse
+    lookup_files = ['calcam_calibs', 'analysis_paths']
+    lookup_info = {}
+    for file_type in lookup_files:
+        path, fn, info = lookup_pulse_info(pulse, camera, machine, params=params,
+                                           search_paths=search_paths_inputs, filename_patterns=fn_patterns_inputs[file_type])
+        files[f'{file_type}_lookup'] = path / fn
+        lookup_info[file_type] = info
 
-    # Calcam calibration file
-    path, fn, info = lookup_pulse_info(pulse, camera, machine, params=params, search_paths=search_paths,
-                                          filename_patterns=filename_patterns['calcam_calibs'])
-    calcam_calib_fn = info['calcam_calibration_file']
-    path, fn = locate_file(search_paths, calcam_calib_fn, path_kws=params)
-    files['calcam_calib'] = path / fn
+    # Get filenames referenced from lookup files: Calcam calibration file
+    lookup_references = [['calcam_calib', 'calcam_calibs', 'calcam_calibration_file'],]
+                   # ['analysis_path_dfn', 'analysis_path_dfns', 'analysis_path_name']]
+    for name, file_type, column in lookup_references:
+        calcam_calib_fn = lookup_info[file_type][column]
+        path, fn = locate_file(search_paths_inputs, calcam_calib_fn, path_kws=params, fn_kws=params)
+        path_fn = path / fn
+        files[name] = path_fn
+        if not path_fn.is_file():
+            raise IOError(f'Required input file "{path_fn}" does not exist')
 
-    # Analysis path file
+    # Get filenames straight from config settings: Analysis path definition file
+    input_files = ['analysis_path_dfns']
+    for input_file in input_files:
+        fn_patterns = fn_patterns_inputs[input_file]
+        path, fn = locate_file(search_paths_inputs, fn_patterns, path_kws=params, fn_kws=params)
+        path_fn = path / fn
+        files[input_file] = path_fn
 
     # Black body calibration file
 
     # Surface properties file
 
+    # Checkpoint intermediate output files to speed up analysis
+    checkpoint_path = setup_checkpoint_path(paths_output['checkpoint_data'])
+    files['checkpoint_path'] = checkpoint_path
+    params['calcam_calib_stem'] = files['calcam_calib'].stem
+
+    # Calcam raycast checkpoint
+    checkpoints = ['raycast_checkpoint']
+    for checkpoint in checkpoints:
+        raycast_checkpoint_fn = fn_pattern_output[checkpoint].format(**params)
+        checkpoint_path_fn = checkpoint_path / checkpoint / raycast_checkpoint_fn
+        files[checkpoint] = checkpoint_path_fn
+        if not checkpoint_path_fn.parent.is_dir():
+            checkpoint_path_fn.parent.mkdir()
+
     # TODO: check path characters are safe (see setpy datafile code)
 
-    return files
+    return files, lookup_info
+
+def setup_checkpoint_path(path: Union[str, Path]):
+    path = format_path(path)
+    if not path.exists():
+        path.mkdir(parents=True)
+        logger.info(f'Created fire checkpoint data directory: {path}')
+    return path
 
 def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_paths=None, movie_fns=None):
     kwargs = {'machine': machine, 'camera': camera, 'pulse': pulse, 'pulse_prefix': str(pulse)[0:2]}
@@ -322,7 +371,7 @@ def check_settings_complete(settings, machine, camera):
         raise ValueError(f'Fire settings do not contain settings for camera: "{camera}"\n{sub_settings}')
 
 def get_compatible_movie_plugins(settings, machine, camera):
-    plugin_paths = settings['paths']['movie_plugins']
+    plugin_paths = settings['paths_input']['movie_plugins']
     plugin_paths = [p.format(fire_path=fire_paths['root']) for p in plugin_paths]
     movie_plugins_all = get_movie_plugins(plugin_paths)
     movie_plugins_compatible = settings['machines'][machine]['cameras'][camera]['movie_plugins']
