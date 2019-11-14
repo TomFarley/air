@@ -3,9 +3,11 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
-from fire.interfaces.interfaces import (json_dump, json_load, read_movie_meta_data,
-                    generate_pulse_id_strings, generate_camera_id_strings, generate_frame_id_strings)
+from fire.interfaces.interfaces import (json_dump, json_load, lookup_pulse_row_in_csv, lookup_pulse_info,
+                                        read_movie_meta_data, generate_pulse_id_strings, generate_camera_id_strings,
+                                        generate_frame_id_strings, get_module_from_path_fn)
 from fire import fire_paths
 
 pwd = Path(__file__).parent
@@ -66,10 +68,37 @@ class TestInterfaces(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             out = json_load('my_path')
 
+    def test_lookup_pulse_row_in_csv(self):
+        path = pwd / '../test_data/mast/'
+        fn = 'calcam_calibs-mast-rit-defaults.csv'
+        path_fn = path/fn
+        out = lookup_pulse_row_in_csv(path_fn, 20378)
+        self.assertTrue(isinstance(out, pd.Series))
 
-    def test_read_movie_meta_data(self):
-        user_defaults = {'machine': 'MAST', 'camera': 'rit', 'pulse': 23586}
+        out = lookup_pulse_row_in_csv(path_fn, -100)
+        self.assertTrue(isinstance(out, ValueError))
 
+        out = lookup_pulse_row_in_csv(path / 'bad_fn.csv', 20737)
+        self.assertTrue(isinstance(out, FileNotFoundError))
+
+    def test_lookup_pulse_info(self):
+        path_search = (pwd / '../test_data/mast/').resolve()
+        fn_pattern = "calcam_calibs-{machine}-{camera}-defaults.csv"
+        kwargs = {'pulse': 20378, 'machine': 'mast', 'camera': 'rit'}
+        path, fn, info = lookup_pulse_info(search_paths=path_search, filename_patterns=fn_pattern, **kwargs)
+        self.assertEqual(path, path_search)
+        self.assertEqual(fn, 'calcam_calibs-mast-rit-defaults.csv')
+        self.assertTrue(isinstance(info, pd.Series))
+
+    def test_get_module_from_path_fn(self):
+        path = fire_paths['root'] / 'utils.py'
+        out = get_module_from_path_fn(path)
+        self.assertEqual(out.__name__, 'fire/utils.py')
+        self.assertEqual(str(type(out)), "<class 'module'>")
+
+    # def test_read_movie_meta_data(self):
+    #     user_defaults = {'machine': 'MAST', 'camera': 'rit', 'pulse': 23586}
+    #     raise NotImplementedError
 
     def test_id_strings(self):
         values = {'machine': 'MAST', 'camera': 'rit', 'pass_no': 1, 'pulse': 23586, 'lens': '25mm', 't_int': 2.7e-5,
@@ -94,7 +123,6 @@ class TestInterfaces(unittest.TestCase):
                     'frame_id': 'MAST-23586-rit-1234', 'time_id': 'MAST-23586-0.5123'}
         self.assertDictEqual(id_strings, expected)
 
-
     def tearDown(self):
         path_fn = self.json_path_fn
         if path_fn.exists():
@@ -105,7 +133,7 @@ def suite():
     suite = unittest.TestSuite()
     loader = unittest.TestLoader()
     # suite.addTests(loader.loadTestsFromTestCase(TestIoIpx))
-    suite.addTest(TestInterfaces.test_update_call_args)
+    # suite.addTest(TestInterfaces.test_update_call_args)
     return suite
 
 if __name__ == '__main__':
