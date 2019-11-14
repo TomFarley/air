@@ -75,7 +75,7 @@
                     ]
         }
     },
-    "paths": {
+    "paths_input": {
         "movie_plugins": [
             "{fire_path}/interfaces/movie_plugins/"
         ],
@@ -100,7 +100,10 @@
             "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/"
         ]
     },
-    "filenames": {
+    "paths_output": {
+        "checkpoint_data": "~/.fire/checkpoint_data/"
+    },
+    "filenames_input": {
         "movie_files": [
             "{camera}0{pulse}.ipx"
         ],
@@ -108,11 +111,17 @@
             "calcam_calibs-{machine}-{camera}-defaults.csv"
         ],
         "analysis_paths": [
-            "analysis_paths-{machine}-{camera}-defaults.json"
+            "analysis_paths-{machine}-{camera}-defaults.csv"
+        ],
+        "analysis_path_dfns": [
+            "analysis_path_dfns-{machine}-{camera}-defaults.json"
         ],
         "surface_props": [
             "surface_props-{machine}-{camera}-defaults.json"
         ]
+    },
+    "filenames_output": {
+        "raycast_checkpoint": "raycast_{calcam_calib_stem}.nf"
     },
     "fire": {
         "version": "2.0.0",
