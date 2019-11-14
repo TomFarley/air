@@ -105,7 +105,10 @@ def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
     for path_raw in paths:
         # Insert missing info in
         path_raw = str(path_raw)
-        path = path_raw.format(**path_kws)
+        try:
+            path = path_raw.format(**path_kws)
+        except KeyError as e:
+                raise ValueError(f'Cannot locate file  without value for "{e.args[0]}": "{path_raw}", {path_kws}"')
         try:
             path = Path(path).expanduser()
         except RuntimeError as e:
@@ -117,7 +120,10 @@ def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
             continue
         path = path.resolve()
         for fn_raw in fns:
-            fn = str(fn_raw).format(**fn_kws)
+            try:
+                fn = str(fn_raw).format(**fn_kws)
+            except KeyError as e:
+                raise ValueError(f'Cannot locate file without value for "{e.args[0]}": "{fn_raw}", {fn_kws}"')
             fn_path = path / fn
             if fn_path.is_file():
                 located = True
