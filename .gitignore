@@ -9,3 +9,4 @@ tests/htmlcov
 htmlcov
 requirements_freia_all.txt
 docs/sphinx/build
+**.bkup
