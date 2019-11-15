@@ -10,3 +10,4 @@ htmlcov
 requirements_freia_all.txt
 docs/sphinx/build
 **.bkup
+fire/scripts/calibration_images/
