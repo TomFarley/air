@@ -60,7 +60,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     files, lookup_info = identify_files(pulse, camera, machine, params=params,
                                         search_paths_inputs=paths_input, fn_patterns_inputs=fn_patterns_input,
                                         paths_output=paths_output, fn_pattern_output=fn_patterns_output)
-    # Load camera state
+    # TODO: Load camera state
     # settings['camera_state'] = get_camera_state(pulse, camera, machine)
 
     # Load movie meta data
@@ -70,11 +70,11 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     meta_data, movie_origin = read_movie_meta_data(pulse, camera, machine, movie_plugins,
                                      movie_paths=movie_paths, movie_fns=movie_fns)
 
-    # Validate frame range etc
+    # TODO: Validate frame range etc
 
     # Load raw frame data
     frame_nos, frame_times, frame_data, movie_origin = read_movie_data(pulse, camera, machine, movie_plugins,
-                                                                        movie_paths=movie_paths, movie_fns=movie_fns)
+                                                                movie_paths=movie_paths, movie_fns=movie_fns)
 
     # Load calcam spatial camera calibration
     calcam_calib = calcam.Calibration(load_filename=files['calcam_calib'])
