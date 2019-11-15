@@ -11,3 +11,5 @@ requirements_freia_all.txt
 docs/sphinx/build
 **.bkup
 fire/scripts/calibration_images/
+fire/input_files/mast/legacy_air
+fire/input_files/mast/legacy_ait
