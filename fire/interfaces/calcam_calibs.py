@@ -89,8 +89,11 @@ def get_calcam_calib_info(pulse: int, camera: str, machine: str, search_paths: O
 #         raise ValueError(f'Calcam calib lookup file does not contain column "calcam_calibration_file": {path_fn}')
 #     return calcam_calib
 
-def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10):
-    image_shape = calcam_calib.geometry.get_display_shape()
+def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, image_coords='Original'):
+    if image_coords == 'Display':
+        image_shape = calcam_calib.geometry.get_display_shape()
+    else:
+        image_shape = calcam_calib.geometry.get_original_shape()
     xpix = np.arange(image_shape[0])
     ypix = np.arange(image_shape[1])
     data_out = xr.Dataset(coords={'x_pix': xpix, 'y_pix': ypix})
@@ -98,13 +101,13 @@ def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10):
     # Get wireframe image of CAD from camera view
     cad_model.set_wireframe(True)
     cad_model.set_colour((1, 0, 0))
-    wire_frame = calcam.render_cam_view(cad_model, calcam_calib)
+    wire_frame = calcam.render_cam_view(cad_model, calcam_calib, coords=image_coords)
 
     logger.debug(f'Getting surface coords...'); t0 = time.time()
-    ray_data = calcam.raycast_sightlines(calcam_calib, cad_model)
+    ray_data = calcam.raycast_sightlines(calcam_calib, cad_model, coords=image_coords)
     print(f'Setup CAD model and cast rays in {time.time()-t0:1.1f} s')
-    surface_coords = ray_data.get_ray_end()
-    ray_lengths = ray_data.get_ray_lengths()
+    surface_coords = ray_data.get_ray_end(coords=image_coords)
+    ray_lengths = ray_data.get_ray_lengths(coords=image_coords)
     mask_open_rays = np.where(ray_lengths > outside_vesel_ray_length)
     surface_coords[mask_open_rays[0], mask_open_rays[1], :] = np.nan
     ray_lengths[mask_open_rays] = np.nan
