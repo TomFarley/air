@@ -64,16 +64,18 @@ def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> 
 
     # Collect summary of ipx file meta data
     # file_header['ipx_version'] = vid.ipx_type
-    meta_data = {'movie_format': '.ipx'}
-    meta_data['n_frames'] = ipx_header['n_frames']
-    meta_data['frame_range'] = np.array([0, last_frame])
-    meta_data['t_range'] = np.array([float(frame_header0['time_stamp']), float(frame_header_end['time_stamp'])])
-    meta_data['frame_shape'] = frame0.shape
-    meta_data['fps'] = (last_frame) / np.ptp(meta_data['t_range'])
-    meta_data['lens'] = ipx_header['lens']
-    meta_data['exposure'] = ipx_header['exposure']
-    meta_data['ipx_header'] = ipx_header
-    return meta_data
+    movie_meta = {'movie_format': '.ipx'}
+    movie_meta['n_frames'] = ipx_header['n_frames']
+    movie_meta['frame_range'] = np.array([0, last_frame])
+    movie_meta['t_range'] = np.array([float(frame_header0['time_stamp']), float(frame_header_end['time_stamp'])])
+    movie_meta['frame_shape'] = frame0.shape
+    movie_meta['fps'] = (last_frame) / np.ptp(movie_meta['t_range'])
+    movie_meta['lens'] = ipx_header['lens']
+    movie_meta['exposure'] = ipx_header['exposure']
+    movie_meta['bit_depth'] = ipx_header['depth']
+
+    movie_meta['ipx_header'] = ipx_header
+    return movie_meta
 
 def convert_ipx_header_to_uda_conventions(header: dict) -> dict:
     """

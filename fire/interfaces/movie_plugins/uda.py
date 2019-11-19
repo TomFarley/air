@@ -122,8 +122,10 @@ def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:O
     movie_meta['fps'] = (video.n_frames - 1) / np.ptp(times)
     movie_meta['lens'] = ipx_header['lens']
     movie_meta['exposure'] = ipx_header['exposure']
+    movie_meta['bit_depth'] = ipx_header['depth']
+
     movie_meta['ipx_header'] = ipx_header
-    movie_meta['ipx_header'] = ipx_header
+
     return movie_meta
 
 def read_movie_data(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
