@@ -67,7 +67,7 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
             raise IOError(f'Required input file "{path_fn}" does not exist')
 
     # Get filenames straight from config settings: Analysis path definition file
-    input_files = ['analysis_path_dfns']
+    input_files = ['analysis_path_dfns', 'black_body_curve']
     for input_file in input_files:
         fn_patterns = fn_patterns_inputs[input_file]
         path, fn = locate_file(search_paths_inputs, fn_patterns, path_kws=params, fn_kws=params)
