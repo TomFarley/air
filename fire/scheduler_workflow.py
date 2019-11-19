@@ -20,7 +20,7 @@ from fire.interfaces.interfaces import (check_settings_complete, get_compatible_
                                         read_movie_meta_data, setup_checkpoint_path,
                                         read_movie_data, generate_pulse_id_strings, json_load)
 from fire.interfaces.calcam_calibs import get_surface_coords, project_analysis_path
-from fire.utils import update_call_args
+from fire.utils import update_call_args, movie_data_to_xarray
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -51,30 +51,24 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # Generate id_strings
     meta_data['id_strings'] = generate_pulse_id_strings({}, pulse, camera, machine, pass_no)
 
+    # Load movie meta data to get lens and integration time etc.
+    movie_plugins = get_compatible_movie_plugins(config, machine, camera)
+    movie_paths = config['paths_input']['movie_files']
+    movie_fns = config['filenames_input']['movie_files']
+    movie_meta, movie_origin = read_movie_meta_data(pulse, camera, machine, movie_plugins,
+                                     movie_paths=movie_paths, movie_fns=movie_fns)
+
     # Idenify and check existence of input files
     paths_input = config['paths_input']['input_files']
     paths_output = config['paths_output']
     fn_patterns_input = config['filenames_input']
     fn_patterns_output = config['filenames_output']
-    params = {'fire_path': fire_paths['root']}
+    params = {'fire_path': fire_paths['root'], **movie_meta}
     files, lookup_info = identify_files(pulse, camera, machine, params=params,
                                         search_paths_inputs=paths_input, fn_patterns_inputs=fn_patterns_input,
                                         paths_output=paths_output, fn_pattern_output=fn_patterns_output)
     # TODO: Load camera state
     # settings['camera_state'] = get_camera_state(pulse, camera, machine)
-
-    # Load movie meta data
-    movie_plugins = get_compatible_movie_plugins(config, machine, camera)
-    movie_paths = config['paths_input']['movie_files']
-    movie_fns = config['filenames_input']['movie_files']
-    meta_data, movie_origin = read_movie_meta_data(pulse, camera, machine, movie_plugins,
-                                     movie_paths=movie_paths, movie_fns=movie_fns)
-
-    # TODO: Validate frame range etc
-
-    # Load raw frame data
-    frame_nos, frame_times, frame_data, movie_origin = read_movie_data(pulse, camera, machine, movie_plugins,
-                                                                movie_paths=movie_paths, movie_fns=movie_fns)
 
     # Load calcam spatial camera calibration
     calcam_calib = calcam.Calibration(load_filename=files['calcam_calib'])
@@ -82,9 +76,21 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     meta_data['calcam_calib'] = calcam_calib
     meta_data['calcam_CAD'] = None
-    # Load calcam raycast
+
+    # TODO: Validate frame range etc
+
+    # Load raw frame data
+    frame_nos, frame_times, frame_data, movie_origin = read_movie_data(pulse, camera, machine, movie_plugins,
+                                                                movie_paths=movie_paths, movie_fns=movie_fns)
+    # TODO: Apply transformations (rotate, flip etc.) to get images "right way up"
+    # frame_data = calcam_calib.geometry.original_to_display_image(frame_data)
+    frame_data = movie_data_to_xarray(frame_data, frame_times, frame_nos)
+    data = xr.merge([data, frame_data])
+
+    # Get calcam raycast
     raycast_checkpoint_path_fn = files['raycast_checkpoint']
     if raycast_checkpoint_path_fn.exists() and (not update_checkpoints):
+        # Open pre-calculated raycast data to save time
         data_raycast = xr.open_dataset(raycast_checkpoint_path_fn)
     else:
         cad_model_args = config['machines'][machine]['cad_models'][0]
@@ -95,30 +101,29 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         data_raycast = get_surface_coords(calcam_calib, cad_model)
         data_raycast.to_netcdf(raycast_checkpoint_path_fn)
         logger.info(f'Wrote raycast data to: {raycast_checkpoint_path_fn}')
+    data = xr.merge([data, data_raycast])
+
+    # Get spatial and pixel coordinates of analysis path
     analysis_path_dfn_points = json_load(files['analysis_path_dfns'])
     analysis_path = project_analysis_path(data_raycast, analysis_path_dfn_points, calcam_calib)
+    data = xr.merge([data, analysis_path])
+
 
     pass
     pass
 
     # Segment/mask image if contains sub-views
 
-    # Detect camera movement
-    # mov = calcam.movement.detect_movement(calcam_calib, moved_im)
-    # corrected_image, mask = mov.warp_moved_to_ref(moved_im)
-    # updated_calib = calcam.movement.update_calibration(my_calib, moved_im, mov)
-
     # Detect saturation
-
 
     # Lookup anommalies
 
-
     # Detect anommalies
 
-
     # Fix camera shake
-
+    # mov = calcam.movement.detect_movement(calcam_calib, moved_im)
+    # corrected_image, mask = mov.warp_moved_to_ref(moved_im)
+    # updated_calib = calcam.movement.update_calibration(my_calib, moved_im, mov)
 
     # Apply NUC correction
 
