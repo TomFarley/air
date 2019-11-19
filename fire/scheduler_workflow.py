@@ -21,6 +21,7 @@ from fire.interfaces.interfaces import (check_settings_complete, get_compatible_
                                         read_movie_data, generate_pulse_id_strings, json_load)
 from fire.interfaces.calcam_calibs import get_surface_coords, project_analysis_path
 from fire.utils import update_call_args, movie_data_to_xarray
+from fire.nuc import get_nuc_frame, apply_nuc_correction
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -112,38 +113,36 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     pass
     pass
 
-    # Segment/mask image if contains sub-views
+    # TODO: Segment/mask image if contains sub-views
 
-    # Detect saturation
+    # TODO: Detect saturation
 
-    # Lookup anommalies
+    # TODO: Lookup anommalies
 
-    # Detect anommalies
+    # TODO: Detect anommalies
 
-    # Fix camera shake
+    # TODO: Fix camera shake
     # mov = calcam.movement.detect_movement(calcam_calib, moved_im)
     # corrected_image, mask = mov.warp_moved_to_ref(moved_im)
     # updated_calib = calcam.movement.update_calibration(my_calib, moved_im, mov)
 
     # Apply NUC correction
+    # nuc_frame = get_nuc_frame(origin='first_frame', frame_data=frame_data)
+    nuc_frame = get_nuc_frame(origin={'n': [None, None]}, frame_data=frame_data, reduce_func='min')
+    data['frame_data'] = apply_nuc_correction(frame_data, nuc_frame, raise_on_negatives=False)
+
+    # TODO: Segment image according to tiles/material properties
+
+    # TODO: Convert raw DL to temperature
 
 
-    # Segment image according to tiles/material properties
+    # TODO: Calculate heat fluxes
 
 
-    # Convert raw DL to temperature
+    # TODO: Calculate physics parameters
 
 
-    # Load analysis path
-
-
-    # Calculate heat fluxes
-
-
-    # Calculate physics parameters
-
-
-    # Write output file
+    # TODO: Write output file
 
     print(f'Finished scheduler workflow')
     return 0
