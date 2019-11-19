@@ -3,34 +3,48 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+import xarray as xr
 
-from fire.utils import update_call_args, locate_file, make_iterable
+from fire.utils import update_call_args, locate_file, make_iterable, movie_data_to_xarray
 
 pwd = Path(__file__).parent
 
 class TestUtils(unittest.TestCase):
+
+    def test_movie_data_to_xarray(self):
+        n_frames = 20
+        frame_shape = (256, 320)
+        frame_times = np.linspace(0, 0.15, n_frames)
+        frame_nos = np.arange(115, 115+n_frames)
+        frame_data = np.ones((n_frames, *frame_shape))
+
+        frame_data = movie_data_to_xarray(frame_data, frame_times, frame_nos)
+        self.assertTrue(isinstance(frame_data, xr.DataArray))
+        np.testing.assert_array_equal(frame_data['t'].values, frame_times)
+        np.testing.assert_array_equal(frame_data['n'].values, frame_nos)
+        self.assertEqual(frame_data['t'].attrs['units'], 's')
 
     def test_update_call_args(self):
         user_defaults = {'pulse': 30378, 'camera': 'rir', 'machine': 'MAST_U'}
 
         inputs = (29852, 'rir', 'MAST')
         outputs = update_call_args(user_defaults, *inputs)
-        expected = inputs
+        expected = (29852, 'rir', 'mast')
         self.assertEqual(outputs, expected)
 
         inputs = (None, 'rir', 'MAST')
         outputs = update_call_args(user_defaults, *inputs)
-        expected = (30378, 'rir', 'MAST')
+        expected = (30378, 'rir', 'mast')
         self.assertEqual(outputs, expected)
 
         inputs = (None, 'rit', None)
         outputs = update_call_args(user_defaults, *inputs)
-        expected = (30378, 'rit', 'MAST_U')
+        expected = (30378, 'rit', 'mast_u')
         self.assertEqual(outputs, expected)
 
         inputs = (None, None, None)
         outputs = update_call_args(user_defaults, *inputs)
-        expected = (30378, 'rir', 'MAST_U')
+        expected = (30378, 'rir', 'mast_u')
         self.assertEqual(outputs, expected)
 
     def test_locate_file(self):
