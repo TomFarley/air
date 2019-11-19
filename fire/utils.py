@@ -10,11 +10,54 @@ from typing import Union, Iterable, Tuple, List, Optional, Any, Sequence
 from pathlib import Path
 
 import numpy as np
+import xarray as xr
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 PathList = Sequence[Union[Path, str]]
+
+def movie_data_to_xarray(frame_data, frame_times, frame_nos=None):
+    """Return frame data in xarray.DataArray object
+
+    Args:
+        frame_data  : Array of camera digit level data with dimensions [t, y, x]
+        frame_times : Array of frame times
+        frame_nos   : Array of frame numbers
+
+    Returns: DataArray of movie data
+
+    """
+    if frame_nos is None:
+        frame_nos = np.arange(frame_data.shape[0])
+    frame_data = xr.DataArray(frame_data, dims=['t', 'y_pix', 'x_pix'],
+                              coords={'t': frame_times, 'n': ('t', frame_nos),
+                                      'y_pix': np.arange(frame_data.shape[1]),
+                                      'x_pix': np.arange(frame_data.shape[2])},
+                              name='frame_data')
+    # Default to indexing by frame number
+    frame_data = frame_data.swap_dims({'t': 'n'})
+    frame_data.attrs.update({
+        'long_name': 'DL',
+        'units': 'arb',
+        'description': 'Digit level (DL) intensity counts recorded by camera sensor, dependent on photon flux'})
+    frame_data['n'].attrs.update({
+        'long_name': '$n_{frame}$',
+        'units': '',
+        'description': 'Camera frame number (integer)'})
+    frame_data['t'].attrs.update({
+        'long_name': '$t$',
+        'units': 's',
+        'description': 'Camera frame time'})
+    frame_data['x_pix'].attrs.update({
+        'long_name': '$x_{pix}$',
+        'units': '',
+        'description': 'Camera x pixel coordinate'})
+    frame_data['y_pix'].attrs.update({
+        'long_name': '$y_{pix}$',
+        'units': '',
+        'description': 'Camera y pixel coordinate'})
+    return frame_data
 
 def update_call_args(user_defaults, pulse, camera, machine):
     """Replace 'None' values with user's preassigned default values
