@@ -115,11 +115,15 @@ def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:O
     times = video.frame_times
 
     movie_meta = {'movie_format': '.ipx'}
-    movie_meta['ipx_header'] = ipx_header
+    movie_meta['n_frames'] = ipx_header['n_frames']
     movie_meta['frame_range'] = np.array([n_start, n_end])
     movie_meta['t_range'] = np.array([times[n_start], times[n_end]])
     movie_meta['frame_shape'] = (video.height, video.width)
     movie_meta['fps'] = (video.n_frames - 1) / np.ptp(times)
+    movie_meta['lens'] = ipx_header['lens']
+    movie_meta['exposure'] = ipx_header['exposure']
+    movie_meta['ipx_header'] = ipx_header
+    movie_meta['ipx_header'] = ipx_header
     return movie_meta
 
 def read_movie_data(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
