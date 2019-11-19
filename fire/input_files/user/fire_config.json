@@ -89,8 +89,10 @@
             "calcam_calibrations"
         ],
         "input_files": [
+            "{fire_path}/input_files/",
             "{fire_path}/input_files/{machine}/",
             "~/input_files/{machine}/",
+            "~/input_files/",
             "~/calcam/calibrations/",
             "~/calcam2/calibrations/"
         ],
@@ -115,6 +117,9 @@
         ],
         "analysis_path_dfns": [
             "analysis_path_dfns-{machine}-{camera}-defaults.json"
+        ],
+        "black_body_curve": [
+            "bb_photons-{lens}-{exposure}ms.tsv"
         ],
         "surface_props": [
             "surface_props-{machine}-{camera}-defaults.json"
