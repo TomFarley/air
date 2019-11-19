@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+import xarray as xr
 
 # Store important paths for quick reference
 fire_paths = {'root': Path(__file__).parent}
@@ -21,3 +22,5 @@ pd.set_option("display.width", 160)  # TODO: Use None when in ipython terminal -
 pd.set_option("display.max_colwidth", 80)
 pd.options.display.max_rows = 60
 pd.options.display.max_columns = 500
+
+xr.set_options(**{'cmap_sequential': 'gray'})
