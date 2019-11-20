@@ -68,6 +68,27 @@ def get_calcam_calib_info(pulse: int, camera: str, machine: str, search_paths: O
         raise calib_info
     return calib_info
 
+def apply_frame_display_transformations(frame_data, calcam_calib, image_coords):
+    """Apply transformations (rotaions, reflections etc) to map camera frames from Original to Display coordinates
+
+    Args:
+        frame_data      : Frame data ndarray in "Original" coordinates with dimensions (x_pix, y_pix, frame_no)
+        calcam_calib    : Calcam calibration object
+        image_coords    : Coordinates to map to (either Original or Display). If original, no transformations are
+                          applied
+
+    Returns: np.ndarray with Display image transformations applied
+
+    """
+    if image_coords == 'Display':
+        frame_data = np.moveaxis(frame_data, [0, 1, 2], [2, 1, 0])
+        frame_data = calcam_calib.geometry.original_to_display_image(frame_data)
+        frame_data = np.moveaxis(frame_data, [0, 1, 2], [2, 1, 0])
+    else:
+        if image_coords != 'Original':
+            raise ValueError(f'Unexpected value for "image_coords"="{image_coords}". Options are "Display" or '
+                             f'"Original')
+    return frame_data
 
 # def get_calcam_calib_path_fn(calcam):
 #     calcam_calib_path_fn = locate_file()
