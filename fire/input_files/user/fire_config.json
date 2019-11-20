@@ -121,12 +121,15 @@
         "black_body_curve": [
             "bb_photons-{lens}-{exposure}ms.tsv"
         ],
+        "calib_coefs": [
+            "calib_coefs-{machine}-{camera}-{lens}-{exposure}ms.tsv"
+        ],
         "surface_props": [
             "surface_props-{machine}-{camera}-defaults.json"
         ]
     },
     "filenames_output": {
-        "raycast_checkpoint": "raycast_{calcam_calib_stem}.nf"
+        "raycast_checkpoint": "raycast_{calcam_calib_stem}-{image_coords}.nf"
     },
     "fire": {
         "version": "2.0.0",
