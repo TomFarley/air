@@ -73,6 +73,7 @@ def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> 
     movie_meta['lens'] = ipx_header['lens']
     movie_meta['exposure'] = ipx_header['exposure']
     movie_meta['bit_depth'] = ipx_header['depth']
+    # TODO: Add filter name?
 
     movie_meta['ipx_header'] = ipx_header
     return movie_meta
