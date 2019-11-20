@@ -24,7 +24,7 @@ def get_nuc_frame(origin: Union[Dict, str, Path]='first_frame', frame_data: Opti
         load_nuc_frame_from_file(origin)
     else:
         assert isinstance(origin, dict) and len(origin) == 1, f'Origin dict must have format {{coord: [<coor_range>]}}'
-        assert isinstance(frame_data, xr.DataArray), (f'No frame_data passed from which to index NUC frame: '
+        assert isinstance(frame_data, xr.DataArray), (f'Need DataArray frame_data from which to index NUC frame: '
                                                       f'frame_data={frame_data}, origin={origin}')
     coord, coord_range = list(origin.items())[0]
     coord_slice = slice(coord_range[0], coord_range[1])
@@ -42,9 +42,9 @@ def load_nuc_frame_from_file(path_fn: Union[Path, str]):
 def apply_nuc_correction(frame_data: xr.DataArray, nuc_frame: xr.DataArray, raise_on_negatives: bool=True):
     frame_data -= nuc_frame
     if np.any(frame_data < 0):
-        frames_with_negatives = frame_data.where(frame_data < 0).coords['n'].values
+        frames_with_negatives = frame_data.where(frame_data < 0, drop=True).coords
         message = (f'NUC corrected frame data contains negative intensities for '
-                   f'{len(frames_with_negatives)}/{len(frame_data)} frame numbers:\n{frames_with_negatives}')
+                   f'{len(frames_with_negatives["n"])}/{len(frame_data)} frame numbers:\n{frames_with_negatives}')
         if raise_on_negatives:
             raise ValueError(message)
         else:
