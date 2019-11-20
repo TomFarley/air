@@ -67,7 +67,7 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
             raise IOError(f'Required input file "{path_fn}" does not exist')
 
     # Get filenames straight from config settings: Analysis path definition file
-    input_files = ['analysis_path_dfns', 'black_body_curve']
+    input_files = ['analysis_path_dfns', 'black_body_curve', 'calib_coefs']
     for input_file in input_files:
         fn_patterns = fn_patterns_inputs[input_file]
         path, fn = locate_file(search_paths_inputs, fn_patterns, path_kws=params, fn_kws=params)
@@ -79,7 +79,8 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
     # Surface properties file
 
     # Checkpoint intermediate output files to speed up analysis
-    checkpoint_path = setup_checkpoint_path(paths_output['checkpoint_data'])
+    # checkpoint_path = setup_checkpoint_path(paths_output['checkpoint_data'])
+    checkpoint_path = Path(paths_output['checkpoint_data']).expanduser().resolve()
     files['checkpoint_path'] = checkpoint_path
     params['calcam_calib_stem'] = files['calcam_calib'].stem
 
@@ -96,12 +97,12 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
 
     return files, lookup_info
 
-def setup_checkpoint_path(path: Union[str, Path]):
-    path = format_path(path)
-    if not path.exists():
-        path.mkdir(parents=True)
-        logger.info(f'Created fire checkpoint data directory: {path}')
-    return path
+# def setup_checkpoint_path(path: Union[str, Path]):
+#     path = format_path(path)
+#     if not path.exists():
+#         path.mkdir(parents=True)
+#         logger.info(f'Created fire checkpoint data directory: {path}')
+#     return path
 
 def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_paths=None, movie_fns=None):
     kwargs = {'machine': machine, 'camera': camera, 'pulse': pulse, 'pulse_prefix': str(pulse)[0:2]}
@@ -155,9 +156,18 @@ def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movi
     Returns: (meta data dictionary, data origin dictionary)
 
     """
+    movie_meta_required_fields = ['n_frames', 'frame_range', 't_range', 'frame_shape', 'fps', 'lens', 'exposure',
+                                  'bit_depth']
     plugin_key = 'meta'
     meta_data, origin = try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins,
                                           movie_paths=movie_paths, movie_fns=movie_fns)
+    missing_fields = []
+    for field in movie_meta_required_fields:
+        if field not in meta_data:
+            missing_fields.append(field)
+    if len(missing_fields) > 0:
+        raise ValueError(f'Movie plugin "{origin}" has not returned the folloing required meta data fields:\n'
+                         f'{missing_fields}')
     return meta_data, origin
 
 def read_movie_data(pulse: Union[int, str], camera: str, machine: str, movie_plugins: dict,
@@ -315,20 +325,18 @@ def two_level_dict_to_multiindex_df(d):
     return df
 
 
-def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int) -> Union[pd.Series, Exception]:
+def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, **kwargs_csv) -> Union[pd.Series, Exception]:
     """Return row from csv file containing information for pulse range containing supplied pulse number
 
     :param path_fn: path to csv file containing pulse range information
     :param pulse: pulse number of interest
     :return: Pandas Series containing pulse information / Exception if unsuccessful
     """
-    try:
-        table = pd.read_csv(path_fn)
-    except FileNotFoundError:
-        return FileNotFoundError(f'Calcam calib lookup file: {path_fn}')
+    table = read_csv(path_fn, **kwargs_csv)
     if not np.all([col in list(table.columns) for col in ['pulse_start', 'pulse_end']]):
         raise IOError(f'Unsupported pulse row CSV file format - '
                       f'must contain "pulse_start", "pulse_end" columns: {path_fn}')
+    table = table.astype({'pulse_start': int, 'pulse_end': int})
     row_mask = np.logical_and(table['pulse_start'] <= pulse, table['pulse_end'] >= pulse)
     if np.sum(row_mask) > 1:
         raise ValueError(f'Calcam calib lookup file contains overlapping ranges. Please fix: {path_fn}')
@@ -339,9 +347,37 @@ def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int) -> Union[pd.S
         calib_info = table.loc[row_mask].iloc[0]
     return calib_info
 
+def read_csv(path_fn: Union[Path, str], **kwargs):
+    path_fn = Path(path_fn)
+    if 'sep' not in kwargs:
+        if path_fn.suffix == '.csv':
+            kwargs['sep'] = ','
+        elif path_fn.suffix == '.tsv':
+            kwargs['sep'] = '\s+'
+        else:
+            kwargs['sep'] = None  # Use csv.Sniffer tool
+    try:
+        table = pd.read_csv(path_fn, **kwargs)
+    except FileNotFoundError:
+        return FileNotFoundError(f'CSV file does not exist: {path_fn}')
+    return table
 
 def lookup_pulse_info(pulse: Union[int, str], camera: str, machine: str, search_paths: PathList,
                           filename_patterns: Union[str, Path], params: Optional[dict]=None, raise_=True) -> pd.Series:
+    """Extract information from pulse look up file
+
+    Args:
+        pulse               : Shot/pulse number or string name for synthetic movie data
+        camera              : Name of camera to analyse (unique name of camera or diagnostic code)
+        machine             : Tokamak that the data originates from
+        search_paths        : Format strings for paths to search for files
+        filename_patterns   : Format string for possible filesnames to locate
+        params              : Parameters to substitute into format strings
+        raise_              : Whether to raise or return exceptions
+
+    Returns: Series of data from csv file
+
+    """
     params = {} if params is None else params
     params.update({'pulse': pulse, 'camera': camera, 'machine': machine})
     path, fn = locate_file(search_paths, fns=filename_patterns, path_kws=params, fn_kws=params)
