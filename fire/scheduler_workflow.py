@@ -11,17 +11,19 @@ from pathlib import Path
 
 import numpy as np
 import xarray as xr
+import matplotlib.pyplot as plt
 
 import calcam
 
 from fire import fire_paths
 from fire.data_structures import init_data_structures
 from fire.interfaces.interfaces import (check_settings_complete, get_compatible_movie_plugins, identify_files,
-                                        read_movie_meta_data, setup_checkpoint_path,
-                                        read_movie_data, generate_pulse_id_strings, json_load)
-from fire.interfaces.calcam_calibs import get_surface_coords, project_analysis_path
+                                        json_load, read_csv, lookup_pulse_row_in_csv,
+                                        read_movie_meta_data, read_movie_data, generate_pulse_id_strings)
+from fire.interfaces.calcam_calibs import get_surface_coords, project_analysis_path, apply_frame_display_transformations
 from fire.utils import update_call_args, movie_data_to_xarray
 from fire.nuc import get_nuc_frame, apply_nuc_correction
+from fire.data_quality import identify_saturated_frames
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -38,6 +40,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     :param magnetics: Produce additional output with scheduler efit as additional dependency
     :return: Error code
     """
+    image_coords = 'Display'
     # Set up data structures
     settings, files, data, meta_data = init_data_structures()
     if not scheduler:
@@ -64,7 +67,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     paths_output = config['paths_output']
     fn_patterns_input = config['filenames_input']
     fn_patterns_output = config['filenames_output']
-    params = {'fire_path': fire_paths['root'], **movie_meta}
+    params = {'fire_path': fire_paths['root'], 'image_coords': image_coords, **movie_meta}
     files, lookup_info = identify_files(pulse, camera, machine, params=params,
                                         search_paths_inputs=paths_input, fn_patterns_inputs=fn_patterns_input,
                                         paths_output=paths_output, fn_pattern_output=fn_patterns_output)
@@ -84,7 +87,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     frame_nos, frame_times, frame_data, movie_origin = read_movie_data(pulse, camera, machine, movie_plugins,
                                                                 movie_paths=movie_paths, movie_fns=movie_fns)
     # TODO: Apply transformations (rotate, flip etc.) to get images "right way up"
-    # frame_data = calcam_calib.geometry.original_to_display_image(frame_data)
+    frame_data = apply_frame_display_transformations(frame_data, calcam_calib, image_coords)
+
     frame_data = movie_data_to_xarray(frame_data, frame_times, frame_nos)
     data = xr.merge([data, frame_data])
 
@@ -99,7 +103,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         cad_model = calcam.CADModel(**cad_model_args)
         print(f'Setup CAD model object in {time.time()-t0:1.1f} s')
         meta_data['calcam_CAD'] = cad_model
-        data_raycast = get_surface_coords(calcam_calib, cad_model)
+        data_raycast = get_surface_coords(calcam_calib, cad_model, image_coords=image_coords)
         data_raycast.to_netcdf(raycast_checkpoint_path_fn)
         logger.info(f'Wrote raycast data to: {raycast_checkpoint_path_fn}')
     data = xr.merge([data, data_raycast])
@@ -109,13 +113,10 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     analysis_path = project_analysis_path(data_raycast, analysis_path_dfn_points, calcam_calib)
     data = xr.merge([data, analysis_path])
 
-
-    pass
-    pass
-
     # TODO: Segment/mask image if contains sub-views
 
-    # TODO: Detect saturation
+    # Detect saturated pixels
+    saturated_frames = identify_saturated_frames(frame_data, bit_depth=movie_meta['bit_depth'], raise_on_saturated=False)
 
     # TODO: Lookup anommalies
 
@@ -134,7 +135,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Segment image according to tiles/material properties
 
     # TODO: Convert raw DL to temperature
-
+    bb_curve = read_csv(files['black_body_curve'], index_col='temperature_celcius')
+    calib_coefs = lookup_pulse_row_in_csv(files['calib_coefs'], pulse=pulse, header=4)
+    # data['frame_temperature'] = dl_to_temerature(frame_data, calib_coefs, bb_curve)
 
     # TODO: Calculate heat fluxes
 
