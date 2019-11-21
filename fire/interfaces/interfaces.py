@@ -137,7 +137,7 @@ def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_p
         if data is not None:
             break
     if data is None:
-        raise IOError(f'Failed to read movie data for args: {kwargs} with movie plugins: {list(movie_plugins.keys())}')
+        raise IOError(f'Failed to read movie data with movie plugins {list(movie_plugins.keys())} for args: {kwargs} ')
     return data, origin
 
 def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movie_plugins: dict,
