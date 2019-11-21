@@ -94,7 +94,8 @@
             "~/input_files/{machine}/",
             "~/input_files/",
             "~/calcam/calibrations/",
-            "~/calcam2/calibrations/"
+            "~/calcam2/calibrations/",
+            "~/data/calcam_calibrations/"
         ],
         "movie_files": [
             "~/data/cameras/{camera}/",
