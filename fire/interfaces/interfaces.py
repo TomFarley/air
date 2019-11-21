@@ -60,7 +60,10 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
                    # ['analysis_path_dfn', 'analysis_path_dfns', 'analysis_path_name']]
     for name, file_type, column in lookup_references:
         calcam_calib_fn = lookup_info[file_type][column]
-        path, fn = locate_file(search_paths_inputs, calcam_calib_fn, path_kws=params, fn_kws=params)
+        try:
+            path, fn = locate_file(search_paths_inputs, calcam_calib_fn, path_kws=params, fn_kws=params)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f'Could not locate fire input file for "{file_type}":\n{str(e)}')
         path_fn = path / fn
         files[name] = path_fn
         if not path_fn.is_file():
@@ -70,7 +73,10 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
     input_files = ['analysis_path_dfns', 'black_body_curve', 'calib_coefs']
     for input_file in input_files:
         fn_patterns = fn_patterns_inputs[input_file]
-        path, fn = locate_file(search_paths_inputs, fn_patterns, path_kws=params, fn_kws=params)
+        try:
+            path, fn = locate_file(search_paths_inputs, fn_patterns, path_kws=params, fn_kws=params)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f'Could not locate fire input file for "{file_type}":\n{str(e)}')
         path_fn = path / fn
         files[input_file] = path_fn
 
