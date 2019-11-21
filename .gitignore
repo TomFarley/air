@@ -6,3 +6,4 @@ fire.egg-info/
 .coverage
 **/.directory
 tests/htmlcov
+docs/sphinx/build
