@@ -11,7 +11,7 @@ before_script:
 
 stages:
   - test
-  - documentation
+#  - documentation
 
 .my_template: &PREPARE_TESTING_FREIA
     stage: test
