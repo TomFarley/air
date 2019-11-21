@@ -179,9 +179,9 @@ def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
             break
     else:
         # File not located
-        message = f'Failed to locate file in paths "{paths}" with formats: {fns}, fn_kws: {fn_kws}'
+        message = f'Failed to locate file with formats: {fns} in paths "{paths}", with fn_kws: {fn_kws}'
         if _raise:
-            raise IOError(message)
+            raise FileNotFoundError(message)
         if verbose:
             logger.warning(message)
         path_out, fn_out = None, None
