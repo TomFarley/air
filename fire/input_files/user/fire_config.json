@@ -98,6 +98,7 @@
         ],
         "movie_files": [
             "~/data/cameras/{camera}/",
+            "~/data/movies/{machine}/{camera}/{pulse}/",
             "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
             "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/"
         ]
