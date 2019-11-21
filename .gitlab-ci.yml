@@ -74,10 +74,10 @@ stages:
     - pwd
 #    - apt-get update -y
 #    - apt-get install -y git
-    - apt-get install -y  python3-pip
+#    - apt-get install -y  python3-pip
 #    - pip install --user --upgrade pip setuptools
-    - apt-get install -y make
-    - apt-get install -y python3-sphinx
+#    - apt-get install -y make
+#    - apt-get install -y python3-sphinx
     script:
     - cd docs/sphinx/
     - make html
