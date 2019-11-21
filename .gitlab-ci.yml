@@ -130,8 +130,8 @@ test_freia:
     tags:
       - freia
 
-update_docs:
-    <<: *PREPARE_TESTING_FREIA
-    <<: *SPHINX
-    tags:
-      - freia
+#update_docs:
+#    <<: *PREPARE_TESTING_FREIA
+#    <<: *SPHINX
+#    tags:
+#      - freia
