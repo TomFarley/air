@@ -40,17 +40,19 @@ def load_nuc_frame_from_file(path_fn: Union[Path, str]):
     raise NotImplementedError
 
 def apply_nuc_correction(frame_data: xr.DataArray, nuc_frame: xr.DataArray, raise_on_negatives: bool=True):
-    frame_data -= nuc_frame
+    frame_data = frame_data - nuc_frame
     if np.any(frame_data < 0):
         frames_with_negatives = frame_data.where(frame_data < 0, drop=True).coords
         message = (f'NUC corrected frame data contains negative intensities for '
-                   f'{len(frames_with_negatives["n"])}/{len(frame_data)} frame numbers:\n{frames_with_negatives}')
+                   f'{len(frames_with_negatives["n"])}/{len(frame_data)} frame numbers:\n{frames_with_negatives}\n'
+                   f'Setting negative values to zero.')
         if raise_on_negatives:
             raise ValueError(message)
         else:
             logger.warning(message)
-            frame_data[frame_data < 0] = 0
+            frame_data = xr.apply_ufunc(np.clip, frame_data, 0, None)
     # TODO: Check for negative values etc
+    assert not np.any(frame_data < 0), f'Negative values have not been clipped after NUC'
     return frame_data
 
 if __name__ == '__main__':
