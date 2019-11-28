@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import skimage
+import matplotlib.pyplot as plt
 
 import calcam
 from fire import fire_paths
@@ -80,10 +81,13 @@ def apply_frame_display_transformations(frame_data, calcam_calib, image_coords):
     Returns: np.ndarray with Display image transformations applied
 
     """
+    # TODO: Implement conversion back to 'Original' Coordinates
     if image_coords == 'Display':
-        frame_data = np.moveaxis(frame_data, [0, 1, 2], [2, 1, 0])
+        # frame_data = np.moveaxis(frame_data, [0, 1, 2], [2, 1, 0])
+        frame_data = np.moveaxis(frame_data, [0, 1, 2], [2, 0, 1])
         frame_data = calcam_calib.geometry.original_to_display_image(frame_data)
-        frame_data = np.moveaxis(frame_data, [0, 1, 2], [2, 1, 0])
+        # frame_data = np.moveaxis(frame_data, [0, 1, 2], [2, 1, 0])
+        frame_data = np.moveaxis(frame_data, 2, 0)
     else:
         if image_coords != 'Original':
             raise ValueError(f'Unexpected value for "image_coords"="{image_coords}". Options are "Display" or '
@@ -115,9 +119,10 @@ def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, ima
         image_shape = calcam_calib.geometry.get_display_shape()
     else:
         image_shape = calcam_calib.geometry.get_original_shape()
-    xpix = np.arange(image_shape[0])
-    ypix = np.arange(image_shape[1])
-    data_out = xr.Dataset(coords={'x_pix': xpix, 'y_pix': ypix})
+    # Use calcam convention: image data is indexed [y, x], but image shape description is (nx, ny)
+    x_pix = np.arange(image_shape[0])
+    y_pix = np.arange(image_shape[1])
+    data_out = xr.Dataset(coords={'x_pix': x_pix, 'y_pix': y_pix})
 
     # Get wireframe image of CAD from camera view
     cad_model.set_wireframe(True)
@@ -127,11 +132,13 @@ def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, ima
     logger.debug(f'Getting surface coords...'); t0 = time.time()
     ray_data = calcam.raycast_sightlines(calcam_calib, cad_model, coords=image_coords)
     print(f'Setup CAD model and cast rays in {time.time()-t0:1.1f} s')
+
     surface_coords = ray_data.get_ray_end(coords=image_coords)
     ray_lengths = ray_data.get_ray_lengths(coords=image_coords)
     mask_open_rays = np.where(ray_lengths > outside_vesel_ray_length)
     surface_coords[mask_open_rays[0], mask_open_rays[1], :] = np.nan
     ray_lengths[mask_open_rays] = np.nan
+
     data_out['x_im'] = (('y_pix', 'x_pix'), surface_coords[:, :, 0])
     data_out['y_im'] = (('y_pix', 'x_pix'), surface_coords[:, :, 1])
     data_out['z_im'] = (('y_pix', 'x_pix'), surface_coords[:, :, 2])
