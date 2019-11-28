@@ -89,8 +89,8 @@ stages:
     artifacts:
       paths:
       - public/
-    only:
-    - ci
+#    only:
+#    - ci   # Only run CI workfow on 'ci' branch
 
 
 
