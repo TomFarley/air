@@ -3,46 +3,134 @@ variables:
   GET_SOURCES_ATTEMPTS: 3
 
 before_script:
-  - pip install --user --upgrade pip setuptools
   # - pip3 install dependencies/pyIpx/
   # - pip3 install dependencies/pyIpx/requirements.txt
   - export PYTHONPATH=$PWD
+  - export MODULE_PATH=$PWD
   - export IN_DOCKER=True
+  - echo MODULE_PATH=$MODULE_PATH
 
 stages:
-  - deploy
   - test
+  - documentation
 
-.my_template: &MY_TEMPLATE
-    stage: deploy
+.my_template: &PREPARE_TESTING_FREIA
+    stage: test
     before_script:
-    - apt install make
-    - apt-get install python3-sphinx
+    - pwd
+    - export USER=root
+    - export LOGNAME=root
+    - source /etc/profile.d/modules.sh
+    - module use /usr/local/modules/default
+    - module unload python
+    - module load python/3.7
+    - module load uda
+    - echo ld_library_path=$LD_LIBRARY_PATH
+    - echo pythonpath=$PYTHONPATH
+#    - pip install --user --upgrade pip  # breaks
+    - pip install --user --upgrade setuptools pytest-cov
+    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user .
+
+.my_template: &PREPARE_TESTING_UBUNTU
+    stage: test
+    before_script:
+    - pwd
+    - apt-get update -y
+    - apt-get install -y git
+    - apt-get install -y  python3-pip
+    - pip install --user --upgrade pip setuptools
+    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user pytest-cov
+#    - pip install --user git+git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
+#    - pip install --user git+https://gitlab-ci-token:7sHGos9smHycA5PjX3R6@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
+    - apt-get install -y cmake swig
+    - apt-get install -y libboost-dev
+    - apt-get install -y openssl libssl-dev
+    - cd dependencies/
+    - ./make-uda-client-only.sh
+    - cd uda-install-2.2.6/python_installer
+    - pip install --user .
+    - export UDA_HOST=idam3.mast.ccfe.ac.uk
+    - export UDA_PORT=56565
+    - export LD_LIBRARY_PATH=/builds/MAST-U_Scheduler/air/dependencies/uda-install-2.2.6/lib:$LD_LIBRARY_PATH
+    - export CPF_HOST=idam3.mast.ccfe.ac.uk
+    - export CPF_PORT=8000
+    - cd ../../..
+    - pwd
+    - pip install --user .
+
+.my_template: &PREPARE_TESTS
+    stage: test
+    script:
+    - pwd
+    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user .
+
+.my_template: &SPHINX
+    stage: documentation
+    before_script:
+    - pwd
+#    - apt-get update -y
+#    - apt-get install -y git
+    - apt-get install -y  python3-pip
+#    - pip install --user --upgrade pip setuptools
+    - apt-get install -y make
+    - apt-get install -y python3-sphinx
     script:
     - cd docs/sphinx/
     - make html
     - cp -r build/html ../../public
+    - cd ../..
+    - pwd
     # Docs at: https://MAST-U_Scheduler/.gitpages.ccfe.ac.uk/air
+    artifacts:
+      paths:
+      - public
+    only:
+    - ci
 
+
+
+.my_template: &TEST
     stage: test
-    before_script:
-    - pip install --user pytest-cov
-    - pip install --user git+https://git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     script:
-    - pip --user install .
-    - python setup.py test
-    tags:
-    - docker
+      - pwd
+      - echo MODULE_PATH=$MODULE_PATH
+#      - cd $MODULE_PATH
+      - pwd
+      - ls
+      - python setup.py test
 
-build_python3.5:
-    <<: *MY_TEMPLATE
-    image: python:3.5-slim
+.my_template: &TEST_FAST
+    stage: test
+    script:
+      - pwd
+      - pip install --user .
+      - pytest tests/test_suite_fast.py
 
-build_python3.7:
-    <<: *MY_TEMPLATE
+.my_template: &TEST_SLOW
+    stage: test
+    script:
+      - pwd
+      - pip install --user .
+      - pytest tests/test_suite_slow.py
+
+test_python3.7:
+    <<: *PREPARE_TESTING_UBUNTU
+#    <<: *PREPARE_TESTS
+    <<: *TEST
     image: python:3.7-slim
 
-build_freia:
-    <<: *MY_TEMPLATE
+test_freia:
+    <<: *PREPARE_TESTING_FREIA
+#    <<: *PREPARE_TESTS
+    <<: *TEST
+    tags:
+      - freia
+
+update_docs:
+    <<: *PREPARE_TESTING_FREIA
+    <<: *SPHINX
     tags:
       - freia

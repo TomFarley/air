@@ -1,7 +1,7 @@
 FIRE 
 ====
-[![pipeline status](https://git.ccfe.ac.uk/MAST-U_Scheduler/air/badges/master/pipeline.svg)](https://git.ccfe.ac.uk/MAST-U_Scheduler/air/commits/python3)
-[![coverage report](https://git.ccfe.ac.uk/MAST-U_Scheduler/air/badges/master/coverage.svg)](https://git.ccfe.ac.uk/MAST-U_Scheduler/air/commits/python3)
+[![pipeline status](https://git.ccfe.ac.uk/MAST-U_Scheduler/air/badges/ci/pipeline.svg)](https://git.ccfe.ac.uk/MAST-U_Scheduler/air/commits/ci)
+[![coverage report](https://git.ccfe.ac.uk/MAST-U_Scheduler/air/badges/ci/coverage.svg)](https://git.ccfe.ac.uk/MAST-U_Scheduler/air/commits/ci)
 
 Analysis code called by the MAST-U and JET schedulers after each discharge to process infra-red camera data.
 
