@@ -177,7 +177,7 @@ def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movi
     return meta_data, origin
 
 def read_movie_data(pulse: Union[int, str], camera: str, machine: str, movie_plugins: dict,
-                    movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None) \
+                    movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None, verbose: bool=True) \
                     -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, str]]:
     """Read movie frame data
 
@@ -196,6 +196,8 @@ def read_movie_data(pulse: Union[int, str], camera: str, machine: str, movie_plu
     movie_data, origin = try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins,
                                           movie_paths=movie_paths, movie_fns=movie_fns)
     frame_nos, frame_times, frame_data = movie_data
+    if verbose:
+        logger.info(f'Read {len(frame_nos)} frames for camera "{camera}", pulse "{pulse}" from {str(origin)[1:-1]}')
     return frame_nos, frame_times, frame_data, origin
 
 def generate_pulse_id_strings(id_strings, pulse, camera, machine, pass_no=0):
