@@ -12,7 +12,7 @@ before_script:
 
 stages:
   - test
-  - documentation
+#  - documentation
 
 .my_template: &PREPARE_TESTING_FREIA
     stage: test
@@ -41,6 +41,7 @@ stages:
     - apt-get install -y  python3-pip
     - pip install --user --upgrade pip setuptools
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - apt-get install -y libopenjp2-7
     - pip install --user pytest-cov
 #    - pip install --user git+git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
 #    - pip install --user git+https://gitlab-ci-token:7sHGos9smHycA5PjX3R6@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
@@ -65,6 +66,7 @@ stages:
     script:
     - pwd
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - apt-get install -y libopenjp2-7
     - pip install --user .
 
 .my_template: &SPHINX
@@ -73,10 +75,10 @@ stages:
     - pwd
 #    - apt-get update -y
 #    - apt-get install -y git
-    - apt-get install -y  python3-pip
+#    - apt-get install -y  python3-pip
 #    - pip install --user --upgrade pip setuptools
-    - apt-get install -y make
-    - apt-get install -y python3-sphinx
+#    - apt-get install -y make
+#    - apt-get install -y python3-sphinx
     script:
     - cd docs/sphinx/
     - make html
@@ -86,7 +88,7 @@ stages:
     # Docs at: https://MAST-U_Scheduler/.gitpages.ccfe.ac.uk/air
     artifacts:
       paths:
-      - public
+      - public/
     only:
     - ci
 
@@ -129,8 +131,8 @@ test_freia:
     tags:
       - freia
 
-update_docs:
-    <<: *PREPARE_TESTING_FREIA
-    <<: *SPHINX
-    tags:
-      - freia
+#update_docs:
+#    <<: *PREPARE_TESTING_FREIA
+#    <<: *SPHINX
+#    tags:
+#      - freia
