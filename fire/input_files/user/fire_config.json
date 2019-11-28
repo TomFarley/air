@@ -121,10 +121,10 @@
             "analysis_path_dfns-{machine}-{camera}-defaults.json"
         ],
         "black_body_curve": [
-            "bb_photons-{lens}-{exposure}ms.tsv"
+            "bb_photons-{lens}-{exposure}us.tsv"
         ],
         "calib_coefs": [
-            "calib_coefs-{machine}-{camera}-{lens}-{exposure}ms.tsv"
+            "calib_coefs-{machine}-{camera}-{lens}-{exposure}us.tsv"
         ],
         "surface_props": [
             "surface_props-{machine}-{camera}-defaults.json"
