@@ -24,6 +24,7 @@ from fire.interfaces.calcam_calibs import get_surface_coords, project_analysis_p
 from fire.utils import update_call_args, movie_data_to_xarray
 from fire.nuc import get_nuc_frame, apply_nuc_correction
 from fire.data_quality import identify_saturated_frames
+from fire.temperature import dl_to_temerature
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -85,8 +86,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # Load raw frame data
     frame_nos, frame_times, frame_data, movie_origin = read_movie_data(pulse, camera, machine, movie_plugins,
-                                                                movie_paths=movie_paths, movie_fns=movie_fns)
-    # TODO: Apply transformations (rotate, flip etc.) to get images "right way up"
+                                                        movie_paths=movie_paths, movie_fns=movie_fns, verbose=True)
+    # Apply transformations (rotate, flip etc.) to get images "right way up"
     frame_data = apply_frame_display_transformations(frame_data, calcam_calib, image_coords)
 
     frame_data = movie_data_to_xarray(frame_data, frame_times, frame_nos)
@@ -98,6 +99,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         # Open pre-calculated raycast data to save time
         data_raycast = xr.open_dataset(raycast_checkpoint_path_fn)
     else:
+        # TODO: Make CAD model pulse range dependent
         cad_model_args = config['machines'][machine]['cad_models'][0]
         logger.debug(f'Loading CAD model...'); t0 = time.time()
         cad_model = calcam.CADModel(**cad_model_args)
@@ -129,15 +131,21 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # Apply NUC correction
     # nuc_frame = get_nuc_frame(origin='first_frame', frame_data=frame_data)
-    nuc_frame = get_nuc_frame(origin={'n': [None, None]}, frame_data=frame_data, reduce_func='min')
-    data['frame_data'] = apply_nuc_correction(frame_data, nuc_frame, raise_on_negatives=False)
-
+    nuc_frame = get_nuc_frame(origin={'n': [2, 2]}, frame_data=frame_data)  # Old air sched code uses 3rd frame
+    # nuc_frame = get_nuc_frame(origin={'n': [None, None]}, frame_data=frame_data, reduce_func='min')
+    frame_data_nuc = apply_nuc_correction(frame_data, nuc_frame, raise_on_negatives=False)
+    data['frame_data_nuc'] = frame_data_nuc
     # TODO: Segment image according to tiles/material properties
 
     # TODO: Convert raw DL to temperature
     bb_curve = read_csv(files['black_body_curve'], index_col='temperature_celcius')
     calib_coefs = lookup_pulse_row_in_csv(files['calib_coefs'], pulse=pulse, header=4)
-    # data['frame_temperature'] = dl_to_temerature(frame_data, calib_coefs, bb_curve)
+    # TODO: Read temp_bg from file
+    data['frame_temperature'] = dl_to_temerature(frame_data_nuc, calib_coefs, bb_curve,
+                                                 exposure=movie_meta['exposure'], temp_bg=23)
+
+    # TODO: Temporal smoothing of temperature
+
 
     # TODO: Calculate heat fluxes
 
@@ -154,7 +162,10 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 if __name__ == '__main__':
     # pulse = 30378
     # camera = 'rit'
-    pulse = 23586
+    pulse = 23586  # Full frame with clear spatial calibration
+    # pulse = 28866  # Low power
+    # pulse = 29210  # High power
+    # pulse = 30378  # High ELM surface temperatures ~450 C
     camera = 'rir'
     pass_no = 0
     machine = 'MAST'
