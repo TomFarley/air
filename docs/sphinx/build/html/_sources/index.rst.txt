@@ -31,7 +31,7 @@ side of this page.
    :maxdepth: 1
    :name: devtoc
 
-   development/machines
+   development/movie_io
 
 Indices and tables
 ==================

@@ -1,10 +1,9 @@
-import pytest
 import unittest
 from pathlib import Path
 
 import numpy as np
 
-from fire.interfaces.ipx import get_freia_ipx_path, read_movie_meta_ipx, read_movie_data_ipx
+from fire.interfaces.movie_plugins.ipx import get_freia_ipx_path, read_movie_meta, read_movie_data
 
 pwd = Path(__file__).parent
 ipx_path = (pwd / '../test_data/mast/').resolve()
@@ -18,7 +17,7 @@ print(f'ipx test files path: {ipx_path}')
 # 	cc=45
 # 	return [aa,bb,cc]
 
-class TestIoIpx(unittest.TestCase):
+class TestIoIpxFast(unittest.TestCase):
 
     def test_get_freia_ipx_path(self):
         pulse = 30378
@@ -30,7 +29,7 @@ class TestIoIpx(unittest.TestCase):
     def test_get_ipx_meta_data_rir030378(self):
         ipx_fn = 'rir030378.ipx'
         ipx_path_fn = ipx_path / ipx_fn
-        ipx_meta_data = read_movie_meta_ipx(ipx_path_fn)
+        ipx_meta_data = read_movie_meta(ipx_path_fn)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
         self.assertEqual(len(ipx_meta_data), 6)
@@ -54,7 +53,7 @@ class TestIoIpx(unittest.TestCase):
     def test_get_ipx_meta_data_rit030378(self):
         ipx_fn = 'rit030378.ipx'
         ipx_path_fn = ipx_path / ipx_fn
-        ipx_meta_data = read_movie_meta_ipx(ipx_path_fn)
+        ipx_meta_data = read_movie_meta(ipx_path_fn)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
         self.assertEqual(len(ipx_meta_data), 6)
@@ -77,24 +76,24 @@ class TestIoIpx(unittest.TestCase):
         ipx_fn = 'rir030378.ipx'
         ipx_path_fn = ipx_path / ipx_fn
 
-        # Read whole movie
-        frame_nos, frame_times, frame_data = read_movie_data_ipx(ipx_path_fn)
-        self.assertTrue(isinstance(frame_data, np.ndarray))
-        self.assertTrue(isinstance(frame_nos, np.ndarray))
-        self.assertTrue(isinstance(frame_times, np.ndarray))
-        self.assertEqual(frame_data.shape, (3750, 8, 320))
-        self.assertEqual(frame_times.shape, (3750,))
-        self.assertEqual(frame_nos.shape, (3750,))
-        np.testing.assert_array_equal(frame_nos[[0, -1]], (0, 3749))
-        np.testing.assert_allclose(frame_times[[0, -1]], (-0.049971, 0.699828))
-        frame_data_expected = np.array([[[591, 590, 585], [590, 590, 590], [590, 595, 591]],
-                                        [[593, 596, 586], [590, 595, 594], [592, 602, 594]]])
-        np.testing.assert_array_equal(frame_data[[895, 1597], ::3, ::150], frame_data_expected)
+        # # Read whole movie
+        # frame_nos, frame_times, frame_data = read_movie_data_ipx(ipx_path_fn)
+        # self.assertTrue(isinstance(frame_data, np.ndarray))
+        # self.assertTrue(isinstance(frame_nos, np.ndarray))
+        # self.assertTrue(isinstance(frame_times, np.ndarray))
+        # self.assertEqual(frame_data.shape, (3750, 8, 320))
+        # self.assertEqual(frame_times.shape, (3750,))
+        # self.assertEqual(frame_nos.shape, (3750,))
+        # np.testing.assert_array_equal(frame_nos[[0, -1]], (0, 3749))
+        # np.testing.assert_allclose(frame_times[[0, -1]], (-0.049971, 0.699828))
+        # frame_data_expected = np.array([[[591, 590, 585], [590, 590, 590], [590, 595, 591]],
+        #                                 [[593, 596, 586], [590, 595, 594], [592, 602, 594]]])
+        # np.testing.assert_array_equal(frame_data[[895, 1597], ::3, ::150], frame_data_expected)
 
         # Read specific frames
         frames = [5, 150, 177, 1595, 3749]
         nframes = len(frames)
-        frame_nos, frame_times, frame_data = read_movie_data_ipx(ipx_path_fn, frame_nos=frames)
+        frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn, frame_nos=frames)
         self.assertTrue(isinstance(frame_data, np.ndarray))
         self.assertTrue(isinstance(frame_nos, np.ndarray))
         self.assertTrue(isinstance(frame_times, np.ndarray))
@@ -110,7 +109,7 @@ class TestIoIpx(unittest.TestCase):
         # Read single frame
         frames = 2678
         nframes = 1
-        frame_nos, frame_times, frame_data = read_movie_data_ipx(ipx_path_fn, frame_nos=frames)
+        frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn, frame_nos=frames)
         self.assertTrue(isinstance(frame_data, np.ndarray))
         self.assertTrue(isinstance(frame_nos, np.ndarray))
         self.assertTrue(isinstance(frame_times, np.ndarray))
@@ -123,21 +122,43 @@ class TestIoIpx(unittest.TestCase):
         np.testing.assert_array_equal(frame_data[0, ::3, ::150], frame_data_expected)
 
         with self.assertRaises(TypeError):
-            read_movie_data_ipx(None, frame_nos=frames)
+            read_movie_data(None, frame_nos=frames)
         with self.assertRaises(FileNotFoundError):
-            read_movie_data_ipx('not a path', frame_nos=frames)
+            read_movie_data('not a path', frame_nos=frames)
         with self.assertRaises(ValueError):
-            read_movie_data_ipx(ipx_path_fn, frame_nos=np.linspace(15, 30, 20))
+            read_movie_data(ipx_path_fn, frame_nos=np.linspace(15, 30, 20))
 
         # TODO test transforms
 
 # TODO: Add test for ipx2 frame data
 
+
+class TestIoIpxSlow(unittest.TestCase):
+
+    def test_get_ipx_movie_data_rir030378(self):
+        # Ipx 1 file
+        ipx_fn = 'rir030378.ipx'
+        ipx_path_fn = ipx_path / ipx_fn
+
+        # Read whole movie
+        frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn)
+        self.assertTrue(isinstance(frame_data, np.ndarray))
+        self.assertTrue(isinstance(frame_nos, np.ndarray))
+        self.assertTrue(isinstance(frame_times, np.ndarray))
+        self.assertEqual(frame_data.shape, (3750, 8, 320))
+        self.assertEqual(frame_times.shape, (3750,))
+        self.assertEqual(frame_nos.shape, (3750,))
+        np.testing.assert_array_equal(frame_nos[[0, -1]], (0, 3749))
+        np.testing.assert_allclose(frame_times[[0, -1]], (-0.049971, 0.699828))
+        frame_data_expected = np.array([[[591, 590, 585], [590, 590, 590], [590, 595, 591]],
+                                        [[593, 596, 586], [590, 595, 594], [592, 602, 594]]])
+        np.testing.assert_array_equal(frame_data[[895, 1597], ::3, ::150], frame_data_expected)
+
 def suite():
     suite = unittest.TestSuite()
     loader = unittest.TestLoader()
     # suite.addTests(loader.loadTestsFromTestCase(TestIoIpx))
-    suite.addTest(TestIoIpx.test_get_ipx_meta_data_rir030378)
+    suite.addTest(TestIoIpxFast.test_get_ipx_meta_data_rir030378)
     return suite
 
 if __name__ == '__main__':

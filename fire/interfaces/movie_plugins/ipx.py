@@ -18,6 +18,9 @@ from pyIpx.movieReader import ipxReader
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+movie_plugin_name = 'ipx'
+plugin_info = {'description': 'This plugin reads IPX1/2 format MAST movie files'}
+
 def get_freia_ipx_path(pulse, camera):
     """Return path to ipx file on UKAEA freia cluster
 
@@ -29,7 +32,7 @@ def get_freia_ipx_path(pulse, camera):
     ipx_path_fn = f"/net/fuslsa/data/MAST_IMAGES/0{pulse[0:2]}/{pulse}/{camera}0{pulse}.ipx"
     return ipx_path_fn
 
-def read_movie_meta_ipx(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
+def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
     """Read frame data from MAST IPX movie file format.
 
     :param path_fn: Path to IPX movie file
@@ -61,13 +64,19 @@ def read_movie_meta_ipx(path_fn: Union[str, Path], transforms: Iterable[str]=())
 
     # Collect summary of ipx file meta data
     # file_header['ipx_version'] = vid.ipx_type
-    meta_data = {'movie_format': '.ipx'}
-    meta_data['ipx_header'] = ipx_header
-    meta_data['frame_range'] = np.array([0, last_frame])
-    meta_data['t_range'] = np.array([float(frame_header0['time_stamp']), float(frame_header_end['time_stamp'])])
-    meta_data['frame_shape'] = frame0.shape
-    meta_data['fps'] = (last_frame) / np.ptp(meta_data['t_range'])
-    return meta_data
+    movie_meta = {'movie_format': '.ipx'}
+    movie_meta['n_frames'] = ipx_header['n_frames']
+    movie_meta['frame_range'] = np.array([0, last_frame])
+    movie_meta['t_range'] = np.array([float(frame_header0['time_stamp']), float(frame_header_end['time_stamp'])])
+    movie_meta['frame_shape'] = frame0.shape
+    movie_meta['fps'] = (last_frame) / np.ptp(movie_meta['t_range'])
+    movie_meta['lens'] = ipx_header['lens']
+    movie_meta['exposure'] = ipx_header['exposure']
+    movie_meta['bit_depth'] = ipx_header['depth']
+    # TODO: Add filter name?
+
+    movie_meta['ipx_header'] = ipx_header
+    return movie_meta
 
 def convert_ipx_header_to_uda_conventions(header: dict) -> dict:
     """
@@ -97,12 +106,12 @@ def convert_ipx_header_to_uda_conventions(header: dict) -> dict:
     # header['right'] = header.pop('left') + header.pop('width')
     return header
 
-def read_movie_data_ipx(ipx_path_fn: Union[str, Path], frame_nos: Optional[Union[Iterable, int]]=None,
-                        transforms: Optional[Iterable[str]]=()) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def read_movie_data(path_fn: Union[str, Path], frame_nos: Optional[Union[Iterable, int]]=None,
+                    transforms: Optional[Iterable[str]]=()) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Read frame data from MAST IPX movie file format.
 
-    :param ipx_path_fn: Path to IPX movie file
-    :type ipx_path_fn: str, Path
+    :param path_fn: Path to IPX movie file
+    :type path_fn: str, Path
     :param frame_nos: Frame numbers to read (should be monotonically increasing)
     :type frame_nos: Iterable[int]
     :param transforms: List of of strings describing transformations to apply to frame data. Options are:
@@ -111,10 +120,10 @@ def read_movie_data_ipx(ipx_path_fn: Union[str, Path], frame_nos: Optional[Union
     :return: frame_nos, times, data_frames,
     :type: (np.array, np.array ,np.ndarray)
     """
-    ipx_path_fn = Path(ipx_path_fn)
-    if not ipx_path_fn.exists():
+    path_fn = Path(path_fn)
+    if not path_fn.exists():
         raise FileNotFoundError(f'Ipx file not found: {ipx_path_fn}')
-    vid = ipxReader(filename=ipx_path_fn)
+    vid = ipxReader(filename=path_fn)
     ipx_header = vid.file_header
     n_frames_movie = ipx_header['numFrames']
     if frame_nos is None:
@@ -162,6 +171,6 @@ if __name__ == '__main__':
     ipx_path = Path('../../tests/test_data/mast/').resolve()
     ipx_fn = 'rir030378.ipx'
     ipx_path_fn = ipx_path / ipx_fn
-    meta_data = read_movie_meta_ipx(ipx_path_fn)
-    frame_nos, frame_times, frame_data = read_movie_data_ipx(ipx_path_fn)
+    meta_data = read_movie_meta(ipx_path_fn)
+    frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn)
     print(meta_data)

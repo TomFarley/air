@@ -17,7 +17,7 @@ setup(name='fire',
       install_requires=["numpy >= 1.12.0", "scipy", "xarray"],
       python_requires='>=3',
       setup_requires=['pytest-runner'],
-      test_suite='tests.test_suite',
+      test_suite='tests.test_suite_slow',
       tests_require=['pytest-cov'],
       zip_safe=False,
       long_description=open('README.md').read())

@@ -1,0 +1,140 @@
+{
+    "user_details": {
+        "name": null,
+        "email": null
+    },
+    "default_params": {
+        "machine": "mast",
+        "pulse": 23586,
+        "camera": "rir",
+        "pass": 0
+    },
+    "machines": {
+        "mast_u": {
+            "cameras": {
+                "rir": {
+                    "movie_plugins": [
+                        "uda",
+                        "ipx"
+                    ],
+                    "camera_aliases": [
+                        "mwir"
+                    ]
+                },
+                "rit": {
+                    "movie_plugins": [
+                        "uda",
+                        "ipx"
+                    ],
+                    "alternative_names": [
+                        "lwir"
+                    ]
+                }
+            },
+            "cad_models": [
+                {
+                    "model_name": "MAST",
+                    "model_variant": "Detailed"
+                }
+            ],
+            "pulse_range": [
+                        50000,
+                        null
+                    ]
+        },
+        "mast": {
+            "cameras": {
+                "rir": {
+                    "movie_plugins": [
+                        "uda",
+                        "ipx"
+                    ],
+                    "alternative_names": [
+                        "mwir"
+                    ]
+                },
+                "rit": {
+                    "movie_plugins": [
+                        "uda",
+                        "ipx"
+                    ],
+                    "alternative_names": [
+                        "lwir"
+                    ]
+                }
+            },
+            "cad_models": [
+                {
+                    "model_name": "MAST",
+                    "model_variant": "Detailed"
+                }
+            ],
+            "pulse_range": [
+                        0,
+                        49999
+                    ]
+        }
+    },
+    "paths_input": {
+        "movie_plugins": [
+            "{fire_path}/interfaces/movie_plugins/"
+        ],
+        "machine_plugins": [
+            "{fire_path}/interfaces/machine_plugins/"
+        ],
+        "input_file_types": [
+            "pulse_lookups",
+            "black_body_calibrations",
+            "surface_properties",
+            "calcam_calibrations"
+        ],
+        "input_files": [
+            "{fire_path}/input_files/",
+            "{fire_path}/input_files/{machine}/",
+            "~/input_files/{machine}/",
+            "~/input_files/",
+            "~/calcam/calibrations/",
+            "~/calcam2/calibrations/",
+            "~/data/calcam_calibrations/"
+        ],
+        "movie_files": [
+            "~/data/cameras/{camera}/",
+            "~/data/movies/{machine}/{pulse}/",
+            "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
+            "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/"
+        ]
+    },
+    "paths_output": {
+        "checkpoint_data": "~/.fire/checkpoint_data/"
+    },
+    "filenames_input": {
+        "movie_files": [
+            "{camera}0{pulse}.ipx"
+        ],
+        "calcam_calibs": [
+            "calcam_calibs-{machine}-{camera}-defaults.csv"
+        ],
+        "analysis_paths": [
+            "analysis_paths-{machine}-{camera}-defaults.csv"
+        ],
+        "analysis_path_dfns": [
+            "analysis_path_dfns-{machine}-{camera}-defaults.json"
+        ],
+        "black_body_curve": [
+            "bb_photons-{lens}-{exposure}us.tsv"
+        ],
+        "calib_coefs": [
+            "calib_coefs-{machine}-{camera}-{lens}-{exposure}us.tsv"
+        ],
+        "surface_props": [
+            "surface_props-{machine}-{camera}-defaults.json"
+        ]
+    },
+    "filenames_output": {
+        "raycast_checkpoint": "raycast_{calcam_calib_stem}-{image_coords}.nf"
+    },
+    "fire": {
+        "version": "2.0.0",
+        "updated": null
+    }
+}
