@@ -34,10 +34,16 @@ logger.setLevel(logging.DEBUG)
 def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_start=None, n_end=None, n_images=5,
                                  path_out='.'):
     # TODO: Switch to call plugin agnostic functions
-    # movie_meta = read_movie_meta(pulse, camera)
     print(f'Reading movie data...')
     frame_nos, frame_times, frame_data_raw = read_movie_data(pulse, camera, n_start=n_start, n_end=n_end)
     print(f'Read data for {len(frame_nos)} frames from movie {camera}, {pulse}')
+    frame_shape = np.array(frame_data_raw.shape)[1:]
+    frame_rate = 1/np.mean(np.diff(frame_times))
+    if True:
+        # movie_meta = read_movie_meta(pulse, camera)
+        print(f'Frame_rate: {frame_rate:0.1f}, image_shape: {frame_shape}')
+        # print(f'Frame_rate: {movie_meta["fps"]:0.1f}, image_shape: {movie_meta["frame_shape"]}')
+
     dl_sat = 2**14 - 1
 
     frame_data_raw = xr.DataArray(frame_data_raw,
@@ -118,6 +124,10 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
                    'Global\nequalisation', 'Adaptive\nequalisation', 'Local\nequalisation']
     annot_fontsize = 10
     annot_pos = (0.5, 0.85)
+    if np.all(frame_shape > 60):
+        aspect = None
+    else:
+        aspect = 0.7 * frame_shape[1] / frame_shape[0]
     for i, t in enumerate(selected_frames['t'].values):
         frame = selected_frames.sel(t=t)
         frame_raw = frame_data_raw.sel(t=t)
@@ -139,7 +149,7 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
         # Raw image
         i_ax = 0
         ax = axes[i_ax]
-        ax.imshow(frame_raw, cmap=cmap)
+        ax.imshow(frame_raw, cmap=cmap, aspect=aspect)
         for y, x in zip(bad_pixels[0], bad_pixels[1]):
             ax.plot(x, y, 'ro', mfc='none', mec='r', ms=8)
         annotate_axis(ax, annotations[i_ax], x=annot_pos[0], y=annot_pos[1], fontsize=annot_fontsize)
@@ -147,7 +157,7 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
         # Bad pix removed
         i_ax += 1
         ax = axes[i_ax]
-        ax.imshow(img_no_bp, cmap=cmap)
+        ax.imshow(img_no_bp, cmap=cmap, aspect=aspect)
         annotate_axis(ax, annotations[i_ax], x=annot_pos[0], y=annot_pos[1], fontsize=annot_fontsize)
 
         # NUC
@@ -156,7 +166,7 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
         # if (n_start is None) or (n_start == 0):
         #     img = img_as_float(img_nuc.astype(int))
         #     logger.warning(f'Using NUC frame as input for enhancements')
-        ax.imshow(frame_nuc, cmap=cmap)
+        ax.imshow(frame_nuc, cmap=cmap, aspect=aspect)
         annotate_axis(ax, annotations[i_ax], x=annot_pos[0], y=annot_pos[1], fontsize=annot_fontsize)
 
         # Contrast stretching 1
@@ -164,7 +174,7 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
         ax = axes[i_ax]
         p0, p1 = np.percentile(img_no_bp, (2, 98))
         img_rescale_1 = exposure.rescale_intensity(img, in_range=(p0, p1))
-        ax.imshow(img_rescale_1, cmap=cmap)
+        ax.imshow(img_rescale_1, cmap=cmap, aspect=aspect)
         annotate_axis(ax, annotations[i_ax], x=annot_pos[0], y=annot_pos[1], fontsize=annot_fontsize)
 
         # Contrast stretching 2
@@ -172,14 +182,14 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
         ax = axes[i_ax]
         p0, p1 = np.percentile(img_no_bp, (20, 98))
         img_rescale_2 = exposure.rescale_intensity(img, in_range=(p0, p1))
-        ax.imshow(img_rescale_2, cmap=cmap)
+        ax.imshow(img_rescale_2, cmap=cmap, aspect=aspect)
         annotate_axis(ax, annotations[i_ax], x=annot_pos[0], y=annot_pos[1], fontsize=annot_fontsize)
 
         # Global equalization
         i_ax += 1
         ax = axes[i_ax]
         img_eq = exposure.equalize_hist(img)
-        ax.imshow(img_eq, cmap=cmap)
+        ax.imshow(img_eq, cmap=cmap, aspect=aspect)
         annotate_axis(ax, annotations[i_ax], x=annot_pos[0], y=annot_pos[1], fontsize=annot_fontsize)
 
         # Adaptive Equalization
@@ -190,7 +200,7 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
             img_adapteq = hist_image_equalisation(img, image_equalisation_adaptive=True, clip_limit=2,
                                                   tile_grid_size=(8, 8))
             imsave(path_out / fn.format(n=n, enh='eq_adapt'), img_adapteq)
-            ax.imshow(img_adapteq, cmap=cmap)
+            ax.imshow(img_adapteq, cmap=cmap, aspect=aspect)
             annotate_axis(ax, annotations[i_ax], x=annot_pos[0], y=annot_pos[1], fontsize=annot_fontsize)
         except Exception as e:
             pass
@@ -200,10 +210,11 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
         ax = axes[i_ax]
         img_loc = rank.equalize(img, disk(20))
         imsave(path_out / fn.format(n=n, enh='eq_loc'), img_loc)
-        ax.imshow(img_loc, cmap=cmap)
+        ax.imshow(img_loc, cmap=cmap, aspect=aspect)
         annotate_axis(ax, annotations[i_ax], x=annot_pos[0], y=annot_pos[1], fontsize=annot_fontsize)
 
-        imsave(path_out / fn.format(n=n, enh='rescale'), img_rescale_1)
+        imsave(path_out / fn.format(n=n, enh='rescale_1'), img_rescale_1)
+        imsave(path_out / fn.format(n=n, enh='rescale_2'), img_rescale_2)
         imsave(path_out / fn.format(n=n, enh='eq_glob'), img_eq)
 
         for ax in axes:
@@ -217,11 +228,21 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
 
 if __name__ == '__main__':
     # pulse = 30378
-    # pulse = 23586  # ref
+    # pulse = 28866  # Low power
+    # pulse = 29210  # High power
+    # pulse = 30378  # High ELM surface temperatures ~450 C
+
+    # Full frame air:
+    # pulse = 23586  # Full frame with clear spatial calibration - ref
+    pulse = 28911
     # pulse = 29936
     # pulse = 30458
     # pulse = 29934
-    pulse = 30009
+    # pulse = 30009
+
+    # Full frame ait:
+    # pulse = 30459
+    # pulse = 30458
 
 
     camera = 'rir'
@@ -232,7 +253,10 @@ if __name__ == '__main__':
     # n_end = 3500
     # n_start = 0
     # n_end = 110
-    path_out = Path('./calibration_images/{camera}/{pulse}')
+    # n_images = 4
+    n_images = 15
+    # path_out = Path('./calibration_images/{camera}/{pulse}')
+    path_out = Path('~/calcam2/input_images/{camera}/{pulse}').expanduser()
     generate_calcam_calib_images(pulse=pulse, camera=camera, machine='mast', n_start=n_start, n_end=n_end,
-                                 path_out=path_out, n_images=3)
+                                 path_out=path_out, n_images=n_images)
     pass
