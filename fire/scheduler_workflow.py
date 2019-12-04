@@ -163,8 +163,8 @@ if __name__ == '__main__':
     # pulse = 30378
     # camera = 'rit'
     pulse = 23586  # Full frame with clear spatial calibration
-    # pulse = 28866  # Low power
-    # pulse = 29210  # High power
+    # pulse = 28866  # Low power, (8x320)
+    # pulse = 29210  # High power, (8x320)
     # pulse = 30378  # High ELM surface temperatures ~450 C
     camera = 'rir'
     pass_no = 0
