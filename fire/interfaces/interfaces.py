@@ -96,8 +96,8 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
         raycast_checkpoint_fn = fn_pattern_output[checkpoint].format(**params)
         checkpoint_path_fn = checkpoint_path / checkpoint / raycast_checkpoint_fn
         files[checkpoint] = checkpoint_path_fn
-        if not checkpoint_path_fn.parent.is_dir():
-            checkpoint_path_fn.parent.mkdir()
+        checkpoint_path_fn.parent.mkdir(parents=True, exists_ok=True)
+
 
     # TODO: check path characters are safe (see setpy datafile code)
 
