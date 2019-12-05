@@ -45,7 +45,7 @@ if pyuda is not None:
             meta_data = read_movie_meta(pulse, camera)
 
             self.assertTrue(isinstance(meta_data, dict))
-            self.assertEqual(len(meta_data), 6)
+            self.assertEqual(len(meta_data), 10)
 
             self.assertTrue(np.all(meta_data['frame_range'] == np.array([0, 3749])))
             self.assertTrue(np.all(meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
@@ -67,7 +67,7 @@ if pyuda is not None:
             meta_data = read_movie_meta(pulse, camera, n_start, n_end)
 
             self.assertTrue(isinstance(meta_data, dict))
-            self.assertEqual(len(meta_data), 6)
+            self.assertEqual(len(meta_data), 10)
 
             self.assertTrue(np.all(meta_data['frame_range'] == np.array([n_start, n_end])))
             np.testing.assert_almost_equal(meta_data['t_range'], np.array([-0.029971, -0.027971]))
@@ -113,7 +113,7 @@ if pyuda is not None:
             ipx_meta_data = read_movie_meta(pulse, camera)
 
             self.assertTrue(isinstance(ipx_meta_data, dict))
-            self.assertEqual(len(ipx_meta_data), 6)
+            self.assertEqual(len(ipx_meta_data), 10)
 
             self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 624])))
             self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.049949,  0.69885])))
@@ -213,14 +213,15 @@ if pyuda is not None:
             self.assertTrue(isinstance(frame_data, np.ndarray))
             self.assertTrue(isinstance(frame_nos, np.ndarray))
             self.assertTrue(isinstance(frame_times, np.ndarray))
-            self.assertEqual(frame_data.shape, (3750, 8, 320))
-            self.assertEqual(frame_times.shape, (3750,))
-            self.assertEqual(frame_nos.shape, (3750,))
-            np.testing.assert_array_equal(frame_nos[[0, -1]], (0, 3749))
-            np.testing.assert_allclose(frame_times[[0, -1]], (-0.049971, 0.699828))
-            frame_data_expected = np.array([[[591, 590, 585], [590, 590, 590], [590, 595, 591]],
-                                            [[593, 596, 586], [590, 595, 594], [592, 602, 594]]])
-            np.testing.assert_array_equal(frame_data[[895, 1597], ::3, ::150], frame_data_expected)
+            # self.assertEqual(frame_data.shape, (3750, 8, 320))
+            self.assertEqual(frame_data.shape, (625, 32, 256))
+            self.assertEqual(frame_times.shape, (625,))
+            self.assertEqual(frame_nos.shape, (625,))
+            np.testing.assert_array_equal(frame_nos[[0, -1]], (0, 624))
+            np.testing.assert_allclose(frame_times[[0, -1]], (-0.049949,  0.69885))
+            frame_data_expected = np.array([[[6296., 6401.], [6313., 6431.], [6252., 6412.]],
+                                            [[6307., 6411.], [6320., 6436.], [6260., 6420.]]])
+            np.testing.assert_array_equal(frame_data[[295, 597], ::15, ::150], frame_data_expected)
 
             # Read frame range
             n_start, n_end = 100, 110

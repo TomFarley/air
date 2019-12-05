@@ -1,8 +1,8 @@
 import unittest
 
-from .unit import test_io_uda
-from .unit import test_io_ipx
-from .unit import test_interfaces, test_calcam, test_utils
+from unit import test_io_uda
+from unit import test_io_ipx
+from unit import test_interfaces, test_calcam, test_utils
 
 try:
     import pyuda

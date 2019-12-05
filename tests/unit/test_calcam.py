@@ -14,7 +14,7 @@ pwd = Path(__file__).parent
 class TestCalcam(unittest.TestCase):
 
     def test_get_calcam_calib_info(self):
-        inputs = {'pulse': 30378, 'camera': 'rit', 'machine': 'MAST', 'search_paths': pwd/'../test_data'}
+        inputs = {'pulse': 30378, 'camera': 'rit', 'machine': 'MAST', 'search_paths': pwd/'../test_data/mast'}
         out = get_calcam_calib_info(**inputs)
         expected = pd.Series({'pulse_start': 0,
                              'pulse_end': 49999,

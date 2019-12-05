@@ -32,7 +32,7 @@ class TestIoIpxFast(unittest.TestCase):
         ipx_meta_data = read_movie_meta(ipx_path_fn)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
-        self.assertEqual(len(ipx_meta_data), 6)
+        self.assertEqual(len(ipx_meta_data), 10)
 
         self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 3749])))
         self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
@@ -56,7 +56,7 @@ class TestIoIpxFast(unittest.TestCase):
         ipx_meta_data = read_movie_meta(ipx_path_fn)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
-        self.assertEqual(len(ipx_meta_data), 6)
+        self.assertEqual(len(ipx_meta_data), 10)
 
         self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 623])))
         self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.048749,  0.69885 ])))
