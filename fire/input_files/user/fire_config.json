@@ -126,8 +126,11 @@
         "calib_coefs": [
             "calib_coefs-{machine}-{camera}-{lens}-{exposure}us.tsv"
         ],
+        "surface_coords": [
+            "surface_coords-{machine}-default.csv"
+        ],
         "surface_props": [
-            "surface_props-{machine}-{camera}-defaults.json"
+            "surface_props-{machine}-defaults.json"
         ]
     },
     "filenames_output": {

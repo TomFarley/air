@@ -69,8 +69,9 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
         if not path_fn.is_file():
             raise IOError(f'Required input file "{path_fn}" does not exist')
 
-    # Get filenames straight from config settings: Analysis path definition file
-    input_files = ['analysis_path_dfns', 'black_body_curve', 'calib_coefs']
+    # Get filenames straight from config settings: Analysis path definition file, bb photons, temperature coefs,
+    # surface coords, surface properties
+    input_files = ['analysis_path_dfns', 'black_body_curve', 'calib_coefs', 'surface_coords']
     for input_file in input_files:
         fn_patterns = fn_patterns_inputs[input_file]
         try:
@@ -365,7 +366,7 @@ def read_csv(path_fn: Union[Path, str], **kwargs):
         else:
             kwargs['sep'] = None  # Use csv.Sniffer tool
     try:
-        table = pd.read_csv(path_fn, **kwargs)
+        table = pd.read_csv(path_fn, **kwargs)  # index_col
     except FileNotFoundError:
         return FileNotFoundError(f'CSV file does not exist: {path_fn}')
     return table

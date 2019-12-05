@@ -21,6 +21,7 @@ from fire.interfaces.interfaces import (check_settings_complete, get_compatible_
                                         json_load, read_csv, lookup_pulse_row_in_csv,
                                         read_movie_meta_data, read_movie_data, generate_pulse_id_strings)
 from fire.interfaces.calcam_calibs import get_surface_coords, project_analysis_path, apply_frame_display_transformations
+from fire.geometry import identify_visible_structures, load_tile_properties
 from fire.utils import update_call_args, movie_data_to_xarray
 from fire.nuc import get_nuc_frame, apply_nuc_correction
 from fire.data_quality import identify_saturated_frames
@@ -117,6 +118,14 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # TODO: Segment/mask image if contains sub-views
 
+    # TODO: Segment image according to tiles/material properties
+    surface_coords = read_csv(files['surface_coords'], sep=', ', index_col='structure')
+    r, phi, z = data['R_im'], data['phi_im'], data['z_im']
+    surface_ids, visible_surfaces = identify_visible_structures(r, phi, z, surface_coords, phi_in_deg=False)
+    data['surface_id'] = (('y_pix', 'x_pix'), surface_ids)
+    data.attrs['visible_surfaces'] = visible_surfaces
+    # tile_properties = load_tile_properties()
+
     # Detect saturated pixels
     saturated_frames = identify_saturated_frames(frame_data, bit_depth=movie_meta['bit_depth'], raise_on_saturated=False)
 
@@ -135,14 +144,15 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # nuc_frame = get_nuc_frame(origin={'n': [None, None]}, frame_data=frame_data, reduce_func='min')
     frame_data_nuc = apply_nuc_correction(frame_data, nuc_frame, raise_on_negatives=False)
     data['frame_data_nuc'] = frame_data_nuc
-    # TODO: Segment image according to tiles/material properties
 
+
+    # TODO: Read temp_bg from file
+    temp_bg=23
     # TODO: Convert raw DL to temperature
     bb_curve = read_csv(files['black_body_curve'], index_col='temperature_celcius')
     calib_coefs = lookup_pulse_row_in_csv(files['calib_coefs'], pulse=pulse, header=4)
-    # TODO: Read temp_bg from file
     data['frame_temperature'] = dl_to_temerature(frame_data_nuc, calib_coefs, bb_curve,
-                                                 exposure=movie_meta['exposure'], temp_bg=23)
+                                                 exposure=movie_meta['exposure'], temp_bg=temp_bg)
 
     # TODO: Temporal smoothing of temperature
 
