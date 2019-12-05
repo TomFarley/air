@@ -30,6 +30,7 @@ stages:
 #    - pip install --user --upgrade pip  # breaks
     - pip install --user --upgrade setuptools pytest-cov
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user git+https://github.com/euratom-software/calcam.git
     - pip install --user .
 
 .my_template: &PREPARE_TESTING_UBUNTU
@@ -41,6 +42,7 @@ stages:
     - apt-get install -y  python3-pip
     - pip install --user --upgrade pip setuptools
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user git+https://github.com/euratom-software/calcam.git
     - apt-get install -y libopenjp2-7
     - pip install --user pytest-cov
 #    - pip install --user git+git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
@@ -66,6 +68,7 @@ stages:
     script:
     - pwd
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user git+https://github.com/euratom-software/calcam.git
     - apt-get install -y libopenjp2-7
     - pip install --user .
 
