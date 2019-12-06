@@ -5,6 +5,7 @@ include = fire/*
 
 omit =
     **/__init__.py
+    */theodor/*
 
 # branch = True
 
