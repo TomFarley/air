@@ -21,11 +21,13 @@ from fire.interfaces.interfaces import (check_settings_complete, get_compatible_
                                         json_load, read_csv, lookup_pulse_row_in_csv,
                                         read_movie_meta_data, read_movie_data, generate_pulse_id_strings)
 from fire.interfaces.calcam_calibs import get_surface_coords, project_analysis_path, apply_frame_display_transformations
+from fire.camera_shake import calc_camera_shake_displacements, remove_camera_shake
 from fire.geometry import identify_visible_structures, load_tile_properties
 from fire.utils import update_call_args, movie_data_to_xarray
 from fire.nuc import get_nuc_frame, apply_nuc_correction
 from fire.data_quality import identify_saturated_frames
 from fire.temperature import dl_to_temerature
+from fire.heat_flux import calc_heatflux
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -88,11 +90,20 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # Load raw frame data
     frame_nos, frame_times, frame_data, movie_origin = read_movie_data(pulse, camera, machine, movie_plugins,
                                                         movie_paths=movie_paths, movie_fns=movie_fns, verbose=True)
-    # Apply transformations (rotate, flip etc.) to get images "right way up"
+
+    # Apply transformations (rotate, flip etc.) to get images "right way up" if requested
     frame_data = apply_frame_display_transformations(frame_data, calcam_calib, image_coords)
 
     frame_data = movie_data_to_xarray(frame_data, frame_times, frame_nos)
     data = xr.merge([data, frame_data])
+
+    # Fix camera shake
+    # TODO: Consider using alternative to first frame for reference, as want bright clear frame with NUC shutter
+    pixel_displacemnts, shake_stats = calc_camera_shake_displacements(frame_data, frame_data[0], verbose=True)
+    pixel_displacemnts = xr.DataArray(pixel_displacemnts, coords={'n': data['n'], 'pixel_coord': ['x', 'y']},
+                                                                  dims=['n', 'pixel_coord'])
+    data['pixel_displacements'] = pixel_displacemnts
+    data['frame_data'] = remove_camera_shake(frame_data, pixel_displacements=pixel_displacemnts, verbose=True)
 
     # Get calcam raycast
     raycast_checkpoint_path_fn = files['raycast_checkpoint']
@@ -133,10 +144,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # TODO: Detect anommalies
 
-    # TODO: Fix camera shake
-    # mov = calcam.movement.detect_movement(calcam_calib, moved_im)
-    # corrected_image, mask = mov.warp_moved_to_ref(moved_im)
-    # updated_calib = calcam.movement.update_calibration(my_calib, moved_im, mov)
+
 
     # Apply NUC correction
     # nuc_frame = get_nuc_frame(origin='first_frame', frame_data=frame_data)
@@ -161,9 +169,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
 
     # TODO: Calculate physics parameters
+    # calc_heatflux()
 
-
-    # TODO: Write output file
+    # TODO: Write output file - call machine specific plugin
 
     print(f'Finished scheduler workflow')
     return 0
