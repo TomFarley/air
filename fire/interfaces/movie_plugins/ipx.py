@@ -70,9 +70,9 @@ def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> 
     movie_meta['t_range'] = np.array([float(frame_header0['time_stamp']), float(frame_header_end['time_stamp'])])
     movie_meta['frame_shape'] = frame0.shape
     movie_meta['fps'] = (last_frame) / np.ptp(movie_meta['t_range'])
-    movie_meta['lens'] = ipx_header['lens']
     movie_meta['exposure'] = ipx_header['exposure']
     movie_meta['bit_depth'] = ipx_header['depth']
+    movie_meta['lens'] = ipx_header['lens'] if 'lens' in ipx_header else None
     # TODO: Add filter name?
 
     movie_meta['ipx_header'] = ipx_header
@@ -122,7 +122,7 @@ def read_movie_data(path_fn: Union[str, Path], frame_nos: Optional[Union[Iterabl
     """
     path_fn = Path(path_fn)
     if not path_fn.exists():
-        raise FileNotFoundError(f'Ipx file not found: {ipx_path_fn}')
+        raise FileNotFoundError(f'Ipx file not found: {path_fn}')
     vid = ipxReader(filename=path_fn)
     ipx_header = vid.file_header
     n_frames_movie = ipx_header['numFrames']
