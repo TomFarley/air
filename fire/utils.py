@@ -118,7 +118,7 @@ def make_iterable(obj: Any, ndarray: bool=False,
 def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
                 path_kws: Optional[dict]=None, fn_kws: Optional[dict]=None,
                 return_raw_path: bool=False, return_raw_fn: bool=False,
-                _raise: bool=True, verbose: Union[bool, int]=False) \
+                raise_: bool=True, verbose: Union[bool, int]=False) \
                 -> Union[Tuple[Path, str], Tuple[str, str], Tuple[None, None]]:
     """Return path to file given number of possible paths
 
@@ -130,7 +130,7 @@ def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
         fn_kws              : Values to substitute into filename format strings
         return_raw_path     : Return path without 'path_kws' substitutions
         return_raw_fn       : Return filename without 'fn_kws' substitutions
-        _raise              : Raise an exception if the file is not located
+        raise_              : Raise an exception if the file is not located
         verbose             : Log whether or not the file was located
 
     Returns: (path, filename) / (None, None)
@@ -151,7 +151,7 @@ def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
         try:
             path = path_raw.format(**path_kws)
         except KeyError as e:
-                raise ValueError(f'Cannot locate file  without value for "{e.args[0]}": "{path_raw}", {path_kws}"')
+                raise ValueError(f'Cannot locate file without value for "{e.args[0]}": "{path_raw}", {path_kws}"')
         try:
             path = Path(path).expanduser()
         except RuntimeError as e:
@@ -179,8 +179,8 @@ def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
             break
     else:
         # File not located
-        message = f'Failed to locate file with formats: {fns} in paths "{paths}", with fn_kws: {fn_kws}'
-        if _raise:
+        message = f'Failed to locate file with formats: {fns} in paths:\n"{paths}"\nwith fn_kws:\n{fn_kws}'
+        if raise_:
             raise FileNotFoundError(message)
         if verbose:
             logger.warning(message)
@@ -214,8 +214,8 @@ def locate_files(paths: Iterable[Union[str, Path]], fns: Iterable[str],
     for path in paths:
         for fn in fns:
             p, f = locate_file(path, fn, path_kws=path_kws, fn_kws=fn_kws, return_raw_path=return_raw_path,
-                               return_raw_fn=return_raw_fn, _raise=raise_, verbose=verbose)
-            if f is not None:
+                               return_raw_fn=return_raw_fn, raise_=raise_, verbose=verbose)
+            if isinstance(f, (Path, str)):
                 files_located.append(Path(p)/f)
     return files_located
 
