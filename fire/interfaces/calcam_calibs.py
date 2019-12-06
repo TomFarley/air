@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import calcam
 from fire import fire_paths
 from fire.utils import locate_file
+from fire.interfaces.interfaces import lookup_pulse_row_in_csv
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
