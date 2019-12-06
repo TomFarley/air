@@ -43,7 +43,7 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
                              "surface_props": ["surface_props-{machine}-{camera}-defaults.json"]}
     if params is None:
         params = {}
-    params.update({'pulse': pulse, 'camera': camera, 'machine': machine, 'fire_path': fire_paths['root']})
+    params.update({'pulse': pulse, 'camera': camera, 'machine': machine, 'fire_path': str(fire_paths['root'])})
 
     files = {}
     # Locate lookup files and info for pulse
@@ -51,7 +51,8 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
     lookup_info = {}
     for file_type in lookup_files:
         path, fn, info = lookup_pulse_info(pulse, camera, machine, params=params,
-                                           search_paths=search_paths_inputs, filename_patterns=fn_patterns_inputs[file_type])
+                                    search_paths=search_paths_inputs, filename_patterns=fn_patterns_inputs[file_type],
+                                    file_type=file_type)
         files[f'{file_type}_lookup'] = path / fn
         lookup_info[file_type] = info
 
@@ -112,7 +113,8 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
 #     return path
 
 def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_paths=None, movie_fns=None):
-    kwargs = {'machine': machine, 'camera': camera, 'pulse': pulse, 'pulse_prefix': str(pulse)[0:2]}
+    kwargs = {'machine': machine, 'camera': camera, 'pulse': pulse, 'pulse_prefix': str(pulse)[0:2],
+              'fire_path': str(fire_paths['root'])}
     data, origin = None, None
     for plugin_name, movie_plugin in movie_plugins.items():
         read_movie_func = movie_plugin[plugin_key]
@@ -342,18 +344,21 @@ def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, **kwargs_csv)
     :return: Pandas Series containing pulse information / Exception if unsuccessful
     """
     table = read_csv(path_fn, **kwargs_csv)
-    if not np.all([col in list(table.columns) for col in ['pulse_start', 'pulse_end']]):
-        raise IOError(f'Unsupported pulse row CSV file format - '
-                      f'must contain "pulse_start", "pulse_end" columns: {path_fn}')
-    table = table.astype({'pulse_start': int, 'pulse_end': int})
-    row_mask = np.logical_and(table['pulse_start'] <= pulse, table['pulse_end'] >= pulse)
-    if np.sum(row_mask) > 1:
-        raise ValueError(f'Calcam calib lookup file contains overlapping ranges. Please fix: {path_fn}')
-    elif np.sum(row_mask) == 0:
-        pulse_ranges = list(zip(table['pulse_start'], table['pulse_end']))
-        return ValueError(f'Pulse {pulse} does not fall in any pulse range {pulse_ranges} in {path_fn}')
+    if isinstance(table, Exception):
+        calib_info = table
     else:
-        calib_info = table.loc[row_mask].iloc[0]
+        if not np.all([col in list(table.columns) for col in ['pulse_start', 'pulse_end']]):
+            raise IOError(f'Unsupported pulse row CSV file format - '
+                          f'must contain "pulse_start", "pulse_end" columns: {path_fn}')
+        table = table.astype({'pulse_start': int, 'pulse_end': int})
+        row_mask = np.logical_and(table['pulse_start'] <= pulse, table['pulse_end'] >= pulse)
+        if np.sum(row_mask) > 1:
+            raise ValueError(f'Calcam calib lookup file contains overlapping ranges. Please fix: {path_fn}')
+        elif np.sum(row_mask) == 0:
+            pulse_ranges = list(zip(table['pulse_start'], table['pulse_end']))
+            return ValueError(f'Pulse {pulse} does not fall in any pulse range {pulse_ranges} in {path_fn}')
+        else:
+            calib_info = table.loc[row_mask].iloc[0]
     return calib_info
 
 def read_csv(path_fn: Union[Path, str], **kwargs):
@@ -362,7 +367,7 @@ def read_csv(path_fn: Union[Path, str], **kwargs):
         if path_fn.suffix == '.csv':
             kwargs['sep'] = ','
         elif path_fn.suffix == '.tsv':
-            kwargs['sep'] = '\s+'
+            kwargs['sep'] = r'\s+'
         else:
             kwargs['sep'] = None  # Use csv.Sniffer tool
     try:
@@ -372,7 +377,8 @@ def read_csv(path_fn: Union[Path, str], **kwargs):
     return table
 
 def lookup_pulse_info(pulse: Union[int, str], camera: str, machine: str, search_paths: PathList,
-                          filename_patterns: Union[str, Path], params: Optional[dict]=None, raise_=True) -> pd.Series:
+                          filename_patterns: Union[str, Path], params: Optional[dict]=None,
+                          file_type: Optional[str]=None, raise_=True) -> pd.Series:
     """Extract information from pulse look up file
 
     Args:
@@ -389,7 +395,15 @@ def lookup_pulse_info(pulse: Union[int, str], camera: str, machine: str, search_
     """
     params = {} if params is None else params
     params.update({'pulse': pulse, 'camera': camera, 'machine': machine})
-    path, fn = locate_file(search_paths, fns=filename_patterns, path_kws=params, fn_kws=params)
+    try:
+        path, fn = locate_file(search_paths, fns=filename_patterns, path_kws=params, fn_kws=params, raise_=True)
+    except FileNotFoundError as e:
+        message = (f'Failed to locate "{file_type}" pulse lookup file for '
+                   f'machine="{machine}", camera="{camera}", pulse="{pulse}"\n{str(e)}')
+        if raise_:
+            raise FileNotFoundError(message)
+        else:
+            return None, None, message
     info = lookup_pulse_row_in_csv(path/fn, pulse)
     if raise_ and isinstance(info, Exception):
         raise info
