@@ -1,8 +1,19 @@
-import unittest
+"""
 
-from unit import test_io_uda
-from unit import test_io_ipx
-from unit import test_interfaces, test_calcam, test_utils
+For inmports to resolve, run test suite from top level air directory (not from tests directory) ie:
+~/repos/air $ ipython tests/test_suite_fast.py   OR
+~/repos/air $ python setup.py test
+"""
+
+import unittest, sys
+from pathlib import Path
+# print('file:', __file__, 'name:', __name__, 'package:', __package__)
+# print(sys.path)
+# print(Path('.').resolve())
+# print(Path(__file__).resolve())
+from tests.unit import test_io_uda
+from tests.unit import test_io_ipx
+from tests.unit import test_interfaces, test_calcam, test_utils, test_camera_shake
 
 try:
     import pyuda
@@ -23,6 +34,7 @@ suite.addTests(loader.loadTestsFromTestCase(test_io_ipx.TestIoIpxFast))
 suite.addTests(loader.loadTestsFromModule(test_interfaces))
 suite.addTests(loader.loadTestsFromModule(test_calcam))
 suite.addTests(loader.loadTestsFromModule(test_utils))
+suite.addTests(loader.loadTestsFromModule(test_camera_shake))
 
 # initialize a runner, pass it your suite and run it
 runner = unittest.TextTestRunner(verbosity=3)

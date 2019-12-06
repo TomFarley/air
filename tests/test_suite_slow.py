@@ -1,7 +1,13 @@
+"""
+For inmports to resolve, run test suite from top level air directory (not from tests directory) ie:
+~/repos/air $ ipython tests/test_suite_fast.py     OR
+~/repos/air $ python setup.py test      
+"""
+
 import unittest
 
-from unit import test_io_uda, test_io_ipx
-from unit import test_interfaces, test_calcam, test_utils
+from tests.unit import test_io_uda, test_io_ipx
+from tests.unit import test_interfaces, test_calcam, test_utils
 
 # initialize the test suite
 loader = unittest.TestLoader()
