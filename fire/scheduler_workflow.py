@@ -22,7 +22,7 @@ from fire.interfaces.interfaces import (check_settings_complete, get_compatible_
                                         read_movie_meta_data, read_movie_data, generate_pulse_id_strings)
 from fire.interfaces.calcam_calibs import get_surface_coords, project_analysis_path, apply_frame_display_transformations
 from fire.camera_shake import calc_camera_shake_displacements, remove_camera_shake
-from fire.geometry import identify_visible_structures, load_tile_properties
+from fire.geometry import identify_visible_structures, load_material_properties
 from fire.utils import update_call_args, movie_data_to_xarray
 from fire.nuc import get_nuc_frame, apply_nuc_correction
 from fire.data_quality import identify_saturated_frames
@@ -129,13 +129,14 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # TODO: Segment/mask image if contains sub-views
 
-    # TODO: Segment image according to tiles/material properties
+    # Identify material surfaces in view
     surface_coords = read_csv(files['surface_coords'], sep=', ', index_col='structure')
     r, phi, z = data['R_im'], data['phi_im'], data['z_im']
     surface_ids, visible_surfaces = identify_visible_structures(r, phi, z, surface_coords, phi_in_deg=False)
     data['surface_id'] = (('y_pix', 'x_pix'), surface_ids)
     data.attrs['visible_surfaces'] = visible_surfaces
-    # tile_properties = load_tile_properties()
+    material_properties = load_material_properties(visible_surfaces)
+    # TODO: Segment path according to changes in tile properties
 
     # Detect saturated pixels
     saturated_frames = identify_saturated_frames(frame_data, bit_depth=movie_meta['bit_depth'], raise_on_saturated=False)

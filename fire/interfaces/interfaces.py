@@ -72,7 +72,7 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
 
     # Get filenames straight from config settings: Analysis path definition file, bb photons, temperature coefs,
     # surface coords, surface properties
-    input_files = ['analysis_path_dfns', 'black_body_curve', 'calib_coefs', 'surface_coords']
+    input_files = ['analysis_path_dfns', 'black_body_curve', 'calib_coefs', 'structure_coords']
     for input_file in input_files:
         fn_patterns = fn_patterns_inputs[input_file]
         try:
