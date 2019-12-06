@@ -24,3 +24,10 @@ pd.options.display.max_rows = 60
 pd.options.display.max_columns = 500
 
 xr.set_options(**{'cmap_sequential': 'gray'})
+
+# Import FIRE sub-modules
+from .interfaces import interfaces
+# from .theodor import theo_mul_33 as theodor
+
+# from .. import tests
+# from ..tests impoort unit
