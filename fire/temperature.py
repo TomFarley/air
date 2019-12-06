@@ -45,8 +45,8 @@ def dl_to_temerature(frame_data, calib_coefs, bb_curve, exposure, temp_bg=23):
     # then determine the temperature using the photon counts plus the bckg.
     frame_temps = xr.apply_ufunc(f_temp, frame_photons+phot_bg)
     frame_temps.name = 'frame_temps'
-    frame_temps.attrs.update({'long_name': '$T$',
-                              'units': '$^\circ C$',
+    frame_temps.attrs.update({'long_name': r'$T$',
+                              'units': r'$^\circ C$',
                               'description': 'Surface temperature observed by each pixel'})
     return frame_temps
 
