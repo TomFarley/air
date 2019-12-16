@@ -39,8 +39,8 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
     if fn_patterns_inputs is None:
         # TODO: UPDATE
         fn_patterns_inputs = {"calcam_calibs": ["calcam_calibs-{machine}-{camera}-defaults.csv"],
-                             "analysis_paths": ["analysis_paths-{machine}-{camera}-defaults.json"],
-                             "surface_props": ["surface_props-{machine}-{camera}-defaults.json"]}
+                              "analysis_paths": ["analysis_paths-{machine}-{camera}-defaults.json"],
+                              "surface_props": ["surface_props-{machine}-{camera}-defaults.json"]}
     if params is None:
         params = {}
     params.update({'pulse': pulse, 'camera': camera, 'machine': machine, 'fire_path': str(fire_paths['root'])})
@@ -51,14 +51,14 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
     lookup_info = {}
     for file_type in lookup_files:
         path, fn, info = lookup_pulse_info(pulse, camera, machine, params=params,
-                                    search_paths=search_paths_inputs, filename_patterns=fn_patterns_inputs[file_type],
-                                    file_type=file_type)
+                                           search_paths=search_paths_inputs, filename_patterns=fn_patterns_inputs[file_type],
+                                           file_type=file_type)
         files[f'{file_type}_lookup'] = path / fn
         lookup_info[file_type] = info
 
     # Get filenames referenced from lookup files: Calcam calibration file
     lookup_references = [['calcam_calib', 'calcam_calibs', 'calcam_calibration_file'],]
-                   # ['analysis_path_dfn', 'analysis_path_dfns', 'analysis_path_name']]
+    # ['analysis_path_dfn', 'analysis_path_dfns', 'analysis_path_name']]
     for name, file_type, column in lookup_references:
         calcam_calib_fn = lookup_info[file_type][column]
         try:
@@ -72,7 +72,7 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
 
     # Get filenames straight from config settings: Analysis path definition file, bb photons, temperature coefs,
     # surface coords, surface properties
-    input_files = ['analysis_path_dfns', 'black_body_curve', 'calib_coefs', 'structure_coords']
+    input_files = ['analysis_path_dfns', 'black_body_curve', 'calib_coefs', 'structure_coords', 'material_props']
     for input_file in input_files:
         fn_patterns = fn_patterns_inputs[input_file]
         try:
@@ -81,10 +81,6 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
             raise FileNotFoundError(f'Could not locate fire input file for "{file_type}":\n{str(e)}')
         path_fn = path / fn
         files[input_file] = path_fn
-
-    # Black body calibration file
-
-    # Surface properties file
 
     # Checkpoint intermediate output files to speed up analysis
     # checkpoint_path = setup_checkpoint_path(paths_output['checkpoint_data'])
@@ -95,11 +91,17 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
     # Calcam raycast checkpoint
     checkpoints = ['raycast_checkpoint']
     for checkpoint in checkpoints:
-        raycast_checkpoint_fn = fn_pattern_output[checkpoint].format(**params)
-        checkpoint_path_fn = checkpoint_path / checkpoint / raycast_checkpoint_fn
+        checkpoint_fn = fn_pattern_output[checkpoint].format(**params)
+        checkpoint_path_fn = checkpoint_path / checkpoint / checkpoint_fn
         files[checkpoint] = checkpoint_path_fn
         checkpoint_path_fn.parent.mkdir(parents=True, exist_ok=True)
 
+    # Output filenames
+    outputs = ['processed_ir_netcdf']
+    for output in outputs:
+        output_fn = fn_pattern_output[output].format(**params)
+        # TODO: Set output path with config file/run argument?
+        files[output] = Path('.') / output_fn
 
     # TODO: check path characters are safe (see setpy datafile code)
 
@@ -284,7 +286,8 @@ def json_load(path_fn, fn=None, keys=None):
     Args:
         path_fn : Path to json file
         fn      : Optional filename to append to path
-        keys    : Optional keys to subset of contents to return
+        keys    : Optional keys to subset of contents to return. Each element of keys should be an itterable
+                  specifiying a key path through the json file
 
     Returns: Contents of json file
 
@@ -299,15 +302,23 @@ def json_load(path_fn, fn=None, keys=None):
             contents = json.load(f)
     except Exception as e:
         raise e
-    out = contents
     # Return indexed subset of file
     if keys is not None:
         keys = make_iterable(keys)
-        for key in keys:
-            try:
-                out = out[key]
-            except KeyError as e:
-                raise KeyError(f'json file ({path_fn}) does not contain key "{key}" in {out}')
+        out = {}
+        for key_path in keys:
+            key_path = make_iterable(key_path)
+            subset = contents
+            for key in key_path:
+                try:
+                    subset = subset[key]
+                except KeyError as e:
+                    raise KeyError(f'json file ({path_fn}) does not contain key "{key}" in key path {key_path}:\n'
+                                   f'{subset}')
+            out[key_path[-1]] = subset
+
+    else:
+        out = contents
     return out
 
 def two_level_dict_to_multiindex_df(d):
