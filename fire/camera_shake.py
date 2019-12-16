@@ -19,6 +19,61 @@ import cv2
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+def calc_camera_shake_rotation(frames: Union[xr.DataArray, np.ndarray],
+                               frame_reference: Union[xr.DataArray, np.ndarray],
+                                    method='phase_correlation',
+                                    verbose=False):  # pragma: no cover
+    """
+    https://www.learnopencv.com/image-alignment-ecc-in-opencv-c-python/
+    Args:
+        frames:
+        frame_reference:
+        method:
+        verbose:
+
+    Returns:
+
+    """
+
+    def get_gradient(im):
+        # Calculate the x and y gradients using Sobel operator
+        grad_x = cv2.Sobel(im, cv2.CV_32F, 1, 0, ksize=3)
+        grad_y = cv2.Sobel(im, cv2.CV_32F, 0, 1, ksize=3)
+
+        # Combine the two gradients
+        grad = cv2.addWeighted(np.absolute(grad_x), 0.5, np.absolute(grad_y), 0.5, 0)
+        return grad
+    # Define the motion model
+    warp_mode = cv2.MOTION_TRANSLATION
+
+    # Define 2x3 or 3x3 matrices and initialize the matrix to identity
+    if warp_mode == cv2.MOTION_HOMOGRAPHY :
+        warp_matrix = np.eye(3, 3, dtype=np.float32)
+    else :
+        warp_matrix = np.eye(2, 3, dtype=np.float32)
+
+    # Specify the number of iterations.
+    number_of_iterations = 5000
+
+    # Specify the threshold of the increment
+    # in the correlation coefficient between two iterations
+    termination_eps = 1e-10
+
+    # Define termination criteria
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, number_of_iterations,  termination_eps)
+
+    (cc, warp_matrix) = cv2.findTransformECC(get_gradient(frames), get_gradient(frame_reference),
+                                             warp_matrix, warp_mode, criteria)
+
+    if warp_mode == cv2.MOTION_HOMOGRAPHY:
+        # Use warpPerspective for Homography
+        im2_aligned = cv2.warpPerspective(im2, warp_matrix, (sz[1], sz[0]),
+                                          flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP)
+    else:
+        # Use warpAffine for Translation, Euclidean and Affine
+        im2_aligned = cv2.warpAffine(im2, warp_matrix, (sz[1], sz[0]), flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP);
+
+
 def calc_camera_shake_displacements(frames: Union[xr.DataArray, np.ndarray],
                                     frame_reference: Union[xr.DataArray, np.ndarray],
                                     method='phase_correlation',
