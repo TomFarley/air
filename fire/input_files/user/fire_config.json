@@ -127,15 +127,16 @@
         "calib_coefs": [
             "calib_coefs-{machine}-{camera}-{lens}-{exposure}us.tsv"
         ],
-        "surface_coords": [
+        "structure_coords": [
             "structure_coords-{machine}-default.csv"
         ],
-        "surface_props": [
+        "material_props": [
             "material_props-{machine}-defaults.json"
         ]
     },
     "filenames_output": {
-        "raycast_checkpoint": "raycast_{calcam_calib_stem}-{image_coords}.nf"
+        "raycast_checkpoint": "raycast_{calcam_calib_stem}-{image_coords}.nf",
+        "processed_ir_netcdf": "processed_ir-{machine}-{camera}-{pulse}.nf"
     },
     "fire": {
         "version": "2.0.0",
