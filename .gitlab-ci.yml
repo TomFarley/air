@@ -43,7 +43,12 @@ stages:
     - pip install --user --upgrade pip setuptools
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     - pip install --user git+https://github.com/euratom-software/calcam.git
-    - apt-get install -y libopenjp2-7
+    - cd fire/theodor/theofast/
+    - pwd
+    - make  # Build THEODOR C shared object file
+    - cd ../../..
+    - pwd
+    - apt-get install -y libopenjp2-7  # for glymur jpg2000 decoding in pyIpx
     - pip install --user pytest-cov
 #    - pip install --user git+git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
 #    - pip install --user git+https://gitlab-ci-token:7sHGos9smHycA5PjX3R6@git.ccfe.ac.uk:SOL_Transport/pyIpx.git@ipx2_pip
@@ -69,7 +74,12 @@ stages:
     - pwd
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     - pip install --user git+https://github.com/euratom-software/calcam.git
-    - apt-get install -y libopenjp2-7
+    - cd fire/theodor/theofast/
+    - pwd
+    - make  # Build THEODOR C shared object file
+    - cd ../../..
+    - pwd
+    - apt-get install -y libopenjp2-7  # for glymur jpg2000 decoding in pyIpx
     - pip install --user .
 
 .my_template: &SPHINX
