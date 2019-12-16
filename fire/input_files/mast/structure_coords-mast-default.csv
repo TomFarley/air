@@ -1,0 +1,6 @@
+id, R1, R2, phi1, phi2, z1, z2, toroidal_periodicity, mirror_z, structure, material, color, description, comments
+1, 0.000, 0.292, 0, 360, -1.673, +1.673, 1, False, centre_column, JET_T5_CFC, blue, Whole centre column structure, Treat as one big annulus
+2, 0.292, 0.777, 0, 360, -1.723, -1.546, 1, True, inner_tiles, JET_T5_CFC, green, All tiles between centre column and horizontal tiles, Treat as one big annulus
+3, 0.757, 1.053, 0, 360, -1.839, -1.824, 1, True, tile_1, JET_T5_CFC, yellow, First horizontal tile out from centre column, Treat all louvres as one big annulus
+4, 1.053, 1.352, 0, 360, -1.839, -1.824, 1, True, tile_2, JET_T5_CFC, orange, First horizontal tile out from centre column, Treat all louvres as one big annulus
+5, 1.352, 1.658, 0, 360, -1.839, -1.824, 1, True, tile_3, JET_T5_CFC, red, First horizontal tile out from centre column, Treat all louvres as one big annulus
