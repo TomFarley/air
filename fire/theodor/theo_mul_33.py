@@ -4,8 +4,10 @@ import sys
 import os
 from time import time as curTime
 from time import asctime
-from numpy import sqrt,zeros,float32,arange,abs
 import platform
+from pathlib import Path
+
+from numpy import sqrt,zeros,float32,arange,abs
 
 from .congrid import congrid2d
 from .heatpotential import heatpotential
@@ -18,11 +20,13 @@ from .calc_par import calc_par
 try:
     import ctypes
     #libtheofast=ctypes.cdll.LoadLibrary('/home/lsartran/THEODOR/theofast/libtheofast.so')
-    file_path = os.path.dirname(os.path.abspath(__file__))
+    file_path = Path(__file__).absolute().parent  # os.path.dirname(os.path.abspath(__file__))
     if 'x86_64' in platform.machine():
-      libtheofast=ctypes.cdll.LoadLibrary(file_path + '/../../../lib/libtheofast_x64.so')
+        file_path = file_path / 'theofast/libtheofast_x64.so'
     else:
-      libtheofast=ctypes.cdll.LoadLibrary(file_path + '/../../../lib/libtheofast_x32.so')
+        # file_path = file_path / 'theofast/libtheofast_x32.so'
+        file_path = file_path / 'theofast/libtheofast_x64.so'
+    libtheofast = ctypes.cdll.LoadLibrary(str(file_path))
 except:
     # Since non-theofast doesn't work anyway, just raise the exception.
     raise ImportError('Could not load THEOFAST shared object: {:s}'.format(Error))
