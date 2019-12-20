@@ -3,15 +3,15 @@
 The `interfaces` module contains functions for interfacing with other codes and files.
 """
 
-import os, sys, glob, logging, json, inspect, traceback
+import os, logging, json
 import importlib.util
-from typing import Union, Sequence, Optional, Tuple, List, Dict, Any
+from typing import Union, Sequence, Optional
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from fire.utils import locate_file, locate_files, join_path_fn, make_iterable, PathList
+from fire.utils import locate_file, make_iterable
 from fire import fire_paths
 
 logger = logging.getLogger(__name__)
@@ -113,97 +113,6 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
 #         path.mkdir(parents=True)
 #         logger.info(f'Created fire checkpoint data directory: {path}')
 #     return path
-
-def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_paths=None, movie_fns=None):
-    kwargs = {'machine': machine, 'camera': camera, 'pulse': pulse, 'pulse_prefix': str(pulse)[0:2],
-              'fire_path': str(fire_paths['root'])}
-    data, origin = None, None
-    for plugin_name, movie_plugin in movie_plugins.items():
-        read_movie_func = movie_plugin[plugin_key]
-        plugin_info = movie_plugin['plugin_info']
-        signature = inspect.signature(read_movie_func).parameters.keys()
-        if ("path_fn" in signature):
-            if (movie_paths is None) or (movie_fns is None):
-                logger.warning(f'Skipping {plugin_name} movie plugin as movie path info not supplied')
-                continue
-            path_fns = locate_files(movie_paths, movie_fns, path_kws=kwargs, fn_kws=kwargs)
-            if len(path_fns) == 0:
-                continue
-            for path_fn in path_fns:
-                # Try reading each of the located possible movie files
-                kwargs['path_fn'] = path_fn
-                kws = {k: v for k, v in kwargs.items() if k in signature}
-                try:
-                    data = read_movie_func(**kws)
-                    origin = {'plugin': plugin_name, 'path_fn': path_fn}
-                    break
-                except Exception as e:
-                    continue
-        else:
-            try:
-                data = read_movie_func(**kwargs)
-                origin = {'plugin': plugin_name}
-            except Exception as e:
-                continue
-        if data is not None:
-            break
-    if data is None:
-        raise IOError(f'Failed to read movie data with movie plugins {list(movie_plugins.keys())} for args: {kwargs} ')
-    return data, origin
-
-def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movie_plugins: dict,
-                         movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None) \
-                         -> Tuple[Dict[str, Any], Dict[str, str]]:
-    """Read movie header meta data
-
-    Args:
-        pulse           : Shot/pulse number or string name for synthetic movie data
-        camera          : Camera diagnostic id/tag string
-        machine         : Tokamak that the data originates from
-        movie_plugins   : Dict of plugin functions for reading movie data
-        movie_paths     : Search directories containing movie files
-        movie_fns       : Movie filename format strings
-
-    Returns: (meta data dictionary, data origin dictionary)
-
-    """
-    movie_meta_required_fields = ['n_frames', 'frame_range', 't_range', 'frame_shape', 'fps', 'lens', 'exposure',
-                                  'bit_depth']
-    plugin_key = 'meta'
-    meta_data, origin = try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins,
-                                          movie_paths=movie_paths, movie_fns=movie_fns)
-    missing_fields = []
-    for field in movie_meta_required_fields:
-        if field not in meta_data:
-            missing_fields.append(field)
-    if len(missing_fields) > 0:
-        raise ValueError(f'Movie plugin "{origin}" has not returned the folloing required meta data fields:\n'
-                         f'{missing_fields}')
-    return meta_data, origin
-
-def read_movie_data(pulse: Union[int, str], camera: str, machine: str, movie_plugins: dict,
-                    movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None, verbose: bool=True) \
-                    -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, str]]:
-    """Read movie frame data
-
-    Args:
-        pulse           : Shot/pulse number or string name for synthetic movie data
-        camera          : Camera diagnostic id/tag string
-        machine         : Tokamak that the data originates from
-        movie_plugins   : Dict of plugin functions for reading movie data
-        movie_paths     : Search directories containing movie files
-        movie_fns       : Movie filename format strings
-
-    Returns: frame_nos, frame_times, frame_data, origin
-    """
-    # TODO: Handle passing arguments for sub range of movie frames
-    plugin_key = 'data'
-    movie_data, origin = try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins,
-                                          movie_paths=movie_paths, movie_fns=movie_fns)
-    frame_nos, frame_times, frame_data = movie_data
-    if verbose:
-        logger.info(f'Read {len(frame_nos)} frames for camera "{camera}", pulse "{pulse}" from {str(origin)[1:-1]}')
-    return frame_nos, frame_times, frame_data, origin
 
 def generate_pulse_id_strings(id_strings, pulse, camera, machine, pass_no=0):
     """Return standardised ID strings used for consistency in filenames and data labels
@@ -440,63 +349,6 @@ def check_settings_complete(settings, machine, camera):
     if camera not in sub_settings:
         raise ValueError(f'Fire settings do not contain settings for camera: "{camera}"\n{sub_settings}')
 
-def get_compatible_movie_plugins(settings, machine, camera):
-    plugin_paths = settings['paths_input']['movie_plugins']
-    plugin_paths = [p.format(fire_path=fire_paths['root']) for p in plugin_paths]
-    movie_plugins_all = get_movie_plugins(plugin_paths)
-    movie_plugins_compatible = settings['machines'][machine]['cameras'][camera]['movie_plugins']
-    movie_plugins_compatible = {key: value for key, value in movie_plugins_all.items()
-                                    if key in movie_plugins_compatible}
-    return movie_plugins_compatible
-
-def get_movie_plugins(plugin_paths):
-    plugin_attributes = ['movie_plugin_name', 'read_movie_meta', 'read_movie_data', 'plugin_info']
-    plugins = search_for_plugins(plugin_paths, plugin_attributes)
-    plugins = {objs[0]: {'meta': objs[1], 'data': objs[2], 'plugin_info': objs[3]} for mod, objs in plugins}
-    logger.info(f'Located movie plugins for: {", ".join(list(plugins.keys()))}')
-    return plugins
-
-def search_for_plugins(plugin_paths, plugin_attributes):
-
-    plugins_all = []
-    plugin_attributes = make_iterable(plugin_attributes)
-
-    plugin_paths = make_iterable(plugin_paths)
-    for path in plugin_paths:
-        plugins = get_plugins(path, plugin_attributes)
-        plugins_all += plugins
-    return plugins_all
-
-def get_plugins(path, plugin_attributes):
-    plugins = []
-    file_list = glob.glob(os.path.join(path, '*'))
-    # Get possible modules in directory
-    possible_plugin_modules = []
-    for f in file_list:
-        if os.path.isdir(f) and os.path.isfile(os.path.join(f, '__init__.py')):
-            possible_plugin_modules.append(os.path.join(f, '__init__.py'))
-        elif f.endswith('.py'):
-            possible_plugin_modules.append(f)
-    # TODO: Handle empty trylist
-    for path_fn in possible_plugin_modules:
-        module = get_module_from_path_fn(path_fn)
-        if module is None:
-            continue
-        plugin = [module, []]
-        for attribute in plugin_attributes:
-            try:
-                plugin[1].append(getattr(module, attribute))
-            except AttributeError as e:
-                if len(plugin[1]) > 0:
-                    logger.warning(f'Cannot load incomplete plugin {plugin} missing "{attribute}"')
-                else:
-                    pass
-                break
-        else:
-            plugins.append(plugin)
-    # plugin = ([module_name, path_fn, ''.join(traceback.format_exception_only(sys.exc_info()[0], sys.exc_info()[1]))])
-
-    return plugins
 
 def get_module_from_path_fn(path_fn):
     path_fn = Path(path_fn)
