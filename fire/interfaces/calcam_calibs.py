@@ -145,17 +145,15 @@ def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, ima
     data_out['z_im'] = (('y_pix', 'x_pix'), surface_coords[:, :, 2])
     data_out['R_im'] = (('y_pix', 'x_pix'), np.linalg.norm(surface_coords[:, :, 0:2], axis=2))
     data_out['phi_im'] = (('y_pix', 'x_pix'), np.arctan2(data_out['y_im'], data_out['x_im']))  # Toroidal angle 'ϕ'
+    data_out['phi_deg_im'] = (('y_pix', 'x_pix'), np.rad2deg(data_out['phi_im']))  # Toroidal angle 'ϕ' in degrees
     data_out['theta_im'] = (('y_pix', 'x_pix'), np.arctan2(data_out['z_im'], data_out['R_im']))  # Poloidal angle 'ϑ'
     data_out['ray_lengths'] = (('y_pix', 'x_pix'), ray_lengths)  # Distance from camera pupil to surface
     # Just take red channel of wireframe image
     data_out['wire_frame'] = (('y_pix', 'x_pix'), wire_frame[:, :, 0])
-    # TODO: call plugin function to get sector, louvre and tile values
-    # TODO: call plugin function to get s coordinate along tiles?
     return data_out
 
-def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib):
-    import matplotlib.pyplot as plt  # tmp
-    # TODO: Handle combining multiple analysis paths?
+def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, masks=None):
+    # TODO: Handle combining multiple analysis paths? Move loop over paths below to here...
     image_shape = np.array(calcam_calib.geometry.get_display_shape())
     points = pd.DataFrame.from_dict(list(analysis_path_dfn.values())[0], orient='index')
     points = points.rename(columns={'R': 'R_path_dfn', 'phi': 'phi_path_dfn', 'z': 'z_path_dfn'})
@@ -173,7 +171,10 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib):
     points['y_pix_path_dfn'] = (points.coords, points_pix[1])
 
     pos_names = points.coords[pos_key]
+    # x and y pixel value and path index number for each point along analysis path
+    # Path index (path_no) indexes which pair of points in the path definition a given point along the path belongs to
     xpix_path, ypix_path, path_no = [], [], []
+    masks_path = {key: [] for key in masks} if masks else {}
     for i_path, (start_pos, end_pos) in enumerate(zip(pos_names, pos_names[1:])):
         if not points['include_next_interval'].sel(position=start_pos):
             continue
@@ -184,24 +185,38 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib):
         xpix_path.append(xpix)
         ypix_path.append(ypix)
         path_no.append(np.full_like(xpix, i_path))
+        for key in masks_path:
+            mask_data = masks[key][ypix, xpix]
+            masks_path[key].append(mask_data)
     xpix_path = np.concatenate(xpix_path)
     ypix_path = np.concatenate(ypix_path)
     path_no = np.concatenate(path_no)
+    for key in masks_path:
+        masks_path[key] = np.concatenate(masks_path[key])
 
-    analysis_path = xr.Dataset(coords={'i_path': ('path', np.arange(len(xpix))), 'segment': ('path', path_no)})
-    analysis_path['x_pix_path'] = (('i_path',), xpix_path)
-    analysis_path['y_pix_path'] = (('i_path',), ypix_path)
-    analysis_path['visible_path'] = (('i_path',), check_visible(xpix_path, ypix_path, image_shape[::-1]))
-    index_path = {'x_pix': xr.DataArray(xpix_path, dims='i_path'),
-                  'y_pix': xr.DataArray(ypix_path, dims='i_path')}
-    for coord in ['R', 'phi', 'x', 'y', 'z']:
-        analysis_path[coord+'_path'] = (('i_path',), raycast_data[coord+'_im'].sel(index_path))
+    # TODO: Move loop to top of fucntion and pass multiple paths with different names?
+    # NOTE: path substitutions below are currently over generalised
+    paths = ['path']
+    analysis_paths = xr.Dataset()
+    for path in paths:
+        coords = {f'i_{path}': (f'{path}', np.arange(len(xpix))),
+                  f'segment_{path}': (f'{path}', path_no)}
+        analysis_paths = analysis_paths.assign_coords(**coords)
+        analysis_paths[f'y_pix_{path}'] = ((f'i_{path}',), ypix_path)
+        analysis_paths[f'x_pix_{path}'] = ((f'i_{path}',), xpix_path)
+        analysis_paths[f'visible_{path}'] = ((f'i_{path}',), check_visible(xpix_path, ypix_path, image_shape[::-1]))
+        index_path = {'x_pix': xr.DataArray(xpix_path, dims=f'i_{path}'),
+                      'y_pix': xr.DataArray(ypix_path, dims=f'i_{path}')}
+        for coord in ['R', 'phi', 'x', 'y', 'z']:
+            analysis_paths[coord+f'_{path}'] = ((f'i_{path}',), raycast_data[coord+'_im'].sel(index_path))
+        for key in masks_path:
+            analysis_paths[key+f'_{path}'] = ((f'i_{path}',), masks_path[key])
 
-    # TODO: check_occlusion
-    if np.any(~analysis_path['visible_path']):
-        logger.warning(f'Analysis path contains sections that are not visible from the camera: '
-                       f'{~analysis_path["visible_path"]}')
-    return analysis_path
+        # TODO: check_occlusion
+        if np.any(~analysis_paths[f'visible_{path}']):
+            logger.warning(f'Analysis path contains sections that are not visible from the camera: '
+                           f'{~analysis_paths[f"visible_{path}"]}')
+    return analysis_paths
 
 def check_visible(x_points, y_points, image_shape):
     # TODO: Check calcam convension for subwindows
