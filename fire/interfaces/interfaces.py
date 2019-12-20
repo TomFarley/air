@@ -7,6 +7,7 @@ import os, logging, json
 import importlib.util
 from typing import Union, Sequence, Optional
 from pathlib import Path
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -189,7 +190,7 @@ def json_dump(obj, path_fn, fn=None, indent=4, overwrite=True, raise_on_fail=Tru
     return out
 
 # def json_load(path_fn: Union[str, Path], fn: Optional(str)=None, keys: Optional[Sequence[str]]=None):
-def json_load(path_fn, fn=None, keys=None):
+def json_load(path_fn, fn=None, keys=None, lists_to_arrays=False):
     """Read json file with optional indexing
 
     Args:
@@ -228,7 +229,19 @@ def json_load(path_fn, fn=None, keys=None):
 
     else:
         out = contents
+    if lists_to_arrays:
+        out = cast_lists_in_dict_to_arrays(out)
     return out
+
+def cast_lists_in_dict_to_arrays(dict_in):
+    dict_out = deepcopy(dict_in)
+    for key, value in dict_out.items():
+        if isinstance(value, (list)):
+            dict_out[key] = np.array(value)
+        elif isinstance(value, dict):
+            dict_out[key] = cast_lists_in_dict_to_arrays(value)
+
+    return dict_out
 
 def two_level_dict_to_multiindex_df(d):
     """Convert nested dictionary to two level multiindex dataframe
