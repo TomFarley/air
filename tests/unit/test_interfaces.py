@@ -6,8 +6,9 @@ import numpy as np
 import pandas as pd
 
 from fire.interfaces.interfaces import (json_dump, json_load, lookup_pulse_row_in_csv, lookup_pulse_info,
-                                        read_movie_meta_data, generate_pulse_id_strings, generate_camera_id_strings,
+                                        generate_pulse_id_strings, generate_camera_id_strings,
                                         generate_frame_id_strings, get_module_from_path_fn)
+from fire.interfaces.plugins_movie import read_movie_meta_data
 from fire import fire_paths
 
 pwd = Path(__file__).parent
