@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def calc_heatflux(t, temperatures, analysis_path, material_properties):
+def calc_heatflux(t, temperatures, analysis_path, material_properties, visible_materials):
     """"""
     import theodor
 
@@ -38,7 +38,9 @@ def calc_heatflux(t, temperatures, analysis_path, material_properties):
     xpix_path, ypix_path = analysis_path['x_pix_path'], analysis_path['y_pix_path']
     temperature_path = temperatures[:, ypix_path, xpix_path]
     s_path = analysis_path['s_path']  # spatial coordinate along tile surface
-    theo_kwargs = material_properties[list(material_ids)[0]]
+    material_id = list(material_ids)[0]
+    material_name = visible_materials[material_id]
+    theo_kwargs = material_properties[material_name]
 
     # alpha_bot = alphas['tile_bottom']
     # alpha_top = alphas['tile_surface']
@@ -56,10 +58,11 @@ def calc_heatflux(t, temperatures, analysis_path, material_properties):
 
     # For hints as to meanings to theodor arguments see:
     # https://users.euro-fusion.org/openwiki/index.php/THEODOR#theo_mul_33.28.29
-    heat_flux, extra_results = theodor.theo_mul_33(temperature_path, t, s_path, test=True, verbose=True, **theo_kwargs)
-    #               d_target, alpha_bot, alpha_top, diff, lam, aniso, x_Tb=x_Tb, y_Tb=y_Tb,
+    if False:
+        heat_flux, extra_results = theodor.theo_mul_33(temperature_path, t, s_path, test=True, verbose=True, **theo_kwargs)
+        #               d_target, alpha_bot, alpha_top, diff, lam, aniso, x_Tb=x_Tb, y_Tb=y_Tb,
 
-    return heat_flux, extra_results
+        return heat_flux, extra_results
 
 if __name__ == '__main__':
     pass
