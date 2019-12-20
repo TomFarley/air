@@ -75,6 +75,31 @@
                     ]
         }
     },
+    "plugin_attributes": {
+        "movie": {
+            "required": {
+                "plugin_name": "movie_plugin_name",
+                "meta": "read_movie_meta",
+                "data": "read_movie_data",
+                "info": "plugin_info"
+            },
+            "optional": {
+            }
+        },
+        "machine": {
+            "required": {
+                "plugin_name": "machine_plugin_name"
+            },
+            "optional": {
+                "machine": "machine_name",
+                "sector": "get_machine_sector",
+                "format_coord": "format_coord",
+                "s_coord_global": "get_s_coord_global",
+                "s_coord_path": "get_s_coord_path",
+                "info": "plugin_info"
+            }
+        }
+    },
     "paths_input": {
         "movie_plugins": [
             "{fire_path}/interfaces/movie_plugins/"
