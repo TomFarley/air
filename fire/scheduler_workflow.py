@@ -17,23 +17,27 @@ import calcam
 
 from fire import fire_paths
 from fire.data_structures import init_data_structures
-from fire.interfaces.interfaces import (check_settings_complete, get_compatible_movie_plugins, identify_files,
+from fire.interfaces.interfaces import (check_settings_complete, identify_files,
                                         json_load, read_csv, lookup_pulse_row_in_csv,
-                                        read_movie_meta_data, read_movie_data, generate_pulse_id_strings)
+                                        generate_pulse_id_strings)
+from fire.interfaces.plugins_movie import read_movie_meta_data, read_movie_data
+from fire.interfaces.plugins import get_compatible_plugins
 from fire.interfaces.calcam_calibs import get_surface_coords, project_analysis_path, apply_frame_display_transformations
 from fire.camera_shake import calc_camera_shake_displacements, remove_camera_shake
-from fire.geometry import identify_visible_structures, load_material_properties
+from fire.geometry import identify_visible_structures
+from fire.interfaces.plugins_machine import get_machine_location_labels, get_s_coord_global, get_s_coord_path
 from fire.utils import update_call_args, movie_data_to_xarray
 from fire.nuc import get_nuc_frame, apply_nuc_correction
 from fire.data_quality import identify_saturated_frames
 from fire.temperature import dl_to_temerature
 from fire.heat_flux import calc_heatflux
+from fire.interfaces.ouput_data_plugins.output_netcdf import write_processed_ir_to_netcdf
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, machine:str='MAST', scheduler:bool=False,
-                       magnetics:bool=False, update_checkpoints=False):
+                       magnetics:bool=False, update_checkpoints:bool=False, debug:bool=False):
     """Primary analysis workflow for MAST-U/JET IR scheduler analysis.
 
     :param pulse: Shot/pulse number or string name for synthetic movie data
@@ -44,7 +48,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     :param magnetics: Produce additional output with scheduler efit as additional dependency
     :return: Error code
     """
-    image_coords = 'Display'
+    image_coords = 'Display' if debug else 'Original'
     # Set up data structures
     settings, files, data, meta_data = init_data_structures()
     if not scheduler:
@@ -59,14 +63,29 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # Generate id_strings
     meta_data['id_strings'] = generate_pulse_id_strings({}, pulse, camera, machine, pass_no)
 
+    # Load machine plugins
+    machine_plugin_paths = config['paths_input']['machine_plugins']
+    machine_plugin_attrs = config['plugin_attributes']['machine']
+    machine_plugins, machine_plugins_info = get_compatible_plugins(machine_plugin_paths,
+                                machine_plugin_attrs['required'], attributes_optional=machine_plugin_attrs['optional'],
+                                plugin_type='machine')
+    machine_plugins, machine_plugins_info = machine_plugins[machine], machine_plugins_info[machine]
+
+    # Load movie plugins compatible with camera
+    movie_plugin_paths = config['paths_input']['movie_plugins']
+    movie_plugin_attrs = config['plugin_attributes']['movie']
+    movie_plugins_compatible = config['machines'][machine]['cameras'][camera]['movie_plugins']
+    movie_plugins, movie_plugins_info = get_compatible_plugins(movie_plugin_paths, movie_plugin_attrs['required'],
+                                           attributes_optional=movie_plugin_attrs['optional'],
+                                           plugin_filter=movie_plugins_compatible, plugin_type='movie')
+
     # Load movie meta data to get lens and integration time etc.
-    movie_plugins = get_compatible_movie_plugins(config, machine, camera)
     movie_paths = config['paths_input']['movie_files']
     movie_fns = config['filenames_input']['movie_files']
     movie_meta, movie_origin = read_movie_meta_data(pulse, camera, machine, movie_plugins,
                                      movie_paths=movie_paths, movie_fns=movie_fns)
 
-    # Idenify and check existence of input files
+    # Identify and check existence of input files
     paths_input = config['paths_input']['input_files']
     paths_output = config['paths_output']
     fn_patterns_input = config['filenames_input']
@@ -99,6 +118,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # Fix camera shake
     # TODO: Consider using alternative to first frame for reference, as want bright clear frame with NUC shutter
+    # TODO: Consider checking camera rotation which is issue on ASDEX-U
     pixel_displacemnts, shake_stats = calc_camera_shake_displacements(frame_data, frame_data[0], verbose=True)
     pixel_displacemnts = xr.DataArray(pixel_displacemnts, coords={'n': data['n'], 'pixel_coord': ['x', 'y']},
                                                                   dims=['n', 'pixel_coord'])
@@ -121,21 +141,35 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         data_raycast.to_netcdf(raycast_checkpoint_path_fn)
         logger.info(f'Wrote raycast data to: {raycast_checkpoint_path_fn}')
     data = xr.merge([data, data_raycast])
+    x_im, y_im, z_im = (data_raycast[f'{coord}_im'] for coord in ['x', 'y', 'z'])
 
-    # Get spatial and pixel coordinates of analysis path
-    analysis_path_dfn_points = json_load(files['analysis_path_dfns'])
-    analysis_path = project_analysis_path(data_raycast, analysis_path_dfn_points, calcam_calib)
-    data = xr.merge([data, analysis_path])
+    # TODO: call plugin function to get sector, louvre and tile values
+    machine_location_labels = get_machine_location_labels(x_im, y_im, z_im, machine_plugins=machine_plugins)
+    for key in machine_location_labels:
+        data[key+'_im'] = (('y_pix', 'x_pix'), machine_location_labels[key])
+
+    # TODO: call plugin function to get s coordinate along tiles?
+    s_im = get_s_coord_global(x_im, y_im, z_im, machine_plugins)
+    data['s_im'] = (('y_pix', 'x_pix'), s_im)
+
+    # TODO: Check if saturated/bad pixels occur along analysis path - update quality flag
 
     # TODO: Segment/mask image if contains sub-views
 
     # Identify material surfaces in view
-    surface_coords = read_csv(files['surface_coords'], sep=', ', index_col='structure')
-    r, phi, z = data['R_im'], data['phi_im'], data['z_im']
-    surface_ids, visible_surfaces = identify_visible_structures(r, phi, z, surface_coords, phi_in_deg=False)
+    surface_coords = read_csv(files['structure_coords'], sep=', ', index_col='structure')
+    r_im, phi_im, z_im = data['R_im'], data['phi_im'], data['z_im']
+    surface_ids, material_ids, visible_structures, visible_materials = identify_visible_structures(r_im, phi_im, z_im,
+                                                                                     surface_coords, phi_in_deg=False)
     data['surface_id'] = (('y_pix', 'x_pix'), surface_ids)
-    data.attrs['visible_surfaces'] = visible_surfaces
-    material_properties = load_material_properties(visible_surfaces)
+    data['material_id'] = (('y_pix', 'x_pix'), material_ids)
+    data.attrs['visible_surfaces'] = visible_structures
+    data.attrs['visible_materials'] = visible_materials
+
+    # Read thermal properties of materials for structures in view
+    material_names = list(set(visible_materials.values()))
+    material_properties = json_load(files['material_props'], keys=material_names)
+    data.attrs['material_properties'] = material_properties
     # TODO: Segment path according to changes in tile properties
 
     # Detect saturated pixels
@@ -144,19 +178,31 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Lookup anommalies
 
     # TODO: Detect anommalies
+    # TODO: Monitor number of bad pixels for detector health - option to separate odd/even frames for FLIR sensors
+    # TODO: Detect 'twinkling pixels' by looking for pixels with abnormally large ptp variation for steady state images
+    # TODO: Detect missing frames in time stamps, regularity of frame rate
+    # TODO: Compare sensor temperature change during/between pulses to monitor sensor health, predict frame losses etc.
 
-
+    # Get spatial and pixel coordinates of analysis path
+    # TODO: get material, structure, bad pixel ids along analysis path
+    analysis_path_dfn_points = json_load(files['analysis_path_dfns'])
+    frame_masks = {'surface_id': surface_ids, 'material_id': material_ids}
+    analysis_path = project_analysis_path(data_raycast, analysis_path_dfn_points, calcam_calib, masks=frame_masks)
+    x_path, y_path, z_path = (analysis_path[f'{coord}_path'] for coord in ['x', 'y', 'z'])
+    s_path = get_s_coord_path(x_path, y_path, z_path, machine_plugins)
+    analysis_path['s_path'] = s_path
+    data = xr.merge([data, analysis_path])
 
     # Apply NUC correction
     # nuc_frame = get_nuc_frame(origin='first_frame', frame_data=frame_data)
-    nuc_frame = get_nuc_frame(origin={'n': [2, 2]}, frame_data=frame_data)  # Old air sched code uses 3rd frame
+    nuc_frame = get_nuc_frame(origin={'n': [2, 2]}, frame_data=frame_data)  # Old air sched code uses 3rd frame?
     # nuc_frame = get_nuc_frame(origin={'n': [None, None]}, frame_data=frame_data, reduce_func='min')
     frame_data_nuc = apply_nuc_correction(frame_data, nuc_frame, raise_on_negatives=False)
     data['frame_data_nuc'] = frame_data_nuc
 
 
     # TODO: Read temp_bg from file
-    temp_bg=23
+    temp_bg = 23
     # TODO: Convert raw DL to temperature
     bb_curve = read_csv(files['black_body_curve'], index_col='temperature_celcius')
     calib_coefs = lookup_pulse_row_in_csv(files['calib_coefs'], pulse=pulse, header=4)
@@ -170,9 +216,15 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
 
     # TODO: Calculate physics parameters
-    # calc_heatflux()
+    # TODO: Calculate poloidal target strike angle - important for neutral closure
+    # TODO: Account for shadowed area of tiles leading to larger themal mass than assumed - gives negative q after
+    # discharge on ASDEX-U
+    data['heat_flux'] = calc_heatflux(data['t'], data['frame_temperature'], analysis_path, material_properties)
+
 
     # TODO: Write output file - call machine specific plugin
+    path_fn_out = files['processed_ir_netcdf']
+    write_processed_ir_to_netcdf(data, path_fn_out)
 
     print(f'Finished scheduler workflow')
     return 0
@@ -192,6 +244,7 @@ if __name__ == '__main__':
     magnetics = False
     update_checkpoints = False
     # update_checkpoints = True
+    debug = True
     print(f'Running scheduler workflow...')
     scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
-                       magnetics=magnetics, update_checkpoints=update_checkpoints)
+                       magnetics=magnetics, update_checkpoints=update_checkpoints, debug=debug)
