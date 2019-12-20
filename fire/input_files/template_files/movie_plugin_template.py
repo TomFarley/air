@@ -19,7 +19,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-movie_plugin_name = '<my_plugin>'
+movie_plugin_name = '<my_plugin>'  # Required: Name of plugin module (typically same as name of module/file format etc.)
 plugin_info = {'description': 'This plugin reads <my format> format movie files'}
 
 def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
