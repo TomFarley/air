@@ -7,16 +7,24 @@ Created:
 """
 
 import logging
-from typing import Union, Iterable, Tuple, Optional
-from pathlib import Path
 
 import numpy as np
-import matplotlib.pyplot as plt
-
-from fire.interfaces.interfaces import json_load
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+def get_s_coord_global_r(x_im, y_im, z_im=None):
+    """Crude fall back method if nothing else is available"""
+    s_global = np.hypot(x_im, y_im)
+    logger.warning(f'In absense of machine specific plugin, using crude get_s_coord_global_r() to calc s_global coord')
+    return s_global
+
+def get_s_coord_path_ds(x_im, y_im, z_im=None):
+    """Crude fall back method if nothing else is available"""
+    ds = np.vstack((np.diff(x_im), np.diff(y_im), np.diff(z_im)))
+    s_path = np.linalg.norm(ds)
+    logger.warning(f'In absense of machine specific plugin, using get_s_coord_path_ds() to calc s_path coord')
+    return s_path
 
 def identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=True):
     # Create mask with values corresponding to id of structure visible in each pixel
@@ -66,13 +74,7 @@ def identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=T
         raise ValueError(f'No surfaces identified in camera view')
     return structure_ids, material_ids, visible_structures, visible_materials
 
-
-def load_material_properties(path_fn_materials, visible_materials=None):
-
-    # material_properties = xr.DataArray(coords=analysis_path.coords)
-    raise NotImplementedError
-
-def setgment_path_by_material():
+def segment_path_by_material():  # pragma: no cover
     raise NotImplementedError
     # TODO: Read path_fn_tile_coords
     tile_names = np.full_like(r, '', dtype=object)
@@ -90,3 +92,22 @@ def setgment_path_by_material():
 
 if __name__ == '__main__':
     pass
+
+
+def cartesian_to_toroidal(x, y, z=None, phi_in_deg=False):
+    """Convert cartesian coordinates to toroidal coordinates
+
+    Args:
+        x           : x cartesian coordinate(s)
+        y           : y cartesian coordinate(s)
+        z           : (Optional) z cartesian coordinate(s)
+        phi_in_deg  : Whether to convert phi output from radians to degrees
+
+    Returns: (r, phi, z)
+
+    """
+    r = np.hypot(x, y)
+    phi = np.arctan2(y, x)
+    if phi_in_deg:
+        phi = np.rad2deg(phi)
+    return r, phi
