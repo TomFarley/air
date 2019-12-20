@@ -168,7 +168,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # Read thermal properties of materials for structures in view
     material_names = list(set(visible_materials.values()))
-    material_properties = json_load(files['material_props'], keys=material_names)
+    material_properties = json_load(files['material_props'], keys=material_names, lists_to_arrays=True)
     data.attrs['material_properties'] = material_properties
     # TODO: Segment path according to changes in tile properties
 
@@ -219,12 +219,13 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Calculate poloidal target strike angle - important for neutral closure
     # TODO: Account for shadowed area of tiles leading to larger themal mass than assumed - gives negative q after
     # discharge on ASDEX-U
-    data['heat_flux'] = calc_heatflux(data['t'], data['frame_temperature'], analysis_path, material_properties)
+    data['heat_flux'] = calc_heatflux(data['t'], data['frame_temperature'], analysis_path, material_properties,
+                                      visible_materials)
 
 
     # TODO: Write output file - call machine specific plugin
     path_fn_out = files['processed_ir_netcdf']
-    write_processed_ir_to_netcdf(data, path_fn_out)
+    # write_processed_ir_to_netcdf(data, path_fn_out)
 
     print(f'Finished scheduler workflow')
     return 0
