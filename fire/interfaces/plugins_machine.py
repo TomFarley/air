@@ -7,7 +7,7 @@ Created:
 """
 
 import logging
-from typing import Union, Iterable, Sequence, Tuple, Optional, Any, Dict
+from typing import Union, Iterable, Sequence, Tuple, Optional, Any, Dict, Callable
 from pathlib import Path
 
 import numpy as np
@@ -22,12 +22,35 @@ from fire.interfaces.plugins import get_plugins
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def get_machine_location_labels(x_im, y_im, z_im, machine_plugins=None, **kwargs):
+coord = Union[float, np.ndarray[float]]
+
+def get_machine_location_labels(x_im: coord, y_im: coord, z_im: coord,
+                                machine_plugins: dict[str, Callable], plugin_subset: Optional[Sequence]=None, **kwargs):
+    """Return a dict of labels corresponding to the supplied coordinates (e.g. sector number etc.)
+
+    Args:
+        x_im            : Array (potentially 2D image) of cartesian spatial x coordinates (m)
+        y_im            : Array (potentially 2D image) of cartesian spatial y coordinates (m)
+        z_im            : Array (potentially 2D image) of cartesian spatial z coordinates (m)
+        machine_plugins : Dict of plugin functions to be called
+        plugin_subset   : List of names/keys of plugin functions to call
+                          (if None tries calling 3 defaults: 'sector', 's_coord_global', 's_coord_path')
+        **kwargs        : Optional additional keywords to pass to plugin functions
+
+    Returns: Dict containing  for supplied coordinates (if plugin fucs
+             supplied)
+
+    """
+    if plugin_subset is None:
+        plugin_subset = ['sector', 's_coord_global', 's_coord_path']
     data = {}
-    for plugin in ['sector']:
+    for plugin in plugin_subset:
         if plugin in machine_plugins:
-            func = machine_plugins[plugin]
-            data[plugin] = func(x_im, y_im, z_im, **kwargs)
+            try:
+                func = machine_plugins[plugin]
+                data[plugin] = func(x_im, y_im, z_im, **kwargs)
+            except KeyError as e:
+                pass
     return data
 
 def get_s_coord_global(x_im, y_im, z_im, machine_plugins=None, **kwargs):
