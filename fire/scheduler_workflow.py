@@ -209,10 +209,19 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     data['frame_temperature'] = dl_to_temerature(frame_data_nuc, calib_coefs, bb_curve,
                                                  exposure=movie_meta['exposure'], temp_bg=temp_bg)
 
+    # TODO: Calculate toroidally averaged radial profiles taking into account viewing geometry
+    # - may be more complicated than effectively rotating image slightly as in MAST (see data in Thornton2015)
+
     # TODO: Temporal smoothing of temperature
 
 
     # TODO: Calculate heat fluxes
+
+
+    # TODO: Calculate moving time average and std heat flux profiles against which transients on different time
+    # scales can be identified?
+
+    # TODO: Identify peaks due to tile gaps/hot spots that are present at all times - quantify severity?
 
 
     # TODO: Calculate physics parameters
@@ -222,6 +231,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     data['heat_flux'] = calc_heatflux(data['t'], data['frame_temperature'], analysis_path, material_properties,
                                       visible_materials)
 
+    # TODO: Additional calculations with magnetics information for each pixel:
+    # midplane coords, connection length, flux expansion (area ratio), target pitch angle
 
     # TODO: Write output file - call machine specific plugin
     path_fn_out = files['processed_ir_netcdf']
@@ -231,7 +242,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     return 0
 
 
-if __name__ == '__main__':
+def run_mast():
     # pulse = 30378
     # camera = 'rit'
     pulse = 23586  # Full frame with clear spatial calibration
@@ -246,6 +257,24 @@ if __name__ == '__main__':
     update_checkpoints = False
     # update_checkpoints = True
     debug = True
-    print(f'Running scheduler workflow...')
+    print(f'Running MAST scheduler workflow...')
     scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
                        magnetics=magnetics, update_checkpoints=update_checkpoints, debug=debug)
+
+def run_mastu():
+    pulse = 50000  # Test installation images - no plasma
+    camera = 'rir'
+    pass_no = 0
+    machine = 'MAST_U'
+    scheduler = False
+    magnetics = False
+    update_checkpoints = False
+    # update_checkpoints = True
+    debug = True
+    print(f'Running MAST-U scheduler workflow...')
+    scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
+                       magnetics=magnetics, update_checkpoints=update_checkpoints, debug=debug)
+
+if __name__ == '__main__':
+    # run_mast()
+    run_mastu()
