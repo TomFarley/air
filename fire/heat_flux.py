@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+import matplotlib.pyplot as plt
 
 from fire.interfaces.interfaces import read_csv
 
@@ -23,6 +24,7 @@ logger.setLevel(logging.DEBUG)
 def calc_heatflux(t, temperatures, analysis_path, material_properties, visible_materials):
     """"""
     import theodor
+    t = np.array(t)
 
     # TODO: Check time axis is uniform
     dt = np.diff(t)
@@ -36,8 +38,8 @@ def calc_heatflux(t, temperatures, analysis_path, material_properties, visible_m
         raise NotImplementedError
     # TODO: Loop over sections of path with different material properties or tile gaps etc
     xpix_path, ypix_path = analysis_path['x_pix_path'], analysis_path['y_pix_path']
-    temperature_path = temperatures[:, ypix_path, xpix_path]
-    s_path = analysis_path['s_path']  # spatial coordinate along tile surface
+    temperature_path = np.array(temperatures[:, ypix_path, xpix_path])
+    s_path = np.array(analysis_path['s_path'])  # spatial coordinate along tile surface
     material_id = list(material_ids)[0]
     material_name = visible_materials[material_id]
     theo_kwargs = material_properties[material_name]
@@ -59,7 +61,8 @@ def calc_heatflux(t, temperatures, analysis_path, material_properties, visible_m
     # For hints as to meanings to theodor arguments see:
     # https://users.euro-fusion.org/openwiki/index.php/THEODOR#theo_mul_33.28.29
     if False:
-        heat_flux, extra_results = theodor.theo_mul_33(temperature_path, t, s_path, test=True, verbose=True, **theo_kwargs)
+        heat_flux, extra_results = theodor.theo_mul_33(temperature_path, t, s_path, test=True, verbose=True,
+                                                       **theo_kwargs)
         #               d_target, alpha_bot, alpha_top, diff, lam, aniso, x_Tb=x_Tb, y_Tb=y_Tb,
 
         return heat_flux, extra_results
