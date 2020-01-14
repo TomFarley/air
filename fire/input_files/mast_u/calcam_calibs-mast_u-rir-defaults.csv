@@ -1,0 +1,2 @@
+pulse_start,pulse_end,calcam_calibration_file,author,comments
+0,50000,50001,HL04_B_MWIR_virtual_25mm_v1.ccc,Tom Farley,Virtual calib from pre-plasma view check
