@@ -148,9 +148,43 @@ def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, ima
     data_out['phi_deg_im'] = (('y_pix', 'x_pix'), np.rad2deg(data_out['phi_im']))  # Toroidal angle 'ϕ' in degrees
     data_out['theta_im'] = (('y_pix', 'x_pix'), np.arctan2(data_out['z_im'], data_out['R_im']))  # Poloidal angle 'ϑ'
     data_out['ray_lengths'] = (('y_pix', 'x_pix'), ray_lengths)  # Distance from camera pupil to surface
+    spatial_res = calc_spatial_res(data_out['x_im'], data_out['x_im'], data_out['x_im'])
+    for key, value in spatial_res.items():
+        data_out[key] = (('y_pix', 'x_pix'), value)
     # Just take red channel of wireframe image
     data_out['wire_frame'] = (('y_pix', 'x_pix'), wire_frame[:, :, 0])
     return data_out
+
+def calc_spatial_res(x_im, y_im, z_im):
+    """Return spatial resolution at each pixel given cartesian spatial coords of each pixel
+
+    Args:
+        x_im: Array of cartesian x spatial coordinates (e.g. from calcam) for each pixel (in meters)
+        y_im: Array of cartesian y spatial coordinates (e.g. from calcam) for each pixel (in meters)
+        z_im: Array of cartesian z spatial coordinates (e.g. from calcam) for each pixel (in meters)
+
+    Returns: Array containing spatial coords of each pixel
+
+    """
+    coords = (x_im, y_im, z_im)
+    spatial_res = {}
+    # Calculate spatial distance between adjacent pixels
+    spatial_res_x = np.linalg.norm([np.diff(coord, axis=1) for coord in coords], axis=0)
+    spatial_res_y = np.linalg.norm([np.diff(coord, axis=0) for coord in coords], axis=0)
+    # Pad arrays to make them same shape as image
+    spatial_res_x = np.pad(spatial_res_x, pad_width=((0, 0), (1, 0)), mode='edge')
+    spatial_res_y = np.pad(spatial_res_y, pad_width=((1, 0), (0, 0)), mode='edge')
+    # Remove extreem values between surfaces at different distances
+    spatial_res_x = np.where(spatial_res_x > np.nanmean(spatial_res_x)+3.5*np.nanstd(spatial_res_x), np.nan,
+                             spatial_res_x)
+    spatial_res_y = np.where(spatial_res_y > np.nanmean(spatial_res_y)+3.5*np.nanstd(spatial_res_y), np.nan,
+                             spatial_res_y)
+
+    spatial_res['spatial_res_x'] = spatial_res_x
+    spatial_res['spatial_res_y'] = spatial_res_y
+    spatial_res['spatial_res_mean'] = np.nanmean([spatial_res_x, spatial_res_y], axis=0)
+    spatial_res['spatial_res_max'] = np.nanmax([spatial_res_x, spatial_res_y], axis=0)
+    return spatial_res
 
 def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, masks=None):
     # TODO: Handle combining multiple analysis paths? Move loop over paths below to here...
