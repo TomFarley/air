@@ -74,7 +74,17 @@ def update_call_args(user_defaults, pulse, camera, machine):
         camera = user_defaults['camera']
     if machine is None:
         machine = user_defaults['machine']
-    return pulse, camera.lower(), machine.lower()
+    machine = sanitise_machine_name(machine)
+    camera = sanitise_camera_name(camera)
+    return pulse, camera, machine
+
+def sanitise_machine_name(machine):
+    machine_out = machine.lower().replace('-', '_')
+    return machine_out
+
+def sanitise_camera_name(camera):
+    camera_out = camera.lower().replace('-', '_')
+    return camera_out
 
 if __name__ == '__main__':
     pass
