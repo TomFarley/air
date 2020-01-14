@@ -93,6 +93,9 @@
             "optional": {
                 "machine": "machine_name",
                 "sector": "get_machine_sector",
+                "louvre_label": "get_tile_louvre_label",
+                "louvre_index": "get_tile_louvre_index",
+                "location_labels": "location_labels",
                 "format_coord": "format_coord",
                 "s_coord_global": "get_s_coord_global",
                 "s_coord_path": "get_s_coord_path",
