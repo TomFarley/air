@@ -1,7 +1,13 @@
+import logging
 from pathlib import Path
 
 import pandas as pd
 import xarray as xr
+
+# Set up logger for module
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 # Store important paths for quick reference
 fire_paths = {'root': Path(__file__).parent}
