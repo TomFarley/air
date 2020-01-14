@@ -102,9 +102,10 @@ def get_plugins(path: Union[Path, str], attributes_requried: Dict[str, str],
                 try:
                     attribute_value = getattr(module, attribute_name)
                 except AttributeError as e:
-                    pass
-                plugin_attributes[attribute_key] = attribute_value
-                info['optional'].append(attribute_name)
+                    logger.debug(f'Optional plugin "{attribute_name}"" not found in module {module}')
+                else:
+                    plugin_attributes[attribute_key] = attribute_value
+                    info['optional'].append(attribute_name)
             # Follow convention that first required attribute's value is a string name for the plugin
             plugin_name = tuple(plugin_attributes.values())[0]
             if not isinstance(plugin_name, str):
