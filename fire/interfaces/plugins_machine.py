@@ -22,10 +22,10 @@ from fire.interfaces.plugins import get_plugins
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-coord = Union[float, np.ndarray[float]]
+coord = Union[float, np.ndarray]
 
 def get_machine_location_labels(x_im: coord, y_im: coord, z_im: coord,
-                                machine_plugins: dict[str, Callable], plugin_subset: Optional[Sequence]=None, **kwargs):
+                                machine_plugins: Dict[str, Callable], plugin_subset: Optional[Sequence]=None, **kwargs):
     """Return a dict of labels corresponding to the supplied coordinates (e.g. sector number etc.)
 
     Args:
@@ -42,7 +42,10 @@ def get_machine_location_labels(x_im: coord, y_im: coord, z_im: coord,
 
     """
     if plugin_subset is None:
-        plugin_subset = ['sector', 's_coord_global', 's_coord_path']
+        if 'location_labels' in machine_plugins:
+            plugin_subset = machine_plugins['location_labels']
+        else:
+            plugin_subset = ['sector', 's_coord_global', 's_coord_path']
     data = {}
     for plugin in plugin_subset:
         if plugin in machine_plugins:
