@@ -15,7 +15,8 @@
                 "rir": {
                     "movie_plugins": [
                         "uda",
-                        "ipx"
+                        "ipx",
+                        "imstack"
                     ],
                     "camera_aliases": [
                         "mwir"
@@ -24,7 +25,8 @@
                 "rit": {
                     "movie_plugins": [
                         "uda",
-                        "ipx"
+                        "ipx",
+                        "imstack"
                     ],
                     "alternative_names": [
                         "lwir"
@@ -47,7 +49,8 @@
                 "rir": {
                     "movie_plugins": [
                         "uda",
-                        "ipx"
+                        "ipx",
+                        "imstack"
                     ],
                     "alternative_names": [
                         "mwir"
@@ -56,7 +59,8 @@
                 "rit": {
                     "movie_plugins": [
                         "uda",
-                        "ipx"
+                        "ipx",
+                        "imstack"
                     ],
                     "alternative_names": [
                         "lwir"
