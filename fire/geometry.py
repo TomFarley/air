@@ -89,11 +89,6 @@ def segment_path_by_material():  # pragma: no cover
                 f'r={r[no_tile_info_mask]}\nz={z[no_tile_info_mask]}')
     return tile_names
 
-
-if __name__ == '__main__':
-    pass
-
-
 def cartesian_to_toroidal(x, y, z=None, phi_in_deg=False):
     """Convert cartesian coordinates to toroidal coordinates
 
@@ -111,3 +106,6 @@ def cartesian_to_toroidal(x, y, z=None, phi_in_deg=False):
     if phi_in_deg:
         phi = np.rad2deg(phi)
     return r, phi
+
+if __name__ == '__main__':
+    pass
