@@ -60,11 +60,11 @@ class TestInterfaces(unittest.TestCase):
         self.assertTrue(len(config), 6)
         self.assertEqual(config['default_params']['pass'], 0)
 
-        out = json_load(path_fn, keys=['default_params', 'pass'])
-        self.assertEqual(out, 0)
+        out = json_load(path_fn, key_paths=[('default_params', 'pass')])
+        self.assertEqual(out, {'pass': 0})
 
         with self.assertRaises(KeyError):
-            out = json_load(path_fn, keys=['default_params', 'my_made_up_key'])
+            out = json_load(path_fn, key_paths=[('default_params', 'my_made_up_key')])
 
         with self.assertRaises(FileNotFoundError):
             out = json_load('my_path')
