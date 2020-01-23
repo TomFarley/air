@@ -168,7 +168,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # Read thermal properties of materials for structures in view
     material_names = list(set(visible_materials.values()))
-    material_properties = json_load(files['material_props'], keys=material_names, lists_to_arrays=True)
+    material_properties = json_load(files['material_props'], key_paths=material_names, lists_to_arrays=True)
     data.attrs['material_properties'] = material_properties
     # TODO: Segment path according to changes in tile properties
 
@@ -276,5 +276,5 @@ def run_mastu():
                        magnetics=magnetics, update_checkpoints=update_checkpoints, debug=debug)
 
 if __name__ == '__main__':
-    # run_mast()
-    run_mastu()
+    run_mast()
+    # run_mastu()
