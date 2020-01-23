@@ -190,14 +190,14 @@ def json_dump(obj, path_fn, fn=None, indent=4, overwrite=True, raise_on_fail=Tru
     return out
 
 # def json_load(path_fn: Union[str, Path], fn: Optional(str)=None, keys: Optional[Sequence[str]]=None):
-def json_load(path_fn, fn=None, keys=None, lists_to_arrays=False):
+def json_load(path_fn, fn=None, key_paths=None, lists_to_arrays=False):
     """Read json file with optional indexing
 
     Args:
-        path_fn : Path to json file
-        fn      : Optional filename to append to path
-        keys    : Optional keys to subset of contents to return. Each element of keys should be an itterable
-                  specifiying a key path through the json file
+        path_fn   : Path to json file
+        fn        : Optional filename to append to path
+        key_paths : Optional keys to subset of contents to return. Each element of keys should be an itterable
+                    specifiying a key path through the json file
 
     Returns: Contents of json file
 
@@ -213,17 +213,17 @@ def json_load(path_fn, fn=None, keys=None, lists_to_arrays=False):
     except Exception as e:
         raise e
     # Return indexed subset of file
-    if keys is not None:
-        keys = make_iterable(keys)
+    if key_paths is not None:
+        key_paths = make_iterable(key_paths)
         out = {}
-        for key_path in keys:
+        for key_path in key_paths:
             key_path = make_iterable(key_path)
             subset = contents
             for key in key_path:
                 try:
                     subset = subset[key]
                 except KeyError as e:
-                    raise KeyError(f'json file ({path_fn}) does not contain key "{key}" in key path {key_path}:\n'
+                    raise KeyError(f'json file ({path_fn}) does not contain key "{key}" in key path "{key_path}":\n'
                                    f'{subset}')
             out[key_path[-1]] = subset
 
