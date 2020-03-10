@@ -1,0 +1,424 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>I/O &mdash; Fusion Infra-Red Experiments v2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Using FIRE with data on other tokamaks" href="../development/movie_io.html" />
+    <link rel="prev" title="Quick start" href="../usage/quick_start.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Fusion Infra-Red Experiments
+          
+
+          
+            
+            <img src="../_static/fire_logo.jpg" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../usage/introduction.html">Introduction to FIRE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/quick_start.html">Quick start</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">I/O</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/movie_io.html">Using FIRE with data on other tokamaks</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Fusion Infra-Red Experiments</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>I/O</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/api/io.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-fire.interfaces.interfaces">
+<span id="i-o"></span><h1>I/O<a class="headerlink" href="#module-fire.interfaces.interfaces" title="Permalink to this headline">¶</a></h1>
+<p>The <cite>interfaces</cite> module contains functions for interfacing with other codes and files.</p>
+<dl class="function">
+<dt id="fire.interfaces.interfaces.check_settings_complete">
+<code class="descclassname">fire.interfaces.interfaces.</code><code class="descname">check_settings_complete</code><span class="sig-paren">(</span><em>settings</em>, <em>machine</em>, <em>camera</em><span class="sig-paren">)</span><a class="headerlink" href="#fire.interfaces.interfaces.check_settings_complete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check settings contain required information</p>
+<p>Raises exceptions if required information is missing</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>settings</strong> – Settings loaded from fire config file</li>
+<li><strong>machine</strong> – Machine for analysis</li>
+<li><strong>camera</strong> – Camera for analysis</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Returns: None</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="fire.interfaces.interfaces.generate_camera_id_strings">
+<code class="descclassname">fire.interfaces.interfaces.</code><code class="descname">generate_camera_id_strings</code><span class="sig-paren">(</span><em>id_strings</em>, <em>lens</em>, <em>t_int</em><span class="sig-paren">)</span><a class="headerlink" href="#fire.interfaces.interfaces.generate_camera_id_strings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return standardised ID strings used for consistency in filenames and data labels</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>id_strings</strong> – Dict of string_ids to update/populate</li>
+<li><strong>lens</strong> – Lens on camera</li>
+<li><strong>t_int</strong> – Integration time of camera in seconds</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Dict of ID strings</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="fire.interfaces.interfaces.generate_frame_id_strings">
+<code class="descclassname">fire.interfaces.interfaces.</code><code class="descname">generate_frame_id_strings</code><span class="sig-paren">(</span><em>id_strings</em>, <em>frame_no</em>, <em>frame_time</em><span class="sig-paren">)</span><a class="headerlink" href="#fire.interfaces.interfaces.generate_frame_id_strings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return ID strings for specific analysis frame</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>id_strings</strong> – Dict of string_ids to update/populate</li>
+<li><strong>frame_no</strong> – Frame number from movie meta data</li>
+<li><strong>frame_time</strong> – Frame time from movie meta data</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Dict of ID strings</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="fire.interfaces.interfaces.generate_pulse_id_strings">
+<code class="descclassname">fire.interfaces.interfaces.</code><code class="descname">generate_pulse_id_strings</code><span class="sig-paren">(</span><em>id_strings</em>, <em>pulse</em>, <em>camera</em>, <em>machine</em>, <em>pass_no=0</em><span class="sig-paren">)</span><a class="headerlink" href="#fire.interfaces.interfaces.generate_pulse_id_strings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return standardised ID strings used for consistency in filenames and data labels
+:param id_strings: Dict of string_ids to update/populate
+:param pulse: Shot/pulse number or string name for synthetic movie data
+:param camera: Name of camera to analyse (unique name of camera or diagnostic code)
+:param machine: Tokamak that the data originates from
+:return: Dict of ID strings</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="fire.interfaces.interfaces.identify_files">
+<code class="descclassname">fire.interfaces.interfaces.</code><code class="descname">identify_files</code><span class="sig-paren">(</span><em>pulse</em>, <em>camera</em>, <em>machine</em>, <em>search_paths_inputs=None</em>, <em>fn_patterns_inputs=None</em>, <em>paths_output=None</em>, <em>fn_pattern_output=None</em>, <em>params=None</em><span class="sig-paren">)</span><a class="headerlink" href="#fire.interfaces.interfaces.identify_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return dict of paths to input files needed for IR analysis</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>pulse</strong> – Shot/pulse number or string name for synthetic movie data</li>
+<li><strong>camera</strong> – Name of camera to analyse (unique name of camera or diagnostic code)</li>
+<li><strong>machine</strong> – Tokamak that the data originates from</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Dict of filepaths</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="fire.interfaces.interfaces.json_load">
+<code class="descclassname">fire.interfaces.interfaces.</code><code class="descname">json_load</code><span class="sig-paren">(</span><em>path_fn</em>, <em>fn=None</em>, <em>keys=None</em>, <em>lists_to_arrays=False</em><span class="sig-paren">)</span><a class="headerlink" href="#fire.interfaces.interfaces.json_load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read json file with optional indexing</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>path_fn</strong> – Path to json file</li>
+<li><strong>fn</strong> – Optional filename to append to path</li>
+<li><strong>keys</strong> – Optional keys to subset of contents to return. Each element of keys should be an itterable
+specifiying a key path through the json file</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Returns: Contents of json file</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="fire.interfaces.interfaces.lookup_pulse_info">
+<code class="descclassname">fire.interfaces.interfaces.</code><code class="descname">lookup_pulse_info</code><span class="sig-paren">(</span><em>pulse: Union[int, str], camera: str, machine: str, search_paths: Sequence[Union[pathlib.Path, str]], filename_patterns: Union[str, pathlib.Path], params: Optional[dict] = None, file_type: Optional[str] = None, raise_=True</em><span class="sig-paren">)</span> &#x2192; pandas.core.series.Series<a class="headerlink" href="#fire.interfaces.interfaces.lookup_pulse_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract information from pulse look up file</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>pulse</strong> – Shot/pulse number or string name for synthetic movie data</li>
+<li><strong>camera</strong> – Name of camera to analyse (unique name of camera or diagnostic code)</li>
+<li><strong>machine</strong> – Tokamak that the data originates from</li>
+<li><strong>search_paths</strong> – Format strings for paths to search for files</li>
+<li><strong>filename_patterns</strong> – Format string for possible filesnames to locate</li>
+<li><strong>params</strong> – Parameters to substitute into format strings</li>
+<li><strong>raise</strong> – Whether to raise or return exceptions</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Returns: Series of data from csv file</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="fire.interfaces.interfaces.lookup_pulse_row_in_csv">
+<code class="descclassname">fire.interfaces.interfaces.</code><code class="descname">lookup_pulse_row_in_csv</code><span class="sig-paren">(</span><em>path_fn: Union[str, pathlib.Path], pulse: int, **kwargs_csv</em><span class="sig-paren">)</span> &#x2192; Union[pandas.core.series.Series, Exception]<a class="headerlink" href="#fire.interfaces.interfaces.lookup_pulse_row_in_csv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return row from csv file containing information for pulse range containing supplied pulse number</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path_fn</strong> – path to csv file containing pulse range information</li>
+<li><strong>pulse</strong> – pulse number of interest</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Pandas Series containing pulse information / Exception if unsuccessful</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="fire.interfaces.interfaces.two_level_dict_to_multiindex_df">
+<code class="descclassname">fire.interfaces.interfaces.</code><code class="descname">two_level_dict_to_multiindex_df</code><span class="sig-paren">(</span><em>d</em><span class="sig-paren">)</span><a class="headerlink" href="#fire.interfaces.interfaces.two_level_dict_to_multiindex_df" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert nested dictionary to two level multiindex dataframe</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>d</strong> – Input nested dictionary</td>
+</tr>
+</tbody>
+</table>
+<p>Returns: DataFrame containing contents of d</p>
+<p class="rubric">Examples</p>
+<p>d:
+{“MAST_S1_L3_centre_radial_1”:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>{</dt>
+<dd>“start”: {“R”: 0.769, “z”: -1.827, “phi”: 70.6},
+“end”: {“R”: 1.484, “z”: -1.831, “phi”: 70.6}</dd>
+</dl>
+<p>}</p>
+</div></blockquote>
+<p>}
+df:</p>
+<blockquote>
+<div><blockquote>
+<div>R      z   phi</div></blockquote>
+<dl class="docutils">
+<dt>MAST_S1_L3_centre_radial_1 end    1.484 -1.831  70.6</dt>
+<dd>start  0.769 -1.827  70.6</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../development/movie_io.html" class="btn btn-neutral float-right" title="Using FIRE with data on other tokamaks" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../usage/quick_start.html" class="btn btn-neutral" title="Quick start" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Tom Farley, Scott Silburn
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
