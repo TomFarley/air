@@ -4,7 +4,7 @@
 """
 
 
-Created: 
+Created:
 """
 import glob
 import inspect
@@ -72,7 +72,7 @@ def get_plugins(path: Union[Path, str], attributes_requried: Dict[str, str],
         return plugins, pulgins_info
 
     # Get possible modules in directory
-    file_list = glob.glob(os.path.join(path, '*'))
+    file_list = glob.glob(os.path.join(str(path), '*'))
     possible_plugin_modules = []
     for f in file_list:
         if os.path.isdir(f) and os.path.isfile(os.path.join(f, '__init__.py')):
@@ -107,8 +107,8 @@ def get_plugins(path: Union[Path, str], attributes_requried: Dict[str, str],
                 else:
                     plugin_attributes[attribute_key] = attribute_value
                     info['optional'].append(attribute_name)
-            # Follow convention that first required attribute's value is a string name for the plugin
-            plugin_name = tuple(plugin_attributes.values())[0]
+            # Follow convention that required attributes always include 'plugin_name'
+            plugin_name = plugin_attributes['plugin_name']
             if not isinstance(plugin_name, str):
                 raise ValueError(f'Plugin required_attributes do not follow convention of first attribute value being'
                                  f'string name of plugin: plugin_name_attribute={plugin_name}, module={path_fn}')
