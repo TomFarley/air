@@ -108,6 +108,9 @@ def calc_camera_shake_displacements(frames: Union[xr.DataArray, np.ndarray],
     return displacements, camera_shake_stats
 
 def calc_camera_shake_phase_correlation(frames, reference_frame, verbose=False):
+    # cv2.phaseCorrelate requires 32/64 bit float arrays
+    reference_frame = np.float32(reference_frame)
+    frames = np.float32(frames)
     displacemnts = np.full((len(frames), 2), np.nan)
     correlations = np.full(len(frames), np.nan)
     for n in np.arange(len(frames)):
