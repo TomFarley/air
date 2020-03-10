@@ -1,3 +1,4 @@
+# -*- coding: future_fstrings -*-
 """MAST specific plugin fuctions for FIRE.
 
 """
