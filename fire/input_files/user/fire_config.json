@@ -170,6 +170,11 @@
         "raycast_checkpoint": "raycast_{calcam_calib_stem}-{image_coords}.nf",
         "processed_ir_netcdf": "processed_ir-{machine}-{camera}-{pulse}.nf"
     },
+    "function_kwargs": {
+        "imstack.read_movie_data": {
+            "grayscale": true
+        }
+    },
     "fire": {
         "version": "2.0.0",
         "updated": null
