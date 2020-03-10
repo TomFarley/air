@@ -1,3 +1,4 @@
+# -*- coding: future_fstrings -*-
 #!/usr/bin/env python
 """
 The `interfaces` module contains functions for interfacing with other codes and files.

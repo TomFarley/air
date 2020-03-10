@@ -1,3 +1,4 @@
+# -*- coding: future_fstrings -*-
 #!/usr/bin/env python
 
 """Miscelanious utility functions
