@@ -250,7 +250,7 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, masks=N
         # TODO: check_occlusion
         if np.any(~analysis_paths[f'visible_{path}']):
             logger.warning(f'Analysis path contains sections that are not visible from the camera: '
-                           f'{~analysis_paths[f"visible_{path}"]}')
+                           f'{~analysis_paths["visible_{path}"]}')
     return analysis_paths
 
 def check_visible(x_points, y_points, image_shape):
