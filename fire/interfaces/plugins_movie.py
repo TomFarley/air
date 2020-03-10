@@ -4,7 +4,7 @@
 """
 
 
-Created: 
+Created:
 """
 import inspect
 import logging
@@ -13,7 +13,7 @@ from typing import Union, Sequence, Tuple, Optional, Any, Dict
 import numpy as np
 from fire import fire_paths
 from fire.interfaces.interfaces import PathList
-from fire.utils import locate_files
+from fire.utils import dirs_exist, locate_files, filter_kwargs
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -72,7 +72,8 @@ def read_movie_data(pulse: Union[int, str], camera: str, machine: str, movie_plu
         logger.info(f'Read {len(frame_nos)} frames for camera "{camera}", pulse "{pulse}" from {str(origin)[1:-1]}')
     return frame_nos, frame_times, frame_data, origin
 
-def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_paths=None, movie_fns=None):
+def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_paths=None, movie_fns=None,
+                      func_kwargs=None):
     """Iterate through calling supplied movie plugin functions in order supplied, until successful.
 
     Args:
@@ -94,7 +95,10 @@ def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_p
     for plugin_name, plugin_funcs in movie_plugins.items():
         read_movie_func = plugin_funcs[plugin_key]
         signature = inspect.signature(read_movie_func).parameters.keys()
+        # TODO: separate kwargs preparation from actual function call
+        # get_movie_plugin_args(read_movie_func, kwargs, func_kwargs)
         if ('path_fn' in signature):
+            # Eg IPX file
             if (movie_paths is None) or (movie_fns is None):
                 logger.warning(f'Skipping {plugin_name} movie plugin as movie path info not supplied')
                 continue
@@ -103,7 +107,8 @@ def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_p
                 continue
             for path_fn in path_fns:
                 # Try reading each of the located possible movie files
-                kwargs['path_fn'] = path_fn
+                if 'path_fn' in signature:
+                    kwargs['path_fn'] = path_fn
                 kws = {k: v for k, v in kwargs.items() if k in signature}
                 try:
                     data = read_movie_func(**kws)
@@ -111,9 +116,25 @@ def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_p
                     break
                 except Exception as e:
                     continue
+            else:
+                # read_movie_func failed for each path_fns
+                continue
+        elif ('path' in signature):
+            # Path containing multiple files eg. imstack movie
+            paths_exist, paths_raw_exist, paths_raw_not_exist = dirs_exist(movie_paths, path_kws=kwargs)
+            for path in paths_exist:
+                kwargs['path'] = str(path)
+                kws = {k: v for k, v in kwargs.items() if k in signature}
+                try:
+                    data = read_movie_func(**kws)
+                    origin = {'plugin': plugin_name, 'path': path}
+                    break
+                except Exception as e:
+                    continue
         else:
             try:
-                data = read_movie_func(**kwargs)
+                kws = filter_kwargs(read_movie_func, kwargs, remove=False)
+                data = read_movie_func(**kws)
                 origin = {'plugin': plugin_name}
             except Exception as e:
                 continue
@@ -122,6 +143,9 @@ def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_p
     if data is None:
         raise IOError(f'Failed to read movie data with movie plugins {list(movie_plugins.keys())} for args: {kwargs} ')
     return data, origin
+
+def get_movie_plugin_args(func, kwargs_generic=None, kwargs_specific=None):
+    pass
 
 if __name__ == '__main__':
     pass
