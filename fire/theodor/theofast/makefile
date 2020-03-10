@@ -7,7 +7,7 @@ bit=x32
 endif
 
 CC = gcc
-FLAGS = -O3 -fPIC -Wall -std=c99 -ffast-math -fopenmp
+FLAGS = -O3 -fPIC -Wall -std=c99 -ffast-math -fopenmp -ggdb3
 LIBS = -lm
 INC = 
 
