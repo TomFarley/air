@@ -88,7 +88,7 @@ def read_movie_meta(path: Union[str, Path], transforms: Iterable[str]=()) -> dic
     movie_meta['imstack_header'] = imstack_header
 
     # If present, also read meta data from json file with images
-    movie_meta_json = json_load(Path(path)/'movie_meta_data.json')
+    movie_meta_json = json_load(Path(path)/'movie_meta_data.json', raise_on_filenotfound=False)
     if isinstance(movie_meta_json, dict):
         movie_meta.update(movie_meta_json)
 
@@ -138,10 +138,7 @@ def read_movie_data(path: Union[str, Path], frame_nos: Optional[Union[Iterable, 
     if any(np.fmod(frame_nos, 1) > 1e-5):
         raise ValueError(f'Fractional frame numbers requested from ipx file: {frame_nos}')
     # Allocate memory for frames
-    if grayscale:
-        frame_shape = frame0.shape[0:2]
-    else:
-        frame_shape = frame0.shape
+    frame_shape = frame0.shape if (not grayscale) else frame0.shape[0:2]
     frame_data = np.zeros((len(frame_nos), *frame_shape), dtype=frame0.dtype)
     frame_times = np.zeros_like(frame_nos, dtype=float)
 
