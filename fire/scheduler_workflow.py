@@ -108,8 +108,12 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Validate frame range etc
 
     # Load raw frame data
-    frame_nos, frame_times, frame_data, movie_origin = read_movie_data(pulse, camera, machine, movie_plugins,
-                                                        movie_paths=movie_paths, movie_fns=movie_fns, verbose=True)
+    # Use origin information from reading movie meta data to read frame data from same data source (speed & consistency)
+    movie_plugin = {movie_origin['plugin']: movie_plugins[movie_origin['plugin']]}
+    movie_path = [movie_origin.get('path', None)]
+    movie_fn = [movie_origin.get('fn', None)]
+    frame_nos, frame_times, frame_data, movie_origin = read_movie_data(pulse, camera, machine, movie_plugin,
+                                                        movie_paths=movie_path, movie_fns=movie_fn, verbose=True)
 
     # Apply transformations (rotate, flip etc.) to get images "right way up" if requested
     frame_data = apply_frame_display_transformations(frame_data, calcam_calib, image_coords)
