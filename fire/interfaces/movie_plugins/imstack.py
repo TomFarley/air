@@ -116,6 +116,13 @@ def read_movie_data(path: Union[str, Path], frame_nos: Optional[Union[Iterable, 
     imstack_header = vid.file_header
     ret, frame0, frame_header0 = vid.read(transforms=transforms)
     n_frames_movie = int(imstack_header['TotalFrame'])
+    if frame0.ndim != 3:
+        # If images are not returned with three RGB channels, ignore grayscale conversions checks
+        grayscale = False
+    if grayscale and (not np.all(frame0[:, :, 0] == frame0[:, :, 1])):
+        logger.warning(f'Reading imstack movie data as grayscale (taking R channel) despite RGB channels not being '
+                       f'equal. Consider setting grayscale=False.')
+
     if frame_nos is None:
         frame_nos = np.arange(n_frames_movie, dtype=int)
     elif isinstance(frame_nos, numbers.Number):
@@ -129,7 +136,13 @@ def read_movie_data(path: Union[str, Path], frame_nos: Optional[Union[Iterable, 
     if any(np.fmod(frame_nos, 1) > 1e-5):
         raise ValueError(f'Fractional frame numbers requested from ipx file: {frame_nos}')
     # Allocate memory for frames
-    frame_data = np.zeros((len(frame_nos), *frame0.shape), dtype=frame0.dtype)
+    if grayscale:
+        if frame0.shape[2] != 3:
+            raise ValueError(f'Unexpected shape for frame data: {frame0.shape}')
+        frame_shape = frame0.shape[0:2]
+    else:
+        frame_shape = frame0.shape
+    frame_data = np.zeros((len(frame_nos), *frame_shape), dtype=frame0.dtype)
     frame_times = np.zeros_like(frame_nos, dtype=float)
 
     # To efficiently read the video the frames should be loaded in monotonically increasing order
@@ -146,6 +159,9 @@ def read_movie_data(path: Union[str, Path], frame_nos: Optional[Union[Iterable, 
         if n in frame_nos:
             # frames are read with 16 bit dynamic range, but values are 10 bit!
             ret, frame, header = vid.read(transforms=transforms)
+            if grayscale:
+                # Take only red RGB channel - assume all are same (warning above)
+                frame = frame[:, :, 0]
             frame_data[i_data, ...] = frame
             frame_times[i_data] = header['time_stamp']
             i_data += 1
