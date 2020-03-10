@@ -9,6 +9,7 @@ Created:
 import inspect
 import logging
 from typing import Union, Sequence, Tuple, Optional, Any, Dict
+from copy import copy
 
 import numpy as np
 from fire import fire_paths
@@ -34,6 +35,7 @@ def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movi
     Returns: (meta data dictionary, data origin dictionary)
 
     """
+    # TODO: Make all plugins return consistent format for exposure - currently have either str or float?
     movie_meta_required_fields = ['n_frames', 'frame_range', 't_range', 'frame_shape', 'fps', 'lens', 'exposure',
                                   'bit_depth']
     plugin_key = 'meta'
@@ -93,59 +95,75 @@ def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_p
               'fire_path': str(fire_paths['root'])}
     data, origin = None, None
     for plugin_name, plugin_funcs in movie_plugins.items():
-        read_movie_func = plugin_funcs[plugin_key]
-        signature = inspect.signature(read_movie_func).parameters.keys()
-        # TODO: separate kwargs preparation from actual function call
-        # get_movie_plugin_args(read_movie_func, kwargs, func_kwargs)
-        if ('path_fn' in signature):
-            # Eg IPX file
-            if (movie_paths is None) or (movie_fns is None):
-                logger.warning(f'Skipping {plugin_name} movie plugin as movie path info not supplied')
-                continue
-            path_fns = locate_files(movie_paths, movie_fns, path_kws=kwargs, fn_kws=kwargs)
-            if len(path_fns) == 0:
-                continue
-            for path_fn in path_fns:
-                # Try reading each of the located possible movie files
-                if 'path_fn' in signature:
-                    kwargs['path_fn'] = path_fn
-                kws = {k: v for k, v in kwargs.items() if k in signature}
-                try:
-                    data = read_movie_func(**kws)
-                    origin = {'plugin': plugin_name, 'path_fn': path_fn}
-                    break
-                except Exception as e:
-                    continue
+        movie_func = plugin_funcs[plugin_key]
+        status, kws, origin_options = get_movie_plugin_args(movie_func, kwargs, func_kwargs,
+                                                           movie_paths=movie_paths, movie_fns=movie_fns)
+        if status == 'ok':
+            origin = {}
+            if len(origin_options) > 0:
+                # Look over multiple possible movie locations/origins
+                for kwarg_name, options in origin_options.items():
+                    for option in options:
+                        origin[kwarg_name] = option
+                        kws.update(origin)
+                        try:
+                            data = movie_func(**kws)
+                            origin = {'plugin': plugin_name, **origin}
+                            if kwarg_name == 'path_fn':
+                                origin['path'] = option.parent
+                                origin['fn'] = option.name
+                            break
+                        except Exception as e:
+                            continue
+                    if data is not None:
+                        break
             else:
-                # read_movie_func failed for each path_fns
-                continue
-        elif ('path' in signature):
-            # Path containing multiple files eg. imstack movie
-            paths_exist, paths_raw_exist, paths_raw_not_exist = dirs_exist(movie_paths, path_kws=kwargs)
-            for path in paths_exist:
-                kwargs['path'] = str(path)
-                kws = {k: v for k, v in kwargs.items() if k in signature}
+                # Only one set of arguments to try eg pyUDA
                 try:
-                    data = read_movie_func(**kws)
-                    origin = {'plugin': plugin_name, 'path': path}
-                    break
+                    data = movie_func(**kws)
+                    origin = {'plugin': plugin_name}
                 except Exception as e:
                     continue
-        else:
-            try:
-                kws = filter_kwargs(read_movie_func, kwargs, remove=False)
-                data = read_movie_func(**kws)
-                origin = {'plugin': plugin_name}
-            except Exception as e:
-                continue
+
         if data is not None:
+            # Use first successful path options - multiple valid movie paths may exist for same movie
             break
     if data is None:
-        raise IOError(f'Failed to read movie data with movie plugins {list(movie_plugins.keys())} for args: {kwargs} ')
+        raise IOError(f'Failed to read movie data with movie plugins {list(movie_plugins.keys())} for args:\n'
+                      f'{kwargs}')
     return data, origin
 
-def get_movie_plugin_args(func, kwargs_generic=None, kwargs_specific=None):
-    pass
+def get_movie_plugin_args(read_movie_func, kwargs_generic=None, kwargs_specific=None, movie_paths=None, movie_fns=None):
+    signature = inspect.signature(read_movie_func).parameters.keys()
+    kwargs = copy(kwargs_generic)
+    # Default fail values
+    kws = {}
+    origin_options = {}
+    if ('path_fn' in signature):
+        # Direct path to movie file eg IPX file
+        if (movie_paths is None) or (movie_fns is None):
+            # No paths or filenames supplied
+            status = f'Movie path info not supplied'
+            return status, kws, origin_options
+
+        path_fns = locate_files(movie_paths, movie_fns, path_kws=kwargs, fn_kws=kwargs)
+        if len(path_fns) == 0:
+            status = f'No movie files located in: {movie_paths}'
+            return status, kws, origin_options
+        origin_options['path_fn'] = path_fns
+
+    if ('path' in signature):
+        # Path containing multiple files eg. imstack movie
+        paths_exist, paths_raw_exist, paths_raw_not_exist = dirs_exist(movie_paths, path_kws=kwargs)
+        if len(paths_exist) == 0:
+            status = f'No movie file directories located in: {movie_paths}'
+            return status, kws, origin_options
+        origin_options['path'] = paths_exist
+
+    kws = {k: v for k, v in kwargs.items() if k in signature}
+    status = 'ok'
+    return status, kws, origin_options
+
 
 if __name__ == '__main__':
     pass
