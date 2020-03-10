@@ -56,7 +56,7 @@ class TestInterfaces(unittest.TestCase):
         self.assertEqual(config['default_params']['pass'], 0)
         config = None
 
-        config = json_load(str(path_fn.parent), fn=path_fn.name)
+        config = json_load(str(path_fn.parent), path=path_fn.name)
         self.assertTrue(len(config), 6)
         self.assertEqual(config['default_params']['pass'], 0)
 
