@@ -16,6 +16,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 from pyIpx.movieReader import imstackReader
+from fire.interfaces.interfaces import json_load
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -85,10 +86,17 @@ def read_movie_meta(path: Union[str, Path], transforms: Iterable[str]=()) -> dic
     # TODO: Add filter name?
 
     movie_meta['imstack_header'] = imstack_header
+
+    # If present, also read meta data from json file with images
+    movie_meta_json = json_load(Path(path)/'movie_meta_data.json')
+    if isinstance(movie_meta_json, dict):
+        movie_meta.update(movie_meta_json)
+
     return movie_meta
 
 def read_movie_data(path: Union[str, Path], frame_nos: Optional[Union[Iterable, int]]=None,
-                    transforms: Optional[Iterable[str]]=()) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                    transforms: Optional[Iterable[str]]=(), grayscale: bool=True) -> Tuple[np.ndarray, np.ndarray,
+                                                                                     np.ndarray]:
     """Read frame data from imstack image directory ('png','jpg','bmp','tif').
 
     :param path: Path to imstack directory
