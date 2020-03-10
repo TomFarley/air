@@ -99,7 +99,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # settings['camera_state'] = get_camera_state(pulse, camera, machine)
 
     # Load calcam spatial camera calibration
-    calcam_calib = calcam.Calibration(load_filename=files['calcam_calib'])
+    calcam_calib = calcam.Calibration(load_filename=str(files['calcam_calib']))
     # TODO: calcam_calib.set_detector_window(window)  #  window = (Left,Top,Width,Height)
 
     meta_data['calcam_calib'] = calcam_calib
@@ -277,5 +277,5 @@ def run_mastu():
                        magnetics=magnetics, update_checkpoints=update_checkpoints, debug=debug)
 
 if __name__ == '__main__':
-    run_mast()
-    # run_mastu()
+    # run_mast()
+    run_mastu()
