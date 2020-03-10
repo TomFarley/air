@@ -147,8 +147,9 @@ def get_compatible_plugins(plugin_paths: PathList,
     logger.info(f'Located {plugin_type} plugins for: {", ".join(list(plugins.keys()))}')
 
     if plugin_filter is not None:
-        plugins = {key: value for key, value in plugins.items() if key in plugin_filter}
-        info = {key: value for key, value in info.items() if key in plugin_filter}
+        # Return filtered plugins in order specified in json config file
+        plugins = {key: plugins[key] for key in plugin_filter if key in plugins.keys()}
+        info = {key: info[key] for key in plugin_filter if key in info.keys()}
     return plugins, info
 
 
