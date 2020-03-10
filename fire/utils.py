@@ -6,7 +6,7 @@
 Created: 11-10-19
 """
 
-import logging
+import logging, inspect
 from typing import Union, Iterable, Tuple, List, Optional, Any, Sequence
 from pathlib import Path
 
@@ -126,6 +126,38 @@ def make_iterable(obj: Any, ndarray: bool=False,
             obj = cast_to(obj)  # cast to new type eg list
     return obj
 
+def dirs_exist(paths: Iterable[Union[str, Path]], path_kws: Optional[dict]=None
+               ) -> Tuple[List[Path], List[str], List[str]]:
+    paths = make_iterable(paths)
+    if path_kws is None:
+        path_kws = {}
+
+    paths_exist = []
+    paths_raw_exist = []
+    paths_raw_not_exist = []
+
+    for path_raw in paths:
+        # Insert missing info into format strings
+        path_raw = str(path_raw)
+        try:
+            path = path_raw.format(**path_kws)
+        except KeyError as e:
+                raise ValueError(f'Cannot locate file without value for "{e.args[0]}": "{path_raw}", {path_kws}"')
+        try:
+            path = Path(path).expanduser().resolve()
+        except RuntimeError as e:
+            if "Can't determine home directory" in str(e):
+                pass
+                # continue
+            else:
+                raise e
+        if path.is_dir():
+            paths_exist.append(path)
+            paths_raw_exist.append(path_raw)
+        else:
+            paths_raw_not_exist.append(path_raw)
+    return paths_exist, paths_raw_exist, paths_raw_not_exist
+
 def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
                 path_kws: Optional[dict]=None, fn_kws: Optional[dict]=None,
                 return_raw_path: bool=False, return_raw_fn: bool=False,
@@ -148,36 +180,21 @@ def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
 
     """
     # TODO: detect multiple occurences/possible paths
-    paths = make_iterable(paths)
+    # TODO: Allow regular expresssions
     fns = make_iterable(fns)
-    if path_kws is None:
-        path_kws = {}
     if fn_kws is None:
         fn_kws = {}
 
     located = False
-    for path_raw in paths:
-        # Insert missing info in
-        path_raw = str(path_raw)
-        try:
-            path = path_raw.format(**path_kws)
-        except KeyError as e:
-                raise ValueError(f'Cannot locate file without value for "{e.args[0]}": "{path_raw}", {path_kws}"')
-        try:
-            path = Path(path).expanduser()
-        except RuntimeError as e:
-            if "Can't determine home directory" in str(e):
-                continue
-            else:
-                raise e
-        if not path.is_dir():
-            continue
-        path = path.resolve()
+    paths_exist, paths_raw_exist, paths_raw_not_exist = dirs_exist(paths, path_kws=path_kws)
+    for path, path_raw in zip(paths_exist, paths_raw_exist):
         for fn_raw in fns:
             try:
                 fn = str(fn_raw).format(**fn_kws)
             except KeyError as e:
                 raise ValueError(f'Cannot locate file without value for "{e.args[0]}": "{fn_raw}", {fn_kws}"')
+            except IndexError as e:
+                raise e
             fn_path = path / fn
             if fn_path.is_file():
                 located = True
@@ -242,4 +259,42 @@ def join_path_fn(path: Union[Path, str], fn: str):
     """
     return Path(path) / fn
 
+def filter_kwargs(func, kwargs, include=(), exclude=(), match_signature=True, named_dict=True, remove=True):
+    """Return filtered dict of kwargs that match input call signature for supplied function.
+
+    Args:
+        func            : Function(s) to provide compatible arguments for
+        kwargs          : List of kwargs to filter for supplied function
+        include         : List of kwargs to include regardless of function signature
+        exclude         : List of kwargs to exclude regardless of function signature
+        match_signature : Whether to use use function signature to filter kwargs
+        named_dict      : If kwargs contains a dict under key '<func_name>_args' return its contents (+ filtered kwargs)
+        remove          : Remove filtered kwargs from original kwargs dict
+
+    Returns: Dictionary of keyword arguments that are compatible with the supplied function's call signature
+
+    """
+    #TODO: Include positional arguments!
+    func = make_iterable(func)  # Nest lone function in list for itteration, TODO: Handle itterable classes
+    kws = {}
+    keep = []  # list of argument names
+    name_args = []
+    for f in func:
+        # Add arguments for each function to list of arguments to keep
+        if isinstance(f, type):
+            # If a class look at it's __init__ method
+            keep += list(inspect.signature(f.__init__).parameters.keys())
+        else:
+            keep += list(inspect.signature(f).parameters.keys())
+        name_args += ['{name}_args'.format(name=f.__name__)]
+    if match_signature:
+        matches = {k: v for k, v in kwargs.items() if (((k in keep) and (k not in exclude)) or (k in include))}
+        kws.update(matches)
+    if named_dict:  # Look for arguments <function>_args={dict of keyword arguments}
+        keep_names = {k: v for k, v in kwargs.items() if (k in name_args)}
+        kws.update(keep_names)
+    if remove:  # Remove key value pairs from kwargs that were transferred to kws
+        for key in kws:
+            kwargs.pop(key)
+    return kws
 
