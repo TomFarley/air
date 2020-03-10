@@ -119,6 +119,8 @@ def read_movie_data(path: Union[str, Path], frame_nos: Optional[Union[Iterable, 
     if frame0.ndim != 3:
         # If images are not returned with three RGB channels, ignore grayscale conversions checks
         grayscale = False
+    elif frame0.shape[2] != 3:
+        raise ValueError(f'Unexpected shape for imstack frame data: {frame0.shape}')
     if grayscale and (not np.all(frame0[:, :, 0] == frame0[:, :, 1])):
         logger.warning(f'Reading imstack movie data as grayscale (taking R channel) despite RGB channels not being '
                        f'equal. Consider setting grayscale=False.')
@@ -137,8 +139,6 @@ def read_movie_data(path: Union[str, Path], frame_nos: Optional[Union[Iterable, 
         raise ValueError(f'Fractional frame numbers requested from ipx file: {frame_nos}')
     # Allocate memory for frames
     if grayscale:
-        if frame0.shape[2] != 3:
-            raise ValueError(f'Unexpected shape for frame data: {frame0.shape}')
         frame_shape = frame0.shape[0:2]
     else:
         frame_shape = frame0.shape
