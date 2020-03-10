@@ -75,14 +75,14 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
     # Get filenames straight from config settings: Analysis path definition file, bb photons, temperature coefs,
     # surface coords, surface properties
     input_files = ['analysis_path_dfns', 'black_body_curve', 'calib_coefs', 'structure_coords', 'material_props']
-    for input_file in input_files:
-        fn_patterns = fn_patterns_inputs[input_file]
+    for file_type in input_files:
+        fn_patterns = fn_patterns_inputs[file_type]
         try:
             path, fn = locate_file(search_paths_inputs, fn_patterns, path_kws=params, fn_kws=params)
         except FileNotFoundError as e:
             raise FileNotFoundError(f'Could not locate fire input file for "{file_type}":\n{str(e)}')
         path_fn = path / fn
-        files[input_file] = path_fn
+        files[file_type] = path_fn
 
     # Checkpoint intermediate output files to speed up analysis
     # checkpoint_path = setup_checkpoint_path(paths_output['checkpoint_data'])
@@ -174,10 +174,24 @@ def generate_frame_id_strings(id_strings, frame_no, frame_time):
 def check_frame_range(meta_data, frames=None, start_frame=None, end_frame=None, nframes_user=None, frame_stride=1):
     raise NotImplementedError
 
-def json_dump(obj, path_fn, fn=None, indent=4, overwrite=True, raise_on_fail=True):
+def json_dump(obj, path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None, indent: int=4,
+              overwrite: bool=True, raise_on_fail: bool=True):
+    """Convenience wrapper for json.dump.
+
+    Args:
+        obj             : Object to be serialised
+        path_fn         : Filename (and path) for output file
+        path            : (Optional) path to output file
+        indent          : Number of spaces for each json indentation
+        overwrite       : Overwite existing file
+        raise_on_fail   : Whether to raise exceptions or return them
+
+    Returns: Output file path if successful, else captured exception
+
+    """
     path_fn = Path(path_fn)
-    if fn is not None:
-        path_fn = path_fn / fn
+    if path is not None:
+        path_fn = Path(path) / path_fn
     if (not overwrite) and (path_fn.exists()):
         raise FileExistsError(f'Requested json file already exists: {path_fn}')
     try:
@@ -190,26 +204,34 @@ def json_dump(obj, path_fn, fn=None, indent=4, overwrite=True, raise_on_fail=Tru
             raise e
     return out
 
-# def json_load(path_fn: Union[str, Path], fn: Optional(str)=None, keys: Optional[Sequence[str]]=None):
-def json_load(path_fn, fn=None, key_paths=None, lists_to_arrays=False):
+# def json_load(path_fn: Union[str, Path], fn: Optional(str)=None, keys: Optional[Sequence[Sequence]]=None):
+def json_load(path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None,
+              key_paths: Optional[Sequence[Sequence]]=None, lists_to_arrays: bool=False,
+              raise_on_filenotfound: bool=True):
     """Read json file with optional indexing
 
     Args:
-        path_fn   : Path to json file
-        fn        : Optional filename to append to path
-        key_paths : Optional keys to subset of contents to return. Each element of keys should be an itterable
-                    specifiying a key path through the json file
+        path_fn         : Path to json file
+        path            : Optional path to prepend to filename
+        key_paths       : Optional keys to subsets of contents to return. Each element of keys should be an iterable
+                          specifiying a key path through the json file.
+        lists_to_arrays : Whether to cast lists in output to arrays for easier slicing etc.
+        raise_on_filenotfound : Whether to raise (or else return) FileNotFoundError if file not located
 
     Returns: Contents of json file
 
     """
     path_fn = Path(path_fn)
-    if fn is not None:
-        path_fn = path_fn / fn
+    if path is not None:
+        path_fn = Path(path) / path_fn
     if not path_fn.exists():
-        raise FileNotFoundError(f'Requested json file does not exist: {path_fn}')
+        e = FileNotFoundError(f'Requested json file does not exist: {path_fn}')
+        if raise_on_filenotfound:
+            raise e
+        else:
+            return e
     try:
-        with open(path_fn, 'r') as f:
+        with open(str(path_fn), 'r') as f:
             contents = json.load(f)
     except Exception as e:
         raise e
@@ -373,9 +395,10 @@ def get_module_from_path_fn(path_fn):
         else:
             module_name = os.sep.join(path_fn.parts[-2:])
         try:
-            spec = importlib.util.spec_from_file_location(module_name, path_fn)
+            spec = importlib.util.spec_from_file_location(module_name, str(path_fn))
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
         except Exception as e:
+            logger.exception('Failed to load potential plugin module: {path_fn}'.format(path_fn=path_fn))
             module = None
     return module
