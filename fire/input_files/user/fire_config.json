@@ -14,8 +14,8 @@
             "cameras": {
                 "rir": {
                     "movie_plugins": [
-                        "uda",
                         "ipx",
+                        "uda",
                         "imstack"
                     ],
                     "camera_aliases": [
@@ -24,8 +24,8 @@
                 },
                 "rit": {
                     "movie_plugins": [
-                        "uda",
                         "ipx",
+                        "uda",
                         "imstack"
                     ],
                     "alternative_names": [
@@ -48,8 +48,8 @@
             "cameras": {
                 "rir": {
                     "movie_plugins": [
-                        "uda",
                         "ipx",
+                        "uda",
                         "imstack"
                     ],
                     "alternative_names": [
@@ -58,8 +58,8 @@
                 },
                 "rit": {
                     "movie_plugins": [
-                        "uda",
                         "ipx",
+                        "uda",
                         "imstack"
                     ],
                     "alternative_names": [
@@ -153,7 +153,8 @@
             "analysis_path_dfns-{machine}-{camera}-defaults.json"
         ],
         "black_body_curve": [
-            "bb_photons-{lens}-{exposure}us.tsv"
+            "bb_photons-{lens}-{exposure}us.tsv",
+            "bb_photons-{lens}-{exposure:0.0f}us.tsv"
         ],
         "calib_coefs": [
             "calib_coefs-{machine}-{camera}-{lens}-{exposure}us.tsv",
