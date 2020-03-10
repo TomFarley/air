@@ -20,16 +20,22 @@ Machine and camera specific variables are stored in a number of input files in h
    :header-rows: 1
 
    * - File type
+     - Description
      - Extension
      - Default filename format
-     - Description
+   * - machine_plugins
+     - | Functions sepecific to machine (e.g. s-coords, sectors
+       | etc.). File must be in a plugin search path and contain
+       | the attribute 'machine_plugin_name'.
+     - py
+     - {machine}.py  (arb)
    * - calcam_calibs
+     - | Lookup table for which calcam spatial calibration files
+       | (.ccc) to use for different pulse ranges
      - csv
      - calcam_calibs-{machine}-{camera}-defaults.csv
-     - | Lookup table for which calcam calibration files (.ccc)
-       | to use for different pulse ranges
    * - analysis_paths
-     - csv
-     - analysis_paths-{machine}-{camera}-defaults.csv
      - | Spatial coordinates of paths along tile surfaces to
        | calculate heat fluxes along
+     - csv
+     - analysis_paths-{machine}-{camera}-defaults.csv
