@@ -35,8 +35,8 @@
             },
             "cad_models": [
                 {
-                    "model_name": "MAST",
-                    "model_variant": "Detailed"
+                    "model_name": "MAST Upgrade",
+                    "model_variant": "Jan 2017"
                 }
             ],
             "pulse_range": [
