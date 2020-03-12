@@ -152,17 +152,23 @@ def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, ima
     spatial_res = calc_spatial_res(data_out['x_im'], data_out['x_im'], data_out['x_im'])
     for key, value in spatial_res.items():
         data_out[key] = (('y_pix', 'x_pix'), value)
+    # Add labels for plots
+    data_out['spatial_res_max'].attrs['standard_name'] = 'Spatial resolution'
+    data_out['spatial_res_max'].attrs['units'] = 'm'
     # Just take red channel of wireframe image
     data_out['wire_frame'] = (('y_pix', 'x_pix'), wire_frame[:, :, 0])
+
     return data_out
 
-def calc_spatial_res(x_im, y_im, z_im):
+def calc_spatial_res(x_im, y_im, z_im, res_min=1e-4, res_max=None):
     """Return spatial resolution at each pixel given cartesian spatial coords of each pixel
 
     Args:
         x_im: Array of cartesian x spatial coordinates (e.g. from calcam) for each pixel (in meters)
         y_im: Array of cartesian y spatial coordinates (e.g. from calcam) for each pixel (in meters)
         z_im: Array of cartesian z spatial coordinates (e.g. from calcam) for each pixel (in meters)
+        res_min: Minimum resolution considered realistic (lower values are set to nan) eg 1e-4 (<0.1 mm)
+        res_max: Maximum resolution considered realistic (higher values are set to nan) eg 5e-1 (>50 cm)
 
     Returns: Array containing spatial coords of each pixel
 
@@ -175,19 +181,28 @@ def calc_spatial_res(x_im, y_im, z_im):
     # Pad arrays to make them same shape as image
     spatial_res_x = np.pad(spatial_res_x, pad_width=((0, 0), (1, 0)), mode='edge')
     spatial_res_y = np.pad(spatial_res_y, pad_width=((1, 0), (0, 0)), mode='edge')
-    # Remove extreem values between surfaces at different distances
-    spatial_res_x = np.where(spatial_res_x > np.nanmean(spatial_res_x)+3.5*np.nanstd(spatial_res_x), np.nan,
-                             spatial_res_x)
-    spatial_res_y = np.where(spatial_res_y > np.nanmean(spatial_res_y)+3.5*np.nanstd(spatial_res_y), np.nan,
-                             spatial_res_y)
+    # Remove unrealistically low/zero values eg res < 1e-4  (0.1 mm)
+    spatial_res_x = np.where(spatial_res_x < res_min, np.nan, spatial_res_x)
+    spatial_res_y = np.where(spatial_res_y < res_min, np.nan, spatial_res_y)
+    if res_max is not None:
+        # Remove unrealistically high values eg res > 5e-1  (50 cm)
+        spatial_res_x = np.where(spatial_res_x > res_max, np.nan, spatial_res_x)
+        spatial_res_y = np.where(spatial_res_y > res_max, np.nan, spatial_res_y)
+    else:
+        # Remove extreme values between surfaces at different distances
+        spatial_res_x = np.where(spatial_res_x > np.nanmean(spatial_res_x)+3.5*np.nanstd(spatial_res_x), np.nan,
+                                 spatial_res_x)
+        spatial_res_y = np.where(spatial_res_y > np.nanmean(spatial_res_y)+3.5*np.nanstd(spatial_res_y), np.nan,
+                                 spatial_res_y)
 
     spatial_res['spatial_res_x'] = spatial_res_x
     spatial_res['spatial_res_y'] = spatial_res_y
     spatial_res['spatial_res_mean'] = np.nanmean([spatial_res_x, spatial_res_y], axis=0)
     spatial_res['spatial_res_max'] = np.nanmax([spatial_res_x, spatial_res_y], axis=0)
+
     return spatial_res
 
-def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, masks=None):
+def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, masks=None, debug=True):
     # TODO: Handle combining multiple analysis paths? Move loop over paths below to here...
     image_shape = np.array(calcam_calib.geometry.get_display_shape())
     points = pd.DataFrame.from_dict(list(analysis_path_dfn.values())[0], orient='index')
