@@ -1,7 +1,15 @@
 # -*- coding: future_fstrings -*-
 #!/usr/bin/env python
 
-""" 
+"""Plugin functions for FIRE to read movie data from a sever using the Universal Data Access (UDA) library.
+
+Two functions and two module level variables are required for this file to  function as a FIRE movie plugin:
+    read_movie_data(pulse, camera, n_start, n_end, stride) -> (frame_nos, frame_times, frame_data)
+    read_movie_meta(pulse, camera, n_start, n_end, stride) -> dict with minimum subset of keys:
+        {'movie_format', 'n_frames', 'frame_range', 't_range', 'frame_shape', 'fps', 'lens', 'exposure', 'bit_depth'}
+    movie_plugin_name: str, typically same as module name
+    plugin_info: dict, with description and any other useful information or mappings
+
 Author: T. Farley
 """
 
@@ -10,9 +18,7 @@ from typing import Dict, Iterable, Optional
 from copy import copy
 
 import numpy as np
-import xarray as xr
 
-# fileConfig('../logging_config.ini')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -27,7 +33,7 @@ movie_plugin_name = 'uda'
 plugin_info = {'description': 'This plugin reads movie data from UDA (Universal Data Access)',
                'arg_name_mapping': {'camera': 'camera'}}
 
-uda_ipx_header_fields = ('board_temp', 'camera', 'ccd_temp', 'datetime', 'depth', 'exposure', 'filter', 'frame_times',
+UDA_IPX_HEADER_FIELDS = ('board_temp', 'camera', 'ccd_temp', 'datetime', 'depth', 'exposure', 'filter', 'frame_times',
                          'gain', 'hbin', 'height', 'is_color', 'left', 'lens', 'n_frames', 'offset', 'preexp', 'shot',
                          'taps', 'top', 'vbin', 'view', 'width')
 # uda_ipx_header_fields = ('board_temp', 'camera', 'ccd_temp', 'datetime', 'depth', 'exposure', 'filter', 'frame_times',
@@ -37,7 +43,7 @@ uda_ipx_header_fields = ('board_temp', 'camera', 'ccd_temp', 'datetime', 'depth'
 #                           'right', 'vBin', 'bottom', 'offset_0', 'offset_1', 'gain_0', 'gain_1', 'preExp', 'strobe')
 
 def get_uda_movie_obj(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
-                      stride:Optional[int]=1):
+                      stride: Optional[int]=1):
     """Return UDA movie object for given pulse, camera and frame range
     
     :param pulse: MAST-U pulse number
@@ -97,14 +103,14 @@ def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:O
     """
     video = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
     ipx_header = {}
-    for key in uda_ipx_header_fields:
+    for key in UDA_IPX_HEADER_FIELDS:
         try:
             ipx_header[key] = getattr(video, key)
         except AttributeError as e:
             logger.warning(f'UDA video object does not have attribute: {key}')
     if len(ipx_header) == 0:
         raise ValueError(f'UDA video object does not contain any of the required meta data fields: '
-                         f'{uda_ipx_header_fields}')
+                         f'{UDA_IPX_HEADER_FIELDS}')
     ipx_header['bottom'] = ipx_header['top'] - ipx_header['height']  # TODO: check - not +
     ipx_header['right'] = ipx_header['left'] + ipx_header['width']
 
