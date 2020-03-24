@@ -1,0 +1,6 @@
+{"MASTU_S4_lower_radial_1":
+        [
+          ["start", {"R": 0.655, "z": -1.6267, "phi": 350.0, "order": 0, "include_next_interval": true}],
+          ["end", {"R": 1.895, "z": -1.866, "phi": 350.0, "order": 1, "include_next_interval": false}]
+        ]
+}
