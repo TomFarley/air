@@ -52,7 +52,7 @@ if pyuda is not None:
             self.assertEqual(meta_data['frame_shape'], (8, 320))
             self.assertAlmostEqual(meta_data['fps'], 5000.006668453812)
 
-            # TODO: Understand why datetime and exposure fields no longer read
+            # TODO: Understand why datetime and preexp fields no longer read
             ipx_header_expected = {
                 'board_temp': 50.5, 'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu',
                 'ccd_temp': 73.47895050048828,
@@ -131,7 +131,7 @@ if pyuda is not None:
             #                        'view': 'HL01 Upper divertor view#1', 'camera': 'Thermosensorik CMT 256 SM HS',
             #                        'top': 153, 'bottom': 184, 'offset': 0.0, 'exposure': 50.0, 'ccdtemp': 59.0,
             #                        'frames': 625, 'size': 239, 'n_frames': 625}
-            # TODO: Understand why datetime and exposure fields no longer read
+            # TODO: Understand why datetime and preexp fields no longer read
             ipx_header_expected = {'board_temp': 0.0, 'camera': 'Thermosensorik CMT 256 SM HS', 'ccd_temp': 59.0,
              # 'datetime': '2013-10-23T15:37:29Z', 'preexp': 0.0,
              'depth': 14, 'exposure': 50.0, 'filter': '', 'gain': np.array([0., 0.]),
