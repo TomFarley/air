@@ -12,6 +12,7 @@ import logging
 import os
 from typing import Union, Iterable, Sequence, Tuple, List, Optional, Any, Dict
 from pathlib import Path
+from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
@@ -148,8 +149,8 @@ def get_compatible_plugins(plugin_paths: PathList,
 
     if plugin_filter is not None:
         # Return filtered plugins in order specified in json config file
-        plugins = {key: plugins[key] for key in plugin_filter if key in plugins.keys()}
-        info = {key: info[key] for key in plugin_filter if key in info.keys()}
+        plugins = OrderedDict([(key, plugins[key]) for key in plugin_filter if key in plugins.keys()])
+        info = OrderedDict([(key, info[key]) for key in plugin_filter if key in info.keys()])
     return plugins, info
 
 

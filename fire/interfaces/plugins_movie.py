@@ -164,6 +164,15 @@ def get_movie_plugin_args(read_movie_func, kwargs_generic=None, kwargs_specific=
     status = 'ok'
     return status, kws, origin_options
 
+def check_meta_data(movie_meta):
+    bad_values = {'lens': None}
+    for key, value in bad_values.items():
+        if movie_meta[key] == value:
+            raise ValueError(f'Bad movie meta data value for "{key}": {value}')
+    non_nan_keys = ['exposure']
+    for key in non_nan_keys:
+        if np.isnan(movie_meta[key]):
+            raise ValueError(f'Bad movie meta data value for "{key}": {movie_meta[value]}')
 
 if __name__ == '__main__':
     pass
