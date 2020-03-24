@@ -12,7 +12,9 @@ class TestSchedulerWorkflow(unittest.TestCase):
 
     def test_scheduler_workflow(self):
         inputs = {'pulse': 23586, 'camera': 'rir', 'machine': 'MAST', 'pass_no': 0, 'scheduler': False,
-                  'magnetics': False, 'update_checkpoints': True, 'debug': True}
+                  'magnetics': False, 'update_checkpoints': True,
+                  'debug': {'raycast': False}, 'figures': {'spatial_res': False}
+        }
         scheduler_workflow(**inputs)
 
 def suite():
