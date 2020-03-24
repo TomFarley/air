@@ -241,9 +241,10 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
 
     # TODO: Calculate heat fluxes
-    heat_flux, extra_results = calc_heatflux(data['t'], data['frame_temperature'], analysis_path, material_properties,
-                              visible_materials)
-    data['heat_flux'] = (('t', 's_path'), heat_flux)
+    if False:
+        heat_flux, extra_results = calc_heatflux(data['t'], data['frame_temperature'], analysis_path, material_properties,
+                                  visible_materials)
+        data['heat_flux'] = (('t', 's_path'), heat_flux)
 
     # TODO: Calculate moving time average and std heat flux profiles against which transients on different time
     # scales can be identified?
