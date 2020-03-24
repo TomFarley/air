@@ -91,6 +91,8 @@ def read_movie_meta(path: Union[str, Path], transforms: Iterable[str]=()) -> dic
     movie_meta_json = json_load(Path(path)/'movie_meta_data.json', raise_on_filenotfound=False)
     if isinstance(movie_meta_json, dict):
         movie_meta.update(movie_meta_json)
+    else:
+        logger.warning(f'Imstack movie does not have a meta data json file: {path}')
 
     return movie_meta
 
