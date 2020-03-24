@@ -144,13 +144,16 @@ def dirs_exist(paths: Iterable[Union[str, Path]], path_kws: Optional[dict]=None
         except KeyError as e:
                 raise ValueError(f'Cannot locate file without value for "{e.args[0]}": "{path_raw}", {path_kws}"')
         try:
-            path = Path(path).expanduser().resolve()
+            path = Path(path).expanduser().resolve(strict=False)
         except RuntimeError as e:
             if "Can't determine home directory" in str(e):
                 pass
                 # continue
             else:
                 raise e
+        except (FileNotFoundError, TypeError) as e:
+            path = Path(path).expanduser()
+            logger.warning(e)
         if path.is_dir():
             paths_exist.append(path)
             paths_raw_exist.append(path_raw)
@@ -186,6 +189,7 @@ def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
         fn_kws = {}
 
     located = False
+    paths_dont_exist = []
     paths_exist, paths_raw_exist, paths_raw_not_exist = dirs_exist(paths, path_kws=path_kws)
     for path, path_raw in zip(paths_exist, paths_raw_exist):
         for fn_raw in fns:
@@ -203,11 +207,15 @@ def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
                 if verbose >= 2:
                     logging.info('Located "{}" in {}'.format(fn_out, path_out))
                 break
+            else:
+                paths_dont_exist.append(fn_path)
         if located:
             break
     else:
         # File not located
-        message = f'Failed to locate file with formats: {fns} in paths:\n"{paths}"\nwith fn_kws:\n{fn_kws}'
+        message = (f'Failed to locate file with formats: {fns} in paths: \n"{paths}" \n' 
+                   f'with fn_kws: \n{fn_kws} \n' 
+                   f'File possibilities checked that do not exist: \n{", ".join([str(p) for p in paths_dont_exist])}.')
         if raise_:
             raise FileNotFoundError(message)
         if verbose:
