@@ -148,6 +148,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         cad_model_args = config['machines'][machine]['cad_models'][0]
         logger.debug(f'Loading CAD model...'); t0 = time.time()
         # TODO: Add error messages directing user to update Calcam CAD definitions in settings GUI if CAD not found
+        print(dir(calcam))
         cad_model = calcam.CADModel(**cad_model_args)
         print(f'Setup CAD model object in {time.time()-t0:1.1f} s')
         meta_data['calcam_CAD'] = cad_model
