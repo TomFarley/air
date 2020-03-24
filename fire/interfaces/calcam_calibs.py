@@ -10,6 +10,7 @@ Created: 11-10-19
 import logging, time
 from typing import Union, Sequence, Optional
 from pathlib import Path
+from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
@@ -205,8 +206,13 @@ def calc_spatial_res(x_im, y_im, z_im, res_min=1e-4, res_max=None):
 def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, masks=None, debug=True):
     # TODO: Handle combining multiple analysis paths? Move loop over paths below to here...
     image_shape = np.array(calcam_calib.geometry.get_display_shape())
-    points = pd.DataFrame.from_dict(list(analysis_path_dfn.values())[0], orient='index')
+    # points = pd.DataFrame.from_dict(list(analysis_path_dfn.values())[0], orient='index')
+    # points = pd.DataFrame.from_items(analysis_path_dfn).T
+    points = pd.DataFrame.from_dict(OrderedDict(analysis_path_dfn)).T
     points = points.rename(columns={'R': 'R_path_dfn', 'phi': 'phi_path_dfn', 'z': 'z_path_dfn'})
+    points = points.astype({'R_path_dfn': float, 'include_next_interval': bool, 'order': int, 'phi_path_dfn': float,
+                           'z_path_dfn': float})
+    # TODO: sort df point by 'order' column
     pos_key = 'position'
     points.index.name = pos_key
     points = points.sort_values('order').to_xarray()
