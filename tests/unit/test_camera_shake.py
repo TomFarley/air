@@ -22,11 +22,11 @@ class TestInterfaces(unittest.TestCase):
         path_fn = fire_paths['root'] / '../tests/test_data/frames_with_shake.p'
         with open(path_fn, 'rb') as f:
             self.shaky_frames = pickle.load(f)
-        self.expected_displacements = np.array([[ 0.00000000e+00, -2.84217094e-14],
-                                                [-1.09393959e-02,  5.05923943e-02],
-                                                [-1.14395314e-01,  3.32538595e-01],
-                                                [-2.01143953e+01, -3.96674614e+01],
-                                                [-1.59583918e-02,  3.16370797e-02]])
+        self.expected_displacements = np.array([[ 0.00000000e+00,  0.00000000e+00],
+                                                 [-1.09393997e-02,  5.05917151e-02],
+                                                 [-1.14394936e-01,  3.32541698e-01],
+                                                 [-2.01143945e+01, -3.96674579e+01],
+                                                 [-1.59583610e-02,  3.16369348e-02]])
 
     def test_calc_camera_shake_displacements(self):
         frames = self.shaky_frames
