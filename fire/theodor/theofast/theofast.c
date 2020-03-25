@@ -26,8 +26,8 @@ void heat_potential_time_step(int aux, int auy, float factor, float * restrict h
   /* diffstar */
   if (plusac>0) 
   {
-    #pragma omp parallel for private(j, hpc, ww, d_star)
     printf("Start loop 1\n");
+    #pragma omp parallel for private(j, hpc, ww, d_star)
     for (i=0; i<=auy-1; ++i)
     {
       for (j=1; j<=aux-2; ++j) 
