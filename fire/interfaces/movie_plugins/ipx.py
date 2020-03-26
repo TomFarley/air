@@ -85,13 +85,14 @@ def convert_ipx_header_to_uda_conventions(header: dict) -> dict:
     :param header: Ipx header dict with each parameter a separate scalar value
     :return: Reformatted header dict
     """
+    # TODO: Make generic fulctions for use in all plutins: rename_dict_keys, convert_types, modify_values
     header = copy(header)  # Prevent changes to pyIpx movieReader attribute still used for reading video
     key_map = {'numFrames': 'n_frames', 'color': 'is_color', 'ID': 'ipx_version', 'hBin': 'hbin', 'vBin': 'vbin',
                'date_time': 'datetime', 'preExp': 'preexp'}
     for old_key, new_key in key_map.items():
         try:
             header[new_key] = header.pop(old_key)
-            logger.debug(f'Rename ipx header parameter to "{new_key}" from "{old_key}".')
+            logger.debug(f'Renamed ipx header parameter from "{old_key}" to "{new_key}".')
         except KeyError as e:
             logger.warning(f'Could not rename ipx header parameter to "{new_key}" as paremeter "{old_key}" not found.')
     try:
