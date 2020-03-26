@@ -198,11 +198,10 @@ def theo_mul_33(data, time, location, d_target, \
             # LS: try to use libtheofast, C version of the following inner loop (x2 speedup)
             if libtheofast is not None:
                 theoFastStart = curTime()
-                print('del_pot.ctypes.data', del_pot.ctypes.data)
                 libtheofast.heat_potential_time_step(ctypes.c_int(aux),ctypes.c_int(auy),ctypes.c_float(factor),
-                                                     h_pot.ctypes.data, ctypes.c_float(cc), ctypes.c_int(plusac),
-                                                     ctypes.c_float(tratio), ctypes.c_float(ad), ctypes.c_float(bd),
-                                                     del_pot.ctypes.data)
+                                            ctypes.c_void_p(h_pot.ctypes.data), ctypes.c_float(cc),
+                                            ctypes.c_int(plusac), ctypes.c_float(tratio), ctypes.c_float(ad),
+                                            ctypes.c_float(bd), ctypes.c_void_p(del_pot.ctypes.data))
                 timeTheoFast += curTime() - theoFastStart
                 h_pot += del_pot
             else:
