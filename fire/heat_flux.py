@@ -61,12 +61,17 @@ def calc_heatflux(t, temperatures, analysis_path, material_properties, visible_m
 
     # For hints as to meanings to theodor arguments see:
     # https://users.euro-fusion.org/openwiki/index.php/THEODOR#theo_mul_33.28.29
-    if True:
-        heat_flux, extra_results = theodor.theo_mul_33(temperature_path, t, s_path, test=True, verbose=True,
-                                                       **theo_kwargs)
-        #               d_target, alpha_bot, alpha_top, diff, lam, aniso, x_Tb=x_Tb, y_Tb=y_Tb,
+    if False:
+        # tmp imports for theodor debugging
+        import faulthandler, gc
+        faulthandler.enable()
+        gc.disable()
 
-        return heat_flux, extra_results
+    heat_flux, extra_results = theodor.theo_mul_33(temperature_path, t, s_path, test=True, verbose=True,
+                                                   **theo_kwargs)
+    #               d_target, alpha_bot, alpha_top, diff, lam, aniso, x_Tb=x_Tb, y_Tb=y_Tb,
+
+    return heat_flux, extra_results
 
 if __name__ == '__main__':
     pass
