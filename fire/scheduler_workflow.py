@@ -39,7 +39,9 @@ from fire.plots.figures import figure_spatial_res_max
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-path_figures = Path('../tmp').resolve()
+cwd = Path(__file__).parent
+path_figures = (cwd / '../tmp').resolve()
+print(f'Figures will be output to: {path_figures}')
 
 def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, machine:str='MAST', scheduler:bool=False,
                        magnetics:bool=False, update_checkpoints:bool=False, debug:dict=None, figures:dict=None):
@@ -242,10 +244,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
 
     # TODO: Calculate heat fluxes
-    if False:
-        heat_flux, extra_results = calc_heatflux(data['t'], data['frame_temperature'], analysis_path, material_properties,
+    heat_flux, extra_results = calc_heatflux(data['t'], data['frame_temperature'], analysis_path, material_properties,
                                   visible_materials)
-        data['heat_flux'] = (('t', 's_path'), heat_flux)
+    data['heat_flux'] = (('t', 's_path'), heat_flux)
 
     # TODO: Calculate moving time average and std heat flux profiles against which transients on different time
     # scales can be identified?
