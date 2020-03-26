@@ -12,6 +12,7 @@ tests/htmlcov
 **.bkup
 .nfs*
 *.p
+*.o
 !test/*.p
 
 docs/sphinx/build
