@@ -18,7 +18,19 @@ import scipy.interpolate
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def dl_to_temerature(frame_data, calib_coefs, bb_curve, exposure, temp_bg=23):
+def dl_to_temerature(frame_data, calib_coefs, bb_curve, exposure, temp_nuc_bg=23):
+    """Convert NUC corrected IR camera Digital Level (DL) values to temperatures in deg C.
+
+    Args:
+        frame_data  : 3D array of frame DL values (frame_no, ypix, xpix) TODO: Check pix order
+        calib_coefs : Temperature calibration cooficients (a_grad, a_intcp, b_grad, b_intcp, window_trans)
+        bb_curve    : 2 column array mapping temperatures in deg C to numbers of photons
+        exposure    : Camera exposure time in us
+        temp_nuc_bg : Temperature in deg C of uniform background subtracted in NUC correction (typically room temp)
+
+    Returns: 3D array of frame data converted to temperatures in deg C
+
+    """
     # temp_bg=23  #  background temperature
     bb_curve = bb_curve.reset_index()
     exposure = exposure * 1e-6
@@ -41,7 +53,7 @@ def dl_to_temerature(frame_data, calib_coefs, bb_curve, exposure, temp_bg=23):
     # the background temp
     f_photons = scipy.interpolate.interp1d(bb_curve['temperature_celcius'], bb_curve['photon_flux'], kind='linear')
     f_temp = scipy.interpolate.interp1d(bb_curve['photon_flux'], bb_curve['temperature_celcius'], kind='linear')
-    phot_bg = f_photons(temp_bg)
+    phot_bg = f_photons(temp_nuc_bg)
 
     # then determine the temperature using the photon counts plus the bckg.
     frame_temps = xr.apply_ufunc(f_temp, frame_photons+phot_bg)
