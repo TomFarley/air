@@ -41,6 +41,7 @@ def dl_to_temerature(frame_data, calib_coefs, bb_curve, exposure, temp_nuc_bg=23
         raise ValueError(f'Black body curve data has unexpected format, columns: {cols_bb}. '
                          f'Expected columns: {expected_cols_bb}')
 
+    # TODO: break into sub functions and improve variable naming
     c1 = (calib_coefs['a_grad'])/(exposure)+calib_coefs['a_intcp']
     c2 = (calib_coefs['b_grad'])/(exposure)+calib_coefs['b_intcp']
     trans_correction = calib_coefs['trans']  # window transmission correction (>1 as window attenuates)
