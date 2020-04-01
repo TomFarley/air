@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 def identify_saturated_frames(frame_data: xr.DataArray, bit_depth, raise_on_saturated=True):
+    # TODO: Return number and pix coords of saturated pixels
     saturation_dl = 2**bit_depth - 1
 
     hyper_saturated_frames = frame_data.where(frame_data > saturation_dl, drop=True).coords
