@@ -32,7 +32,7 @@ from fire.nuc import get_nuc_frame, apply_nuc_correction
 from fire.data_quality import identify_saturated_frames
 from fire.temperature import dl_to_temerature
 from fire.heat_flux import calc_heatflux
-from fire.interfaces.ouput_data_plugins.output_netcdf import write_processed_ir_to_netcdf
+from fire.interfaces.ouput_data_plugins.output_uda import write_processed_ir_to_netcdf
 from fire.plots.debug_plots import debug_spatial
 from fire.plots.figures import figure_spatial_res_max
 
@@ -131,6 +131,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     frame_data = movie_data_to_xarray(frame_data, frame_times, frame_nos)
     data = xr.merge([data, frame_data])
 
+    # TODO: Lookup and apply t_offset correction to frame times?
+
     # Fix camera shake
     # TODO: Consider using alternative to first frame for reference, as want bright clear frame with NUC shutter
     # TODO: Consider checking camera rotation which is issue on ASDEX-U
@@ -221,6 +223,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     analysis_path['s_path'] = s_path
     data = xr.merge([data, analysis_path])
 
+    # TODO: Rescale DLs to account for window transmission - Move here out of dl_to_temerature()?
+
     # Apply NUC correction
     # nuc_frame = get_nuc_frame(origin='first_frame', frame_data=frame_data)
     nuc_frame = get_nuc_frame(origin={'n': [2, 2]}, frame_data=frame_data)  # Old air sched code uses 3rd frame?
@@ -235,7 +239,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     bb_curve = read_csv(files['black_body_curve'], index_col='temperature_celcius')
     calib_coefs = lookup_pulse_row_in_csv(files['calib_coefs'], pulse=pulse, header=4)
     data['frame_temperature'] = dl_to_temerature(frame_data_nuc, calib_coefs, bb_curve,
-                                                 exposure=movie_meta['exposure'], temp_bg=temp_bg)
+                                                 exposure=movie_meta['exposure'], temp_nuc_bg=temp_bg)
 
     # TODO: Calculate toroidally averaged radial profiles taking into account viewing geometry
     # - may be more complicated than effectively rotating image slightly as in MAST (see data in Thornton2015)
