@@ -15,8 +15,10 @@ import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
 
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
 
 if __name__ == '__main__':
     pass
