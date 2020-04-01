@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import xarray as xr
+from matplotlib import pyplot as plt
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -306,3 +307,10 @@ def filter_kwargs(func, kwargs, include=(), exclude=(), match_signature=True, na
             kwargs.pop(key)
     return kws
 
+
+def increment_figlabel(label, i=2, suffix=' ({i})', start_With_siffix=False):
+    num = label if not start_With_siffix else label + suffix.format(i=i)
+    while num in plt.get_figlabels():
+        num = label + suffix.format(i=i)
+        i += 1
+    return num
