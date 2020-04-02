@@ -15,11 +15,14 @@ class TestSchedulerWorkflow(unittest.TestCase):
     def setUp(self):
         conf = calcam.config.CalcamConfig()
         models = conf.get_cadmodels()
+        print(models)
         if 'MAST' not in models:
             cad_path = (pwd / '../../fire/input_files/cad/').resolve()
+            print(f'Add CAD path: {cad_path}')
             conf.cad_def_paths.append(str(cad_path))
-            self.assertTrue('MAST' in models)
-        print(models)
+            conf.save()
+            print(models)
+            # self.assertTrue('MAST' in models)
 
     def test_scheduler_workflow(self):
         inputs = {'pulse': 23586, 'camera': 'rir', 'machine': 'MAST', 'pass_no': 0, 'scheduler': False,
