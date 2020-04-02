@@ -32,7 +32,7 @@ stages:
     - pip install --user future-fstrings   # tmp
     - which pip   # tmp
     - python -m pip --version   # tmp
-    - pip install --user --upgrade pip setuptools pytest-cov
+    - pip install --user --upgrade setuptools pytest-cov
     - which pip   # tmp
     - python -m pip --version   # tmp
     - python -m pip show vtk   # tmp
@@ -50,7 +50,7 @@ stages:
     - apt-get update -y
     - apt-get install -y git
     - apt-get install -y  python3-pip
-    - apt-get install python-vtk
+    #- apt-get install -y python-vtk
     - pip list   # tmp
     - pip install --user --upgrade pip setuptools
     - python -m pip show vtk   # tmp
