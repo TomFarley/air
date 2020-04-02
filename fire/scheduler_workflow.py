@@ -115,6 +115,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     meta_data['calcam_calib'] = calcam_calib
     meta_data['calcam_CAD'] = None
 
+    # TODO: Print out summary of analysis settings prior to analysis
+
     # TODO: Validate frame range etc
 
     # Load raw frame data
