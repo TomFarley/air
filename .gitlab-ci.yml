@@ -30,10 +30,14 @@ stages:
 #    - pip install --user --upgrade pip  # breaks
     - pip list   # tmp
     - pip install --user future-fstrings   # tmp
+    - which pip   # tmp
+    - python -m pip --version   # tmp
     - pip install --user --upgrade pip setuptools pytest-cov
-    - pip show vtk   # tmp
+    - which pip   # tmp
+    - python -m pip --version   # tmp
+    - python -m pip show vtk   # tmp
     - python -m pip install --user vtk
-    - pip show vtk   # tmp
+    - python -m pip show vtk   # tmp
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     - pip install --user git+https://github.com/euratom-software/calcam.git
     - pip install --user -r ./requirements.txt
@@ -49,9 +53,9 @@ stages:
     - apt-get install python-vtk
     - pip list   # tmp
     - pip install --user --upgrade pip setuptools
-    - pip show vtk   # tmp
+    - python -m pip show vtk   # tmp
     - python -m pip install --user vtk
-    - pip show vtk   # tmp
+    - python -m pip show vtk   # tmp
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     - pip install --user git+https://github.com/euratom-software/calcam.git
     - cd fire/theodor/theofast/
