@@ -320,6 +320,8 @@ def add_calcam_cad_paths(paths=module_default, required_models=None):
     for path in make_iterable(paths):
         cad_path = Path(path).resolve()
         conf.cad_def_paths.append(str(cad_path))
+    conf.save()
+    logger.debug(f'Added paths for Calcam CAD model lookup: {paths}')
 
     if required_models is not None:
         missing_models = check_calcam_cad_found(required_models, raise_on_missing=True)
