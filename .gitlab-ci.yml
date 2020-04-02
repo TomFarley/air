@@ -51,6 +51,7 @@ stages:
     - apt-get update -y
     - apt-get install -y git
     - apt-get install -y  python3-pip
+    - apt-get install -y libsm6 libxext6 libxrender-dev   # opencv dependencies
     #- apt-get install -y python-vtk
     - pip list   # tmp
     - pip install --user --upgrade pip setuptools
