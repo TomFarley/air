@@ -32,7 +32,7 @@ from fire.nuc import get_nuc_frame, apply_nuc_correction
 from fire.data_quality import identify_saturated_frames
 from fire.temperature import dl_to_temerature
 from fire.heat_flux import calc_heatflux
-from fire.interfaces.ouput_data_plugins.output_uda import write_processed_ir_to_netcdf
+from fire.interfaces.ouput_data_plugins.output_uda import write_processed_ir_to_uda_file
 from fire.plots.debug_plots import debug_spatial
 from fire.plots.figures import figure_spatial_res_max
 
