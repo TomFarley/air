@@ -23,7 +23,8 @@ from fire.interfaces.interfaces import (check_settings_complete, identify_files,
                                         generate_pulse_id_strings)
 from fire.interfaces.plugins_movie import read_movie_meta_data, read_movie_data, check_meta_data
 from fire.interfaces.plugins import get_compatible_plugins
-from fire.interfaces.calcam_calibs import get_surface_coords, project_analysis_path, apply_frame_display_transformations
+from fire.interfaces.calcam_calibs import get_surface_coords, project_analysis_path, \
+    apply_frame_display_transformations, get_calcam_cad_obj
 from fire.camera_shake import calc_camera_shake_displacements, remove_camera_shake
 from fire.geometry import identify_visible_structures
 from fire.interfaces.plugins_machine import get_machine_location_labels, get_s_coord_global, get_s_coord_path
@@ -152,11 +153,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     else:
         # TODO: Make CAD model pulse range dependent
         cad_model_args = config['machines'][machine]['cad_models'][0]
-        logger.debug(f'Loading CAD model...'); t0 = time.time()
-        # TODO: Add error messages directing user to update Calcam CAD definitions in settings GUI if CAD not found
-        print(dir(calcam))
-        cad_model = calcam.CADModel(**cad_model_args)
-        print(f'Setup CAD model object in {time.time()-t0:1.1f} s')
+        cad_model = get_calcam_cad_obj(**cad_model_args)
         meta_data['calcam_CAD'] = cad_model
         data_raycast = get_surface_coords(calcam_calib, cad_model, image_coords=image_coords)
         if raycast_checkpoint_path_fn.exists():

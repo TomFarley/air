@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 import calcam
 from fire import fire_paths
-from fire.utils import locate_file
+from fire.utils import locate_file, make_iterable
 from fire.interfaces.interfaces import lookup_pulse_row_in_csv
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,11 @@ logger.setLevel(logging.DEBUG)
 
 PathList = Sequence[Union[Path, str]]
 
+module_default = object()  # sentinel
+
+pwd = Path(__file__).parent
 calcam_calib_dir = Path('~/calcam2/calibrations/').expanduser()
+fire_cad_dir = (pwd  / '../input_files/cad/').resolve()
 
 def get_calcam_calib(calcam_calib_fn, calcam_calib_path='~/calcam/calibrations/'):
     """Return calcam Calibration object for given calibration filename and path
@@ -279,6 +283,60 @@ def check_visible(x_points, y_points, image_shape):
     x_points, y_points = np.array(x_points), np.array(y_points)
     visible = (x_points >= 0) & (x_points < image_shape[1]) & (y_points >= 0) & (y_points < image_shape[0])
     return visible.astype(bool)
+
+def get_calcam_cad_obj(model_name, model_variant, check_fire_cad_defaults=True):
+    logger.debug(f'Loading CAD model...');
+    t0 = time.time()
+    # TODO: Add error messages directing user to update Calcam CAD definitions in settings GUI if CAD not found
+    print(dir(calcam))
+    try:
+        cad_model = calcam.CADModel(model_name=model_name, model_variant=model_variant)
+    except ValueError as e:
+        if check_fire_cad_defaults:
+            add_calcam_cad_paths(required_models=model_name)
+            cad_model = calcam.CADModel(model_name=model_name, model_variant=model_variant)
+        else:
+            raise
+    logger.debug(f'Setup CAD model object in {time.time()-t0:1.1f} s')
+    return cad_model
+
+def add_calcam_cad_paths(paths=module_default, required_models=None):
+    """Update paths where calcam locates CAD .ccc files.
+
+    Args:
+        paths: Path(s) to directory containing CAD .ccc files
+        required_models: Name or list of names of CAD models that should be locatable after path added
+
+    Returns: Dictionary where the keys are the human-readable names of the machine models calcam has found,
+             and the values are lists containing
+             [ full path to the CAD file ,  Available model variants ,Default model variant ]
+    """
+    if paths is module_default:
+        paths = fire_cad_dir
+    conf = calcam.config.CalcamConfig()
+    models = conf.get_cadmodels()
+    n_models = len(models)
+
+    for path in make_iterable(paths):
+        cad_path = Path(path).resolve()
+        conf.cad_def_paths.append(str(cad_path))
+
+    if required_models is not None:
+        missing_models = check_calcam_cad_found(required_models, raise_on_missing=True)
+
+    if len(models) == n_models:
+        logger.warning(f'Failed to locate new CAD models in {paths}')
+    return models
+
+def check_calcam_cad_found(required_models, raise_on_missing=False):
+    conf = calcam.config.CalcamConfig()
+    models = conf.get_cadmodels()
+    missing_models = [model for model in make_iterable(required_models) if model not in models]
+    if raise_on_missing and (len(missing_models) > 0):
+        raise FileNotFoundError(f'Failed to locate CAD model for {missing_models}. Models can be added with:\n'
+                                f'conf = calcam.config.CalcamConfig()\n'
+                                f'conf.cad_def_paths.append(cad_path)')
+    return missing_models
 
 if __name__ == '__main__':
     pass

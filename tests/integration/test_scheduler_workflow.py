@@ -4,11 +4,22 @@ from pathlib import Path
 
 import numpy as np
 
+import calcam
+
 from fire.scheduler_workflow import scheduler_workflow
 
 pwd = Path(__file__).parent
 
 class TestSchedulerWorkflow(unittest.TestCase):
+
+    def setUp(self):
+        conf = calcam.config.CalcamConfig()
+        models = conf.get_cadmodels()
+        if 'MAST' not in models:
+            cad_path = (pwd / '../../fire/input_files/cad/').resolve()
+            conf.cad_def_paths.append(str(cad_path))
+            self.assertTrue('MAST' in models)
+        print(models)
 
     def test_scheduler_workflow(self):
         inputs = {'pulse': 23586, 'camera': 'rir', 'machine': 'MAST', 'pass_no': 0, 'scheduler': False,
@@ -16,6 +27,7 @@ class TestSchedulerWorkflow(unittest.TestCase):
                   'debug': {'raycast': False}, 'figures': {'spatial_res': False}
         }
         scheduler_workflow(**inputs)
+        # TODO: test output
 
 def suite():
     suite = unittest.TestSuite()
