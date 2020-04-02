@@ -35,13 +35,14 @@ stages:
     - pip install --user --upgrade setuptools pytest-cov
     - which pip   # tmp
     - python -m pip --version   # tmp
-    - python -m pip show vtk   # tmp
+#    - python -m pip show vtk   # tmp
     - python -m pip install --user vtk
     - python -m pip show vtk   # tmp
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     - pip install --user git+https://github.com/euratom-software/calcam.git
     - pip install --user -r ./requirements.txt
     - pip install --user .
+    - pip list
 
 .my_template: &PREPARE_TESTING_UBUNTU
     stage: test
@@ -53,7 +54,7 @@ stages:
     #- apt-get install -y python-vtk
     - pip list   # tmp
     - pip install --user --upgrade pip setuptools
-    - python -m pip show vtk   # tmp
+#    - python -m pip show vtk   # tmp
     - python -m pip install --user vtk
     - python -m pip show vtk   # tmp
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
@@ -83,6 +84,7 @@ stages:
     - pwd
     - pip install --user -r ./requirements.txt
     - pip install --user .
+    - pip list
 
 .my_template: &PREPARE_TESTS
     stage: test
