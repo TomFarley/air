@@ -18,6 +18,8 @@ import matplotlib.pyplot as plt
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+not_set = object()
+
 # Updated IDL sched code output in /home/athorn/IR/Latest/sched_air_netcdf/src/netcdfout.pro
 IDL_NETCDF_LABELS = ['Time', 'Value', 'Min q', 'Max q', 'Min q (ELM alpha)', 'Max q (ELM alpha)', 'R(peak q)', 'P(tot)',
     'q_profile', 't_profile', 'q_profile_elm', 'Num sat. pix.', 'R coord', 'P(tot)', 'E(tot)', 'E_sum(tot)',
