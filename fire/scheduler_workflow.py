@@ -37,6 +37,10 @@ from fire.interfaces.ouput_data_plugins.output_uda import write_processed_ir_to_
 from fire.plots.debug_plots import debug_spatial
 from fire.plots.figures import figure_spatial_res_max
 
+# TODO: remove after debugging core dumps etc
+import faulthandler, gc
+faulthandler.enable()
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 

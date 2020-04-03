@@ -297,6 +297,12 @@ def get_calcam_cad_obj(model_name, model_variant, check_fire_cad_defaults=True):
             cad_model = calcam.CADModel(model_name=model_name, model_variant=model_variant)
         else:
             raise
+    except AttributeError as e:
+        if str(e) == module 'calcam' has no attribute 'CADModel':
+            logger.warning('Calcam failed to import calcam.cadmodel.CADModel presumably due to vtk problem')
+            import cv2
+            import vtk
+        raise
     logger.debug(f'Setup CAD model object in {time.time()-t0:1.1f} s')
     return cad_model
 
@@ -322,6 +328,7 @@ def add_calcam_cad_paths(paths=module_default, required_models=None):
         conf.cad_def_paths.append(str(cad_path))
     conf.save()
     logger.debug(f'Added paths for Calcam CAD model lookup: {paths}')
+    logger.debug(f'Resulting Calcam CAD model lookup paths: {conf.cad_def_paths}')
 
     if required_models is not None:
         missing_models = check_calcam_cad_found(required_models, raise_on_missing=True)
