@@ -194,7 +194,13 @@ def plot_uda_dataarray(data, xdim=None, style=None, plot_kwargs=None, ax=None, s
     if show:
         plt.show()
 
+def get_mastu_wall_coords():
+    coords = client.geometry("/limiter/efit", 50000, no_cal=True)
+    print(coords)
+    return coords
+
 if __name__ == '__main__':
+    wall_coords = get_mastu_wall_coords()
     shot = 23586
     r = client.list(pyuda.ListType.SIGNALS, shot=shot, alias='air')
     # signals = ['AIR_QPROFILE_OSP']
