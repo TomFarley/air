@@ -6,7 +6,7 @@
 Created: 
 """
 
-import logging
+import logging, time
 from typing import Union, Iterable, Tuple, Optional
 from pathlib import Path
 
@@ -31,6 +31,7 @@ def find_outlier_pixels(image, tol=3, check_edges=True):
     """
 
     from scipy.ndimage import median_filter
+    t0 = time.time()
     blurred = median_filter(image, size=2)
     difference = image - blurred
     threshold = tol * np.std(difference)
@@ -110,7 +111,8 @@ def find_outlier_pixels(image, tol=3, check_edges=True):
         if diff>threshold:
             hot_pixels = np.hstack(( hot_pixels, [[height-1],[width-1]]  ))
             fixed_image[-1,-1] = med
-
+    t1 = time.time()
+    logger.debug(f'Found outlier pixels for frame in {t1-t0:0.3f}s')
     return hot_pixels, fixed_image
 
 if __name__ == '__main__':
