@@ -5,7 +5,7 @@
 import logging
 
 import numpy as np
-from fire.plot_tools import format_poloidal_plane_ax
+from fire.plotting.plot_tools import format_poloidal_plane_ax
 from fire.s_coordinate import interpolate_rz_coords, separate_rz_points_top_bottom, calc_s_coord_lookup_table, \
     get_nearest_s_coordinates, get_nearest_rz_coordinates, get_nearest_boundary_coordinates
 
