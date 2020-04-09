@@ -1,11 +1,11 @@
 """MAST specific plugin fuctions for FIRE.
 
 """
-from collections import Sequence, Iterable
+from collections import Iterable
 
 import numpy as np
-from fire.geometry import cartesian_to_toroidal
-from fire.utils import make_iterable
+from fire.geometry.geometry import cartesian_to_toroidal
+from fire.misc.utils import make_iterable
 
 # Required: Name of plugin module (typically name of machine == name of file), needed to be located as a plugin module
 machine_plugin_name = 'mast'
@@ -14,7 +14,7 @@ machine_name = 'MAST'  # Will be cast to lower case in FIRE
 plugin_info = {'description': 'This plugin supplies functions for MAST specific operations/information'}  # exta info
 # Optional
 # Parameters used to label coordinates
-location_labels = ['sector', 's_coord_global', 's_coord_path', 'louvre_index', 'louvre_label']
+location_labels = ['sector', 's_global', 's_path', 'louvre_index', 'louvre_label']
 n_sectors = 12  # Used internally
 # Machine specific
 n_louvres_per_sector = 4
