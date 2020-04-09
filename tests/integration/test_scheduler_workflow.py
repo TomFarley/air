@@ -1,12 +1,9 @@
-import pytest
 import unittest
 from pathlib import Path
 
-import numpy as np
-
 import calcam
 
-from fire.scheduler_workflow import scheduler_workflow
+from fire.scripts.scheduler_workflow import scheduler_workflow
 
 pwd = Path(__file__).parent
 
