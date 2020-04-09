@@ -18,25 +18,8 @@ import matplotlib.pyplot as plt
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-"""Old IDL sched iranalysis.pro input parameters
-  ;variables
-  ;sh = shot
-  ; trange= time range, array e.g [0.0,0.1]
-  ;ldef - returned from get_ldef, which uses loc - the ldef path definitions file looked up with loc
-  ;loc - analysis path name e.g. 'louvre4'
-  ;t - returned times
-  ;s - returned radius
-  ;h - returned temperature?
-  ;qpro - returned heat flux
-  ;numsatpix - total number of saturated pixels on analysis path
-  ;alphaconst - alpha constant, can be array, defined in rit2air_comb_view.pro
-  ;tsmooth -
-  ;tbgnd -
-  ;targetrate -
-  ;nline -
-  ;aug - run for ASDEX, defunct?
-  ;print - set flag for output to PS
-"""
+# Sentinel for default keyword arguments
+module_defaults = object()
 
 # TODO: Move module defaults to json files
 params_dict_default = {'required':
@@ -44,6 +27,10 @@ params_dict_default = {'required':
                        'optional':
                             []
                        }
+
+param_funcs = {
+    'annulus_areas_horizontal_path': calc_horizontal_path_anulus_areas(),
+}
 
 legacy_values = {23586:
                      {"AIR_ALPHACONST_ISP": 70000.0,
@@ -55,8 +42,6 @@ legacy_values = {23586:
                       }
                  }
 
-# Sentinel for default keyword arguments
-module_defaults = object()
 
 def check_input_params_complete(data, params_dict=module_defaults):
     if params_dict is None:
@@ -87,12 +72,34 @@ def calc_horizontal_path_anulus_areas(r_path):
 
     """
     dr = r_path[2:] - r_path[0:-2]
-    np.insert(dr, )
-    das = 2.0 * np.pi * (s + ldef(0, 0)) * das2;
-    # why not 1 / 2 as one Rib group only?
+    # As missing boundaries, set end differences to be one sided
+    dr_first = [r_path[1]-r_path[0]]
+    dr_last = [r_path[-1]-r_path[-2]]
+    dr = np.concatenate(dr_first, dr, dr_last)
+    annulus_areas = 2 * np.pi * r_path * dr
+    # IDL comment: why not 1 / 2 as one Rib group only?
+    return annulus_areas
 
 def calc_physics_params(data):
-
+    """Old IDL sched iranalysis.pro input parameters
+      ;variables
+      ;sh = shot
+      ; trange= time range, array e.g [0.0,0.1]
+      ;ldef - returned from get_ldef, which uses loc - the ldef path definitions file looked up with loc
+      ;loc - analysis path name e.g. 'louvre4'
+      ;t - returned times
+      ;s - returned radius
+      ;h - returned temperature?
+      ;qpro - returned heat flux
+      ;numsatpix - total number of saturated pixels on analysis path
+      ;alphaconst - alpha constant, can be array, defined in rit2air_comb_view.pro
+      ;tsmooth -
+      ;tbgnd -
+      ;targetrate -
+      ;nline -
+      ;aug - run for ASDEX, defunct?
+      ;print - set flag for output to PS
+    """
 
 if __name__ == '__main__':
     pass

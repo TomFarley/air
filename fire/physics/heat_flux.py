@@ -40,7 +40,7 @@ def calc_heatflux(t, temperatures, analysis_path, material_properties, visible_m
     # TODO: Loop over sections of path with different material properties or tile gaps etc
     xpix_path, ypix_path = analysis_path['x_pix_path'], analysis_path['y_pix_path']
     temperature_path = np.array(temperatures[:, ypix_path, xpix_path])
-    s_path = np.array(analysis_path['s_path'])  # spatial coordinate along tile surface
+    s_path = np.array(analysis_path['s_global_path'])  # spatial coordinate along tile surface
     material_id = list(material_ids)[0]
     material_name = visible_materials[material_id]
     theo_kwargs = material_properties[material_name]

@@ -23,7 +23,7 @@ def dl_to_temerature(frame_data, calib_coefs, bb_curve, exposure, temp_nuc_bg=23
 
     Args:
         frame_data  : 3D array of frame DL values (frame_no, ypix, xpix) TODO: Check pix order
-        calib_coefs : Temperature calibration cooficients (a_grad, a_intcp, b_grad, b_intcp, window_trans)
+        calib_coefs : Dict of temperature calibration coefficients (a_grad, a_intcp, b_grad, b_intcp, window_trans)
         bb_curve    : 2 column array mapping temperatures in deg C to numbers of photons
         exposure    : Camera exposure time in us
         temp_nuc_bg : Temperature in deg C of uniform background subtracted in NUC correction (typically room temp)
