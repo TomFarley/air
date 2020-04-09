@@ -14,7 +14,7 @@ from copy import copy
 import numpy as np
 from fire import fire_paths
 from fire.interfaces.interfaces import PathList
-from fire.utils import dirs_exist, locate_files, filter_kwargs
+from fire.misc.utils import dirs_exist, locate_files
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

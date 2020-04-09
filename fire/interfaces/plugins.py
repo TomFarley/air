@@ -7,21 +7,16 @@
 Created:
 """
 import glob
-import inspect
 import logging
 import os
-from typing import Union, Iterable, Sequence, Tuple, List, Optional, Any, Dict
+from typing import Union, Tuple, List, Optional, Dict
 from pathlib import Path
 from collections import OrderedDict
 
-import numpy as np
-import pandas as pd
-import xarray as xr
-import matplotlib.pyplot as plt
 from fire import fire_paths
 from fire.interfaces.interfaces import logger, PathList, get_module_from_path_fn
 from fire.interfaces.plugins_movie import logger
-from fire.utils import locate_files, make_iterable
+from fire.misc.utils import make_iterable
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

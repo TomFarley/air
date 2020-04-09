@@ -14,7 +14,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 import pyuda
-from fire.utils import increment_figlabel
+from fire.misc.utils import increment_figlabel
 
 client = pyuda.Client()
 

@@ -7,25 +7,19 @@ Created:
 """
 
 import logging
-from typing import Union, Iterable, Sequence, Tuple, Optional, Any, Dict, Callable
-from pathlib import Path
+from typing import Union, Sequence, Optional, Dict, Callable
 
 import numpy as np
-import pandas as pd
-import xarray as xr
-import matplotlib.pyplot as plt
 
-from fire import fire_paths
-from fire.geometry import get_s_coord_global_r, get_s_coord_path_ds
-from fire.interfaces.plugins import get_plugins
+from fire.geometry.s_coordinate import get_s_coord_global_r, get_s_coord_path_ds
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 coord = Union[float, np.ndarray]
 
-def get_machine_location_labels(x_im: coord, y_im: coord, z_im: coord,
-                                machine_plugins: Dict[str, Callable], plugin_subset: Optional[Sequence]=None, **kwargs):
+def get_machine_coordinate_labels(x_im: coord, y_im: coord, z_im: coord,
+                                  machine_plugins: Dict[str, Callable], plugin_subset: Optional[Sequence]=None, **kwargs):
     """Return a dict of labels corresponding to the supplied coordinates (e.g. sector number etc.)
 
     Args:
@@ -45,7 +39,7 @@ def get_machine_location_labels(x_im: coord, y_im: coord, z_im: coord,
         if 'location_labels' in machine_plugins:
             plugin_subset = machine_plugins['location_labels']
         else:
-            plugin_subset = ['sector', 's_coord_global', 's_coord_path']
+            plugin_subset = ['sector', 's_global', 's_coord_path']
     data = {}
     for plugin in plugin_subset:
         if plugin in machine_plugins:
@@ -61,13 +55,15 @@ def get_s_coord_global(x_im, y_im, z_im, machine_plugins=None, **kwargs):
 
     Use machine specific "s_coord_global" function if available, else default to returning major radius (only ~valid
     for flat divertors).
+    This 's' coordinate is considered 'global' as it is predefined for all (R, Z) surfaces as apposed to a 'local' s
+    starting at 0m along a specific path.
 
     Args:
         x_im            : x spatial coord for each pixel
         y_im            : y spatial coord for each pixel
         z_im            : z spatial coord for each pixel
         machine_plugins : Dict of functions from which the fucntion keyed "s_coord_global" is used if available
-        **kwargs        : Aditional argumemnts to s_coord_global function
+        **kwargs        : Additional arguments to s_coord_global function
 
     Returns: Tile "s" coordinate for each pixel in image
 
