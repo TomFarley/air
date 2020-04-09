@@ -1,11 +1,10 @@
-import pytest
 import unittest
 from pathlib import Path
 
 import numpy as np
 import xarray as xr
 
-from fire.utils import update_call_args, locate_file, make_iterable, movie_data_to_xarray
+from fire.misc.utils import update_call_args, locate_file, make_iterable, movie_data_to_xarray
 
 pwd = Path(__file__).parent
 

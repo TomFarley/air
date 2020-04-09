@@ -9,9 +9,8 @@ import pickle
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
-from fire.camera_shake import (calc_camera_shake_displacements, remove_camera_shake)
+from fire.camera.camera_shake import (calc_camera_shake_displacements, remove_camera_shake)
 from fire import fire_paths
 
 pwd = Path(__file__).parent
