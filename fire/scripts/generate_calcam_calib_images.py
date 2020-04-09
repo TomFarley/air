@@ -13,17 +13,15 @@ import numpy as np
 import scipy as sp
 import xarray as xr
 import matplotlib.pyplot as plt
-from skimage import exposure, data, img_as_float
+from skimage import exposure, img_as_float
 from skimage.filters import rank
 from skimage.morphology import disk
 from skimage.io import imsave
 
-import pyuda
-
 from ccfepyutils.mpl_tools import get_previous_artist_color, annotate_axis
 from ccfepyutils.image import hist_image_equalisation
-from fire.interfaces.movie_plugins.uda import read_movie_data, read_movie_meta
-from fire.image_processing import find_outlier_pixels
+from fire.interfaces.movie_plugins.uda import read_movie_data
+from fire.camera.image_processing import find_outlier_pixels
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
