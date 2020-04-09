@@ -11,6 +11,7 @@ from typing import Union, Iterable, Tuple, Optional
 from pathlib import Path
 
 import numpy as np
+import xarray as xr
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -114,6 +115,22 @@ def find_outlier_pixels(image, tol=3, check_edges=True):
     t1 = time.time()
     logger.debug(f'Found outlier pixels for frame in {t1-t0:0.3f}s')
     return hot_pixels, fixed_image
+
+def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
+                                  x_path='x_pix_path', y_path='y_pix_path', suffix='_path',
+                                  keys=None):
+    if keys is None:
+        keys = image_data.keys()
+    frame_shape = image_data['frame_data'].shape[1:]
+    data_out = xr.Dataset(coords=path_data.coords)
+    x_pix_path = path_data[x_path]
+    y_pix_path = path_data[y_path]
+    for key in keys:
+        data = image_data[key]
+        if (data.shape == frame_shape) or (data.shape[1:] == frame_shape):
+            data_out[f'{key}{suffix}'] = data.sel(x_pix=x_pix_path, y_pix=y_pix_path)
+    return data_out
+
 
 if __name__ == '__main__':
     pass
