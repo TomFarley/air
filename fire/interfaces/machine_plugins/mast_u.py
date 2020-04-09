@@ -6,11 +6,11 @@ import logging
 
 import numpy as np
 from fire.plotting.plot_tools import format_poloidal_plane_ax
-from fire.s_coordinate import interpolate_rz_coords, separate_rz_points_top_bottom, calc_s_coord_lookup_table, \
+from fire.geometry.s_coordinate import interpolate_rz_coords, separate_rz_points_top_bottom, calc_s_coord_lookup_table, \
     get_nearest_s_coordinates, get_nearest_rz_coordinates, get_nearest_boundary_coordinates
 
-from fire.geometry import cartesian_to_toroidal
-from fire.utils import make_iterable
+from fire.geometry.geometry import cartesian_to_toroidal
+from fire.misc.utils import make_iterable
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -19,13 +19,14 @@ module_default = object()
 
 # Required: Name of plugin module (typically name of machine == name of file), needed to be located as a plugin module
 machine_plugin_name = 'mast_u'
+
 # Recommended
 machine_name = 'MAST-U'  # Will be cast to lower case (and '-' -> '_') in FIRE
 plugin_info = {'description': 'This plugin supplies functions for MAST-U specific operations/information'}  # exta info
-# Optional
-# Parameters used to label coordinates
-location_labels = ['sector', 's_coord_global', 's_coord_path']
-n_sectors = 12  # Used internally
+location_labels = ['sector', 's_global']  # Parameters used to label coordinates
+
+# Optional/other
+n_sectors = 12  # Used internally in funcs below
 # Machine specific
 None
 
@@ -106,18 +107,20 @@ def get_s_coords_tables_mastu(ds=1e-4, no_cal=True, signal="/limiter/efit", shot
 
 # def get_s_coord_table_for_point():
 
-def get_nearest_s_coordinates_mastu(r, z, ds=1e-4, no_cal=True, signal="/limiter/efit", shot=50000):
+def get_nearest_s_coordinates_mastu(r, z, tol=5e-3, ds=1e-3, no_cal=True, signal="/limiter/efit", shot=50000):
     """Return closest tile surface 's' coordinates for supplied (R, Z) coordinates
 
     Args:
         r: Array of radial R coordinates
         z: Array of vertical Z coordinates
+        tol: Tolerance distance for points from wall - return nans if further away than tolerance
         ds: Resolution to interpolate wall coordinate spacing to in meters
         no_cal: Whether to use idealised CAD coordinates without spatial calibration corrections
         signal: UDA signal for wall coords
         shot: Shot number to get wall definition for
 
-    Returns:
+    Returns: Dict of s coordinates for top/bottom, (Array of 1/-1s for top/bottom of machine, Dict keying 1/-1 to s
+             keys)
 
     """
     r, z = make_iterable(r, ndarray=True), make_iterable(z, ndarray=True)
@@ -131,9 +134,9 @@ def get_nearest_s_coordinates_mastu(r, z, ds=1e-4, no_cal=True, signal="/limiter
         if np.any(mask):
             r_masked, z_masked = r[mask], z[mask]
             r_wall, z_wall, s_wall = lookup_table['R'], lookup_table['Z'], lookup_table['s']
-            s[mask] = get_nearest_s_coordinates(r_masked, z_masked, r_wall, z_wall, s_wall)
+            s[mask] = get_nearest_s_coordinates(r_masked, z_masked, r_wall, z_wall, s_wall, tol=tol)
             position[mask] = pos
-    return s, position, table_key
+    return s, (position, table_key)
 
 def create_poloidal_cross_section_figure(nrow=1, ncol=1, cross_sec_axes=((0, 0),)):
     fig, axes = plt.subplots(nrow, ncol)
@@ -184,7 +187,9 @@ def get_s_coord_global(x_im, y_im, z_im, **kwargs):
     """Return MAST-U tile s coordinates for all pixels in image.
 
     This MAST-U 's' coordinate starts at 0m mid-way up the centre column and increases along tile surfaces to a maximum
-    value of
+    value of 6.088473 m (top) and 6.088573 m (bottom).
+    This 's' coordinate is considered 'global' as it is predefined for all (R, Z) surfaces as apposed to a 'local' s
+    starting at 0m along a specific path.
 
     Args:
         x_im        : x coordinates of each pixel in image
@@ -195,11 +200,13 @@ def get_s_coord_global(x_im, y_im, z_im, **kwargs):
     Returns: MAST-U tile 's' coordinate for each pixel in the image
 
     """
-    r_im = np.linalg.norm(x_im, y_im)
+    x, y, z = (np.array(d).flatten() for d in (x_im, y_im, z_im))
+    r = np.linalg.norm([x, y], axis=0)
     # phi = np.arctan2(y_im, x_im)
-    s_global = get_nearest_s_coordinates_mastu(r_im, z_im, **kwargs)
+    s, (position, table_key) = get_nearest_s_coordinates_mastu(r, z, **kwargs)
+    s_im = s.reshape(x_im.shape)
     # TODO: Check if masking with nans is required in any situations
-    return s_global
+    return s_im
 
 def format_coord(coord, **kwargs):
     """
