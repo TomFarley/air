@@ -90,7 +90,10 @@ def read_movie_meta(path: Union[str, Path], transforms: Iterable[str]=()) -> dic
     # If present, also read meta data from json file with images
     movie_meta_json = json_load(Path(path)/'movie_meta_data.json', raise_on_filenotfound=False)
     if isinstance(movie_meta_json, dict):
+        frame_times = movie_meta_json.pop('frame_times', None)
         movie_meta.update(movie_meta_json)
+        if frame_times is not None:
+            movie_meta['t_range'] = np.array([np.min(frame_times), np.max(frame_times)])
     else:
         logger.warning(f'Imstack movie does not have a meta data json file: {path}')
 
@@ -176,6 +179,11 @@ def read_movie_data(path: Union[str, Path], frame_nos: Optional[Union[Iterable, 
             n_log += 1
 
     vid.release()
+
+    # If present, also read meta data from json file with images
+    movie_meta_json = json_load(Path(path)/'movie_meta_data.json', raise_on_filenotfound=False)
+    if isinstance(movie_meta_json, dict) and ('frame_times' in movie_meta_json):
+        frame_times = np.array(movie_meta_json['frame_times'])
 
     return frame_nos, frame_times, frame_data
 
