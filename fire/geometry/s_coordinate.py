@@ -6,15 +6,12 @@
 Created: 
 """
 
-import logging
-from typing import Union, Iterable, Sequence, Tuple, Optional, Any, Dict
-from pathlib import Path
+import logging, time
 
 import numpy as np
 import pandas as pd
-import xarray as xr
-import matplotlib.pyplot as plt
-from fire.utils import make_iterable
+from fire.geometry.geometry import logger
+from fire.misc.utils import make_iterable
 from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d, griddata
 
@@ -181,9 +178,13 @@ def calc_s_coord_lookup_table(r, z):
     return s
 
 
-def get_nearest_s_coordinates(r, z, r_wall, z_wall, s_wall):
+def get_nearest_s_coordinates(r, z, r_wall, z_wall, s_wall, tol=None):
     r, z = make_iterable(r, ndarray=True), make_iterable(z, ndarray=True)
     s_closest = griddata((r_wall, z_wall), s_wall, (r, z), method='nearest')
+    if tol is not None:
+        closest_coords, closest_dist, closest_index = get_nearest_boundary_coordinates(r, z, r_wall, z_wall)
+        mask = closest_dist > tol
+        s_closest[mask] = np.nan
     return s_closest
 
 
@@ -195,7 +196,6 @@ def get_nearest_rz_coordinates(s, r_wall, z_wall, s_wall):
     r = f_r(s)
     z = f_z(s)
     return (r, z)
-
 
 def get_nearest_boundary_coordinates(r, z, r_boundary, z_boundary):
     """Return boundary coordinate closest to supplied point.
@@ -210,14 +210,18 @@ def get_nearest_boundary_coordinates(r, z, r_boundary, z_boundary):
 
     """
     from scipy.spatial import distance
-    logger.debug(f'Calculating distances to {len(r_boundary)} boundary points')
     r, z = make_iterable(r, ndarray=True), make_iterable(z, ndarray=True)
     points = np.array([r, z]).T
     boundaries = np.array([r_boundary, z_boundary]).T
+    t0 = time.time()
     distances = distance.cdist(points, boundaries)
+    t1 = time.time()
+    logger.debug(f'Calculated {distances.size} distances from {len(r)} points to {len(r_boundary)} boundary points in '
+                 f'{t1-t0:0.3f}s')
     closest_index = distances.argmin(axis=1)
+    closest_dist = distances[np.arange(len(r)), closest_index]
     closest_coords = boundaries[closest_index]
-    return closest_coords
+    return closest_coords, closest_dist, closest_index
 
 
 def calc_local_s_along_path(r, z):
@@ -228,6 +232,22 @@ def calc_local_s_along_path(r, z):
     ds = np.concatenate([[0], ds])
     s = np.cumsum(ds)
     return s
+
+
+
+def get_s_coord_global_r(x_im, y_im, z_im=None):
+    """Crude fall back method if nothing else is available"""
+    s_global = np.hypot(x_im, y_im)
+    logger.warning(f'In absence of machine specific plugin, using crude get_s_coord_global_r() to calc s_global coord')
+    return s_global
+
+
+def get_s_coord_path_ds(x_im, y_im, z_im=None):
+    """Crude fall back method if nothing else is available"""
+    ds = np.vstack((np.diff(x_im), np.diff(y_im), np.diff(z_im)))
+    s_path = np.linalg.norm(ds)
+    logger.warning(f'In absence of machine specific plugin, using get_s_coord_path_ds() to calc s_path coord')
+    return s_path
 
 if __name__ == '__main__':
     pass

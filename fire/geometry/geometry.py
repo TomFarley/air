@@ -14,19 +14,6 @@ import numpy as np
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def get_s_coord_global_r(x_im, y_im, z_im=None):
-    """Crude fall back method if nothing else is available"""
-    s_global = np.hypot(x_im, y_im)
-    logger.warning(f'In absense of machine specific plugin, using crude get_s_coord_global_r() to calc s_global coord')
-    return s_global
-
-def get_s_coord_path_ds(x_im, y_im, z_im=None):
-    """Crude fall back method if nothing else is available"""
-    ds = np.vstack((np.diff(x_im), np.diff(y_im), np.diff(z_im)))
-    s_path = np.linalg.norm(ds)
-    logger.warning(f'In absense of machine specific plugin, using get_s_coord_path_ds() to calc s_path coord')
-    return s_path
-
 def identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=True):
     # Create mask with values corresponding to id of structure visible in each pixel
     if not phi_in_deg:
