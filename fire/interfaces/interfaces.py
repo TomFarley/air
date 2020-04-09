@@ -13,7 +13,7 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 
-from fire.utils import locate_file, make_iterable
+from fire.misc.utils import locate_file, make_iterable
 from fire import fire_paths
 
 logger = logging.getLogger(__name__)
@@ -48,23 +48,28 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
     params.update({'pulse': pulse, 'camera': camera, 'machine': machine, 'fire_path': str(fire_paths['root'])})
 
     files = {}
-    # Locate lookup files and info for pulse
-    lookup_files = ['calcam_calibs', 'analysis_paths']
+
+    # Locate lookup files and extract relevant info for specific pulse - this info may be a filename for lookup at
+    # next step
+    lookup_files = ['calcam_calibs', 'analysis_paths', 'temperature_coefs']
     lookup_info = {}
     for file_type in lookup_files:
         path, fn, info = lookup_pulse_info(pulse, camera, machine, params=params,
                                            search_paths=search_paths_inputs, filename_patterns=fn_patterns_inputs[file_type],
-                                           file_type=file_type)
+                                           file_type=file_type, csv_kwargs={'comment': '#'})
+        # TODO: consider moving file comment type to fire_config?
         files[f'{file_type}_lookup'] = path / fn
         lookup_info[file_type] = info
 
     # Get filenames referenced from lookup files: Calcam calibration file
-    lookup_references = [['calcam_calib', 'calcam_calibs', 'calcam_calibration_file'],]
+    lookup_references = [
+                            ['calcam_calib', 'calcam_calibs', 'calcam_calibration_file'],
+                        ]
     # ['analysis_path_dfn', 'analysis_path_dfns', 'analysis_path_name']]
     for name, file_type, column in lookup_references:
-        calcam_calib_fn = lookup_info[file_type][column]
+        fn_pulse = lookup_info[file_type][column]
         try:
-            path, fn = locate_file(search_paths_inputs, calcam_calib_fn, path_kws=params, fn_kws=params)
+            path, fn = locate_file(search_paths_inputs, fn_pulse, path_kws=params, fn_kws=params)
         except FileNotFoundError as e:
             raise FileNotFoundError(f'Could not locate fire input file for "{file_type}":\n{str(e)}')
         path_fn = path / fn
@@ -72,9 +77,9 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
         if not path_fn.is_file():
             raise IOError(f'Required input file "{path_fn}" does not exist')
 
-    # Get filenames straight from config settings: Analysis path definition file, bb photons, temperature coefs,
+    # Get filenames straight from config settings: Analysis path definition file, bb photons,
     # surface coords, surface properties
-    input_files = ['analysis_path_dfns', 'black_body_curve', 'calib_coefs', 'structure_coords', 'material_props']
+    input_files = ['analysis_path_dfns', 'black_body_curve', 'structure_coords', 'material_props']
     for file_type in input_files:
         fn_patterns = fn_patterns_inputs[file_type]
         try:
@@ -292,7 +297,8 @@ def two_level_dict_to_multiindex_df(d):
     return df
 
 
-def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, **kwargs_csv) -> Union[pd.Series, Exception]:
+def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, raise_: bool=True, **kwargs_csv
+    ) -> Union[pd.Series, Exception]:
     """Return row from csv file containing information for pulse range containing supplied pulse number
 
     :param path_fn: path to csv file containing pulse range information
@@ -304,24 +310,28 @@ def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, **kwargs_csv)
         calib_info = table
     else:
         if not np.all([col in list(table.columns) for col in ['pulse_start', 'pulse_end']]):
-            raise IOError(f'Unsupported pulse row CSV file format - '
+            calib_info = IOError(f'Unsupported pulse row CSV file format - '
                           f'must contain "pulse_start", "pulse_end" columns: {path_fn}')
-        table = table.astype({'pulse_start': int, 'pulse_end': int})
-        row_mask = np.logical_and(table['pulse_start'] <= pulse, table['pulse_end'] >= pulse)
-        if np.sum(row_mask) > 1:
-            raise ValueError(f'Calcam calib lookup file contains overlapping ranges. Please fix: {path_fn}')
-        elif np.sum(row_mask) == 0:
-            pulse_ranges = list(zip(table['pulse_start'], table['pulse_end']))
-            return ValueError(f'Pulse {pulse} does not fall in any pulse range {pulse_ranges} in {path_fn}')
         else:
-            calib_info = table.loc[row_mask].iloc[0]
-    return calib_info
+            table = table.astype({'pulse_start': int, 'pulse_end': int})
+            row_mask = np.logical_and(table['pulse_start'] <= pulse, table['pulse_end'] >= pulse)
+            if np.sum(row_mask) > 1:
+                calib_info = ValueError(f'Lookup file contains overlapping ranges. Please fix: {path_fn}')
+            elif np.sum(row_mask) == 0:
+                pulse_ranges = list(zip(table['pulse_start'], table['pulse_end']))
+                calib_info = ValueError(f'Pulse {pulse} does not fall in any pulse range {pulse_ranges} in {path_fn}')
+            else:
+                calib_info = table.loc[row_mask].iloc[0]
+    if isinstance(calib_info, Exception) and raise_:
+        raise calib_info
+    else:
+        return calib_info
 
 def read_csv(path_fn: Union[Path, str], **kwargs):
     path_fn = Path(path_fn)
     if 'sep' not in kwargs:
         if path_fn.suffix == '.csv':
-            kwargs['sep'] = ','
+            kwargs['sep'] = ',\s*'
         elif path_fn.suffix == '.tsv':
             kwargs['sep'] = r'\s+'
         else:
@@ -334,7 +344,8 @@ def read_csv(path_fn: Union[Path, str], **kwargs):
 
 def lookup_pulse_info(pulse: Union[int, str], camera: str, machine: str, search_paths: PathList,
                           filename_patterns: Union[str, Path], params: Optional[dict]=None,
-                          file_type: Optional[str]=None, raise_=True) -> pd.Series:
+                          file_type: Optional[str]=None,
+                          csv_kwargs: Optional[dict]=None, raise_=True) -> pd.Series:
     """Extract information from pulse look up file
 
     Args:
@@ -344,12 +355,14 @@ def lookup_pulse_info(pulse: Union[int, str], camera: str, machine: str, search_
         search_paths        : Format strings for paths to search for files
         filename_patterns   : Format string for possible filesnames to locate
         params              : Parameters to substitute into format strings
+        csv_kwargs          : Keyword arguments to pass to (pandas) csv reader
         raise_              : Whether to raise or return exceptions
 
     Returns: Series of data from csv file
 
     """
     params = {} if params is None else params
+    csv_kwargs = {} if csv_kwargs is None else csv_kwargs
     params.update({'pulse': pulse, 'camera': camera, 'machine': machine})
     try:
         path, fn = locate_file(search_paths, fns=filename_patterns, path_kws=params, fn_kws=params, raise_=True)
@@ -360,7 +373,7 @@ def lookup_pulse_info(pulse: Union[int, str], camera: str, machine: str, search_
             raise FileNotFoundError(message)
         else:
             return None, None, message
-    info = lookup_pulse_row_in_csv(path/fn, pulse)
+    info = lookup_pulse_row_in_csv(path/fn, pulse, raise_=False, **csv_kwargs)
     if raise_ and isinstance(info, Exception):
         raise info
     return path, fn, info
