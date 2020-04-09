@@ -101,8 +101,8 @@
                 "louvre_index": "get_tile_louvre_index",
                 "location_labels": "location_labels",
                 "format_coord": "format_coord",
-                "s_coord_global": "get_s_coord_global",
-                "s_coord_path": "get_s_coord_path",
+                "s_global": "get_s_coord_global",
+                "s_path": "get_s_coord_path",
                 "info": "plugin_info"
             }
         }
@@ -157,9 +157,9 @@
             "bb_photons-{lens}-{exposure}us.tsv",
             "bb_photons-{lens}-{exposure:0.0f}us.tsv"
         ],
-        "calib_coefs": [
-            "calib_coefs-{machine}-{camera}-{lens}-{exposure}us.tsv",
-            "calib_coefs-{machine}-{camera}-{lens}-{exposure:0.0f}us.tsv"
+        "temperature_coefs": [
+            "temperature_coefs-{machine}-{camera}-{lens}-{exposure}us.csv",
+            "temperature_coefs-{machine}-{camera}-{lens}-{exposure:0.0f}us.csv"
         ],
         "structure_coords": [
             "structure_coords-{machine}-default.csv"
