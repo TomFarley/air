@@ -16,11 +16,10 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import skimage
-import matplotlib.pyplot as plt
 
 import calcam
 from fire import fire_paths
-from fire.utils import locate_file, make_iterable
+from fire.misc.utils import locate_file, make_iterable, to_image_dataset
 from fire.interfaces.interfaces import lookup_pulse_row_in_csv
 
 logger = logging.getLogger(__name__)
@@ -229,6 +228,7 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, masks=N
     points_pix = calcam_calib.project_points(points_xyz, fill_value=None)[0]
     points['x_pix_path_dfn'] = (points.coords, points_pix[0])
     points['y_pix_path_dfn'] = (points.coords, points_pix[1])
+    # TODO: Handle points outside field of view
 
     pos_names = points.coords[pos_key]
     # x and y pixel value and path index number for each point along analysis path
@@ -246,7 +246,19 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, masks=N
         ypix_path.append(ypix)
         path_no.append(np.full_like(xpix, i_path))
         for key in masks_path:
-            mask_data = masks[key][ypix, xpix]
+            try:
+                mask_data = masks[key][ypix, xpix]
+            except IndexError as e:
+                from fire.plotting.image_figures import figure_analysis_path
+                logger.error(f'Analysis path strays outside image - not currently supported')
+                data = to_image_dataset(masks[key], key)
+                xpix_path = np.concatenate(xpix_path)
+                ypix_path = np.concatenate(ypix_path)
+                data['i_path'] = ('i_path', np.arange(len(xpix_path)))
+                data['x_pix_path'] = ('i_path', xpix_path)
+                data['y_pix_path'] = ('i_path', ypix_path)
+                figure_analysis_path(data, key=key, show=True)
+                raise
             masks_path[key].append(mask_data)
     xpix_path = np.concatenate(xpix_path)
     ypix_path = np.concatenate(ypix_path)
@@ -254,14 +266,15 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, masks=N
     for key in masks_path:
         masks_path[key] = np.concatenate(masks_path[key])
 
-    # TODO: Move loop to top of fucntion and pass multiple paths with different names?
+    # TODO: Move loop to top of function and pass multiple paths with different names?
     # NOTE: path substitutions below are currently over generalised
     paths = ['path']
     analysis_paths = xr.Dataset()
     for path in paths:
-        coords = {f'i_{path}': (f'{path}', np.arange(len(xpix))),
-                  f'segment_{path}': (f'{path}', path_no)}
+        coords = {f'i_{path}': (f'i_{path}', np.arange(len(xpix_path)))}  #,
+                  # f'segment_{path}': (f'{path}', path_no)}
         analysis_paths = analysis_paths.assign_coords(**coords)
+        analysis_paths[f'segment_{path}'] = ((f'i_{path}',), path_no)
         analysis_paths[f'y_pix_{path}'] = ((f'i_{path}',), ypix_path)
         analysis_paths[f'x_pix_{path}'] = ((f'i_{path}',), xpix_path)
         analysis_paths[f'visible_{path}'] = ((f'i_{path}',), check_visible(xpix_path, ypix_path, image_shape[::-1]))
@@ -298,7 +311,7 @@ def get_calcam_cad_obj(model_name, model_variant, check_fire_cad_defaults=True):
         else:
             raise
     except AttributeError as e:
-        if str(e) == module 'calcam' has no attribute 'CADModel':
+        if str(e) == "module 'calcam' has no attribute 'CADModel'":
             logger.warning('Calcam failed to import calcam.cadmodel.CADModel presumably due to vtk problem')
             import cv2
             import vtk
