@@ -314,3 +314,30 @@ def increment_figlabel(label, i=2, suffix=' ({i})', start_With_siffix=False):
         num = label + suffix.format(i=i)
         i += 1
     return num
+
+
+def to_image_dataset(data, key='data'):
+    if isinstance(data, xr.Dataset):
+        dataset = data
+    elif isinstance(data, np.ndarray):
+        # Use calcam convention: image data is indexed [y, x], but image shape description is (nx, ny)
+        ny, nx = data.shape
+        x_pix = np.arange(nx)
+        y_pix = np.arange(ny)
+        dataset = xr.Dataset(coords={'x_pix': x_pix, 'y_pix': y_pix})
+        # data = xr.Dataset({'data': (('y_pix', 'x_pix'), data)}, coords={'x_pix': x_pix, 'y_pix': y_pix})
+        dataset[key] = (('y_pix', 'x_pix'), data)
+        dataset['x_pix'].attrs.update({
+            'long_name': '$x_{pix}$',
+            'units': '',
+            'description': 'Camera x pixel coordinate'})
+        dataset['y_pix'].attrs.update({
+            'long_name': '$y_{pix}$',
+            'units': '',
+            'description': 'Camera y pixel coordinate'})
+        # TODO: Move to utils?
+        # TODO: fix latex display of axis labels
+        # TODO: use this func in calcam_calibs get_surface_coords
+    else:
+        raise ValueError(f'Unexpected image data type {data}')
+    return dataset
