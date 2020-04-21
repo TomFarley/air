@@ -14,13 +14,15 @@ import numpy as np
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=True):
+def identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=True, bg_value = -1):
     # Create mask with values corresponding to id of structure visible in each pixel
     if not phi_in_deg:
         phi_im = np.rad2deg(phi_im)
-    bg_value = np.nan
-    structure_ids = np.full_like(r_im, bg_value)
-    material_ids = np.full_like(r_im, bg_value)
+    if np.min(phi_im) < 0:
+        raise ValueError(f'Phi range is [{np.min(phi_im)}, {np.max(phi_im)}]. Expected [0, 360].')
+
+    structure_ids = np.full_like(r_im, bg_value, dtype=type(bg_value))
+    material_ids = np.full_like(r_im, bg_value, dtype=type(bg_value))
     visible_structures = {}
     visible_materials = {}
     for surface_name, row in surface_coords.iterrows():
@@ -44,18 +46,25 @@ def identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=T
             if phi_range_i.sum() == 0:
                 # Account for 360%0=0
                 phi_range_i[1] = 360
-            mask = (((r_im >= r_range[0]) & (r_im <= r_range[1])) & ((phi_im >= phi_range_i[0]) & (phi_im <= phi_range_i[1])) &
-                    ((z_im >= z_range[0]) & (z_im <= z_range[1])))
-            # Reflect structure in z=0 plane for up down symetric components
+            mask_r = ((r_im >= r_range[0]) & (r_im <= r_range[1]))
+            mask_phi = ((phi_im >= phi_range_i[0]) & (phi_im <= phi_range_i[1]))
+            mask_z = ((z_im >= z_range[0]) & (z_im <= z_range[1]))
             if row['mirror_z']:
-                mask += (((r_im >= r_range[0]) & (r_im <= r_range[1])) & ((phi_im >= phi_range_i[0]) & (phi_im <= phi_range_i[1])) &
-                         ((z_im >= -z_range[1]) & (z_im <= -z_range[0])))
-        if any(~np.isnan(structure_ids[mask])):
-            raise ValueError(f'Surface coordinates overlap. Previously assigned pixels reassigned to id: '
-                             f'"{surface_id}", structure: "{surface_name}"')
-        structure_ids[mask] = surface_id
-        material_ids[mask] = material_id
-        if np.sum(mask) > 0:
+                # Reflect structure in z=0 plane for up down symetric components
+                mask_z += ((z_im >= -z_range[1]) & (z_im <= -z_range[0]))
+            mask = (mask_r & mask_phi & mask_z)
+
+        overlapping_ids_mask = (~np.isnan(structure_ids))*mask if np.isnan(bg_value) else (structure_ids!=bg_value)*mask
+        overlapping_ids = set(structure_ids[overlapping_ids_mask])
+        if len(overlapping_ids) > 0:
+            overlapping_structures = [visible_structures[i] for i in overlapping_ids]
+            logger.warning(f'Surface coordinates overlap for surface "{surface_name}" ({surface_id}) and surface(s): '
+                           f'{", ".join(overlapping_structures)}. '
+                           f'Giving precedence to previously assigned structures: {overlapping_structures}.')
+            mask.values[overlapping_ids_mask] = False
+        if np.any(mask) > 0:
+            structure_ids[mask] = surface_id
+            material_ids[mask] = material_id
             visible_structures[surface_id] = surface_name
             visible_materials[material_id] = material_name
     if len(visible_structures) == 0:
@@ -77,23 +86,106 @@ def segment_path_by_material():  # pragma: no cover
                 f'r={r[no_tile_info_mask]}\nz={z[no_tile_info_mask]}')
     return tile_names
 
-def cartesian_to_toroidal(x, y, z=None, phi_in_deg=False):
+def cartesian_to_toroidal(x, y, z=None, angles_in_deg=False, angles_positive=True):
     """Convert cartesian coordinates to toroidal coordinates
 
     Args:
-        x           : x cartesian coordinate(s)
-        y           : y cartesian coordinate(s)
-        z           : (Optional) z cartesian coordinate(s)
-        phi_in_deg  : Whether to convert phi output from radians to degrees
+            x           : x cartesian coordinate(s)
+            y           : y cartesian coordinate(s)
+            z           : (Optional) z cartesian coordinate(s) - not used
+        angles_in_deg  : Whether to convert phi output from radians to degrees
+        angles_positive: Whether phi values should be in range positive [0, 360]/[[0,2pi] else [-180, +180]/[-pi, +pi]
 
-    Returns: (r, phi, z)
+    Returns: (r, phi, theta)
 
     """
     r = np.hypot(x, y)
-    phi = np.arctan2(y, x)
-    if phi_in_deg:
+    phi = np.arctan2(y, x)  # Toroidal angle 'ϕ'
+
+    # Poloidal angle 'ϑ'
+    if z is not None:
+        theta = np.arctan2(z, r)
+    else:
+        theta = np.full_like(x, np.nan)
+
+    if angles_in_deg:
         phi = np.rad2deg(phi)
-    return r, phi
+        theta = np.rad2deg(theta)
+    if angles_positive:
+        shift = 360 if angles_in_deg else 2*np.pi
+        phi = np.where(phi < 0, phi+shift, phi)
+        theta = np.where(theta < 0, theta+shift, theta)
+    return r, phi, theta
+
+def calc_horizontal_path_anulus_areas(r_path):
+    """Return areas of horizontal annuli around machine at each point along the analysis path.
+
+    Calculates the toroidal sum of horizontal surface area of tile around the machine between each radial point
+    around the machine.
+    Post processing corrections are required to account for the fact that the tiles surfaces are not actually
+    horizontal due to both tilt in poloidal plane and toroidal tilt of tile (i.e. tile surface hight is func of
+    toroidal angle z(phi))
+     R1  R2  R3  R4  R.  Rn
+    -|_._|_._|_._|_._|_._|-
+    <-> <-> <-> <-> <-> <->
+    dRf dRi ...         dRl
+
+    Except for first/last boundaries:
+        dR_i = [R_(i+1) - R_(i-1)] / 2
+
+    The area of each horizontal annulus is:
+        dA_i = 2 * pi * R * dR_i
+
+    In MAST the horizontal divertor simplified the final area calculation to:
+        2 * pi * R * dR
+
+    Args:
+        r_path: Radial coordinates of each point along the analysis path
+
+    Returns: Areas of horizontal annuli around machine at each point along the analysis path.
+
+    """
+    r_path = np.array(r_path)
+    dr = (r_path[2:] - r_path[0:-2]) / 2
+    # As missing boundaries, set end differences to be one sided
+    dr_first = [r_path[1]-r_path[0]]
+    dr_last = [r_path[-1]-r_path[-2]]
+    dr = np.abs(np.concatenate([dr_first, dr, dr_last]))
+    annulus_areas = 2 * np.pi * r_path * dr
+    # IDL comment: why not 1 / 2 as one Rib group only?
+    # TF: not sure what Rib is?
+    return annulus_areas
+
+
+def calc_tile_tilt_area_coorection_factors(poloidal_plane_tilt, toroidal_tilt, nlouvres):
+    """Return correction factors for areas returned by calc_horizontal_path_anulus_areas() accounting for tile tilts.
+
+    Args:
+        poloidal_plane_tilt: Angles of tile tilts in degrees relative to horizontal in poloidal plane
+        toroidal_tilt: Toroidal inclination of tile surfaces in degrees relative to horizontal
+        nlouvres: Number of separate inclined tiles toroidally around the machine - requried to account for inter-tile
+                    shadowing
+
+    Returns: Multiplicative factors for annulus areas
+
+    """
+    raise NotImplementedError
+
+
+def calc_divertor_area_integrated_param(values, annulus_areas):
+    """Return physics parameter integrated across the divertor surface area
+
+    Args:
+        values: 1D (R) or 2D (t, R) array of parameter values
+        annulus_areas: Annulus areas for each radial (R) coordinate
+
+    Returns: Integrated parameter value (for each time point if 2D input)
+
+    """
+    # TODO: Check for 1/2D input
+    total = np.sum(values * annulus_areas, axis=1)
+    return total
+
 
 if __name__ == '__main__':
     pass
