@@ -52,11 +52,13 @@ stages:
     - apt-get install -y git
     - apt-get install -y  python3-pip
     - apt-get install -y libsm6 libxext6 libxrender-dev   # opencv dependencies
+    - apt-get install -y libXt    # may be incorrect apt name (yum package) - dependency for vtk?
     #- apt-get install -y python-vtk
     - pip list   # tmp
     - pip install --user --upgrade pip setuptools
 #    - python -m pip show vtk   # tmp
-    - python -m pip install --user vtk
+    - python -m pip install --user vtk==9.0  # Import error with 8.1.2
+    - python -m pip install --user vtk==  # Produce message showing available versions
     - python -m pip show vtk   # tmp
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
     - pip install --user git+https://github.com/euratom-software/calcam.git
