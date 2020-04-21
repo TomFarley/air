@@ -6,7 +6,7 @@
 Created: 
 """
 
-import logging, time
+import logging, time, re
 from typing import Union, Iterable, Tuple, Optional
 from pathlib import Path
 
@@ -116,9 +116,27 @@ def find_outlier_pixels(image, tol=3, check_edges=True):
     logger.debug(f'Found outlier pixels for frame in {t1-t0:0.3f}s')
     return hot_pixels, fixed_image
 
+def find_outlier_intensity_threshold(data, nsigma=3, sample_size_factor=5):
+    data = np.array(data).flatten()
+    thresh = np.mean(data) + nsigma * np.std(data)
+    if np.max(data) < thresh:
+        out = np.max(data)
+    else:
+        n = 3
+        x = np.power(np.linspace(20, 100**n, len(data)/sample_size_factor), 1/n)
+        y = np.percentile(data, x)
+        d = np.concatenate([[0], np.diff(y)])
+        d2 = np.concatenate([[0], np.diff(d)])
+        jumps = np.where(d > np.max(d)/2)[0]
+        out = y[jumps[-1]-1]
+    return out
+
+
 def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
-                                  x_path='x_pix_path', y_path='y_pix_path', suffix='_path',
+                                  x_path='x_pix_{path}', y_path='y_pix_{path}', path_name='path0',
                                   keys=None):
+    x_path = x_path.format(path=path_name)
+    y_path = y_path.format(path=path_name)
     if keys is None:
         keys = image_data.keys()
     frame_shape = image_data['frame_data'].shape[1:]
@@ -128,7 +146,11 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
     for key in keys:
         data = image_data[key]
         if (data.shape == frame_shape) or (data.shape[1:] == frame_shape):
-            data_out[f'{key}{suffix}'] = data.sel(x_pix=x_pix_path, y_pix=y_pix_path)
+            if re.match('.*_im$', key):
+                new_key = re.sub('_im$', f'_{path_name}', key)
+            else:
+                new_key = f'{key}_{path_name}'
+            data_out[new_key] = data.sel(x_pix=x_pix_path, y_pix=y_pix_path)
     return data_out
 
 
