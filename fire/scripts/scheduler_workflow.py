@@ -189,9 +189,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         cad_model = get_calcam_cad_obj(**cad_model_args)
         meta_data['calcam_CAD'] = cad_model
         data_raycast = get_surface_coords(calcam_calib, cad_model, image_coords=image_coords)
-        # TODO: Move s coordinate calculation here?
-        # TODO: call plugin function to get s_gloabl, sector, louvre and tile values
+        cad_model.unload()
         x_im, y_im, z_im = (data_raycast[f'{coord}_im'] for coord in ['x', 'y', 'z'])
+        # Call machine plugin functions to get s_gloabl, sector, louvre and tile values etc.
         machine_coord_labels = get_machine_coordinate_labels(x_im, y_im, z_im, machine_plugins=machine_plugins)
         for key in machine_coord_labels:
             data_raycast[key + '_im'] = (('y_pix', 'x_pix'), machine_coord_labels[key])
