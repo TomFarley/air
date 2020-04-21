@@ -22,10 +22,11 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def calc_heatflux(t, temperatures, analysis_path, material_properties, visible_materials):
+def calc_heatflux(t, temperatures, path_data, path_name, material_properties, visible_materials):
     """"""
     from fire import theodor
     t = np.array(t)
+    path = path_name
 
     # TODO: Check time axis is uniform
     dt = np.diff(t)
@@ -34,13 +35,16 @@ def calc_heatflux(t, temperatures, analysis_path, material_properties, visible_m
     # TODO: Check analysis path for jumps/tile gaps etc
 
     # TODO generalise to other path names (i.e. other than 'path')
-    material_ids = set(np.array(analysis_path['material_id_path']))
-    if len(material_ids) > 1:
+    material_ids = np.array(path_data[f'material_id_{path}'])
+    material_ids = set(material_ids[~np.isnan(material_ids)])
+    if len(material_ids) == 0:
+        raise ValueError(f'No surface materials identified along analysis path: {path}')
+    elif len(material_ids) > 1:
         raise NotImplementedError
     # TODO: Loop over sections of path with different material properties or tile gaps etc
-    xpix_path, ypix_path = analysis_path['x_pix_path'], analysis_path['y_pix_path']
+    xpix_path, ypix_path = path_data[f'x_pix_{path}'], path_data[f'y_pix_{path}']
     temperature_path = np.array(temperatures[:, ypix_path, xpix_path])
-    s_path = np.array(analysis_path['s_global_path'])  # spatial coordinate along tile surface
+    s_path = np.array(path_data[f's_global_{path}'])  # spatial coordinate along tile surface
     material_id = list(material_ids)[0]
     material_name = visible_materials[material_id]
     theo_kwargs = material_properties[material_name]
