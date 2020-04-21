@@ -19,8 +19,10 @@ import skimage
 
 import calcam
 from fire import fire_paths
-from fire.misc.utils import locate_file, make_iterable, to_image_dataset
+from fire.geometry.geometry import cartesian_to_toroidal
+from fire.camera.image_processing import find_outlier_intensity_threshold
 from fire.interfaces.interfaces import lookup_pulse_row_in_csv
+from fire.misc.utils import locate_file, make_iterable, to_image_dataset
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -120,7 +122,8 @@ def apply_frame_display_transformations(frame_data, calcam_calib, image_coords):
 #         raise ValueError(f'Calcam calib lookup file does not contain column "calcam_calibration_file": {path_fn}')
 #     return calcam_calib
 
-def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, image_coords='Original'):
+def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, image_coords='Original',
+                       phi_positive=True, remove_long_rays=True):
     if image_coords == 'Display':
         image_shape = calcam_calib.geometry.get_display_shape()
     else:
@@ -141,25 +144,40 @@ def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, ima
 
     surface_coords = ray_data.get_ray_end(coords=image_coords)
     ray_lengths = ray_data.get_ray_lengths(coords=image_coords)
-    mask_open_rays = np.where(ray_lengths > outside_vesel_ray_length)
-    surface_coords[mask_open_rays[0], mask_open_rays[1], :] = np.nan
-    ray_lengths[mask_open_rays] = np.nan
+    # open rays that don't terminate in the vessel
+    mask_bad_data = ray_lengths > outside_vesel_ray_length
+    if remove_long_rays:
+        thresh_long_rays = find_outlier_intensity_threshold(ray_lengths)
+        mask_long_rays = ray_lengths > thresh_long_rays
+        mask_bad_data += mask_long_rays
+    ind_bad_data = np.where(mask_bad_data)
+    surface_coords[ind_bad_data[0], ind_bad_data[1], :] = np.nan
+    ray_lengths[mask_bad_data] = np.nan
+    if len(ind_bad_data[0]) > 0:
+        logger.info(f'Spatial coords for {len(ind_bad_data[0])} pixels set to "nan" due to holes in CAD model')
 
-    data_out['x_im'] = (('y_pix', 'x_pix'), surface_coords[:, :, 0])
-    data_out['y_im'] = (('y_pix', 'x_pix'), surface_coords[:, :, 1])
-    data_out['z_im'] = (('y_pix', 'x_pix'), surface_coords[:, :, 2])
-    data_out['R_im'] = (('y_pix', 'x_pix'), np.linalg.norm(surface_coords[:, :, 0:2], axis=2))
-    data_out['phi_im'] = (('y_pix', 'x_pix'), np.arctan2(data_out['y_im'], data_out['x_im']))  # Toroidal angle 'ϕ'
-    data_out['phi_deg_im'] = (('y_pix', 'x_pix'), np.rad2deg(data_out['phi_im']))  # Toroidal angle 'ϕ' in degrees
-    data_out['theta_im'] = (('y_pix', 'x_pix'), np.arctan2(data_out['z_im'], data_out['R_im']))  # Poloidal angle 'ϑ'
-    data_out['ray_lengths'] = (('y_pix', 'x_pix'), ray_lengths)  # Distance from camera pupil to surface
-    spatial_res = calc_spatial_res(data_out['x_im'], data_out['x_im'], data_out['x_im'])
+    x = surface_coords[:, :, 0]
+    y = surface_coords[:, :, 1]
+    z = surface_coords[:, :, 2]
+    r, phi, theta = cartesian_to_toroidal(x, y, z, angles_in_deg=False, angles_positive=phi_positive)
+
+    data_out['x_im'] = (('y_pix', 'x_pix'), x)
+    data_out['y_im'] = (('y_pix', 'x_pix'), y)
+    data_out['z_im'] = (('y_pix', 'x_pix'), z)
+    data_out['R_im'] = (('y_pix', 'x_pix'), r)
+    data_out['phi_im'] = (('y_pix', 'x_pix'), phi)  # Toroidal angle 'ϕ'
+    data_out['phi_deg_im'] = (('y_pix', 'x_pix'), np.rad2deg(phi))  # Toroidal angle 'ϕ' in degrees
+    data_out['theta_im'] = (('y_pix', 'x_pix'), theta)
+    data_out['ray_lengths_im'] = (('y_pix', 'x_pix'), ray_lengths)  # Distance from camera pupil to surface
+    data_out['bad_cad_coords_im'] = (('y_pix', 'x_pix'), mask_bad_data.astype(int))  # Pixels seeing holes in CAD model
+    spatial_res = calc_spatial_res(x, y, z, res_min=1e-4, res_max=None)
     for key, value in spatial_res.items():
         data_out[key] = (('y_pix', 'x_pix'), value)
     # Add labels for plots
     data_out['spatial_res_max'].attrs['standard_name'] = 'Spatial resolution'
     data_out['spatial_res_max'].attrs['units'] = 'm'
     # Just take red channel of wireframe image
+    # TODO: Fix wireframe image being returned black
     data_out['wire_frame'] = (('y_pix', 'x_pix'), wire_frame[:, :, 0])
 
     return data_out
@@ -206,8 +224,23 @@ def calc_spatial_res(x_im, y_im, z_im, res_min=1e-4, res_max=None):
 
     return spatial_res
 
-def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, masks=None, debug=True):
-    # TODO: Handle combining multiple analysis paths? Move loop over paths below to here...
+def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_name, masks=None):
+    """Project an analysis path defined by a set of spatial coordinates along tile surfaces into camera image coords
+
+    Args:
+        raycast_data: Dataset of spatial coordinate info for each pixel in camera images
+        analysis_path_dfn: Spatial coordinates of points defining analysis path
+        calcam_calib: Calcam calibration object
+        path_name: Name of path (short name) used in DataArray variable and coordiante names
+        masks: (optional) Additional image data to extract along path
+
+    Returns: Dataset of variables defining analysis_path through image (eg. x_pix, y_pix etc.)
+
+    """
+    path = path_name  # abbreviation for format strings
+    path_coord = f'i_{path}'  # xarray index coordinate along analysis path
+
+    # TODO: Handle combining multiple analysis paths? Move loop over paths below to here/outside fuction...?
     image_shape = np.array(calcam_calib.geometry.get_display_shape())
     # points = pd.DataFrame.from_dict(list(analysis_path_dfn.values())[0], orient='index')
     # points = pd.DataFrame.from_items(analysis_path_dfn).T
@@ -254,9 +287,9 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, masks=N
                 data = to_image_dataset(masks[key], key)
                 xpix_path = np.concatenate(xpix_path)
                 ypix_path = np.concatenate(ypix_path)
-                data['i_path'] = ('i_path', np.arange(len(xpix_path)))
-                data['x_pix_path'] = ('i_path', xpix_path)
-                data['y_pix_path'] = ('i_path', ypix_path)
+                data[path_coord] = (path_coord, np.arange(len(xpix_path)))
+                data[f'x_pix_{path}'] = (path_coord, xpix_path)
+                data[f'y_pix_{path}'] = (path_coord, ypix_path)
                 figure_analysis_path(data, key=key, show=True)
                 raise
             masks_path[key].append(mask_data)
@@ -266,30 +299,28 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, masks=N
     for key in masks_path:
         masks_path[key] = np.concatenate(masks_path[key])
 
-    # TODO: Move loop to top of function and pass multiple paths with different names?
-    # NOTE: path substitutions below are currently over generalised
-    paths = ['path']
-    analysis_paths = xr.Dataset()
-    for path in paths:
-        coords = {f'i_{path}': (f'i_{path}', np.arange(len(xpix_path)))}  #,
-                  # f'segment_{path}': (f'{path}', path_no)}
-        analysis_paths = analysis_paths.assign_coords(**coords)
-        analysis_paths[f'segment_{path}'] = ((f'i_{path}',), path_no)
-        analysis_paths[f'y_pix_{path}'] = ((f'i_{path}',), ypix_path)
-        analysis_paths[f'x_pix_{path}'] = ((f'i_{path}',), xpix_path)
-        analysis_paths[f'visible_{path}'] = ((f'i_{path}',), check_visible(xpix_path, ypix_path, image_shape[::-1]))
-        index_path = {'x_pix': xr.DataArray(xpix_path, dims=f'i_{path}'),
-                      'y_pix': xr.DataArray(ypix_path, dims=f'i_{path}')}
-        for coord in ['R', 'phi', 'x', 'y', 'z']:
-            analysis_paths[coord+f'_{path}'] = ((f'i_{path}',), raycast_data[coord+'_im'].sel(index_path))
-        for key in masks_path:
-            analysis_paths[key+f'_{path}'] = ((f'i_{path}',), masks_path[key])
+    # NOTE: path substitutions below are currently over generalised?
+    analysis_path = xr.Dataset()
+    coords = {f'i_{path}': (f'i_{path}', np.arange(len(xpix_path)))}  #,
+              # f'segment_{path}': (f'{path}', path_no)}
 
-        # TODO: check_occlusion
-        if np.any(~analysis_paths[f'visible_{path}']):
-            logger.warning(f'Analysis path contains sections that are not visible from the camera: '
-                           f'{~analysis_paths["visible_{path}"]}')
-    return analysis_paths
+    analysis_path = analysis_path.assign_coords(**coords)
+    analysis_path[f'segment_{path}'] = ((f'i_{path}',), path_no)
+    analysis_path[f'y_pix_{path}'] = ((f'i_{path}',), ypix_path)
+    analysis_path[f'x_pix_{path}'] = ((f'i_{path}',), xpix_path)
+    analysis_path[f'visible_{path}'] = ((f'i_{path}',), check_visible(xpix_path, ypix_path, image_shape[::-1]))
+    index_path = {'x_pix': xr.DataArray(xpix_path, dims=f'i_{path}'),
+                  'y_pix': xr.DataArray(ypix_path, dims=f'i_{path}')}
+    for coord in ['R', 'phi', 'x', 'y', 'z']:
+        analysis_path[coord+f'_{path}'] = ((f'i_{path}',), raycast_data[coord+'_im'].sel(index_path))
+    for key in masks_path:
+        analysis_path[key+f'_{path}'] = ((f'i_{path}',), masks_path[key])
+
+    # TODO: check_occlusion
+    if np.any(~analysis_path[f'visible_{path}']):
+        logger.warning(f'Analysis path contains sections that are not visible from the camera: '
+                       f'{~analysis_paths["visible_{path}"]}')
+    return analysis_path
 
 def check_visible(x_points, y_points, image_shape):
     # TODO: Check calcam convension for subwindows
