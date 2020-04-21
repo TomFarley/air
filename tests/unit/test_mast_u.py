@@ -6,15 +6,13 @@ import pandas as pd
 
 import calcam
 
-from fire.geometry.s_coordinate import get_nearest_rz_coordinates, get_nearest_boundary_coordinates
+from fire.interfaces.machine_plugins.mast_u import get_uda_mastu_wall_coords
 
 pwd = Path(__file__).parent
 
-class TestSCoord(unittest.TestCase):
+class TestMastU(unittest.TestCase):
 
     def setUp(self):
-        # TODO: Move ref vaules to csv file
-        # From get_uda_mastu_wall_coords()
         self.r_wall = np.array([1.5644158 , 1.7315794 , 1.3484753 , 1.0881892 , 0.903226  ,
            0.9046392 , 0.5341571 , 0.5382938 , 0.33279714, 0.33279714,
            0.33479592, 0.30311525, 0.30511403, 0.26913595, 0.27113473,
@@ -51,47 +49,17 @@ class TestSCoord(unittest.TestCase):
             1.5785736,  1.5879643,  1.5924847,  1.5932623,  1.5933142,
             1.5886062,  1.5887483,  1.582598 ,  1.5824499,  1.574427 ,
             1.5745829,  1.5665352])
-        # From get_nearest_s_coordinates_mastu(r, z)
-        self.s_wall = np.array([3.39725825, 3.19522375, 2.65364782, 2.39336173, 2.13370612,
-                        2.13170697, 1.60760655, 1.60176811, 1.31415082, 1.11106123,
-                        1.10906245, 0.86053494, 0.85853615, 0.57375433, 0.57175555,
-                        0.50125772, 0.50125772, 0.57175555, 0.57375433, 0.85853615,
-                        0.86053494, 1.10906245, 1.11106123, 1.31415082, 1.60176811,
-                        1.60760655, 2.13170697, 2.13370612, 2.39336173, 2.65364782,
-                        3.19522375, 3.39725825, 3.58185827, 3.5820432 , 3.76588815,
-                        3.76606374, 3.90714021, 3.90730873, 4.01519256, 4.05700871,
-                        4.06359815, 4.07998893, 4.09828878, 4.11931208, 4.14719369,
-                        4.16619199, 4.1801915 , 4.1991914 , 4.21819137, 4.24969122,
-                        4.27669078, 4.31068833, 4.34868418, 4.38667619, 4.41766677,
-                        4.82254345, 5.01779046, 5.04567249, 5.27067251, 5.27067251,
-                        5.04567249, 5.01779046, 4.82254345, 4.41766677, 4.38667619,
-                        4.34868418, 4.31068833, 4.27669078, 4.24969122, 4.21819137,
-                        4.1991914 , 4.1801915 , 4.16619199, 4.14719369, 4.11931208,
-                        4.09828878, 4.07998893, 4.06359815, 4.05700871, 4.01519256,
-                        3.90730873, 3.90714021, 3.76606375, 3.76588815, 3.5820432 ,
-                        3.58185827, 3.39725825])
 
-    def test_get_nearest_boundary_coordinates(self):
-        point = (1.1, -1.8)
-
-        closest_coords, closest_dist, closest_index = get_nearest_boundary_coordinates(*point, self.r_wall, self.z_wall)
-        expected_value = np.array([[ 0.9046392, -1.8791507]])
-        self.assertTrue(np.all(np.isclose(closest_coords, expected_value)))
-
-    def test_get_nearest_rz_coordinates(self):
-        point = (1.1, -1.8)
-        s_close = 1.6
-        r, z = get_nearest_rz_coordinates(s_close, self.r_wall, self.s_wall, self.s_wall)
-        r_expected, z_expected = (np.array([0.53703052]), np.array([1.6]))
-        self.assertTrue(np.all(np.isclose(r, r_expected)))
-        self.assertTrue(np.all(np.isclose(z, z_expected)))
-
+    def test_get_uda_mastu_wall_coords(self):
+        r, z = get_uda_mastu_wall_coords()
+        self.assertTrue(np.all(np.isclose(r, self.r_wall)))
+        self.assertTrue(np.all(np.isclose(z, self.z_wall)))
 
 def suite():
     suite = unittest.TestSuite()
     loader = unittest.TestLoader()
     # suite.addTests(loader.loadTestsFromTestCase(TestIoIpx))
-    suite.addTest(TestSCoord.test_get_calcam_calib_path_fn)
+    suite.addTest(TestMastU.test_get_uda_mastu_wall_coords)
     return suite
 
 if __name__ == '__main__':
