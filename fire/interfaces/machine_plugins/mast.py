@@ -37,15 +37,17 @@ def get_machine_sector(x, y, z=None, **kwargs):
         scalar = True
         x, y = make_iterable(x, ndarray=True), make_iterable(y, ndarray=True)
 
-    r, phi = cartesian_to_toroidal(x, y, phi_in_deg=True)
-    phi = np.where((phi < 0), phi+360, phi)
+    r, phi, theta = cartesian_to_toroidal(x, y, angles_in_deg=True, angles_positive=True)
 
     # MAST has 12 sectors going clockwise from North
     # Phi coordinate goes anticlockwise starting at phi=0 along x axis (due East)
     sector_width_angle = 360/n_sectors
     sector = (3 - np.floor(phi / sector_width_angle)) % n_sectors
+    sector = sector.astype(int)
     # No sector zero
     sector = np.where((sector == 0), 12, sector)
+    # Set areas without coordinate data to -1
+    sector = np.where(np.isnan(x), -1, sector)
     if scalar:
         sector = sector[0]
     return sector
@@ -73,7 +75,7 @@ def get_tile_louvre_label(x, y, z=None, **kwargs):
     return louvre_label
 
 def get_tile_louvre_index(x, y, z=None, **kwargs):
-    r, phi = cartesian_to_toroidal(x, y, phi_in_deg=True)
+    r, phi, theta = cartesian_to_toroidal(x, y, angles_in_deg=True)
     phi = np.where((phi < 0), phi + 360, phi)
 
     sector_width_angle = 360 / n_sectors
