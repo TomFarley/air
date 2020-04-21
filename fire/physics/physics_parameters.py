@@ -7,13 +7,12 @@ Created:
 """
 
 import logging
-from typing import Union, Iterable, Sequence, Tuple, Optional, Any, Dict
-from pathlib import Path
+from collections import defaultdict
 
 import numpy as np
-import pandas as pd
 import xarray as xr
-import matplotlib.pyplot as plt
+from fire.geometry.geometry import calc_horizontal_path_anulus_areas, calc_tile_tilt_area_coorection_factors, \
+    calc_divertor_area_integrated_param
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -29,7 +28,7 @@ params_dict_default = {'required':
                        }
 
 param_funcs = {
-    'annulus_areas_horizontal_path': calc_horizontal_path_anulus_areas(),
+    'annulus_areas_horizontal_path': calc_horizontal_path_anulus_areas,
 }
 
 legacy_values = {23586:
@@ -53,34 +52,73 @@ def check_input_params_complete(data, params_dict=module_defaults):
 def attach_meta_data(data, meta_data_dict=None):
     raise NotImplementedError
 
-def calc_horizontal_path_anulus_areas(r_path):
-    """Return areas of horizontal annuli around machine at each point along the analysis path.
 
-    Calculates the toroidal sum of horizontal surface area of tile around the machine between each radial point
-    around the machine.
-    Post processing corrections are required to account for the fact that the tiles surfaces are not actually
-    horizontal due to both tilt in toroidal plane and toroidal tilt of tile (i.e. tile surface hight is func of
-    toroidal andle z(phi))
-
-    In MAST the horizontal divertor simplified the final area calculation to
-        2 * pi * R * dR;
+def locate_target_peak(param_values, dim='t', coords=None, peak_kwargs=None):
+    """Return value and location of global peak value, and sorted indices of other peaks.
 
     Args:
-        r_path: Radial coordinates of each point along the analysis path
+        param_values: 1D/2D array of values [t, R]
+        dim:
+        peak_kwargs: Dict of args to pass to scipy.signal.find_peaks
 
-    Returns: Areas of horizontal annuli around machine at each point along the analysis path.
+    Returns: Dict of peak info
 
     """
-    dr = r_path[2:] - r_path[0:-2]
-    # As missing boundaries, set end differences to be one sided
-    dr_first = [r_path[1]-r_path[0]]
-    dr_last = [r_path[-1]-r_path[-2]]
-    dr = np.concatenate(dr_first, dr, dr_last)
-    annulus_areas = 2 * np.pi * r_path * dr
-    # IDL comment: why not 1 / 2 as one Rib group only?
-    return annulus_areas
+    from scipy.signal import argrelmax, find_peaks
+    if peak_kwargs is None:
+        peak_kwargs = dict(width=3)
+    if 'n' in param_values.dims:
+        param_values = param_values.swap_dims({'n': 't'})
+    param = param_values.name
+    # ind_peaks = argrelmax(param_values.values, axis=1, order=order, mode='clip')
+    peak_info = defaultdict(list)
+    peak_info[f'peak_properties'] = {}
+    # if coords is not None:
+    #     for key in coords.keys():
+    #         peak_info[f'{key}_peaks'] = []
 
-def calc_physics_params(data):
+    roll = param_values.rolling({dim: 1})
+    for coord, profile in roll:
+        profile = profile.sel({dim: coord}).values  # Make 1D
+        coord = float(coord.values)
+        ind_peaks, properties = find_peaks(profile, **peak_kwargs)
+
+        # Order peaks in decending order
+        peak_order = np.argsort(profile[ind_peaks])[::-1]
+        ind_peaks = ind_peaks[peak_order]
+        n_peaks = len(ind_peaks)
+
+        # Global maxima
+        if n_peaks > 0:
+            i_peak = ind_peaks[0]
+            param_peak = profile[i_peak]
+
+        else:
+            i_peak = np.nan
+            param_peak = np.nan
+
+
+        peak_info[f'peak'].append(param_peak)
+        peak_info[f'ind_global_peak'].append(i_peak)
+        peak_info[f'n_peaks'].append(n_peaks)
+        peak_info[f'ind_peaks'].append(ind_peaks)
+        peak_info[f'peak_properties'][coord] = properties
+        if coords is not None:
+            for key, values in coords.items():
+                peak = np.array(values)[i_peak] if n_peaks > 0 else np.nan
+                peak_info[f'{key}_peak'].append(peak)
+
+    # func = np.vectorize(find_peaks)
+    # ind_peaks = func(param_values.values)
+    keys_1d = ([f'peak', f'ind_global_peak', f'n_peaks'] +
+               list(f'{key}_peak' for key in coords.keys()))
+    for key in keys_1d:
+        peak_info[key] = np.array(peak_info[key])
+
+    return peak_info
+
+
+def calc_physics_params(path_data, path_name, params=None):
     """Old IDL sched iranalysis.pro input parameters
       ;variables
       ;sh = shot
@@ -100,6 +138,43 @@ def calc_physics_params(data):
       ;aug - run for ASDEX, defunct?
       ;print - set flag for output to PS
     """
+    if params is None:
+        params = ['heat_flux', 'temperature']
+
+    path = path_name  # abbreviation for format strings
+
+    data_out = path_data
+
+    r_path = path_data[f'R_{path}']
+    s_path = path_data[f's_global_{path}']
+    annulus_areas_horizontal = calc_horizontal_path_anulus_areas(r_path)
+    if False:
+        tile_angle_poloidal = path_data[f'tile_angle_poloidal_{path}']
+        tile_angle_toroidal = path_data[f'tile_angle_toroidal_{path}']
+        tile_tilt_area_factors = calc_tile_tilt_area_coorection_factors()
+        annulus_areas_corrected = annulus_areas_horizontal * tile_tilt_area_factors
+    else:
+        logger.warning(f'Using incorrect annulus areas for integrated/total quantities')
+        annulus_areas_corrected = annulus_areas_horizontal
+
+    data_out[f'annulus_areas_{path}'] = (('i_{path}',), annulus_areas_corrected)
+
+    for param in params:
+        try:
+            param_vales = path_data[f'{param}_{path}']
+            param_total = calc_divertor_area_integrated_param(param_vales, annulus_areas_corrected)
+            peak_info = locate_target_peak(param_vales, dim='t', coords=dict(s=s_path, r=r_path))
+        except Exception as e:
+            logger.warning(f'Failed to calculate physics summary for param "{param}":\n{e}')
+            raise e
+        else:
+            data_out[f'{param}_tot_{path}'] = (('t',), param_total)
+            data_out[f'{param}_peak_{path}'] = (('t',), peak_info['peak'])
+            data_out[f'{param}_s_peak_{path}'] = (('t',), peak_info['s_peak'])
+            data_out[f'{param}_r_peak_{path}'] = (('t',), peak_info['r_peak'])
+            data_out[f'{param}_n_peaks_{path}'] = (('t',), peak_info['n_peaks'])
+
+    return data_out
 
 if __name__ == '__main__':
     pass
