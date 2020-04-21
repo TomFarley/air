@@ -7,7 +7,7 @@ Created: 11-10-19
 """
 
 import logging, inspect
-from typing import Union, Iterable, Tuple, List, Optional, Any, Sequence
+from typing import Union, Iterable, Tuple, List, Optional, Any, Sequence, Callable
 from pathlib import Path
 
 import numpy as np
@@ -120,11 +120,14 @@ def make_iterable(obj: Any, ndarray: bool=False,
         obj = cast_dict[type(obj)](obj)
     if ndarray:
         obj = np.array(obj)
-    if isinstance(cast_to, type):
-        if cast_to == np.ndarray:
-            obj = np.array(obj)
+    if (cast_to is not None):
+        if isinstance(cast_to, (type, Callable)):
+            if cast_to == np.ndarray:
+                obj = np.array(obj)
+            else:
+                obj = cast_to(obj)  # cast to new type eg list
         else:
-            obj = cast_to(obj)  # cast to new type eg list
+            raise TypeError(f'Invalid cast type: {cast_to}')
     return obj
 
 def dirs_exist(paths: Iterable[Union[str, Path]], path_kws: Optional[dict]=None
@@ -319,6 +322,8 @@ def increment_figlabel(label, i=2, suffix=' ({i})', start_With_siffix=False):
 def to_image_dataset(data, key='data'):
     if isinstance(data, xr.Dataset):
         dataset = data
+    elif isinstance(data, xr.DataArray):
+        dataset = xr.Dataset({data.name: data})
     elif isinstance(data, np.ndarray):
         # Use calcam convention: image data is indexed [y, x], but image shape description is (nx, ny)
         ny, nx = data.shape
