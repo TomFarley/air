@@ -125,13 +125,13 @@ def get_nearest_s_coordinates_mastu(r, z, tol=5e-3, ds=1e-3, no_cal=True, signal
     """
     r, z = make_iterable(r, ndarray=True), make_iterable(z, ndarray=True)
     s_lookup = get_s_coords_tables_mastu(ds=ds, no_cal=no_cal, signal=signal, shot=shot)
-    z_mask = z <= 0
+    z_mask = (z <= 0)
     s = np.full_like(r, np.nan, dtype=float)
     position = np.full_like(r, np.nan, dtype=float)
     table_key = {-1: 's_bottom', 1: 's_top'}
     for mask, key, pos in zip([z_mask, ~z_mask], ['s_bottom', 's_top'], [-1, 1]):
         lookup_table = s_lookup[key]
-        if np.any(mask):
+        if np.any(mask) and (not np.all(np.isnan(r[mask]))):
             r_masked, z_masked = r[mask], z[mask]
             r_wall, z_wall, s_wall = lookup_table['R'], lookup_table['Z'], lookup_table['s']
             s[mask] = get_nearest_s_coordinates(r_masked, z_masked, r_wall, z_wall, s_wall, tol=tol)
