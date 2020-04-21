@@ -52,7 +52,6 @@ stages:
     - apt-get install -y git
     - apt-get install -y  python3-pip
     - apt-get install -y libsm6 libxext6 libxrender-dev   # opencv dependencies
-    - apt-get install -y libXt    # may be incorrect apt name (yum package) - dependency for vtk?
     #- apt-get install -y python-vtk
     - pip list   # tmp
     - pip install --user --upgrade pip setuptools
