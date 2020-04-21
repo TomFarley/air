@@ -206,7 +206,8 @@ def get_nearest_boundary_coordinates(r, z, r_boundary, z_boundary):
         r_boundary: R coordinates of bounding surface/wall to look up closest point on
         z_boundary: Z coordinates of bounding surface/wall to look up closest point on
 
-    Returns: (R, Z) coordinate of point on bounding surface closest to specified point
+    Returns: (closest_coords, closest_dist, closest_index) - (R, Z) coordinate of points on bounding surface closest to
+             specified points, together with the distance to the bounding surface and the index of the point
 
     """
     from scipy.spatial import distance
