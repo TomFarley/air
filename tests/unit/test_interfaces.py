@@ -76,10 +76,13 @@ class TestInterfaces(unittest.TestCase):
         out = lookup_pulse_row_in_csv(path_fn, 20378)
         self.assertTrue(isinstance(out, pd.Series))
 
-        out = lookup_pulse_row_in_csv(path_fn, -100)
+        out = lookup_pulse_row_in_csv(path_fn, -100, raise_=False)
         self.assertTrue(isinstance(out, ValueError))
 
-        out = lookup_pulse_row_in_csv(path / 'bad_fn.csv', 20737)
+        with self.assertRaises(ValueError):
+            out = lookup_pulse_row_in_csv(path_fn, -100, raise_=True)
+
+        out = lookup_pulse_row_in_csv(path / 'bad_fn.csv', 20737, raise_=False)
         self.assertTrue(isinstance(out, FileNotFoundError))
 
     def test_lookup_pulse_info(self):
@@ -92,9 +95,9 @@ class TestInterfaces(unittest.TestCase):
         self.assertTrue(isinstance(info, pd.Series))
 
     def test_get_module_from_path_fn(self):
-        path = fire_paths['root'] / 'utils.py'
+        path = fire_paths['root'] / 'misc' / 'utils.py'
         out = get_module_from_path_fn(path)
-        self.assertEqual(out.__name__, 'fire/utils.py')
+        self.assertEqual(out.__name__, 'misc/utils.py')
         self.assertEqual(str(type(out)), "<class 'module'>")
 
     # def test_read_movie_meta_data(self):
