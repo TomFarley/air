@@ -13,9 +13,10 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from fire.misc.utils import to_image_dataset
+from fire.misc.utils import make_iterable, to_image_dataset
 from fire.plotting.plot_tools import get_fig_ax
 from matplotlib import colors
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from fire.camera.image_processing import find_outlier_pixels
 
@@ -26,6 +27,7 @@ dpi = 90
 
 cbar_label_defaults = {
                       'frame_data': r'DL [arb]',
+                      'frame_temperature': r'$T$ [$^\circ$C]',
                       'R_im': r'$R$ coordinate [m]',
                       'phi_deg_im': r'$\phi$ coordinate [$^\circ$]',
                       'x_im': r'$x$ coordinate [m]',
@@ -38,8 +40,10 @@ cbar_label_defaults = {
 def figure_imshow(data, key='data', slice=None, ax=None,
                   add_colorbar=True, cbar_label=None, robust=True,
                   scale_factor=None,
-                  cmap='gray', log_cmap=False, origin='upper', aspect='equal', axes_off=False,
+                  cmap=None, log_cmap=False, nan_color=('red', 0.2),
+                  origin='upper', aspect='equal', axes_off=False,
                   save_fn=None, show=False, **kwargs):
+
     fig, ax, ax_passed = get_fig_ax(ax, num=key)
     data = to_image_dataset(data, key=key)
     data_plot = data[key]
@@ -60,8 +64,35 @@ def figure_imshow(data, key='data', slice=None, ax=None,
         norm = None
     kws = {}
     if add_colorbar:
-        kws.update(dict(cbar_kwargs=dict(label=cbar_label, extend='both'), robust=robust))
+        # Force xarray generated colorbar to only be hight of image axes and thinner
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        kws.update(dict(cbar_kwargs=dict(label=cbar_label, cax=cax),  # , extend='both'
+                        robust=robust))
+        if np.issubdtype(data_plot.dtype, np.int64) and (np.max(data_plot.values) < 20):
+            # Integer/quantitative data
+            bad_value = -1
+            data_plot = xr.where(data_plot == bad_value, np.nan, data_plot)
+
+            values = data_plot.values.flatten()
+            values = set(list(values[~np.isnan(values)]))
+            ticks = np.sort(list(values))
+            kws['cbar_kwargs']['ticks'] = ticks
+            kws['vmin'] = np.min(ticks)
+            kws['vmax'] = np.max(ticks)
+            if cmap is None:
+                cmap = 'jet'
+            cmap = mpl.cm.get_cmap(cmap, (ticks[-1]-ticks[0])+1)
+
     kws.update(kwargs)
+
+    if cmap is None:
+        cmap = 'gray'
+    if isinstance(cmap, str):
+        cmap = mpl.cm.get_cmap(cmap)
+    if nan_color is not None:
+        nan_color = make_iterable(nan_color, cast_to=iter)
+        cmap.set_bad(color=next(nan_color), alpha=next(nan_color, 0.5))
 
     try:
         data_plot.plot.imshow(ax=ax,
@@ -113,9 +144,10 @@ def plot_outlier_pixels(data, key='frame_data', ax=None, n=None, color='r', ms=2
     hot_pixels, frame_data = find_outlier_pixels(frame_data, tol=3)
     ax.plot(hot_pixels[1], hot_pixels[0], ls='', marker='o', color=color, ms=ms, **kwargs)
 
-def figure_analysis_path(path_data, image_data=None, key=None, slice=None, frame_border=True, image_shape=None,
+def figure_analysis_path(path_data, image_data=None, key=None, path_name='path0', slice=None, frame_border=True, image_shape=None,
                          ax=None, show=True, image_kwargs=None):
-    fig, ax, ax_passed = get_fig_ax(ax, num='analysis_path')
+    path = path_name
+    fig, ax, ax_passed = get_fig_ax(ax, num=f'analysis_{path}')
 
     if image_data:
         if key is not None:
@@ -134,7 +166,8 @@ def figure_analysis_path(path_data, image_data=None, key=None, slice=None, frame
     # TODO: Colorcode line by visibility - use data['visible_path'
     # TODO: colorcode line by path section index
     try:
-        plot_analysis_path(ax, path_data['x_pix_path'], path_data['y_pix_path'], visible=path_data['visible_path'])
+        plot_analysis_path(ax, path_data[f'x_pix_{path}'], path_data[f'y_pix_{path}'],
+                           visible=path_data[f'visible_{path}'])
     except KeyError as e:
         logger.warning(f'Failed to plot analysis path: {str(e)}')
     if show:
@@ -179,14 +212,17 @@ def figure_spatial_res_y(data, ax=None, log_cmap=True, aspect='equal', axes_off=
     figure_imshow(data, key, cbar_label=cbar_label, ax=ax, cmap=cmap, log_cmap=log_cmap, axes_off=axes_off,
                   aspect=aspect, scale_factor=scale_factor, save_fn=save_fn, show=show)
 
-def plot_spatial_res_hist(data, ax=None, log_x=True, log_y=True, save_fn=None, show=False):
-    if ax is None:
-        fig, ax = plt.subplots(1, 1, num='spatial_res max hist')
-        ax_passed = False
+def plot_image_data_hist(data, key=None, ax=None, bins=200, xlabel=None, log_x=False, log_y=True, save_fn=None,
+                         show=False, **kwargs):
+    fig, ax, ax_passed = get_fig_ax(ax, num=key)
+    if key is not None:
+        data_plot = data[key].values
     else:
-        ax_passed = True
-    ax.hist(data['spatial_res_max'].values.flatten(), bins=200)
-    ax.set_xlabel('spatial res (max) [m]')
+        data_plot = np.array(data)
+    ax.hist(data_plot.flatten(), bins=bins, **kwargs)
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    ax.set_ylabel('Frequency')
     if log_x:
         ax.set_xscale('log')
     if log_y:
@@ -196,7 +232,7 @@ def plot_spatial_res_hist(data, ax=None, log_x=True, log_y=True, save_fn=None, s
         ax.set_aspect('equal')
     if save_fn:
         plt.savefig(save_fn, bbox_inches='tight', transparent=True, dpi=dpi)
-        logger.info(f'Saved y spatial resolution figure to: {save_fn}')
+        logger.info(f'Saved y image histogram figure of {key} to: {save_fn}')
     if show:
         plt.show()
 
