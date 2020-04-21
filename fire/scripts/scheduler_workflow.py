@@ -6,6 +6,7 @@ Primary analysis workflow for MAST-U/JET IR scheduler analysis code.
 
 Created: 10-10-2019
 """
+print(f'Scheduler workflow: Importing modules')
 import logging
 from typing import Union
 from pathlib import Path
@@ -29,9 +30,11 @@ from fire.camera.image_processing import extract_path_data_from_images
 from fire.geometry.geometry import identify_visible_structures
 from fire.physics.temperature import dl_to_temerature
 from fire.physics.heat_flux import calc_heatflux
+from fire.physics.physics_parameters import calc_physics_params
 from fire.misc.data_structures import init_data_structures
 from fire.misc.data_quality import identify_saturated_frames
 from fire.misc.utils import update_call_args, movie_data_to_xarray
+from fire.plotting import debug_plots
 from fire.plotting.debug_plots import (debug_spatial_coords, debug_movie_data, debug_spatial_res,
                                        debug_analysis_path, debug_temperature)
 from fire.plotting.image_figures import figure_spatial_res_max
@@ -46,7 +49,7 @@ logger.setLevel(logging.DEBUG)
 
 cwd = Path(__file__).parent
 path_figures = (cwd / '../tmp').resolve()
-print(f'Figures will be output to: {path_figures}')
+print(f'Scheduler workflow: Figures will be output to: {path_figures}')
 
 def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, machine:str='MAST', scheduler:bool=False,
                        magnetics:bool=False, update_checkpoints:bool=False, debug:dict=None, figures:dict=None):
@@ -149,7 +152,29 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     image_data['pixel_displacements'] = pixel_displacemnts
     image_data['frame_data'] = remove_camera_shake(frame_data, pixel_displacements=pixel_displacemnts, verbose=True)
 
-    if debug.get('movie_data', False):
+    # Detect saturated pixels
+    saturated_frames = identify_saturated_frames(frame_data, bit_depth=movie_meta['bit_depth'], raise_on_saturated=False)
+
+    # TODO: Lookup anommalies
+
+    # TODO: Detect anommalies
+    # TODO: Monitor number of bad pixels for detector health - option to separate odd/even frames for FLIR sensors
+    # bad_pixels, frame_no_dead = find_outlier_pixels(frame_raw, tol=30, check_edges=True)
+    # TODO: Detect 'twinkling pixels' by looking for pixels with abnormally large ptp variation for steady state images
+    # TODO: Detect missing frames in time stamps, regularity of frame rate
+    # TODO: Compare sensor temperature change during/between pulses to monitor sensor health, predict frame losses etc.
+
+    # TODO: Rescale DLs to account for window transmission - Move here out of dl_to_temerature()?
+
+    # Apply NUC correction
+    # nuc_frame = get_nuc_frame(origin='first_frame', frame_data=frame_data)
+    nuc_frame = get_nuc_frame(origin={'n': [2, 2]}, frame_data=frame_data)  # Old air sched code uses 3rd frame?
+    # nuc_frame = get_nuc_frame(origin={'n': [None, None]}, frame_data=frame_data, reduce_func='min')
+    frame_data_nuc = apply_nuc_correction(frame_data, nuc_frame, raise_on_negatives=False)
+    image_data['nuc_frame'] = (('y_pix', 'x_pix'), nuc_frame)
+    image_data['frame_data_nuc'] = frame_data_nuc
+
+    if debug.get('movie_data_nuc', False):
         debug_movie_data(image_data)
 
     # Get calcam raycast
@@ -157,18 +182,24 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     if raycast_checkpoint_path_fn.exists() and (not update_checkpoints):
         # Open pre-calculated raycast data to save time
         data_raycast = xr.open_dataset(raycast_checkpoint_path_fn)
+        x_im, y_im, z_im = (data_raycast[f'{coord}_im'] for coord in ['x', 'y', 'z'])
     else:
         # TODO: Make CAD model pulse range dependent
         cad_model_args = config['machines'][machine]['cad_models'][0]
         cad_model = get_calcam_cad_obj(**cad_model_args)
         meta_data['calcam_CAD'] = cad_model
         data_raycast = get_surface_coords(calcam_calib, cad_model, image_coords=image_coords)
+        # TODO: Move s coordinate calculation here?
+        # TODO: call plugin function to get s_gloabl, sector, louvre and tile values
+        x_im, y_im, z_im = (data_raycast[f'{coord}_im'] for coord in ['x', 'y', 'z'])
+        machine_coord_labels = get_machine_coordinate_labels(x_im, y_im, z_im, machine_plugins=machine_plugins)
+        for key in machine_coord_labels:
+            data_raycast[key + '_im'] = (('y_pix', 'x_pix'), machine_coord_labels[key])
         if raycast_checkpoint_path_fn.exists():
             raycast_checkpoint_path_fn.unlink()  # Avoid error overwriting existing file
         data_raycast.to_netcdf(raycast_checkpoint_path_fn)
         logger.info(f'Wrote raycast data to: {raycast_checkpoint_path_fn}')
     image_data = xr.merge([image_data, data_raycast])
-    x_im, y_im, z_im = (data_raycast[f'{coord}_im'] for coord in ['x', 'y', 'z'])
 
     if debug.get('spatial_res', False):
         debug_spatial_res(image_data)
@@ -176,11 +207,6 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     if figures.get('spatial_res', False):
         fn_spatial_res = path_figures / f'spatial_res_{pulse}_{camera}.png'
         figure_spatial_res_max(image_data, save_fn=fn_spatial_res, show=True)
-
-    # TODO: call plugin function to get s_gloabl, sector, louvre and tile values
-    machine_coord_labels = get_machine_coordinate_labels(x_im, y_im, z_im, machine_plugins=machine_plugins)
-    for key in machine_coord_labels:
-        image_data[key+'_im'] = (('y_pix', 'x_pix'), machine_coord_labels[key])
 
     # TODO: call plugin function to get s coordinate along tiles?
     # s_im = get_s_coord_global(x_im, y_im, z_im, machine_plugins)
@@ -203,56 +229,14 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     image_data.attrs['visible_surfaces'] = visible_structures
     image_data.attrs['visible_materials'] = visible_materials
 
+    if debug.get('surfaces', False):
+        debug_plots.debug_surfaces(image_data)
+
     # Read thermal properties of materials for structures in view
     material_names = list(set(visible_materials.values()))
     material_properties = json_load(files['material_props'], key_paths=material_names, lists_to_arrays=True)
     image_data.attrs['material_properties'] = material_properties
     # TODO: Segment path according to changes in tile properties
-
-    # Detect saturated pixels
-    saturated_frames = identify_saturated_frames(frame_data, bit_depth=movie_meta['bit_depth'], raise_on_saturated=False)
-
-    # TODO: Lookup anommalies
-
-    # TODO: Detect anommalies
-    # TODO: Monitor number of bad pixels for detector health - option to separate odd/even frames for FLIR sensors
-    # bad_pixels, frame_no_dead = find_outlier_pixels(frame_raw, tol=30, check_edges=True)
-    # TODO: Detect 'twinkling pixels' by looking for pixels with abnormally large ptp variation for steady state images
-    # TODO: Detect missing frames in time stamps, regularity of frame rate
-    # TODO: Compare sensor temperature change during/between pulses to monitor sensor health, predict frame losses etc.
-
-    # Get spatial and pixel coordinates of analysis path
-    # TODO: get material, structure, bad pixel ids along analysis path
-    analysis_path_dfn_points_all = json_load(files['analysis_path_dfns'])
-    frame_masks = {'surface_id': surface_ids, 'material_id': material_ids}
-    analysis_path_name = lookup_info['analysis_paths']['analysis_path_name']
-    analysis_path_dfn_points = analysis_path_dfn_points_all[analysis_path_name]
-
-    # Get interpolated pixel and spatial coords along path
-    path_data = project_analysis_path(data_raycast, analysis_path_dfn_points, calcam_calib, masks=frame_masks)
-    # image_data = xr.merge([image_data, path_data])
-    path_data_extracted = extract_path_data_from_images(image_data, path_data)
-    path_data = xr.merge([path_data, path_data_extracted])
-
-    # x_path, y_path, z_path = (path_data[f'{coord}_path'] for coord in ['x', 'y', 'z'])
-    # s_path = get_s_coord_path(x_path, y_path, z_path, machine_plugins)
-    # path_data['s_path'] = s_path
-
-    if debug.get('analysis_path', False):
-        debug_analysis_path(image_data, path_data)
-
-    # TODO: Rescale DLs to account for window transmission - Move here out of dl_to_temerature()?
-
-    # Apply NUC correction
-    # nuc_frame = get_nuc_frame(origin='first_frame', frame_data=frame_data)
-    nuc_frame = get_nuc_frame(origin={'n': [2, 2]}, frame_data=frame_data)  # Old air sched code uses 3rd frame?
-    # nuc_frame = get_nuc_frame(origin={'n': [None, None]}, frame_data=frame_data, reduce_func='min')
-    frame_data_nuc = apply_nuc_correction(frame_data, nuc_frame, raise_on_negatives=False)
-    image_data['nuc_frame'] = (('y_pix', 'x_pix'), nuc_frame)
-    image_data['frame_data_nuc'] = frame_data_nuc
-
-    if debug.get('movie_data_nuc', False):
-        debug_movie_data(image_data)
 
     # TODO: Read temp_bg from file
     temp_bg = 23
@@ -260,8 +244,11 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     bb_curve = read_csv(files['black_body_curve'], index_col='temperature_celcius')
     calib_coefs = lookup_info['temperature_coefs'].to_dict()
     # calib_coefs = lookup_pulse_row_in_csv(files['calib_coefs'], pulse=pulse, header=4)
-    image_data['frame_temperature'] = dl_to_temerature(frame_data_nuc, calib_coefs, bb_curve,
+    image_data['temperature_im'] = dl_to_temerature(frame_data_nuc, calib_coefs, bb_curve,
                                                  exposure=movie_meta['exposure'], temp_nuc_bg=temp_bg)
+
+    # TODO: Identify hotspots: MOI 3.2: Machine protection peak tile surface T from IR is 1300 C
+    # (bulk tile 250C from T/C)
 
     if debug.get('temperature', False):
         debug_temperature(image_data)
@@ -271,11 +258,38 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # TODO: Temporal smoothing of temperature
 
+    # Get spatial and pixel coordinates of analysis path
+    # TODO: get material, structure, bad pixel ids along analysis path
+    analysis_path_dfn_points_all = json_load(files['analysis_path_dfns'])
+    frame_masks = {'surface_id': surface_ids, 'material_id': material_ids}
+    analysis_path_name_full = lookup_info['analysis_paths']['analysis_path_name']
+    # TODO: Cleanly handle multiple analysis paths
+    analysis_path_names = {f'path{i}': name for i, name in enumerate([analysis_path_name_full])}
+    analysis_path_name_short = list(analysis_path_names.keys())[0]
+    path_coord = f'i_{analysis_path_name_short}'
+    # TODO: Top level loop over analysis paths?
+    analysis_path_dfn_points = analysis_path_dfn_points_all[analysis_path_name_full]
+
+    # Get interpolated pixel and spatial coords along path
+    path_data = project_analysis_path(data_raycast, analysis_path_dfn_points, calcam_calib, analysis_path_name_short,
+                                      masks=frame_masks)
+    # image_data = xr.merge([image_data, path_data])
+    path_data_extracted = extract_path_data_from_images(image_data, path_data, path_name=analysis_path_name_short)
+    path_data = xr.merge([path_data, path_data_extracted])
+
+    # x_path, y_path, z_path = (path_data[f'{coord}_path'] for coord in ['x', 'y', 'z'])
+    # s_path = get_s_coord_path(x_path, y_path, z_path, machine_plugins)
+    # path_data['s_path'] = s_path
+
+    if debug.get('analysis_path', False):
+        debug_analysis_path(image_data, path_data, path_name=analysis_path_name_short)
 
     # TODO: Calculate heat fluxes
-    heat_flux, extra_results = calc_heatflux(image_data['t'], image_data['frame_temperature'], path_data, material_properties,
-                                  visible_materials)
-    image_data['heat_flux'] = (('t', 's_path'), heat_flux)
+    heat_flux, extra_results = calc_heatflux(image_data['t'], image_data['temperature_im'], path_data,
+                                             analysis_path_name_short, material_properties, visible_materials)
+    path_data[f'heat_flux_{analysis_path_name_short}'] = (('t', path_coord), heat_flux)
+    path_data.coords['t'] = image_data.coords['t']
+    path_data = path_data.swap_dims({'n': 't'})
 
     # TODO: Calculate moving time average and std heat flux profiles against which transients on different time
     # scales can be identified?
@@ -284,6 +298,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
 
     # TODO: Calculate physics parameters
+    path_data = calc_physics_params(path_data, analysis_path_name_short)
     # TODO: Calculate poloidal target strike angle - important for neutral closure
     # TODO: Account for shadowed area of tiles giving larger thermal mass than assumed - negative q at end on ASDEX-U
 
@@ -315,9 +330,9 @@ def run_mast():
     magnetics = False
     update_checkpoints = False
     # update_checkpoints = True
-    debug = {'movie_data': False, 'spatial_coords': True, 'spatial_res': False, 'movie_data_nuc': False,
-             'analysis_path': True, 'temperature': True}
-    debug = {k: False for k in debug}
+    debug = {'movie_data': False, 'spatial_coords': False, 'spatial_res': False, 'movie_data_nuc': False,
+             'surfaces': False, 'analysis_path': False, 'temperature': False}
+    debug = {k: True for k in debug}
     figures = {'spatial_res': False}
     print(f'Running MAST scheduler workflow...')
     scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
@@ -332,8 +347,8 @@ def run_mastu():
     magnetics = False
     update_checkpoints = False
     # update_checkpoints = True
-    debug = {'movie_data': False, 'spatial_coords': False, 'spatial_res': False, 'movie_data_nuc': False,
-             'analysis_path': True, 'temperature': True}
+    debug = {'movie_data': False, 'spatial_coords': True, 'spatial_res': False, 'movie_data_nuc': False,
+             'surfaces': True, 'analysis_path': True, 'temperature': True}
     # debug = {k: True for k in debug}
     figures = {'spatial_res': False}
     print(f'Running MAST-U scheduler workflow...')
