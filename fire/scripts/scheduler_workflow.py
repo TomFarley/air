@@ -316,7 +316,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     return 0
 
 
-def run_mast():
+def run_mast():  # pragma: no cover
     # pulse = 30378
     # camera = 'rit'
     pulse = 23586  # Full frame with clear spatial calibration
@@ -338,7 +338,7 @@ def run_mast():
     scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
                        magnetics=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures)
 
-def run_mastu():
+def run_mastu():  # pragma: no cover
     pulse = 50000  # Test installation images - no plasma
     camera = 'rir'
     pass_no = 0
