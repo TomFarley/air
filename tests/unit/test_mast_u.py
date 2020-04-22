@@ -6,7 +6,7 @@ import pandas as pd
 
 import calcam
 
-from fire.interfaces.machine_plugins.mast_u import get_uda_mastu_wall_coords
+from fire.interfaces.machine_plugins.mast_u import get_mastu_wall_coords
 
 pwd = Path(__file__).parent
 
@@ -51,7 +51,7 @@ class TestMastU(unittest.TestCase):
             1.5745829,  1.5665352])
 
     def test_get_uda_mastu_wall_coords(self):
-        r, z = get_uda_mastu_wall_coords()
+        r, z = get_mastu_wall_coords()
         self.assertTrue(np.all(np.isclose(r, self.r_wall)))
         self.assertTrue(np.all(np.isclose(z, self.z_wall)))
 
