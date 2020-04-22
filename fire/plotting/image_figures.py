@@ -236,6 +236,62 @@ def plot_image_data_hist(data, key=None, ax=None, bins=200, xlabel=None, log_x=F
     if show:
         plt.show()
 
+def figure_poloidal_cross_section(image_data=None, path_data=None, path_name='path0', ax=None,
+                                  closest_points=True, tile_edges=True, legend=True, axes_off=False,
+                                  pulse=50000, no_cal=False, show=True):
+    import warnings
+    from fire.interfaces.machine_plugins.mast_u import (plot_vessel_outline_mastu, plot_tile_edges_mastu,
+                                                        get_mastu_wall_coords)
+    from fire.geometry.s_coordinate import get_nearest_boundary_coordinates
+
+    fig, ax, ax_passed = get_fig_ax(ax, num='pol cross section')
+
+    if image_data is not None:
+        r_im, z_im = np.array(image_data['R_im']).flatten() ,np.array(image_data['z_im']).flatten()
+    if path_data is not None:
+        r_path, z_path = np.array(path_data[f'R_{path_name}']), np.array(path_data[f'z_{path_name}'])
+
+    if image_data or path_data:
+        z = z_im if image_data else z_path
+        with warnings.catch_warnings():   # ignore nan comparison
+            warnings.simplefilter("ignore")
+            top = True if np.any(z > 0) else False
+            bottom = True if np.any(z < 0) else False
+    else:
+        top, bottom = True, True
+
+
+    plot_vessel_outline_mastu(ax=ax, top=top, bottom=bottom, shot=pulse, no_cal=no_cal, show=False, label='wall',
+                              axes_off=axes_off)
+    if tile_edges is True:
+        plot_tile_edges_mastu(ax=ax, top=top, bottom=bottom, markersize=4, color='k', label='tile edges', show=False)
+
+    if image_data is not None:
+        ax.plot(r_im, z_im, ls='', marker='o', markersize=2, color='orange', label='im')
+        if closest_points:
+            r_wall, z_wall = get_mastu_wall_coords(no_cal=no_cal, shot=pulse, ds=1e-3)
+            closest_coords, closest_dist, closest_index = get_nearest_boundary_coordinates(r_im, z_im, r_wall, z_wall)
+            r_close, z_close = closest_coords[:, 0], closest_coords[:, 1]
+            ax.plot(r_close, z_close, ls='', marker='o', markersize=1, color='purple', alpha=0.6, label='im closest')
+            print(f'Dists for all image coords: mean: {np.nanmean(closest_dist):0.3g}, max: {np.nanmax(closest_dist):0.3g}')
+
+    if path_data is not None:
+        r_path, z_path = np.array(path_data[f'R_{path_name}']), np.array(path_data[f'z_{path_name}'])
+        ax.plot(r_path, z_path, ls='', marker='o', markersize=2, color='green', label='path', alpha=0.7)
+        if closest_points:
+            r_wall, z_wall = get_mastu_wall_coords(no_cal=no_cal, shot=pulse, ds=1e-4)
+            closest_coords, closest_dist, closest_index = get_nearest_boundary_coordinates(r_path, z_path, r_wall, z_wall)
+            r_close, z_close = closest_coords[:, 0], closest_coords[:, 1]
+            ax.plot(r_close, z_close, ls='', marker='o', markersize=2, color='red', alpha=0.5, label='path closest')
+            print(f'Dists for path coords: mean: {np.nanmean(closest_dist):0.3g}, max: {np.nanmax(closest_dist):0.3g}')
+        pass
+    if legend:
+        plt.legend(fontsize=10)
+
+    plt.tight_layout()
+
+    if show:
+        plt.show()
 
 if __name__ == '__main__':
     pass

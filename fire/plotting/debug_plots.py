@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 
 from fire.plotting.image_figures import (figure_imshow, figure_frame_data, plot_outlier_pixels, figure_analysis_path,
                                          figure_spatial_res_max, figure_spatial_res_x, figure_spatial_res_y, plot_image_data_hist)
+from fire.plotting import image_figures
 from fire.plotting.path_figures import figure_path
 from fire.plotting.plot_tools import annotate_axis
 from fire.camera.image_processing import find_outlier_pixels
@@ -124,10 +125,15 @@ def debug_analysis_path(image_data, path_data=None, path_name='path0'):
     fig = plt.figure(constrained_layout=True, num='analysis paths')
     gs = fig.add_gridspec(ncols=2, nrows=5, width_ratios=[1, 3])
 
-    ax1 = fig.add_subplot(gs[:4, 0])
-
+    ax1 = fig.add_subplot(gs[:3, 0])
     figure_analysis_path(path_data, image_data, key='frame_data', path_name=path_name, ax=ax1, frame_border=True,
                          show=False, image_kwargs=dict(add_colorbar=False, axes_off=True))
+    try:
+        ax2 = fig.add_subplot(gs[3:, 0])
+        image_figures.figure_poloidal_cross_section(image_data=None, path_data=path_data, path_name=path_name,
+                                                    no_cal=True, legend=False, axes_off=True, ax=ax2, show=False)
+    except Exception as e:
+        pass # Fails for MAST
 
     # Line plots of parameters along path
     if path_data:

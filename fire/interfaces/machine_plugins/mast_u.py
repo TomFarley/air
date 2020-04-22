@@ -39,7 +39,7 @@ s_start_coord_default = (0.260841, 0)
 from fire.interfaces.machine_plugins.mast import get_machine_sector
 
 
-def get_uda_mastu_wall_coords(no_cal=True, signal="/limiter/efit", shot=50000):
+def get_mastu_wall_coords(no_cal=True, signal="/limiter/efit", shot=50000, ds=None):
     """Return (R, Z) coordinates of points defining wall outline of MAST-U tile surfaces
 
     This is normally safe to call with default arguments.
@@ -53,13 +53,16 @@ def get_uda_mastu_wall_coords(no_cal=True, signal="/limiter/efit", shot=50000):
 
     """
     import pyuda
+    # TODO: Enable returning wall for shot < 50000
     client=pyuda.Client()
     wall_data = client.geometry(signal, shot, no_cal=no_cal)
     r = wall_data.data.R
     z = wall_data.data.Z
+    if ds is not None:
+        r, z = interpolate_rz_coords(r, z, ds=ds, false_surface_boxes=false_rz_surface_boxes_default)
     return r, z
 
-def get_tile_edge_coords_mastu(no_cal=True, signal="/limiter/efit", shot=50000):
+def get_tile_edge_coords_mastu(no_cal=True, signal="/limiter/efit", shot=50000, subset=True):
     """Return (R,Z) coords of main tile boundaries
 
     Args:
@@ -71,11 +74,17 @@ def get_tile_edge_coords_mastu(no_cal=True, signal="/limiter/efit", shot=50000):
 
     """
     min_tile_size = 0.10
-    r0, z0 = get_uda_mastu_wall_coords(signal=signal, no_cal=no_cal, shot=shot)
+    r0, z0 = get_mastu_wall_coords(signal=signal, no_cal=no_cal, shot=shot)
     diff = np.linalg.norm([np.diff(r0), np.diff(z0)], axis=0)
     mask = (diff > min_tile_size) | (np.roll(diff, -1) > min_tile_size)
     mask = np.concatenate([[np.True_], mask])
     r_tiles, z_tiles = r0[mask], z0[mask]
+    if subset:
+        if subset is True
+            # Just pick out boundaries for tiles T1-T5
+            n = len(r_tiles)
+            subset = np.concatenate([np.arange(1, 9), np.arange(n-34, n-26)])
+        r_tiles, z_tiles =  r_tiles[subset], z_tiles[subset]
     return r_tiles, z_tiles
 
 def get_s_coords_tables_mastu(ds=1e-4, no_cal=True, signal="/limiter/efit", shot=50000):
@@ -90,7 +99,7 @@ def get_s_coords_tables_mastu(ds=1e-4, no_cal=True, signal="/limiter/efit", shot
     Returns: Dict of dataframes containing (R, Z, s) coordinates for top and bottom regions of the machine
 
     """
-    r0, z0 = get_uda_mastu_wall_coords(no_cal=no_cal, signal=signal, shot=shot)
+    r0, z0 = get_mastu_wall_coords(no_cal=no_cal, signal=signal, shot=shot)
     r, z = interpolate_rz_coords(r0, z0, ds=ds)
     (r_bottom, z_bottom), (r_top, z_top) = separate_rz_points_top_bottom(r, z, prepend_start_coord=True,
                                                                          bottom_coord_start=s_start_coord_default,
@@ -150,7 +159,8 @@ def create_poloidal_cross_section_figure(nrow=1, ncol=1, cross_sec_axes=((0, 0),
     return fig, axes
 
 
-def plot_tile_edges_mastu(ax=None, show=True):
+def plot_tile_edges_mastu(ax=None, top=True, bottom=True, show=True, **kwargs):
+    import matplotlib.pyplot as plt
     if ax is None:
         fig, ax = create_poloidal_cross_section_figure(1, 1)
     else:
@@ -158,28 +168,42 @@ def plot_tile_edges_mastu(ax=None, show=True):
 
     r0, z0 = get_tile_edge_coords_mastu(no_cal=True, shot=50000)
 
-    ax.plot(r0, z0, marker='x', ls='')
+    mask = np.ones_like(r0, dtype=bool)
+    mask = mask * (z0 > 0) if not bottom else mask
+    mask = mask * (z0 < 0) if not top else mask
+
+    ax.plot(r0[mask], z0[mask], marker='x', ls='', **kwargs)
 
     if show:
         plt.show()
     return fig, ax
 
-def plot_vessel_outline_mastu(ax=None, top=True, bottom=True, show=True):
+def plot_vessel_outline_mastu(ax=None, top=True, bottom=True, shot=50000, no_cal=False, aspect='equal', ax_labels=True,
+                              axes_off=False, show=True, **kwargs):
+    import matplotlib.pyplot as plt
     if ax is None:
         fig, ax = create_poloidal_cross_section_figure(1, 1)
     else:
         fig = ax.figure
 
-    r0, z0 = get_uda_mastu_wall_coords(no_cal=True, shot=50000)
-    (r_bottom, z_bottom), (r_top, z_top) = separate_rz_points_top_bottom(r0, z0)
+    r0, z0 = get_mastu_wall_coords(no_cal=no_cal, shot=shot)
+    (r_bottom, z_bottom), (r_top, z_top) = separate_rz_points_top_bottom(r0, z0, top_coord_start=s_start_coord_default,
+                                                                         bottom_coord_start=s_start_coord_default)
     # ax.plot(r0, z0, marker='x', ls='-')
     if bottom:
-        ax.plot(r_bottom, z_bottom, marker='', ls='-')
+        ax.plot(r_bottom, z_bottom, marker='', ls='-', **kwargs)
     if top:
-        ax.plot(r_top, z_top, marker='', ls='-')
+        ax.plot(r_top, z_top, marker='', ls='-', **kwargs)
+
+    ax.set_aspect(aspect)
+    if axes_off:
+        ax.set_axis_off()
+    elif ax_labels:
+        ax.set_xlabel('$R$ [m]')
+        ax.set_ylabel('$z$ [m]')
+
     if show:
         plt.tight_layout()
-        ax.set_aspect('equal')
         plt.show()
     return fig, ax
 
@@ -235,7 +259,7 @@ if __name__ == '__main__':
     # plot_tile_edges(ax=ax, show=True)
     ds = 1e-4
     # ds = 1e-2
-    r0, z0 = get_uda_mastu_wall_coords(no_cal=True, shot=50000)
+    r0, z0 = get_mastu_wall_coords(no_cal=True, shot=50000)
     r, z = interpolate_rz_coords(r0, z0, ds=ds, false_surface_boxes=false_rz_surface_boxes_default)
     print(f'Number of interpolated wall points: {len(r)}')
     s_tables = get_s_coords_tables_mastu()

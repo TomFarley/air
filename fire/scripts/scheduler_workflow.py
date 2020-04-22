@@ -34,7 +34,7 @@ from fire.physics.physics_parameters import calc_physics_params
 from fire.misc.data_structures import init_data_structures
 from fire.misc.data_quality import identify_saturated_frames
 from fire.misc.utils import update_call_args, movie_data_to_xarray
-from fire.plotting import debug_plots
+from fire.plotting import debug_plots, image_figures
 from fire.plotting.debug_plots import (debug_spatial_coords, debug_movie_data, debug_spatial_res,
                                        debug_analysis_path, debug_temperature)
 from fire.plotting.image_figures import figure_spatial_res_max
@@ -281,6 +281,10 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # s_path = get_s_coord_path(x_path, y_path, z_path, machine_plugins)
     # path_data['s_path'] = s_path
 
+    if debug.get('poloidal_cross_sec', False):
+        image_figures.figure_poloidal_cross_section(image_data=None, path_data=path_data, pulse=pulse, no_cal=True,
+                                                    show=True)
+
     if debug.get('analysis_path', False):
         debug_analysis_path(image_data, path_data, path_name=analysis_path_name_short)
 
@@ -332,7 +336,7 @@ def run_mast():  # pragma: no cover
     # update_checkpoints = True
     debug = {'movie_data': False, 'spatial_coords': False, 'spatial_res': False, 'movie_data_nuc': False,
              'surfaces': False, 'analysis_path': False, 'temperature': False}
-    debug = {k: True for k in debug}
+    # debug = {k: True for k in debug}
     figures = {'spatial_res': False}
     print(f'Running MAST scheduler workflow...')
     scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
@@ -347,8 +351,8 @@ def run_mastu():  # pragma: no cover
     magnetics = False
     update_checkpoints = False
     # update_checkpoints = True
-    debug = {'movie_data': False, 'spatial_coords': True, 'spatial_res': False, 'movie_data_nuc': False,
-             'surfaces': True, 'analysis_path': True, 'temperature': True}
+    debug = {'movie_data': False, 'spatial_coords': False, 'spatial_res': False, 'movie_data_nuc': False,
+             'temperature': False, 'surfaces': False, 'analysis_path': True}
     # debug = {k: True for k in debug}
     figures = {'spatial_res': False}
     print(f'Running MAST-U scheduler workflow...')
@@ -356,5 +360,5 @@ def run_mastu():  # pragma: no cover
                        magnetics=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures)
 
 if __name__ == '__main__':
-    run_mast()
-    # run_mastu()
+    # run_mast()
+    run_mastu()
