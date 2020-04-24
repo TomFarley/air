@@ -16,3 +16,24 @@ Alternatively open [``docs/sphinx/build/html/index.html``](docs/sphinx/build/htm
 Gitlab pages path should be: https://mast-u_scheduler.gitpages.ccfe.ac.uk/air?
 
 For authorship information see AUTHORS.txt, and for details of how to cite the code in academic publications see CITE.txt.
+
+
+Summary for running on the scheduler
+------------------------------------
+
+* Languge: Python 3.6+
+* Scheduler signal dependencies:
+    - Hard: None
+    - Soft: Efit (in future)
+* Command(s) for running the code (from the air repository directory):
+    - `$ python fire/scripts/run_scheduler_workflow.py <camera_tag> <shot_number>, -pass <pass_number>`
+    - See `$ python fire/scripts/run_fire.py --help` for the full call signature
+    - No scheudler flag is currently requireed in the call
+* Freia module dependencies:
+    - FUN
+    - python/3.7
+    - uda-mast/
+* Emails for recipients of automatic emails:
+    - tom.farley@ukaea.uk
+* Contact for advice using FIRE code:
+    - Tom Farley, tom.farley@ukaea.uk (RO for IR cameras)
