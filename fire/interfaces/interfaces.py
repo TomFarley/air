@@ -391,12 +391,17 @@ def check_settings_complete(settings, machine, camera):
     Returns: None
 
     """
+    # TODO: Add path to config file to error messages
     sub_settings = settings['machines']
     if machine not in sub_settings:
-        raise ValueError(f'Fire settings do not contain settings for machine: "{machine}"\n{sub_settings}')
+        raise ValueError(f'Fire config settings file does not contain settings for machine "{machine}". '
+                         f'Options: {", ".join(list(sub_settings.keys()))}')
     sub_settings = settings['machines'][machine]['cameras']
     if camera not in sub_settings:
-        raise ValueError(f'Fire settings do not contain settings for camera: "{camera}"\n{sub_settings}')
+        # TODO: include alias options
+        raise ValueError(f'Fire config settings file does not contain settings for "{machine}" camera "{camera}". '
+                         f'Options: {", ".join(list(sub_settings.keys()))}')
+
 
 
 def get_module_from_path_fn(path_fn):
