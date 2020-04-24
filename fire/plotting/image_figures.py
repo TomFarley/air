@@ -261,32 +261,41 @@ def figure_poloidal_cross_section(image_data=None, path_data=None, path_name='pa
         top, bottom = True, True
 
 
-    plot_vessel_outline_mastu(ax=ax, top=top, bottom=bottom, shot=pulse, no_cal=no_cal, show=False, label='wall',
+    plot_vessel_outline_mastu(ax=ax, top=top, bottom=bottom, shot=pulse, no_cal=no_cal, show=False, label='Wall',
                               axes_off=axes_off)
     if tile_edges is True:
-        plot_tile_edges_mastu(ax=ax, top=top, bottom=bottom, markersize=4, color='k', label='tile edges', show=False)
+        plot_tile_edges_mastu(ax=ax, top=top, bottom=bottom, markersize=4, color='k', label='Tile edges', show=False)
+
+    # TODO: Plot rays from camera pupil showing field of view
 
     if image_data is not None:
-        ax.plot(r_im, z_im, ls='', marker='o', markersize=2, color='orange', label='im')
+        ax.plot(r_im, z_im, ls='', marker='o', markersize=2, color='orange', label='Image pixels')
         if closest_points:
             r_wall, z_wall = get_mastu_wall_coords(no_cal=no_cal, shot=pulse, ds=1e-3)
             closest_coords, closest_dist, closest_index = get_nearest_boundary_coordinates(r_im, z_im, r_wall, z_wall)
             r_close, z_close = closest_coords[:, 0], closest_coords[:, 1]
-            ax.plot(r_close, z_close, ls='', marker='o', markersize=1, color='purple', alpha=0.6, label='im closest')
-            print(f'Dists for all image coords: mean: {np.nanmean(closest_dist):0.3g}, max: {np.nanmax(closest_dist):0.3g}')
+            ax.plot(r_close, z_close, ls='', marker='o', markersize=1, color='purple', alpha=0.6,
+                    label='Wall closest to image pixels')
+            print(f'Dists for all image coords: min: {np.nanmin(closest_dist):0.3g}, '
+                                              f'mean: {np.nanmean(closest_dist):0.3g}, '
+                                              f'max: {np.nanmax(closest_dist):0.3g}')
 
     if path_data is not None:
         r_path, z_path = np.array(path_data[f'R_{path_name}']), np.array(path_data[f'z_{path_name}'])
-        ax.plot(r_path, z_path, ls='', marker='o', markersize=2, color='green', label='path', alpha=0.7)
+        ax.plot(r_path, z_path, ls='', marker='o', markersize=2, color='green', label='Analysis path pixels', alpha=0.7)
         if closest_points:
             r_wall, z_wall = get_mastu_wall_coords(no_cal=no_cal, shot=pulse, ds=1e-4)
             closest_coords, closest_dist, closest_index = get_nearest_boundary_coordinates(r_path, z_path, r_wall, z_wall)
             r_close, z_close = closest_coords[:, 0], closest_coords[:, 1]
-            ax.plot(r_close, z_close, ls='', marker='o', markersize=2, color='red', alpha=0.5, label='path closest')
-            print(f'Dists for path coords: mean: {np.nanmean(closest_dist):0.3g}, max: {np.nanmax(closest_dist):0.3g}')
+            ax.plot(r_close, z_close, ls='', marker='o', markersize=2, color='red', alpha=0.5,
+                    label='Wall closest to analysis path pixels')
+            print(f'Dists for path coords: min: {np.nanmin(closest_dist):0.3g}, '
+                                         f'mean: {np.nanmean(closest_dist):0.3g}, max: {np.nanmax(closest_dist):0.3g}')
         pass
     if legend:
-        plt.legend(fontsize=10)
+        kws = {'fontsize': 7, 'framealpha': 0.7, 'facecolor': 'white', 'fancybox': True}
+        leg = ax.legend(**kws)
+        leg.set_draggable(True)
 
     plt.tight_layout()
 
