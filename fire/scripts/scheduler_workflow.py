@@ -52,7 +52,7 @@ path_figures = (cwd / '../tmp').resolve()
 print(f'Scheduler workflow: Figures will be output to: {path_figures}')
 
 def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, machine:str='MAST', scheduler:bool=False,
-                       magnetics:bool=False, update_checkpoints:bool=False, debug:dict=None, figures:dict=None):
+                       equilibrium:bool=False, update_checkpoints:bool=False, debug:dict=None, figures:dict=None):
     """Primary analysis workflow for MAST-U/JET IR scheduler analysis.
 
     :param pulse: Shot/pulse number or string name for synthetic movie data
@@ -60,7 +60,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     :param pass_no: Scheduler pass number
     :param machine: Tokamak that the data originates from
     :param shceduler: Has code been called by the scheduler?
-    :param magnetics: Produce additional output with scheduler efit as additional dependency
+    :param equilibrium: Produce additional output with scheduler efit as additional dependency
     :return: Error code
     """
     if debug is None:
@@ -180,10 +180,16 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # Get calcam raycast
     raycast_checkpoint_path_fn = files['raycast_checkpoint']
     if raycast_checkpoint_path_fn.exists() and (not update_checkpoints):
+        logger.info(f'Reusing existing raycast checkpoint file for image coordiante mapping. '
+                    f'Set keyword update_checkpoints=True to recalculate the file.')
         # Open pre-calculated raycast data to save time
         data_raycast = xr.open_dataset(raycast_checkpoint_path_fn)
         x_im, y_im, z_im = (data_raycast[f'{coord}_im'] for coord in ['x', 'y', 'z'])
     else:
+        if raycast_checkpoint_path_fn.exists():
+            logger.info(f'Reproduing raycast checkpoint file')
+        else:
+            logger.info(f'Producing raycast checkpoint file for first time for camera={camera}, pulse={pulse}')
         # TODO: Make CAD model pulse range dependent
         cad_model_args = config['machines'][machine]['cad_models'][0]
         cad_model = get_calcam_cad_obj(**cad_model_args)
@@ -282,7 +288,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # path_data['s_path'] = s_path
 
     if debug.get('poloidal_cross_sec', False):
-        image_figures.figure_poloidal_cross_section(image_data=None, path_data=path_data, pulse=pulse, no_cal=True,
+        image_figures.figure_poloidal_cross_section(image_data=image_data, path_data=path_data, pulse=pulse, no_cal=True,
                                                     show=True)
 
     if debug.get('analysis_path', False):
@@ -340,7 +346,7 @@ def run_mast():  # pragma: no cover
     figures = {'spatial_res': False}
     print(f'Running MAST scheduler workflow...')
     scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
-                       magnetics=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures)
+                       equilibrium=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures)
 
 def run_mastu():  # pragma: no cover
     pulse = 50000  # Test installation images - no plasma
@@ -357,7 +363,7 @@ def run_mastu():  # pragma: no cover
     figures = {'spatial_res': False}
     print(f'Running MAST-U scheduler workflow...')
     scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
-                       magnetics=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures)
+                       equilibrium=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures)
 
 if __name__ == '__main__':
     # run_mast()
