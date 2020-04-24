@@ -80,7 +80,7 @@ def get_tile_edge_coords_mastu(no_cal=True, signal="/limiter/efit", shot=50000, 
     mask = np.concatenate([[np.True_], mask])
     r_tiles, z_tiles = r0[mask], z0[mask]
     if subset:
-        if subset is True
+        if subset is True:
             # Just pick out boundaries for tiles T1-T5
             n = len(r_tiles)
             subset = np.concatenate([np.arange(1, 9), np.arange(n-34, n-26)])
