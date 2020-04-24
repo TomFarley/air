@@ -103,6 +103,7 @@ def write_processed_ir_to_uda_file():
 
     """
     pass
+    # TODO: Include mapping from old MAST signal names to new singal paths
     raise NotImplementedError
 
 if __name__ == '__main__':
