@@ -14,7 +14,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 import pyuda
-from fire.misc.utils import increment_figlabel
+from fire.misc.utils import increment_figlabel, filter_kwargs
 
 client = pyuda.Client()
 
@@ -195,13 +195,193 @@ def plot_uda_dataarray(data, xdim=None, style=None, plot_kwargs=None, ax=None, s
         plt.show()
 
 def get_mastu_wall_coords():
+    """
+    Best practice advice is to name the file with a .nc file extension.
+
+    Returns:
+
+    """
     coords = client.geometry("/limiter/efit", 50000, no_cal=True)
     print(coords)
     return coords
 
+def putdata_create(fn=None, path=None, close=False, **kwargs):
+    """
+    Filename for diagnostics should be <diag_tag><shot_number>.nc
+    Where shotnumber is a 6-digit number with leading zeros (eg. 040255)
+
+    Status Description
+    -1: Poor Data: Do Not Use (Access to the data via IDAM is blocked
+        unless specially requested.)
+    0:  Something is Wrong in the Data: Defined either by RO for RAW
+        or by Code for ANALYSED
+    1:  Either RAW Data Not checked by RO or the Analysis Code
+        completed successfully but ANALYSED Data Quality is Unknown
+        (Default Value)
+    2:  Data has been Checked by the RO - No Known Problems: still
+        need ROs permission before publication
+    3:  RO has Validated the Data: still subject to clearance
+
+    Args:
+        fn:
+        path:
+        **kwargs:
+
+    Returns:
+
+    """
+    requried_args, missing_args = ['shot', 'pass_number', 'status'], []
+    for arg in requried_args:
+        if arg not in kwargs:
+            missing_args.append(arg)
+        if len(missing_args) > 0:
+            raise KeyError(f'Missing required argument(s): {", ".join(missing_args)}')
+    # TODO: Include FIRE version number and git sha
+    # TODO: Modify comment message to specifically describe the particular analysis path/camera etc
+    kws = dict(shot=None, pass_number=None,
+               directory=path,
+               conventions="Fusion-1.1", data_class="analysed",
+               title="Processed infa-red camera data from scheduler for (up to) five IR cameras on MAST-U",
+               comment="Temperature, heat flux and other physics quantities derived from IR camera data",
+               code="FIRE", version="0.1.0",
+               status=1,
+               xml=None, date=None, time=None, verbose=True)
+    kwargs = filter_kwargs(client.put, kwargs)
+    kws.update(kwargs)
+    for key, value in copy(kws).items():
+        # Putdata dones't handle None values
+        if kws[key] is None:
+            kws.pop(key)
+
+    if fn is None:
+        tag, shot = kws['diag_tag'], kws['shot']
+        fn = f"{tag}{shot:06d}.nc"
+    try:
+        client.put(fn, step_id="create", **kws)
+    except pyuda.UDAException:
+        print("<< ERROR >> Failed to create NetCDF file")
+        raise
+    except Exception as e:
+        raise
+    file_id = client.put_file_id
+    if close:
+        client.put(step_id="close", file_id=file_id, verbose=False)
+    return file_id
+
+def putdata_update(fn, path=None):
+    """Reopen previously created netcdf file
+
+    Args:
+        fn:
+        path:
+
+    Returns:
+
+    """
+
+    client.put(fn, step_id="update", directory=path, verbose=False)
+    file_id = client.put_file_id
+    return file_id
+
+def putdata_device(device_name, device_info, attributes=None):
+    """
+    Add devices (if relevant)
+    Devices can be used to record information about
+    eg. dataq, diagnostic configuration, model run parameters etc.
+    that are relevant to the data stored in the file.
+    Only the device name is required, other keywords are optional
+    Additional user-defined attributes can be added to devices (see step Attribute later)
+    Args:
+        device_name:
+        device_info:
+
+    Returns:
+
+    """
+    requried_args = ['id', 'serial', 'resolution', 'range']
+    for arg in requried_args:
+        if arg is device_info:
+            raise KeyError(f'Missing required argument "{arg}"')
+    # TODO: Get camera resolution
+    # TODO: Assign id
+    # TODO: Add attributes for wavelength range, manufacuturer, model, lens, wavelength filter, neutral density
+    # filter, bit depth
+    kws = dict(type='Infra-red camera', id=None,
+                   serial=None, resolution=None,
+                   range=[0, 2**14-1], channels=None)
+    kwargs = filter_kwargs(client.put, device_info)
+    kws.update(kwargs)
+    try:
+        client.put(device_name, step_id='device', **kws)
+    except pyuda.UDAException:
+        raise
+    if attributes is not None:
+        # Attach additional attributes to a device that are not default device arguments
+        for name in attributes:
+            if name not in device_info:
+                raise KeyError(f'Missing device attribute: "{name}"')
+            value = device_info[name]
+            try:
+                client.put(value, name=name, group=f'/devices/{device_name}', step_id='attribute')
+            except pyuda.UDAException as err:
+                print(f'<< ERROR >> Failed to write {name} attribute for {device_name}: {err}')
+                raise
+
+def putdata_dimension(dimension_name, values, group='/', units=None, label=None, comment=None, coord_class=None):
+    group = format_netcdf_group(group)
+    # TODO: check inputs
+    try:
+        client.put(values, step_id='dimension', name=dimension_name, group=group, units=units, label=label,
+                   comment=comment, coord_class=coord_class)
+    except pyuda.UDAException:
+        print(f'<< ERROR >> Failed to write dimension {dimension_name} to file')
+        raise
+
+def putdata_variable(variable_name, dimension, values, units, label, comment, group='/',
+                     device=None, errors_variable=None, attributes=None):
+    group = format_netcdf_group(group)
+    try:
+        client.put(values, step_id='variable', name=variable_name, dimensions=dimension, group=group,
+                   device=device,
+                   errors=errors_variable,
+                   units=units, label=label, comment=comment)
+    except pyuda.UDAException:
+        print(f'<< ERROR >> Failed to write data for {variable_name}')
+        raise
+    if attributes is not None:
+        # Attach additional attributes to a device that are not default device arguments
+        for name, value in attributes.items():
+            try:
+                client.put(value, name=name, group=group, varname=variable_name, step_id='attribute')
+            except pyuda.UDAException as err:
+                print(f'<< ERROR >> Failed to write {name} attribute for {variable_name}: {err}')
+                raise
+
+def putdata_group(group, attributes=None):
+    if attributes is not None:
+        # Attach additional attributes to a device that are not default device arguments
+        for name, value in attributes.items():
+            try:
+                client.put(value, name=name, group=group+f'/', step_id='attribute')
+            except pyuda.UDAException as err:
+                print(f'<< ERROR >> Failed to write {name} attribute for {device_name}: {err}')
+                raise
+
+def putdata_close(file_id):
+    client.put(step_id="close", file_id=file_id, verbose=False)
+
+def format_netcdf_group(group):
+    group = f'/{group}' if (group[0] != '/') else group
+    return group
+
+# def putdata_error
+
 if __name__ == '__main__':
-    wall_coords = get_mastu_wall_coords()
+    client.put('test.nc', step_id="create")
     shot = 23586
+    putdata_create('hello.nc', shot=shot, pass_number=0, status=1)
+
+    wall_coords = get_mastu_wall_coords()
     r = client.list(pyuda.ListType.SIGNALS, shot=shot, alias='air')
     # signals = ['AIR_QPROFILE_OSP']
     signals = [s.signal_name for s in r]
