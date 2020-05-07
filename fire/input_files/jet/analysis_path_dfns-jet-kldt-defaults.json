@@ -1,0 +1,11 @@
+{"JET_VTM_DIV_M10T5A-D_radial_1":
+        [
+          ["start", {"R": 2.578, "z": -1.598, "phi": 211.8, "order": 0, "include_next_interval": true}],
+          ["end", {"R": 2.810, "z": -1.666, "phi": 211.8, "order": 1, "include_next_interval": false}]
+        ],
+"MAST_S1_L3_centre_radial_2":
+        [
+          ["start", {"R": 1.3, "z": -1.827, "phi": 70.6, "order": 0, "include_next_interval": true}],
+          ["end", {"R": 1.484, "z": -1.831, "phi": 70.6, "order": 1, "include_next_interval": false}]
+        ]
+}
