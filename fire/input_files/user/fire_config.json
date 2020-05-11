@@ -18,9 +18,24 @@
                         "uda",
                         "imstack"
                     ],
-                    "camera_aliases": [
-                        "mwir"
-                    ]
+                    "device_details": {
+                        "id": "FLIR SC7500 MWIR Camera 1",
+                        "serial": 6580045,
+                        "resolution": [320, 256],
+                        "range": [0, 16383],
+                        "bit_depth": 14,
+                        "pixel_pitch": 30e-6,
+                        "aperture": "f/3",
+                        "unfiltered_wavelength_range": [1.5e-6, 5.1e-6],
+                        "wavelength_filters": [[4.1e-6, 5.0e-6]],
+                        "available_lenses": [25e-3, 50e-3],
+                        "neutral_density_filters": [],
+                        "window_locations": ["HL04-A"],
+                        "manufacturer": "FLIR",
+                        "description": "Medium-wavelength infra-red camera",
+                        "aliases": ["flir_1"],
+                        "year_of_purchase": 2017
+                    }
                 },
                 "rit": {
                     "movie_plugins": [
@@ -28,9 +43,24 @@
                         "uda",
                         "imstack"
                     ],
-                    "alternative_names": [
-                        "lwir"
-                    ]
+                    "device_details": {
+                        "id": "IRcam Velox 81k Camera 1",
+                        "serial": "0101-A18-CH",
+                        "resolution": [320, 256],
+                        "range": [0, 16383],
+                        "bit_depth": 14,
+                        "pixel_pitch": 30e-6,
+                        "aperture": "f/2",
+                        "unfiltered_wavelength_range": [7.7e-6, 9.4e-6],
+                        "wavelength_filters": [],
+                        "available_lenses": [25e-3, 50e-3],
+                        "neutral_density_filters": ["??"],
+                        "window_locations": ["HL04-B"],
+                        "manufacturer": "IRCAM",
+                        "description": "Long-wavelength infra-red camera",
+                        "aliases": ["ircam_1"],
+                        "year_of_purchase": 2017
+                    }
                 }
             },
             "cad_models": [
@@ -52,9 +82,23 @@
                         "uda",
                         "imstack"
                     ],
-                    "alternative_names": [
-                        "mwir"
-                    ]
+                    "device_details": {
+                        "id": "Santa Barbara Focal Plane SBF 125 Camera",
+                        "serial": "???",
+                        "resolution": [320, 256],
+                        "range": [0, 16383],
+                        "bit_depth": 14,
+                        "pixel_pitch": 30e-6,
+                        "aperture": "??",
+                        "unfiltered_wavelength_range": [2.5e-6, 5.0e-6],
+                        "wavelength_filters": [[4.5e-6, 5.0e-6]],
+                        "available_lenses": [7e-3, 13e-3, 25e-3, 50e-3],
+                        "neutral_density_filters": [],
+                        "window_locations": ["HL01"],
+                        "description": "Medium-wavelength infra-red camera",
+                        "aliases": ["sbf_1"],
+                        "year_of_purchase": 2003
+                    }
                 },
                 "rit": {
                     "movie_plugins": [
@@ -62,9 +106,23 @@
                         "uda",
                         "imstack"
                     ],
-                    "alternative_names": [
-                        "lwir"
-                    ]
+                    "device_details": {
+                        "id": "Thermosensorik CMT256 LHS",
+                        "serial": "???",
+                        "resolution": [256, 256],
+                        "range": [0, 16383],
+                        "bit_depth": 14,
+                        "pixel_pitch": 40e-6,
+                        "aperture": "??",
+                        "unfiltered_wavelength_range": [7.6e-6, 9.0e-6],
+                        "wavelength_filters": [],
+                        "available_lenses": [25e-3, 50e-3],
+                        "neutral_density_filters": [],
+                        "window_locations": ["HL01"],
+                        "description": "Long-wavelength infra-red camera",
+                        "aliases": ["tmsk_1"],
+                        "year_of_purchase": 2007
+                    }
                 }
             },
             "cad_models": [
@@ -77,43 +135,108 @@
                         0,
                         49999
                     ]
+        },
+        "jet": {
+            "cameras": {
+                "kldt": {
+                    "movie_plugins": [
+                        "npz",
+                        "imstack"
+                    ],
+                    "device_details": {
+                        "id": "?",
+                        "serial": -1,
+                        "resolution": [
+                            320,
+                            256
+                        ],
+                        "range": [
+                            0,
+                            16383
+                        ],
+                        "bit_depth": 14,
+                        "pixel_pitch": -1,
+                        "aperture": "f/3",
+                        "unfiltered_wavelength_range": [],
+                        "wavelength_filters": [],
+                        "available_lenses": [],
+                        "neutral_density_filters": [],
+                        "window_locations": [],
+                        "manufacturer": "?",
+                        "description": "?",
+                        "aliases": [],
+                        "year_of_purchase": -1
+                    }
+                }
+            },
+            "cad_models": [
+                {
+                    "model_name": "JET",
+                    "model_variant": "ITER-Like Wall"
+                }
+            ],
+            "pulse_range": [
+                0,
+                null
+            ]
         }
     },
-    "plugin_attributes": {
+    "plugins": {
         "movie": {
-            "required": {
-                "plugin_name": "movie_plugin_name",
-                "meta": "read_movie_meta",
-                "data": "read_movie_data",
-                "info": "plugin_info"
-            },
-            "optional": {
+            "module_attributes": {
+                "required": {
+                    "plugin_name": "movie_plugin_name",
+                    "meta": "read_movie_meta",
+                    "data": "read_movie_data",
+                    "info": "plugin_info"
+                },
+                "optional": {
+                }
             }
         },
         "machine": {
-            "required": {
-                "plugin_name": "machine_plugin_name"
-            },
-            "optional": {
-                "machine": "machine_name",
-                "sector": "get_machine_sector",
-                "louvre_label": "get_tile_louvre_label",
-                "louvre_index": "get_tile_louvre_index",
-                "location_labels": "location_labels",
-                "format_coord": "format_coord",
-                "s_global": "get_s_coord_global",
-                "s_path": "get_s_coord_path",
-                "info": "plugin_info"
+            "module_attributes": {
+                "required": {
+                    "plugin_name": "machine_plugin_name"
+                },
+                "optional": {
+                    "machine": "machine_name",
+                    "sector": "get_machine_sector",
+                    "louvre_label": "get_tile_louvre_label",
+                    "louvre_index": "get_tile_louvre_index",
+                    "location_labels": "location_labels",
+                    "format_coord": "format_coord",
+                    "s_global": "get_s_coord_global",
+                    "s_path": "get_s_coord_path",
+                    "info": "plugin_info"
+                }
+            }
+        },
+        "output_format": {
+            "module_attributes": {
+                "required": {
+                    "plugin_name": "output_format_plugin_name",
+                    "write_output": "write_output_file"
+                },
+                "optional": {
+                    "fn_output": "output_filename_format",
+                    "path_output": "output_path_format"
+                }
             }
         }
     },
     "paths_input": {
-        "movie_plugins": [
-            "{fire_path}/interfaces/movie_plugins/"
-        ],
-        "machine_plugins": [
-            "{fire_path}/interfaces/machine_plugins/"
-        ],
+        "plugins": {
+            "movie": [
+                "{fire_path}/plugins/movie_plugins/"
+            ],
+            "machine": [
+                "{fire_path}/plugins/machine_plugins/"
+            ],
+            "output_format": [
+                "{fire_path}/plugins/output_format_plugins/"
+            ]
+        },
         "input_file_types": [
             "pulse_lookups",
             "black_body_calibrations",
@@ -142,7 +265,8 @@
     },
     "filenames_input": {
         "movie_files": [
-            "{camera}0{pulse}.ipx"
+            "{camera}0{pulse}.ipx",
+            "{camera}_{pulse}.npz"
         ],
         "calcam_calibs": [
             "calcam_calibs-{machine}-{camera}-defaults.csv"
@@ -168,9 +292,32 @@
             "material_props-{machine}-defaults.json"
         ]
     },
-    "filenames_output": {
-        "raycast_checkpoint": "raycast_{calcam_calib_stem}-{image_coords}.nf",
-        "processed_ir_netcdf": "processed_ir-{machine}-{camera}-{pulse}.nf"
+    "outputs": {
+        "active_formats": [
+            "uda_putdata"
+        ],
+        "file_header": {
+            "title": "Processed infa-red camera data from IR camera {camera} on {machine}",
+            "comment": "Temperature, heat flux and other physics quantities derived from IR camera data"
+        },
+        "variables": {
+            "analysis_path": [
+                "heat_flux",
+                "temperature"
+            ],
+            "time": [
+                "heat_flux_total",
+                "heat_flux_peak"
+            ],
+            "image": [
+                "temperature"
+            ]
+        }
+    },
+    "checkpoints": {
+        "filenames": {
+            "raycast": "raycast_{calcam_calib_stem}-{image_coords}.nf"
+        }
     },
     "function_kwargs": {
         "imstack.read_movie_data": {
