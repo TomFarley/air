@@ -314,6 +314,70 @@
             ]
         }
     },
+    "variable_meta_data": {
+        "n": {
+            "long_name": "$n_{frame}$",
+            "units": "count",
+            "description": "Camera frame number (integer)"
+        },
+        "t": {
+            "long_name": "$t$",
+            "units": "s",
+            "description": "Camera frame time"
+        },
+        "x_pix": {
+            "long_name": "$n_{frame}$",
+            "units": "count",
+            "description": "Camera frame number (integer)"
+        },
+        "y_pix": {
+            "long_name": "$y_{pix}$",
+            "units": "count",
+            "description": "Camera y pixel coordinate"
+        },
+        "frame_data": {
+            "long_name": "DL",
+            "units": "count",
+            "description": "Digit level (DL) intensity counts recorded by camera sensor, dependent on photon flux"
+        },
+        "temperature": {
+            "long_name": "$T$",
+            "units": "Celsius",
+            "units_latex": "$^\\circ$C",
+            "description": "Tile surface temperature measured by IR camera"
+        },
+        "heat_flux": {
+            "long_name": "$q_\\perp$",
+            "units": "W/m^2",
+            "description": "Heat flux perpendicular to the tile surface inferred from surface temperature variation"
+        },
+        "annulus_area": {
+            "long_name": "$A_{annulus}$",
+            "units": "m^2",
+            "description": "Surface area of tile annulus between two radial points (i.e. torroidal area over which radial measurement can be integrated"
+        },
+        "heat_flux_total": {
+            "long_name": "$q_{tot}$",
+            "units": "W",
+            "description": "Total heat flux to the divetor, integrated over the radial extent of the IR analysis path, assuming toroidal symetry"
+        },
+        "heat_flux_peak": {
+            "long_name": "$q_{peak}$",
+            "units": "W/m^2",
+            "description": "Peak heat flux to the divertor along the IR analysis path"
+        },
+        "heat_flux_s_peak": {
+            "long_name": "$s_{q,peak}$",
+            "units": "m",
+            "description": "Divertor surface 's' coordinate of peak in heat flux along the IR analysis path"
+        },
+        "heat_flux_r_peak": {
+            "long_name": "$r_{q,peak}$",
+            "units": "m",
+            "description": "Radial coordinate of peak in heat flux along the IR analysis path"
+        }
+
+    },
     "checkpoints": {
         "filenames": {
             "raycast": "raycast_{calcam_calib_stem}-{image_coords}.nf"
