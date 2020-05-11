@@ -15,6 +15,7 @@ import pandas as pd
 
 from fire.misc.utils import locate_file, make_iterable
 from fire import fire_paths
+from fire.interfaces.exceptions import InputFileException
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -27,7 +28,7 @@ def format_path(path: Union[str, Path] , **kwargs) -> Path:
     return path
 
 def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns_inputs=None,
-                   paths_output=None, fn_pattern_output=None,
+                   paths_output=None, fn_pattern_checkpoints=None,
                    params=None):
     """Return dict of paths to input files needed for IR analysis
 
@@ -80,15 +81,21 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
     # Get filenames straight from config settings: Analysis path definition file, bb photons,
     # surface coords, surface properties
     input_files = ['analysis_path_dfns', 'black_body_curve', 'structure_coords', 'material_props']
+    errors = {}
     for file_type in input_files:
         fn_patterns = fn_patterns_inputs[file_type]
         try:
             path, fn = locate_file(search_paths_inputs, fn_patterns, path_kws=params, fn_kws=params)
         except FileNotFoundError as e:
-            raise FileNotFoundError(f'Could not locate fire input file for "{file_type}":\n{str(e)}')
-        path_fn = path / fn
-        files[file_type] = path_fn
-
+            err = FileNotFoundError(f'Could not locate fire input file for "{file_type}":\n{str(e)}')
+            logger.warning(err)
+            errors[file_type] = err
+        else:
+            path_fn = path / fn
+            files[file_type] = path_fn
+    if len(errors) > 0:
+        raise FileNotFoundError(f'Failed to locate {len(errors)} files for: {list(errors.keys())}. First error:\n'
+                                f'{errors[list(errors.keys())[0]]}')
     # Checkpoint intermediate output files to speed up analysis
     # checkpoint_path = setup_checkpoint_path(paths_output['checkpoint_data'])
     checkpoint_path = Path(paths_output['checkpoint_data']).expanduser().resolve()
@@ -96,19 +103,19 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
     params['calcam_calib_stem'] = files['calcam_calib'].stem
 
     # Calcam raycast checkpoint
-    checkpoints = ['raycast_checkpoint']
+    checkpoints = ['raycast']
     for checkpoint in checkpoints:
-        checkpoint_fn = fn_pattern_output[checkpoint].format(**params)
+        checkpoint_fn = fn_pattern_checkpoints[checkpoint].format(**params)
         checkpoint_path_fn = checkpoint_path / checkpoint / checkpoint_fn
-        files[checkpoint] = checkpoint_path_fn
+        files[checkpoint+'_checkpoint'] = checkpoint_path_fn
         checkpoint_path_fn.parent.mkdir(parents=True, exist_ok=True)
 
     # Output filenames
-    outputs = ['processed_ir_netcdf']
-    for output in outputs:
-        output_fn = fn_pattern_output[output].format(**params)
-        # TODO: Set output path with config file/run argument?
-        files[output] = Path('.') / output_fn
+    # outputs = ['processed_ir_netcdf']
+    # for output in outputs:
+    #     output_fn = fn_pattern_output[output].format(**params)
+    #     # TODO: Set output path with config file/run argument?
+    #     files[output] = Path('.') / output_fn
 
     # TODO: check path characters are safe (see setpy datafile code)
 
@@ -238,8 +245,9 @@ def json_load(path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None,
     try:
         with open(str(path_fn), 'r') as f:
             contents = json.load(f)
-    except Exception as e:
-        raise e
+    except json.decoder.JSONDecodeError as e:
+        # raise InputFileException(original_exception=e, info={'fn': path_fn})
+        raise InputFileException(f'Invalid json formatting in input file "{path_fn}"', e)
     # Return indexed subset of file
     if key_paths is not None:
         key_paths = make_iterable(key_paths)
