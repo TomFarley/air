@@ -10,7 +10,7 @@ Created: 11-10-19
 import logging, time
 from typing import Union, Sequence, Optional
 from pathlib import Path
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 import numpy as np
 import pandas as pd
@@ -140,6 +140,8 @@ def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, ima
 
     logger.debug(f'Getting surface coords...'); t0 = time.time()
     ray_data = calcam.raycast_sightlines(calcam_calib, cad_model, coords=image_coords)
+    # TODO: Set sensor subwindow if using full sensor calcam calibration for windowed view
+    # ray_data.set_detector_window(window=(Left,Top,Width,Height))
     print(f'Setup CAD model and cast rays in {time.time()-t0:1.1f} s')
 
     surface_coords = ray_data.get_ray_end(coords=image_coords)
@@ -169,6 +171,7 @@ def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, ima
     data_out['phi_deg_im'] = (('y_pix', 'x_pix'), np.rad2deg(phi))  # Toroidal angle 'ϕ' in degrees
     data_out['theta_im'] = (('y_pix', 'x_pix'), theta)
     data_out['ray_lengths_im'] = (('y_pix', 'x_pix'), ray_lengths)  # Distance from camera pupil to surface
+    data_out['subview_mask_im'] = (('y_pix', 'x_pix'), calcam_calib.subview_mask)  # Sub calibrations due to mirrors etc
     data_out['bad_cad_coords_im'] = (('y_pix', 'x_pix'), mask_bad_data.astype(int))  # Pixels seeing holes in CAD model
     spatial_res = calc_spatial_res(x, y, z, res_min=1e-4, res_max=None)
     for key, value in spatial_res.items():
@@ -245,22 +248,26 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_na
     # points = pd.DataFrame.from_dict(list(analysis_path_dfn.values())[0], orient='index')
     # points = pd.DataFrame.from_items(analysis_path_dfn).T
     points = pd.DataFrame.from_dict(OrderedDict(analysis_path_dfn)).T
-    points = points.rename(columns={'R': 'R_path_dfn', 'phi': 'phi_path_dfn', 'z': 'z_path_dfn'})
-    points = points.astype({'R_path_dfn': float, 'include_next_interval': bool, 'order': int, 'phi_path_dfn': float,
-                           'z_path_dfn': float})
+    points = points.rename(columns={'R': f'R_{path}_dfn', 'phi': f'phi_{path}_dfn', 'z': f'z_{path}_dfn'})
+    points = points.astype({f'R_{path}_dfn': float, 'include_next_interval': bool, 'order': int, f'phi_{path}_dfn': float,
+                           f'z_{path}_dfn': float})
     # TODO: sort df point by 'order' column
     pos_key = 'position'
     points.index.name = pos_key
     points = points.sort_values('order').to_xarray()
-    phi_rad = np.deg2rad(points['phi_path_dfn'])
-    points['x_path_dfn'] = points['R_path_dfn'] * np.cos(phi_rad)
-    points['y_path_dfn'] = points['R_path_dfn'] * np.sin(phi_rad)
+    phi_rad = np.deg2rad(points[f'phi_{path}_dfn'])
+    points[f'x_{path}_dfn'] = points[f'R_{path}_dfn'] * np.cos(phi_rad)
+    points[f'y_{path}_dfn'] = points[f'R_{path}_dfn'] * np.sin(phi_rad)
 
-    points_xyz = points[['x_path_dfn', 'y_path_dfn', 'z_path_dfn']].to_array().T
+    points_xyz = points[[f'x_{path}_dfn', f'y_{path}_dfn', f'z_{path}_dfn']].to_array().T
     # Get image coordinates even if they are outside of the camera field of view
-    points_pix = calcam_calib.project_points(points_xyz, fill_value=None)[0]
-    points['x_pix_path_dfn'] = (points.coords, points_pix[0])
-    points['y_pix_path_dfn'] = (points.coords, points_pix[1])
+    points_pix_subviews = calcam_calib.project_points(points_xyz, fill_value=None)
+    points_pix, info = select_visible_points_from_subviews(points_pix_subviews, calcam_calib.subview_mask,
+                                                     subviews_keep='all', raise_on_duplicate_view=True)
+    points_pix = points_pix.astype(int)
+    points[f'x_pix_{path}_dfn'] = (points.coords, points_pix[0])
+    points[f'y_pix_{path}_dfn'] = (points.coords, points_pix[1])
+    points[f'subview_{path}_dfn'] = (points.coords, info['subview_origin'])
     # TODO: Handle points outside field of view
 
     pos_names = points.coords[pos_key]
@@ -271,8 +278,8 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_na
     for i_path, (start_pos, end_pos) in enumerate(zip(pos_names, pos_names[1:])):
         if not points['include_next_interval'].sel(position=start_pos):
             continue
-        x0, y0, x1, y1 = np.round((*points['x_pix_path_dfn'].sel({pos_key: slice(start_pos, end_pos)}),
-                                   *points['y_pix_path_dfn'].sel({pos_key: slice(start_pos, end_pos)}))).astype(int)
+        x0, y0, x1, y1 = np.round((*points[f'x_pix_{path}_dfn'].sel({pos_key: slice(start_pos, end_pos)}),
+                                   *points[f'y_pix_{path}_dfn'].sel({pos_key: slice(start_pos, end_pos)}))).astype(int)
         # Use Bresenham's line drawing algorithm. npoints = max((dx, dy))
         xpix, ypix = skimage.draw.line(x0, y0, x1, y1)
         xpix_path.append(xpix)
@@ -305,10 +312,16 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_na
               # f'segment_{path}': (f'{path}', path_no)}
 
     analysis_path = analysis_path.assign_coords(**coords)
+    # TODO: Change to correct UDA units for arb array index
+    analysis_path[f'i_{path}'].attrs.update(dict(units='count',
+                                                 label=f'Array index along analysis path "{path}" through IR image'))
+    # TODO: Add labels and units to other coords and vars written to UDA
     analysis_path[f'segment_{path}'] = ((f'i_{path}',), path_no)
     analysis_path[f'y_pix_{path}'] = ((f'i_{path}',), ypix_path)
     analysis_path[f'x_pix_{path}'] = ((f'i_{path}',), xpix_path)
-    analysis_path[f'visible_{path}'] = ((f'i_{path}',), check_visible(xpix_path, ypix_path, image_shape[::-1]))
+    subview_path = calcam_calib.subview_mask[::-1, :][ypix_path, xpix_path]
+    analysis_path[f'subview_{path}'] = ((f'i_{path}',), subview_path)  # Which subview each pixel is from
+    analysis_path[f'in_frame_{path}'] = ((f'i_{path}',), check_in_frame(xpix_path, ypix_path, image_shape[::-1]))
     index_path = {'x_pix': xr.DataArray(xpix_path, dims=f'i_{path}'),
                   'y_pix': xr.DataArray(ypix_path, dims=f'i_{path}')}
     for coord in ['R', 'phi', 'x', 'y', 'z']:
@@ -317,16 +330,74 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_na
         analysis_path[key+f'_{path}'] = ((f'i_{path}',), masks_path[key])
 
     # TODO: check_occlusion
-    if np.any(~analysis_path[f'visible_{path}']):
-        logger.warning(f'Analysis path contains sections that are not visible from the camera: '
-                       f'{~analysis_paths["visible_{path}"]}')
+    if np.any(~analysis_path[f'in_frame_{path}']):
+        logger.warning(f'Analysis path contains sections that are not in frame: '
+                       f'{~analysis_paths["in_frame_{path}"]}')
     return analysis_path
 
-def check_visible(x_points, y_points, image_shape):
+def check_in_frame(x_points, y_points, image_shape):
     # TODO: Check calcam convension for subwindows
     x_points, y_points = np.array(x_points), np.array(y_points)
     visible = (x_points >= 0) & (x_points < image_shape[1]) & (y_points >= 0) & (y_points < image_shape[0])
     return visible.astype(bool)
+
+def select_visible_points_from_subviews(points_pix_subviews, subview_mask, subviews_keep='all',
+                                        raise_on_duplicate_view=True):
+    """Select projected points that are visible in that subview.
+
+    When Calcam projects (x,y,z) coordinates onto an image, it returns are list of arrays of projected points for
+    each subview. Typically given (x,y,z) points will only be visible in one subview, so this function can be used to
+    pick out the projected points that are visible in each subview according to the subview_mask.
+
+    Args:
+        points_pix_subviews: List of Nx2 NumPY arrays containing the image coordinates returned by project_points
+        subview_mask: Integer image mask indicating which subview each pixel belongs to
+
+    Returns: (points, info) where poinits is a Nx2 NumPY array of projected points that fall within their respective
+    subview's masked area and info is a dict of additional info
+
+    """
+    if subviews_keep == 'all':
+        subviews_keep = list(set(subview_mask.flatten()))
+    # Calcam uses convention that the origin (0,0) is in the centre of the top-left pixel - reverse for indexing
+    subview_mask = subview_mask[::-1, :]
+
+    info = {}
+    info['mask_visible'] = defaultdict(dict)
+    info['points_visible'] = defaultdict(dict)
+    points_keep = []
+    subview_origin = []
+    # TODO: If in future paths need to span sub-views switch to looping over input points to preserve path order
+    for i_subview, points in enumerate(points_pix_subviews):
+        if i_subview not in subviews_keep:
+            continue
+        # Switch order of x and y coords for indexing mask array
+        # points_int = tuple(points[:, ::-1].astype(np.intp))
+        points_int = points.astype(np.intp)
+        mask_values = subview_mask[points_int[:, 1], points_int[:, 0]]
+        mask_visible = mask_values == i_subview
+        points_visible = points[mask_visible, :]
+        info['mask_visible'][i_subview] = mask_visible
+        info['points_visible'][i_subview] = points_visible
+
+        points_keep.append(points_visible)
+        subview_origin.append(np.full(len(points_visible), i_subview))
+
+    points_keep = np.concatenate(points_keep)
+    subview_origin = np.concatenate(subview_origin)
+    info['subview_origin'] = subview_origin
+
+    # Check for degenerate projected points that are imaged in multiple sub views
+    n_imaged = np.sum([v for v in info['mask_visible'].values()], axis=0)
+    if np.any(n_imaged) > 1:
+        n_multi_imaged = np.sum(n_imaged > 1)
+        message = f'{n_multi_imaged} projected points are imaged in multiple sub-views'
+        if raise_on_duplicate_view:
+            raise ValueError(message)
+        else:
+            logger.warning(message)
+
+    return points_keep, info
 
 def get_calcam_cad_obj(model_name, model_variant, check_fire_cad_defaults=True):
     logger.debug(f'Loading CAD model...');
