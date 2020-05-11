@@ -151,6 +151,7 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
             else:
                 new_key = f'{key}_{path_name}'
             data_out[new_key] = data.sel(x_pix=x_pix_path, y_pix=y_pix_path)
+            data_out[new_key].attrs.update(data.attrs)  # Unnecessary?
     return data_out
 
 
