@@ -11,11 +11,11 @@ import logging
 import os
 from typing import Union, Tuple, List, Optional, Dict
 from pathlib import Path
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 from fire import fire_paths
 from fire.interfaces.interfaces import logger, PathList, get_module_from_path_fn
-from fire.interfaces.plugins_movie import logger
+from fire.plugins.plugins_movie import logger
 from fire.misc.utils import make_iterable
 
 logger = logging.getLogger(__name__)
@@ -59,12 +59,12 @@ def get_plugins(path: Union[Path, str], attributes_requried: Dict[str, str],
 
     """
     path = Path(path)
-    plugins, pulgins_info = {}, {}
+    plugins, pulgins_info = defaultdict(dict), defaultdict(dict)
     attributes_requried = make_iterable(attributes_requried)
     attributes_optional = make_iterable(attributes_optional) if attributes_optional is not None else []
 
     if not path.is_dir():
-        logger.warning('Plugin search directory does not exist: {str(path)}')
+        logger.warning(f'Plugin search directory does not exist: {str(path)}')
         return plugins, pulgins_info
 
     # Get possible modules in directory
@@ -92,7 +92,8 @@ def get_plugins(path: Union[Path, str], attributes_requried: Dict[str, str],
                     logger.warning(f'Cannot load incomplete plugin "{plugin_attributes}" '
                                    f'missing attribute "{attribute_name}"')
                 break
-            plugin_attributes[attribute_key] = attribute_value
+            else:
+                plugin_attributes[attribute_key] = attribute_value
         else:
             # Found all required attributes
             for attribute_key, attribute_name in attributes_optional.items():
@@ -108,22 +109,25 @@ def get_plugins(path: Union[Path, str], attributes_requried: Dict[str, str],
             if not isinstance(plugin_name, str):
                 raise ValueError(f'Plugin required_attributes do not follow convention of first attribute value being'
                                  f'string name of plugin: plugin_name_attribute={plugin_name}, module={path_fn}')
-            plugins[plugin_name] = plugin_attributes
-            pulgins_info[plugin_name] = info
+            # Update default dict to enable combining of plugin functionality from multiple sources
+            plugins[plugin_name].update(plugin_attributes)
+            pulgins_info[plugin_name].update(info)
     # plugin = ([module_name, path_fn, ''.join(traceback.format_exception_only(sys.exc_info()[0], sys.exc_info()[1]))])
 
     return plugins, pulgins_info
 
 def get_compatible_plugins(plugin_paths: PathList,
                            attributes_required: List[str], attributes_optional: Optional[List[str]]=None,
-                           plugin_filter: Optional[List[str]]=None, plugin_type: str= '') -> Tuple[Dict, Dict]:
+                           plugin_filter: Optional[List[str]]=None, plugins_required: Optional[List[str]]=None,
+                           plugin_type: str= '') -> Tuple[Dict, Dict]:
     """Return a nested dict of plugin functions and attributes found in the supplied paths with the required attributes.
 
     Args:
         plugin_paths        : Paths in which to locate plugin modules for reading movie data
         attributes_required : Attributes that must be present in a plugin module for it to be loaded
         attributes_optional : Optional attributes that will be loaded in addition to the required plugin attributes
-        plugin_filter      : Names of subset of plugins to return that are compatible with your application
+        plugin_filter       : Names of subset of plugins to return that are compatible with your application
+        plugins_required    : Names of plugins that are required. An exception is raised if not all found.
         plugin_type         : (Optional) Name of plugin type used in logging messages
 
     Returns: Nested dict of movie plugins with key structure:
@@ -141,7 +145,14 @@ def get_compatible_plugins(plugin_paths: PathList,
     plugins, info = search_for_plugins(plugin_paths, attributes_required,
                                               attributes_optional=attributes_optional)
     logger.info(f'Located {plugin_type} plugins for: {", ".join(list(plugins.keys()))}')
-
+    if plugins_required is not None:
+        missing = []
+        for plugin in make_iterable(plugins_required):
+            if plugin not in plugins:
+                missing.append(plugin)
+        if missing:
+            raise FileNotFoundError(f'Failed to locate required {plugin_type} plugins {missing} in paths:\n'
+                                    f'{plugin_paths}')
     if plugin_filter is not None:
         # Return filtered plugins in order specified in json config file
         plugins = OrderedDict([(key, plugins[key]) for key in plugin_filter if key in plugins.keys()])

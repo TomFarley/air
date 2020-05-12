@@ -98,7 +98,9 @@ def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_p
         movie_func = plugin_funcs[plugin_key]
         status, kws, origin_options = get_movie_plugin_args(movie_func, kwargs, func_kwargs,
                                                            movie_paths=movie_paths, movie_fns=movie_fns)
-        if status == 'ok':
+        if status != 'ok':
+            logger.debug(status)
+        else:
             origin = {}
             if len(origin_options) > 0:
                 # Look over multiple possible movie locations/origins
@@ -114,6 +116,8 @@ def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_p
                                 origin['fn'] = option.name
                             break
                         except Exception as e:
+                            logger.debug(f'Failed to call "{movie_func.__name__}" from "{movie_func.__module__}" '
+                                         f'with args {kws}')
                             continue
                     if data is not None:
                         break
@@ -123,13 +127,19 @@ def try_movie_plugins(plugin_key, pulse, camera, machine, movie_plugins, movie_p
                     data = movie_func(**kws)
                     origin = {'plugin': plugin_name}
                 except Exception as e:
+                    logger.debug(f'Failed to call "{movie_func.__name__}" from "{movie_func.__module__}" '
+                                 f'with args {kws}')
                     continue
 
         if data is not None:
             # Use first successful path options - multiple valid movie paths may exist for same movie
             break
     if data is None:
-        raise IOError(f'Failed to read movie data with movie plugins {list(movie_plugins.keys())} for args:\n'
+        raise IOError(f'Failed to read movie data with movie plugins {list(movie_plugins.keys())} from paths:\n '
+                      f'{movie_paths} \n'
+                      f'with filename formats: \n'
+                      f'{movie_fns} \n'
+                      f'for plugin args: \n'
                       f'{kwargs}')
     return data, origin
 
@@ -148,7 +158,7 @@ def get_movie_plugin_args(read_movie_func, kwargs_generic=None, kwargs_specific=
 
         path_fns = locate_files(movie_paths, movie_fns, path_kws=kwargs, fn_kws=kwargs)
         if len(path_fns) == 0:
-            status = f'No movie files located in: {movie_paths}'
+            status = f'No movie files located in: {movie_paths}\nwith parameters: {kwargs}'
             return status, kws, origin_options
         origin_options['path_fn'] = path_fns
 
@@ -165,14 +175,13 @@ def get_movie_plugin_args(read_movie_func, kwargs_generic=None, kwargs_specific=
     return status, kws, origin_options
 
 def check_meta_data(movie_meta):
-    bad_values = {'lens': None}
-    for key, value in bad_values.items():
-        if movie_meta[key] == value:
-            raise ValueError(f'Bad movie meta data value for "{key}": {value}')
-    non_nan_keys = ['exposure']
-    for key in non_nan_keys:
-        if np.isnan(movie_meta[key]):
-            raise ValueError(f'Bad movie meta data value for "{key}": {movie_meta[value]}')
+
+    requried_keys = ['lens', 'exposure']
+    bad_values = ('Unknown', 'unknown')
+    for key in requried_keys:
+        value = movie_meta[key]
+        if (value is None) or (value in bad_values) or ((not isinstance(value, str)) and np.any(np.isnan(value))):
+            logger.warning(f'Bad movie meta data value for "{key}": {value}')
 
 if __name__ == '__main__':
     pass

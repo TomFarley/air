@@ -37,7 +37,7 @@ def get_machine_coordinate_labels(x_im: coord, y_im: coord, z_im: coord,
     """
     if plugin_subset is None:
         if 'location_labels' in machine_plugins:
-            plugin_subset = machine_plugins['location_labels']
+            plugin_subset = machine_plugins['location_labels_im']
         else:
             plugin_subset = ['sector', 's_global', 's_coord_path']
     data = {}
