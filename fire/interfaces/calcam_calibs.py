@@ -171,7 +171,8 @@ def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, ima
     data_out['phi_deg_im'] = (('y_pix', 'x_pix'), np.rad2deg(phi))  # Toroidal angle 'ϕ' in degrees
     data_out['theta_im'] = (('y_pix', 'x_pix'), theta)
     data_out['ray_lengths_im'] = (('y_pix', 'x_pix'), ray_lengths)  # Distance from camera pupil to surface
-    data_out['subview_mask_im'] = (('y_pix', 'x_pix'), calcam_calib.subview_mask)  # Sub calibrations due to mirrors etc
+    # Indices of sub calibrations due to mirrors etc
+    data_out['subview_mask_im'] = (('y_pix', 'x_pix'), calcam_calib.get_subview_mask(coords=image_coords))
     data_out['bad_cad_coords_im'] = (('y_pix', 'x_pix'), mask_bad_data.astype(int))  # Pixels seeing holes in CAD model
     spatial_res = calc_spatial_res(x, y, z, res_min=1e-4, res_max=None)
     for key, value in spatial_res.items():
@@ -227,7 +228,7 @@ def calc_spatial_res(x_im, y_im, z_im, res_min=1e-4, res_max=None):
 
     return spatial_res
 
-def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_name, masks=None):
+def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_name, masks=None, image_coords='Display'):
     """Project an analysis path defined by a set of spatial coordinates along tile surfaces into camera image coords
 
     Args:
@@ -262,7 +263,8 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_na
     points_xyz = points[[f'x_{path}_dfn', f'y_{path}_dfn', f'z_{path}_dfn']].to_array().T
     # Get image coordinates even if they are outside of the camera field of view
     points_pix_subviews = calcam_calib.project_points(points_xyz, fill_value=None)
-    points_pix, info = select_visible_points_from_subviews(points_pix_subviews, calcam_calib.subview_mask,
+    subview_mask = calcam_calib.get_subview_mask(coords=image_coords)
+    points_pix, info = select_visible_points_from_subviews(points_pix_subviews, subview_mask,
                                                      subviews_keep='all', raise_on_duplicate_view=True)
     points_pix = points_pix.astype(int)
     points[f'x_pix_{path}_dfn'] = (points.coords, points_pix[0])
@@ -319,7 +321,8 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_na
     analysis_path[f'segment_{path}'] = ((f'i_{path}',), path_no)
     analysis_path[f'y_pix_{path}'] = ((f'i_{path}',), ypix_path)
     analysis_path[f'x_pix_{path}'] = ((f'i_{path}',), xpix_path)
-    subview_path = calcam_calib.subview_mask[::-1, :][ypix_path, xpix_path]
+    # Calcam uses convention that the origin (0,0) is in the centre of the top-left pixel - reverse y axis for indexing?
+    subview_path = subview_mask[::-1, :][ypix_path, xpix_path]
     analysis_path[f'subview_{path}'] = ((f'i_{path}',), subview_path)  # Which subview each pixel is from
     analysis_path[f'in_frame_{path}'] = ((f'i_{path}',), check_in_frame(xpix_path, ypix_path, image_shape[::-1]))
     index_path = {'x_pix': xr.DataArray(xpix_path, dims=f'i_{path}'),
