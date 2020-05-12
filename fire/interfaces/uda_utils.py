@@ -21,6 +21,7 @@ from fire.misc.utils import increment_figlabel, filter_kwargs, format_str, make_
 # client = pyuda.Client()
 from mast.mast_client import MastClient
 client = MastClient(None)
+# client.server_tmp_dir = ''
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -508,8 +509,18 @@ def putdata_variable(variable_name, dimension, values, units=None, label=None, c
 #                 print(f'<< ERROR >> Failed to write {name} attribute for {device_name}: {err}')
 #                 raise
 
-def putdata_close(file_id):
-    client.put(step_id="close", file_id=file_id, verbose=False)
+def putdata_close(file_id=None):
+    success = False
+    kwargs = {}
+    if file_id is not None:
+        kwargs['file_id'] = file_id
+    try:
+        client.put(step_id="close", verbose=False, **kwargs)
+    except KeyError as e:
+        raise
+    else:
+        success = True
+    return success
 
 def format_netcdf_group(group):
     group = f'/{group}' if (group[0] != '/') else group
