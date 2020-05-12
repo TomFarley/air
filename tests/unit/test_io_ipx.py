@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 
-from fire.interfaces.movie_plugins.ipx import get_freia_ipx_path, read_movie_meta, read_movie_data
+from fire.plugins.movie_plugins.ipx import get_freia_ipx_path, read_movie_meta, read_movie_data
 
 pwd = Path(__file__).parent
 ipx_path = (pwd / '../test_data/mast/').resolve()

@@ -8,7 +8,7 @@ try:
 except ImportError as e:
     print(f'Failed to import pyuda for tests')
     pyuda = None
-from fire.interfaces.movie_plugins.uda import get_uda_movie_obj, read_movie_meta, read_movie_data
+from fire.plugins.movie_plugins.uda import get_uda_movie_obj, read_movie_meta, read_movie_data
 
 pwd = Path(__file__).parent
 ipx_path = (pwd / 'test_data/mast/').resolve()

@@ -17,7 +17,22 @@ class TestUtils(unittest.TestCase):
         frame_nos = np.arange(115, 115+n_frames)
         frame_data = np.ones((n_frames, *frame_shape))
 
-        frame_data = movie_data_to_xarray(frame_data, frame_times, frame_nos)
+        meta_data = {'n': {'long_name': '$n_{frame}$',
+              'units': 'count',
+              'description': 'Camera frame number (integer)'},
+             't': {'long_name': '$t$', 'units': 's', 'description': 'Camera frame time'},
+             'x_pix': {'long_name': '$n_{frame}$',
+              'units': 'count',
+              'description': 'Camera frame number (integer)'},
+             'y_pix': {'long_name': '$y_{pix}$',
+              'units': 'count',
+              'description': 'Camera y pixel coordinate'},
+             'frame_data': {'long_name': 'DL',
+              'units': 'count',
+              'description': 'Digit level (DL) intensity counts recorded by camera sensor, dependent on photon flux'},
+                }
+
+        frame_data = movie_data_to_xarray(frame_data, frame_times, frame_nos, meta_data=meta_data)
         self.assertTrue(isinstance(frame_data, xr.DataArray))
         np.testing.assert_array_equal(frame_data['t'].values, frame_times)
         np.testing.assert_array_equal(frame_data['n'].values, frame_nos)
