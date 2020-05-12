@@ -227,7 +227,7 @@ def get_nearest_boundary_coordinates(r, z, r_boundary, z_boundary):
 
 def calc_local_s_along_path(r, z):
     """Return path length along path specified by (R, Z) coords"""
-    if len(r.ndim) > 1:
+    if np.array(r).ndim > 1:
         raise ValueError(f'Path "s" coordinate can only be calculated along a set of 1D path data')
     dr, dz = np.diff(r), np.diff(z)
     points = np.array([dr, dz]).T
