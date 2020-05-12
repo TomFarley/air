@@ -47,3 +47,15 @@ def annotate_axis(ax, string, x=0.85, y=0.955, fontsize=16,
 
 if __name__ == '__main__':
     pass
+
+
+def create_poloidal_cross_section_figure(nrow=1, ncol=1, cross_sec_axes=((0, 0),)):
+    fig, axes = plt.subplots(nrow, ncol)
+    if nrow==1 and ncol==1:
+        format_poloidal_plane_ax(axes)
+    else:
+        for ax_coord in cross_sec_axes:
+            ax = axes[slice(*ax_coord)]
+            format_poloidal_plane_ax(ax)
+    plt.tight_layout()
+    return fig, axes

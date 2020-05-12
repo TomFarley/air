@@ -20,8 +20,9 @@ logger.setLevel(logging.DEBUG)
 
 
 def figure_path(data, key, slice=None, ax=None, plot_kwargs=None):
+    """Plot profile of variable given by key along analysis path"""
     if slice is None:
-        slice = {'n': np.median(data['n'])}
+        slice = {'n': np.floor(np.median(data['n']))}
     kws = {'color': None}
     if isinstance(plot_kwargs, dict):
         kws.update(plot_kwargs)

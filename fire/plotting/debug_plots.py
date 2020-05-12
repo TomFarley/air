@@ -12,11 +12,13 @@ import logging
 import matplotlib.pyplot as plt
 
 from fire.plotting.image_figures import (figure_imshow, figure_frame_data, plot_outlier_pixels, figure_analysis_path,
-                                         figure_spatial_res_max, figure_spatial_res_x, figure_spatial_res_y, plot_image_data_hist)
+                                         figure_spatial_res_max, figure_spatial_res_x, figure_spatial_res_y,
+                                         plot_image_data_hist, plot_analysis_path)
 from fire.plotting import image_figures
 from fire.plotting.path_figures import figure_path
 from fire.plotting.plot_tools import annotate_axis
 from fire.camera.image_processing import find_outlier_pixels
+from fire.misc.utils import make_iterable
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -48,22 +50,31 @@ def debug_movie_data(data, aspect='equal'):
     plt.tight_layout()
     plt.show()
 
-def debug_spatial_coords(data, aspect='equal', axes_off=True):
-    fig, axes = plt.subplots(3, 3, num='spatial coords', figsize=(13, 13))
+def debug_spatial_coords(data, path_data=None, path_name='path0', aspect='equal', axes_off=True):
+    fig, axes = plt.subplots(3, 3, num='spatial coords', figsize=(13, 13), sharex=True, sharey=True)
     axes = axes.flatten()
 
     # Frame data
-    ax = axes[0]
-    figure_frame_data(data, ax=ax, label_outliers=True, aspect=aspect, axes_off=False, show=False)
+    ax0 = axes[0]
+    figure_frame_data(data, ax=ax0, label_outliers=True, aspect=aspect, axes_off=False, show=False)
+    figure_imshow(data, key='subview_mask_im', ax=ax0, alpha=0.3, add_colorbar=False, cmap='Pastel2', axes_off=False,
+                  show=False)
 
     # Spatial coords
     axs = axes[1:]
-    keys = ['x_im', 'y_im', 'R_im', 'phi_deg_im', 'z_im', 's_global_im', 'sector_im', 'ray_lengths', 'wire_frame']
+    keys = ['x_im', 'y_im', 'R_im', 'phi_deg_im', 'z_im', 's_global_im', 'sector_im', 'ray_lengths_im', 'wire_frame']
     for ax, key in zip(axs, keys):
         try:
             figure_imshow(data, key=key, ax=ax, axes_off=axes_off, show=False)
         except KeyError as e:
             logger.warning(f'Could not plot {str(e)}')
+        if path_data is not None:
+            path = path_name
+            try:
+                plot_analysis_path(ax, path_data[f'x_pix_{path}'], path_data[f'y_pix_{path}'],
+                                   in_frame=path_data[f'visible_{path}'])
+            except Exception as e:
+                raise
 
     plt.tight_layout()
     plt.show()
@@ -120,17 +131,19 @@ def debug_surfaces(image_data, aspect='equal'):
     plt.tight_layout()
     plt.show()
 
-def debug_analysis_path(image_data, path_data=None, path_name='path0'):
-    path = path_name
+def debug_analysis_path(image_data, path_data=None, path_names='path0'):
+    path_names = make_iterable(path_names)
     fig = plt.figure(constrained_layout=True, num='analysis paths')
     gs = fig.add_gridspec(ncols=2, nrows=5, width_ratios=[1, 3])
 
     ax1 = fig.add_subplot(gs[:3, 0])
-    figure_analysis_path(path_data, image_data, key='frame_data', path_name=path_name, ax=ax1, frame_border=True,
+    figure_analysis_path(path_data, image_data, key='frame_data', path_names=path_names, ax=ax1, frame_border=True,
                          show=False, image_kwargs=dict(add_colorbar=False, axes_off=True))
+
+    # Poloidal cross section of first wall
+    ax2 = fig.add_subplot(gs[3:, 0])
     try:
-        ax2 = fig.add_subplot(gs[3:, 0])
-        image_figures.figure_poloidal_cross_section(image_data=None, path_data=path_data, path_name=path_name,
+        image_figures.figure_poloidal_cross_section(image_data=None, path_data=path_data, path_names=path_names,
                                                     no_cal=True, legend=False, axes_off=True, ax=ax2, show=False)
     except Exception as e:
         pass # Fails for MAST
@@ -138,14 +151,16 @@ def debug_analysis_path(image_data, path_data=None, path_name='path0'):
     # Line plots of parameters along path
     if path_data:
         share_x = None
-        keys = (f'frame_data_{path}', f's_global_{path}', f'spatial_res_max_{path}', f'sector_{path}',
-                f'surface_id_{path}')
-        for i_row, key in enumerate(keys):
+        keys = ('frame_data_{path}', 'temperature_{path}','s_global_{path}', 'spatial_res_max_{path}',
+                'surface_id_{path}')  # , 'sector_{path}'
+        for i_row, key_format in enumerate(keys):
             ax = fig.add_subplot(gs[i_row, 1], sharex=share_x)
 
             # plot_kwargs = dict(_labels=False)
             plot_kwargs = {}
-            figure_path(path_data, key, ax=ax, plot_kwargs=plot_kwargs)
+            for path in path_names:
+                key = key_format.format(path=path)
+                figure_path(path_data, key, ax=ax, plot_kwargs=plot_kwargs)
 
             # Move y axis label to annotation
             title = ax.get_yaxis().label.get_text()
