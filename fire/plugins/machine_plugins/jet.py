@@ -29,7 +29,7 @@ machine_plugin_name = 'jet'
 # Recommended
 machine_name = 'JET'  # Will be cast to lower case (and '-' -> '_') in FIRE
 plugin_info = {'description': 'This plugin supplies functions for JET specific operations/information'}  # extra info
-location_labels = ['sector', 's_global']  # Parameters used to label coordinates
+location_labels_im = ['sector', 's_global']  # Parameters used to label coordinates across the whole image
 
 # Optional/other
 n_sectors = 8  # Used internally in funcs below
@@ -43,6 +43,7 @@ s_start_coord_default = (0, 0)
 # Use same plugin funcs for machine sector and s_path coordinate as for MAST
 from fire.plugins.machine_plugins.mast import get_s_coord_path
 from fire.plugins.machine_plugins.mast import get_machine_sector as get_machine_sector_mast
+from fire.plugins.machine_plugins.jet_tools.scoord import get_s_definition
 def get_machine_sector(*args, **kwargs):
     return get_machine_sector_mast(*args, n_sectors=n_sectors, **kwargs)
 # See bottom of file for function aliases
@@ -50,6 +51,10 @@ def get_machine_sector(*args, **kwargs):
 
 module_default = object()
 
+def get_wall_rz_coords():
+    # Load the S coordinate defition.
+    s, sR, sZ = get_s_definition(wall)
+    return sR, sZ
 
 def get_s_coord_global(x_im, y_im, z_im, **kwargs):
     """Return JET tile s coordinates for all pixels in image.

@@ -1,6 +1,15 @@
 # -*- coding: future_fstrings -*-
-"""MAST specific plugin fuctions for FIRE.
+"""MAST specific plugin functions for FIRE.
 
+Functions and top level variables in this file with appropriate names will be imported and used by FIRE to provide
+functionality and information specific to this machine.
+
+The most important role of the machine plugin is to provide a means of looking up the tile surface 's' coordinate
+against which heat flux profiles etc are defined. Additional machine specific information and tools include
+identifying sector numbers and other location based labels and plotting methods for visualising this information.
+
+Author: Tom Farley (tom.farley@ukaea.uk)
+Created: 01-2020
 """
 import logging
 
@@ -15,15 +24,14 @@ from fire.misc.utils import make_iterable
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-module_default = object()
-
+# ===================== PLUGIN MODULE ATTRIBUTES =====================
 # Required: Name of plugin module (typically name of machine == name of file), needed to be located as a plugin module
 machine_plugin_name = 'mast_u'
 
 # Recommended
 machine_name = 'MAST-U'  # Will be cast to lower case (and '-' -> '_') in FIRE
 plugin_info = {'description': 'This plugin supplies functions for MAST-U specific operations/information'}  # exta info
-location_labels = ['sector', 's_global']  # Parameters used to label coordinates
+location_labels_im = ['sector', 's_global']  # Parameters used to label coordinates across the whole image
 
 # Optional/other
 n_sectors = 12  # Used internally in funcs below
@@ -36,10 +44,14 @@ false_rz_surface_boxes_default = [((1.512, 1.6), (-0.81789, 0.81789)),
 s_start_coord_default = (0.260841, 0)
 
 # Use same plugin funcs for machine sector and s_path coordinate as for MAST
-from fire.interfaces.machine_plugins.mast import get_machine_sector
+from fire.plugins.machine_plugins.mast import (get_machine_sector, get_tile_louvre_index, get_tile_louvre_label,
+                                               get_s_coord_path)
+# See bottom of file for function aliases
+# ====================================================================
 
+module_default = object()
 
-def get_mastu_wall_coords(no_cal=True, signal="/limiter/efit", shot=50000, ds=None):
+def get_wall_rz_coords(no_cal=True, signal="/limiter/efit", shot=50000, ds=None):
     """Return (R, Z) coordinates of points defining wall outline of MAST-U tile surfaces
 
     This is normally safe to call with default arguments.
@@ -74,7 +86,7 @@ def get_tile_edge_coords_mastu(no_cal=True, signal="/limiter/efit", shot=50000, 
 
     """
     min_tile_size = 0.10
-    r0, z0 = get_mastu_wall_coords(signal=signal, no_cal=no_cal, shot=shot)
+    r0, z0 = get_wall_rz_coords(signal=signal, no_cal=no_cal, shot=shot)
     diff = np.linalg.norm([np.diff(r0), np.diff(z0)], axis=0)
     mask = (diff > min_tile_size) | (np.roll(diff, -1) > min_tile_size)
     mask = np.concatenate([[np.True_], mask])
@@ -99,7 +111,7 @@ def get_s_coords_tables_mastu(ds=1e-4, no_cal=True, signal="/limiter/efit", shot
     Returns: Dict of dataframes containing (R, Z, s) coordinates for top and bottom regions of the machine
 
     """
-    r0, z0 = get_mastu_wall_coords(no_cal=no_cal, signal=signal, shot=shot)
+    r0, z0 = get_wall_rz_coords(no_cal=no_cal, signal=signal, shot=shot)
     r, z = interpolate_rz_coords(r0, z0, ds=ds)
     (r_bottom, z_bottom), (r_top, z_top) = separate_rz_points_top_bottom(r, z, prepend_start_coord=True,
                                                                          bottom_coord_start=s_start_coord_default,
@@ -186,7 +198,7 @@ def plot_vessel_outline_mastu(ax=None, top=True, bottom=True, shot=50000, no_cal
     else:
         fig = ax.figure
 
-    r0, z0 = get_mastu_wall_coords(no_cal=no_cal, shot=shot)
+    r0, z0 = get_wall_rz_coords(no_cal=no_cal, shot=shot)
     (r_bottom, z_bottom), (r_top, z_top) = separate_rz_points_top_bottom(r0, z0, top_coord_start=s_start_coord_default,
                                                                          bottom_coord_start=s_start_coord_default)
     # ax.plot(r0, z0, marker='x', ls='-')
@@ -259,7 +271,7 @@ if __name__ == '__main__':
     # plot_tile_edges(ax=ax, show=True)
     ds = 1e-4
     # ds = 1e-2
-    r0, z0 = get_mastu_wall_coords(no_cal=True, shot=50000)
+    r0, z0 = get_wall_rz_coords(no_cal=True, shot=50000)
     r, z = interpolate_rz_coords(r0, z0, ds=ds, false_surface_boxes=false_rz_surface_boxes_default)
     print(f'Number of interpolated wall points: {len(r)}')
     s_tables = get_s_coords_tables_mastu()
