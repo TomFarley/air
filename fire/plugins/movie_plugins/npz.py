@@ -53,7 +53,7 @@ def get_npz_movie_dict(path_fn: Union[str, Path]) -> dict:
     :return: UDA movie object?
     """
     file = np.load(path_fn)
-    file_dict = {key: getattr(file, key) for key in file.files}
+    file_dict = {key: file[key] for key in file.files}
     file_dict = rename_dict_keys(file_dict, key_map=None)
     return file_dict
 
@@ -70,10 +70,23 @@ def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> 
     """
     # Read file header and first frame
     file_dict = get_npz_movie_dict(path_fn)
+    frames = file_dict['frames']
 
     # Collect summary of ipx file meta data
     # file_header['ipx_version'] = vid.ipx_type
     movie_meta = {'movie_format': '.ipx'}
+    file_dict['n_frames'] = len(frames)
+    file_dict['frame_shape'] = frames.shape[1:]
+    if 'time' in file_dict:
+        t = file_dict['time']
+        file_dict['t_range'] = np.array([np.min(t), np.max(t)])
+        file_dict['fps'] = 1/np.mean(np.diff(t))
+
+    logger.warning(f'Using temporary stand in value for meta data: "frame_range", "lens", "exposure"')
+    file_dict['frame_range'] = [0, len(frames)-1]
+    file_dict['lens'] = 'Unknown'
+    file_dict['exposure'] = 'Unknown'
+
     meta_keys = ['n_frames', 'frame_range', 't_range', 'frame_shape', 'fps', 'exposure', 'bit_depth', 'lens']
     for key in meta_keys:
         if key not in file_dict:
@@ -89,7 +102,7 @@ def rename_dict_keys(dict_original: dict, key_map: Optional[dict]=None) -> dict:
     :param key_map: mapping from old to new data key names
     :return: Reformatted dict
     """
-    raise NotImplementedError
+    # raise NotImplementedError
     dict_new = copy(dict_original)
     if key_map is None:
         key_map = {}
@@ -98,7 +111,7 @@ def rename_dict_keys(dict_original: dict, key_map: Optional[dict]=None) -> dict:
             dict_new[new_key] = dict_new.pop(old_key)
             logger.debug(f'Rename npz header parameter from "{old_key}" to "{new_key}".')
         except KeyError as e:
-            logger.warning(f'Could not rename npz header parameter to "{new_key}" as paremeter "{old_key}" not found.')
+            logger.warning(f'Could not rename npz header parameter to "{new_key}" as parameter "{old_key}" not found.')
 
     return dict_new
 
@@ -118,7 +131,11 @@ def read_movie_data(path_fn: Union[str, Path], frame_nos: Optional[Union[Iterabl
     """
     # Read file header and first frame
     file_dict = get_npz_movie_dict(path_fn)
-    frame_nos = file_dict['frame_numbers']
+    if 'frame_numbers' in file_dict:
+        frame_nos = file_dict['frame_numbers']
+    else:
+        frame_nos = np.arange(file_dict['frames'].shape[0])
+        logger.debug(f'Missing frame number info substituted with integers starting at 0')
     frame_times = file_dict['time']
     frame_data = file_dict['frames']
     return frame_nos, frame_times, frame_data
