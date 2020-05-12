@@ -343,6 +343,16 @@ def putdata_device(device_name, device_info, attributes=None):
         putdata_attribute(name, value, group=group)
 
 def putdata_attribute(name, value, group):
+    """Write an attribute (misc information) to a file group using UDA putdata interface
+
+    Args:
+        name: Name of attribute
+        value: Value
+        group: Group in file to write attribute to
+
+    Returns: None
+
+    """
     if isinstance(value, (dict,)):
         # NOTE: Arrays of strings or structures are not supported as single attributes.
         subgroup = f'{group}/{name}'
@@ -361,15 +371,16 @@ def putdata_attribute(name, value, group):
         else:
             logger.debug(f'Successfully wrote attribute to group "{group}": "{name}"={value}')
 
-def putdata_coords_for_variables(path_data, image_data, path_names,
-                                 variable_names_path, variable_names_time, variable_names_image, meta_data,
-                                 existing_dims=None, existing_coords=None):
+def putdata_variables_from_datasets(path_data, image_data, path_names,
+                                    variable_names_path, variable_names_time, variable_names_image,
+                                    existing_dims=None, existing_coords=None):
     if existing_dims is None:
         existing_dims = defaultdict(list)
     if existing_coords is None:
         existing_coords = defaultdict(list)
     optional_dim_attrs = ['units', 'label', 'comment']
 
+    # Collect together the names and origin of the variables that are to be written to each file group
     group_variables = defaultdict(list)
     groups = {}
     if variable_names_path is not None:
@@ -406,9 +417,12 @@ def putdata_coords_for_variables(path_data, image_data, path_names,
                 variable = path_data[f'{variable_name}_{path_name}']
                 group_variables[group].append(variable)
 
+    # Write dims, coords, data and attributes for variables in each group
     for group in group_variables:
         for variable in group_variables[group]:
             variable_name = variable.name
+
+            # Write dimensions and coords to group in preparation for main variable data
             for coord_name in variable.coords:
                 coord = variable[coord_name]
 
@@ -428,6 +442,7 @@ def putdata_coords_for_variables(path_data, image_data, path_names,
                     existing_coords[group].append(coord_name)
                     # TODO: Write additional attributes for coord like axis labels?
 
+            # Write main variable data to group
             dimensions = ','.join(variable.dims)
             kwargs = {k: variable.attrs[k] for k in optional_dim_attrs if k in variable.attrs}
             putdata_variable(variable_name, dimensions, variable.values, group=group, **kwargs)
