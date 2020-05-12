@@ -118,7 +118,7 @@ def locate_target_peak(param_values, dim='t', coords=None, peak_kwargs=None):
     return peak_info
 
 
-def calc_physics_params(path_data, path_name, params=None):
+def calc_physics_params(path_data, path_name, params=None, meta_data=None):
     """Old IDL sched iranalysis.pro input parameters
       ;variables
       ;sh = shot
@@ -140,6 +140,8 @@ def calc_physics_params(path_data, path_name, params=None):
     """
     if params is None:
         params = ['heat_flux', 'temperature']
+    if meta_data is None:
+        meta_data = {}
 
     path = path_name  # abbreviation for format strings
 
@@ -168,11 +170,22 @@ def calc_physics_params(path_data, path_name, params=None):
             logger.warning(f'Failed to calculate physics summary for param "{param}":\n{e}')
             raise e
         else:
-            data_out[f'{param}_tot_{path}'] = (('t',), param_total)
-            data_out[f'{param}_peak_{path}'] = (('t',), peak_info['peak'])
-            data_out[f'{param}_s_peak_{path}'] = (('t',), peak_info['s_peak'])
-            data_out[f'{param}_r_peak_{path}'] = (('t',), peak_info['r_peak'])
-            data_out[f'{param}_n_peaks_{path}'] = (('t',), peak_info['n_peaks'])
+            key = f'{param}_total_{path}'
+            data_out[key] = (('t',), param_total)
+            data_out[key].attrs.update(meta_data.get(f'{param}_total', {}))
+            if 'description' in data_out[key].attrs:
+                data_out[key].attrs['label'] = data_out[key].attrs['description']
+
+            info_numeric = ['peak', 'n_peaks', 's_peak', 'r_peak']
+            for info in info_numeric:
+                key = f'{param}_{info}_{path}'
+                value = peak_info[info]
+                data_out[key] = (('t',), value)
+                data_out[key].attrs.update(meta_data.get(f'{param}_{info}', {}))
+                if 'description' in data_out[key].attrs:
+                    data_out[key].attrs['label'] = data_out[key].attrs['description']
+                if np.all(np.isnan(value)):
+                    logger.warning(f'All values are nan for physics parameter: {key}')
 
     return data_out
 

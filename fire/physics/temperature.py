@@ -18,7 +18,7 @@ import scipy.interpolate
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def dl_to_temerature(frame_data, calib_coefs, bb_curve, exposure, temp_nuc_bg=23):
+def dl_to_temerature(frame_data, calib_coefs, bb_curve, exposure, temp_nuc_bg=23, meta_data=None):
     """Convert NUC corrected IR camera Digital Level (DL) values to temperatures in deg C.
 
     Args:
@@ -31,8 +31,13 @@ def dl_to_temerature(frame_data, calib_coefs, bb_curve, exposure, temp_nuc_bg=23
     Returns: 3D array of frame data converted to temperatures in deg C
 
     """
+    if meta_data is None:
+        meta_data = {}
     # temp_bg=23  #  background temperature
     bb_curve = bb_curve.reset_index()
+    if exposure in ('Unknown', None):
+        exposure = 20
+        logger.warning(f'In absence of exposure value, using arbitrary value for debugging purposes: {exposure}us')
     exposure = exposure * 1e-6
 
     cols_bb = set(bb_curve.columns)
@@ -59,9 +64,9 @@ def dl_to_temerature(frame_data, calib_coefs, bb_curve, exposure, temp_nuc_bg=23
     # then determine the temperature using the photon counts plus the bckg.
     frame_temps = xr.apply_ufunc(f_temp, frame_photons+phot_bg)
     frame_temps.name = 'frame_temps'
-    frame_temps.attrs.update({'long_name': r'$T$',
-                              'units': r'$^\circ C$',
-                              'description': 'Surface temperature observed by each pixel'})
+    frame_temps.attrs.update(meta_data.get('temperature', {}))
+    if 'description' in frame_temps.attrs:
+        frame_temps.attrs['label'] = frame_temps.attrs['description']
     return frame_temps
 
 if __name__ == '__main__':
