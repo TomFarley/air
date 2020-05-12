@@ -6,9 +6,10 @@
 Created: 11-10-19
 """
 
-import logging, inspect
+import logging, inspect, os, re
 from typing import Union, Iterable, Tuple, List, Optional, Any, Sequence, Callable
 from pathlib import Path
+from copy import copy
 
 import numpy as np
 import xarray as xr
@@ -19,7 +20,7 @@ logger.setLevel(logging.DEBUG)
 
 PathList = Sequence[Union[Path, str]]
 
-def movie_data_to_xarray(frame_data, frame_times, frame_nos=None):
+def movie_data_to_xarray(frame_data, frame_times, frame_nos=None, meta_data=None):
     """Return frame data in xarray.DataArray object
 
     Args:
@@ -32,6 +33,8 @@ def movie_data_to_xarray(frame_data, frame_times, frame_nos=None):
     """
     if frame_nos is None:
         frame_nos = np.arange(frame_data.shape[0])
+    if meta_data is None:
+        meta_data = {}
     frame_data = xr.DataArray(frame_data, dims=['t', 'y_pix', 'x_pix'],
                               coords={'t': frame_times, 'n': ('t', frame_nos),
                                       'y_pix': np.arange(frame_data.shape[1]),
@@ -39,26 +42,21 @@ def movie_data_to_xarray(frame_data, frame_times, frame_nos=None):
                               name='frame_data')
     # Default to indexing by frame number
     frame_data = frame_data.swap_dims({'t': 'n'})
-    frame_data.attrs.update({
-        'long_name': 'DL',
-        'units': 'arb',
-        'description': 'Digit level (DL) intensity counts recorded by camera sensor, dependent on photon flux'})
-    frame_data['n'].attrs.update({
-        'long_name': '$n_{frame}$',
-        'units': '',
-        'description': 'Camera frame number (integer)'})
-    frame_data['t'].attrs.update({
-        'long_name': '$t$',
-        'units': 's',
-        'description': 'Camera frame time'})
-    frame_data['x_pix'].attrs.update({
-        'long_name': '$x_{pix}$',
-        'units': '',
-        'description': 'Camera x pixel coordinate'})
-    frame_data['y_pix'].attrs.update({
-        'long_name': '$y_{pix}$',
-        'units': '',
-        'description': 'Camera y pixel coordinate'})
+    if 'frame_data' in meta_data:
+        frame_data.attrs.update(meta_data['frame_data'])
+        frame_data.attrs['label'] = frame_data.attrs['description']
+    else:
+        logger.warning(f'No meta data supplied for coordinate: {"frame_data"}')
+
+    coords = ['n', 't', 'x_pix', 'y_pix']
+    for coord in coords:
+        if coord in meta_data:
+            frame_data[coord].attrs.update(meta_data[coord])
+            # UDA requires 'label' while xarray uses description
+            frame_data[coord].attrs['label'] = frame_data[coord].attrs['description']
+        else:
+            logger.warning(f'No meta data supplied for coordinate: {coord}')
+
     return frame_data
 
 def update_call_args(user_defaults, pulse, camera, machine):
@@ -87,9 +85,6 @@ def sanitise_machine_name(machine):
 def sanitise_camera_name(camera):
     camera_out = camera.lower().replace('-', '_')
     return camera_out
-
-if __name__ == '__main__':
-    pass
 
 def make_iterable(obj: Any, ndarray: bool=False,
                   cast_to: Optional[type]=None,
@@ -203,6 +198,9 @@ def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
                 raise ValueError(f'Cannot locate file without value for "{e.args[0]}": "{fn_raw}", {fn_kws}"')
             except IndexError as e:
                 raise e
+            except ValueError as e:
+                logger.debug(f'Incompatible type for value in filename format string "{fn_raw}": \n{fn_kws}\n{e}')
+                continue
             fn_path = path / fn
             if fn_path.is_file():
                 located = True
@@ -271,45 +269,106 @@ def join_path_fn(path: Union[Path, str], fn: str):
     """
     return Path(path) / fn
 
-def filter_kwargs(func, kwargs, include=(), exclude=(), match_signature=True, named_dict=True, remove=True):
+def filter_kwargs(kwargs, funcs=None, include=(), exclude=(), required=None, kwarg_aliases=None,
+                  extract_func_dict=True, remove_from_input=False):
     """Return filtered dict of kwargs that match input call signature for supplied function.
 
     Args:
-        func            : Function(s) to provide compatible arguments for
-        kwargs          : List of kwargs to filter for supplied function
-        include         : List of kwargs to include regardless of function signature
-        exclude         : List of kwargs to exclude regardless of function signature
-        match_signature : Whether to use use function signature to filter kwargs
-        named_dict      : If kwargs contains a dict under key '<func_name>_args' return its contents (+ filtered kwargs)
-        remove          : Remove filtered kwargs from original kwargs dict
+        kwargs           : Dict of kwargs to be filtered
+        funcs            : Function(s) whose signatures should be used to filter the kwargs
+        include          : List of keys to include regardless of function signature
+        exclude          : List of keys to exclude regardless of function signature
+        required         : List of keys that must be located and returned else an error is raised
+        kwarg_aliases    : Dict mapping key names in kwargs to names in func signatures to enable matches
+        extract_func_dict: If kwargs contains a dict under key '<func_name>_args' return its contents (+ filtered kwargs)
+        remove_from_input: Remove filtered kwargs from original input kwargs dict
 
     Returns: Dictionary of keyword arguments that are compatible with the supplied function's call signature
 
     """
     #TODO: Include positional arguments!
-    func = make_iterable(func)  # Nest lone function in list for itteration, TODO: Handle itterable classes
-    kws = {}
-    keep = []  # list of argument names
-    name_args = []
-    for f in func:
-        # Add arguments for each function to list of arguments to keep
-        if isinstance(f, type):
-            # If a class look at it's __init__ method
-            keep += list(inspect.signature(f.__init__).parameters.keys())
-        else:
-            keep += list(inspect.signature(f).parameters.keys())
-        name_args += ['{name}_args'.format(name=f.__name__)]
-    if match_signature:
-        matches = {k: v for k, v in kwargs.items() if (((k in keep) and (k not in exclude)) or (k in include))}
-        kws.update(matches)
-    if named_dict:  # Look for arguments <function>_args={dict of keyword arguments}
-        keep_names = {k: v for k, v in kwargs.items() if (k in name_args)}
-        kws.update(keep_names)
-    if remove:  # Remove key value pairs from kwargs that were transferred to kws
-        for key in kws:
-            kwargs.pop(key)
-    return kws
+    kwargs_out = {}
+    keep = []  # list of all keys to keep (passing filter)
+    sig_matches = []  # keys matching func signatures
+    func_name_args = []  # Keys for dists of kwargs specific to supplied function(s)
 
+    if funcs is not None:
+        for f in make_iterable(funcs):
+            # Add arguments for each function to list of arguments to keep
+            if isinstance(f, type):
+                # If a class look at it's __init__ method
+                sig_matches += list(inspect.signature(f.__init__).parameters.keys())
+            else:
+                sig_matches += list(inspect.signature(f).parameters.keys())
+            func_name_arg = '{name}_args'.format(name=f.__name__)
+            if func_name_arg in kwargs:
+                func_name_args += [func_name_arg]
+
+    for key, value in kwargs.items():
+        key_names = [key]
+        if (kwarg_aliases is not None) and (key in kwarg_aliases):
+            key_names += make_iterable(kwarg_aliases[key])
+        for k in key_names:
+            if (((k in sig_matches) and (k not in exclude)) or (k in include)):
+                if (k not in kwargs_out) or (kwargs_out[k] == value):
+                    keep.append(key)
+                    kwargs_out[k] = value
+                else:
+                    raise ValueError(f'Passed conflicting kwargs values for key "{k}": {kwargs_out[k]}, {value}')
+
+    if extract_func_dict:
+        # Extract values from dicts under keys named '<func_name>_args'
+        for key in func_name_args:
+            kwargs_out.update(kwargs_out[key])
+
+    if required is not None:
+        missing = []
+        for key in required:
+            if key not in kwargs_out:
+                missing.append(key)
+        if missing:
+            raise ValueError(f'Missing required input keyword arguments {missing} from kwargs: {kwargs}')
+
+    if remove_from_input:
+        # Remove key value pairs from kwargs that were transferred to kwargs_out
+        for key in (keep+func_name_args):
+            kwargs.pop(key)
+
+    return kwargs_out
+
+def format_str(string, kwargs, kwarg_aliases=None, kwarg_aliases_key='key_mapping'):
+    """Format a string by substituting dictionary of values, also considering alternative names for the format keys
+    according to a key aliases mapping.
+
+    The kwarg_aliases_key allows one dict of formatting variables to be passed around for various purposes and
+    include all the potential key mapping for different function signatures, without needing to pass it around as a
+    separate parameter to many functions.
+
+    Args:
+        string: String to be formatted containing format fields eg "{pulse}_{camera}.nc"
+        kwargs: Dict of values to substitute into format string
+        kwarg_aliases: Dict of alternative key names that may occur in string, mapped to key names in kwargs
+        kwarg_aliases_key: Key name in kwargs which if present should be treated as a source of kwarg_aliases
+
+    Returns: String with format fields replaced by values in kwargs
+
+    """
+    try:
+        string_out = string.format(**kwargs)
+    except KeyError as e:
+        if (kwarg_aliases is not None) or (kwarg_aliases_key in kwargs):
+            if kwarg_aliases is None:
+                kwarg_aliases = kwargs[kwarg_aliases_key]
+            kwargs_extended = copy(kwargs)
+            kwargs_alternative = {}
+            for key, aliases in kwarg_aliases.items():
+                for alias in make_iterable(aliases):
+                    kwargs_alternative[alias] = kwargs[key]
+            kwargs_extended.update(kwargs_alternative)
+            string_out = string.format(**kwargs_extended)
+        else:
+            raise e
+    return string_out
 
 def increment_figlabel(label, i=2, suffix=' ({i})', start_With_siffix=False):
     num = label if not start_With_siffix else label + suffix.format(i=i)
@@ -346,3 +405,63 @@ def to_image_dataset(data, key='data'):
     else:
         raise ValueError(f'Unexpected image data type {data}')
     return dataset
+
+def delete_file(fn, path=None, ignore_exceptions=(), raise_on_fail=True, verbose=True):
+    """Delete file with error handelling
+    :param fn: filename
+    :param path: optional path to prepend to filename
+    :ignore_exceptions: Tuple of exceptions to pass over (but log) if raised eg (FileNotFoundError,)
+    :param raise_on_fail: Raise exception if fail to delete file
+    :param verbose   : Print log messages
+    """
+    fn = str(fn)
+    if path is not None:
+        path_fn = os.path.join(path, fn)
+    else:
+        path_fn = fn
+    path_fn = os.path.abspath(os.path.expanduser(path_fn))
+    success = False
+    try:
+        os.remove(path_fn)
+        success = True
+        if verbose:
+            logger.info('Deleted file: {}'.format(path_fn))
+    except ignore_exceptions as e:
+        logger.debug(e)
+    except Exception as e:
+        if raise_on_fail:
+            raise e
+        else:
+            logger.warning('Failed to delete file: {}'.format(path_fn))
+    return success
+
+def rm_files(paths, pattern, verbose=True, match=True, ignore_exceptions=()):
+    """Delete files in paths matching patterns
+
+    :param paths     : Paths in which to delete files
+    :param pattern   : Regex pattern for files to delete
+    :param verbose   : Print log messages
+    :param match     : Use re.match instead of re.search (ie requries full pattern match)
+    :param ignore_exceptions: Don't raise exceptions
+
+    :return: None
+    """
+    paths = make_iterable(paths)
+    for path in paths:
+        path = str(Path(path).expanduser().resolve())
+        if verbose:
+            logger.info('Deleting files with pattern "{}" in path: {}'.format(pattern, path))
+        for fn in os.listdir(path):
+            if match:
+                m = re.match(pattern, fn)
+            else:
+                m = re.search(pattern, fn)
+            if m:
+                delete_file(fn, path, ignore_exceptions=ignore_exceptions)
+                if verbose:
+                    logger.info('Deleted file: {}'.format(fn))
+            else:
+                pass
+
+if __name__ == '__main__':
+    pass
