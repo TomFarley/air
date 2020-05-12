@@ -15,8 +15,19 @@ import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
 
+from fire.misc.utils import filter_kwargs
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+# ===================== PLUGIN MODULE ATTRIBUTES =====================
+# Required:
+output_format_plugin_name = 'uda_putdata'
+# Optional:
+output_filename_format = '{diag_tag}{shot:06d}.nc'  # Filename of output
+output_path_format = '{fire_path}/../'  # Path to save output
+# See bottom of file for function aliases
+# ====================================================================
 
 not_set = object()
 
@@ -96,15 +107,49 @@ output_signals = {
 }
 
 
-def write_processed_ir_to_uda_file():
+def write_processed_ir_to_uda_file(path_data, image_data, path_names,
+                                   variable_names_path, variable_names_time, variable_names_image,
+                                   header_info, device_info, meta_data,
+                                   fn_output='{diag_tag}{shot:06d}.nc', path_output='./'):
     """
     NETCDF output code from /home/athorn/IR/Latest/sched_air_netcdf/src/netcdfout.pro:
     Returns:
 
+    - Using puddata in development:
+    module purge
+    module load FUN
+module unload uda
+module use /projects/UDA/uda-install-develop/modulefiles
+module load uda/develop              #-fatclient
+
     """
+    from fire.interfaces.uda_utils import (putdata_create, putdata_device, putdata_variables_from_datasets,
+                                           putdata_close)
+    # Set up output file
+    file_id = putdata_create(fn=fn_output, path=path_output, close=False, **{**header_info, **meta_data})
+
+    # Write device information
+    device_name = meta_data['diag_tag']
+    putdata_device(device_name, device_info=device_info)
     pass
-    # TODO: Include mapping from old MAST signal names to new singal paths
-    raise NotImplementedError
+
+
+    variable_meta_data = meta_data.get('variables', {})
+    # Write dimensions, coordinates, data and additional attributes from xarray.Dataset objects
+    putdata_variables_from_datasets(path_data, image_data, path_names,
+                                    variable_names_path, variable_names_time, variable_names_image,
+                                    meta_data=variable_meta_data)
+    # Close file
+    putdata_close(file_id)
+
+    # TODO: Include mapping from old MAST signal names to new signal paths?
+    # raise NotImplementedError
+    success = True
+    return success
+
+# ================== PLUGIN MODULE FUNCTION ALIASES ==================
+write_output_file = write_processed_ir_to_uda_file
+# ====================================================================
 
 if __name__ == '__main__':
     pass
