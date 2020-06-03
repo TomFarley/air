@@ -135,8 +135,10 @@ def find_outlier_intensity_threshold(data, nsigma=3, sample_size_factor=5):
 def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
                                   x_path='x_pix_{path}', y_path='y_pix_{path}', path_name='path0',
                                   keys=None):
+    path = path_name
     x_path = x_path.format(path=path_name)
     y_path = y_path.format(path=path_name)
+    coord_path = f'i_{path}'
     if keys is None:
         keys = image_data.keys()
     frame_shape = image_data['frame_data'].shape[1:]
@@ -147,11 +149,15 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
         data = image_data[key]
         if (data.shape == frame_shape) or (data.shape[1:] == frame_shape):
             if re.match('.*_im$', key):
-                new_key = re.sub('_im$', f'_{path_name}', key)
+                new_key = re.sub('_im$', f'_{path}', key)
             else:
-                new_key = f'{key}_{path_name}'
-            data_out[new_key] = data.sel(x_pix=x_pix_path, y_pix=y_pix_path)
+                new_key = f'{key}_{path}'
+            # TODO: Handle 't' as active dim name
+            coords = ('n', coord_path) if ('n' in data.dims) else coord_path
+            data_out[new_key] = (coords, data.sel(x_pix=x_pix_path, y_pix=y_pix_path))
             data_out[new_key].attrs.update(data.attrs)  # Unnecessary?
+    if ('n' in data_out.dims):
+        data_out['n'] = image_data['n']
     return data_out
 
 
