@@ -86,6 +86,43 @@ def segment_path_by_material():  # pragma: no cover
                 f'r={r[no_tile_info_mask]}\nz={z[no_tile_info_mask]}')
     return tile_names
 
+def angles_to_convention(angles, units_input='radians', units_output='degrees', negative_angles=False):
+    """Convert angles between radians and degrees and from +/-180 deg range to 0-360 range
+
+    Args:
+        angles: Array of angles
+        units_input: Units of input data (radians/degrees)
+        units_output: Units angles should be converted to (radians/degrees)
+        negative_angles: Whether angles should be in range  +/-180 deg or 0-360 range
+
+    Returns:
+
+    """
+    if units_input in ('radians', 'rad'):
+        units_input = 'radians'
+    if units_output in ('degrees', 'deg'):
+        units_output = 'degrees'
+
+    if units_input not  in ('radians', 'degrees'):
+        raise ValueError(f'Invalid input angle units: {units_input}')
+    if units_output not in ('radians', 'degrees'):
+        raise ValueError(f'Invalid output angle units: {units_output}')
+
+    if (units_input == 'radians') and (units_output == 'degrees'):
+        angles = np.rad2deg(angles)
+    elif (units_input == 'degrees') and (units_output == 'radians'):
+        angles = np.deg2rad(angles)
+
+    shift = 360 if (units_output == 'degrees') else 2 * np.pi
+    if (not negative_angles):
+        angles = np.where(angles < 0, angles+shift, angles)
+    else:
+        half_circle = 180 if (units_output == 'degrees') else np.pi
+        angles = np.where(angles > half_circle, angles-shift, angles)
+
+    return angles
+
+
 def cartesian_to_toroidal(x, y, z=None, angles_in_deg=False, angles_positive=True):
     """Convert cartesian coordinates to toroidal coordinates
 
@@ -99,6 +136,7 @@ def cartesian_to_toroidal(x, y, z=None, angles_in_deg=False, angles_positive=Tru
     Returns: (r, phi, theta)
 
     """
+    #TODO: Update call signature to be more inline with angles_to_convention()?
     r = np.hypot(x, y)
     phi = np.arctan2(y, x)  # Toroidal angle 'ϕ'
 
@@ -108,14 +146,27 @@ def cartesian_to_toroidal(x, y, z=None, angles_in_deg=False, angles_positive=Tru
     else:
         theta = np.full_like(x, np.nan)
 
-    if angles_in_deg:
-        phi = np.rad2deg(phi)
-        theta = np.rad2deg(theta)
-    if angles_positive:
-        shift = 360 if angles_in_deg else 2*np.pi
-        phi = np.where(phi < 0, phi+shift, phi)
-        theta = np.where(theta < 0, theta+shift, theta)
+    units = 'degrees'*angles_in_deg + 'radians' * (not angles_in_deg)
+    phi = angles_to_convention(phi, units_input='radians', units_output=units, negative_angles=(not angles_positive))
+    theta = angles_to_convention(theta, units_input='radians', units_output=units, negative_angles=(not angles_positive))
+
     return r, phi, theta
+
+def toroidal_to_cartesian(r, phi, angles_units='radians'):
+    """Convert (R, phi) coords to (x, y) cartesian coords
+
+    Args:
+        r: Radial coordinate
+        phi: Phi toroidal angle coordinate
+        angles_units: Units of phi (radians/degrees)
+
+    Returns: Array of x coordinates, Array of y coordinates
+
+    """
+    phi = angles_to_convention(phi, units_input=angles_units, units_output='radians', negative_angles=True)
+    x = r * np.cos(phi)
+    y = r * np.sin(phi)
+    return x, y
 
 def calc_horizontal_path_anulus_areas(r_path):
     """Return areas of horizontal annuli around machine at each point along the analysis path.
