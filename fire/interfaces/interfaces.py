@@ -335,19 +335,43 @@ def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, raise_: bool=
     else:
         return calib_info
 
-def read_csv(path_fn: Union[Path, str], **kwargs):
+def read_csv(path_fn: Union[Path, str], clean=True, **kwargs):
+    """Wrapper for pandas csv reader
+
+    Args:
+        path_fn: Path to csv file
+        **kwargs:
+
+    Returns:
+
+    """
     path_fn = Path(path_fn)
     if 'sep' not in kwargs:
         if path_fn.suffix == '.csv':
             kwargs['sep'] = ',\s*'
         elif path_fn.suffix == '.tsv':
             kwargs['sep'] = r'\s+'
+        elif path_fn.suffix == '.asc':
+            kwargs['sep'] = r'\t'
         else:
             kwargs['sep'] = None  # Use csv.Sniffer tool
     try:
         table = pd.read_csv(path_fn, **kwargs)  # index_col
     except FileNotFoundError:
         return FileNotFoundError(f'CSV file does not exist: {path_fn}')
+
+    if clean:
+        last_column = table.iloc[:, -1]
+        try:
+            all_nans = np.all(np.isnan(last_column))
+        except TypeError as e:
+            pass
+        else:
+            if all_nans:
+                # TODO: Add keyword to make this optional?
+                # Remove erroneous column due to spaces at end of lines
+                table = table.iloc[:, :-1]
+                logger.debug(f'Removed column of nans from csv file: {path_fn}')
     return table
 
 def lookup_pulse_info(pulse: Union[int, str], camera: str, machine: str, search_paths: PathList,
