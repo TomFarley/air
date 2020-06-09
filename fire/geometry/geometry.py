@@ -152,15 +152,16 @@ def cartesian_to_toroidal(x, y, z=None, angles_in_deg=False, angles_positive=Tru
 
     return r, phi, theta
 
-def toroidal_to_cartesian(r, phi, angles_units='radians'):
+def cylindrical_to_cartesian(r, phi, z=None, angles_units='radians'):
     """Convert (R, phi) coords to (x, y) cartesian coords
 
     Args:
         r: Radial coordinate
         phi: Phi toroidal angle coordinate
+        z: Z cartesian coordinate (ignored, but included so signature accepts full cylindrical coords)
         angles_units: Units of phi (radians/degrees)
 
-    Returns: Array of x coordinates, Array of y coordinates
+    Returns: (Array of x coordinates, Array of y coordinates)
 
     """
     phi = angles_to_convention(phi, units_input=angles_units, units_output='radians', negative_angles=True)
