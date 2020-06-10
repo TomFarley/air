@@ -20,9 +20,9 @@
                     ],
                     "device_details": {
                         "id": "FLIR SC7500 MWIR Camera 1",
-                        "serial": 6580045,
-                        "resolution": [320, 256],
-                        "range": [0, 16383],
+                        "camera_serial_number": 6580045,
+                        "image_resolution": [320, 256],
+                        "image_range": [0, 16383],
                         "bit_depth": 14,
                         "pixel_pitch": 30e-6,
                         "aperture": "f/3",
@@ -41,13 +41,14 @@
                     "movie_plugins": [
                         "ipx",
                         "uda",
+                        "npz",
                         "imstack"
                     ],
                     "device_details": {
                         "id": "IRcam Velox 81k Camera 1",
-                        "serial": "0101-A18-CH",
-                        "resolution": [320, 256],
-                        "range": [0, 16383],
+                        "camera_serial_number": "0101-A18-CH",
+                        "image_resolution": [320, 256],
+                        "image_range": [0, 16383],
                         "bit_depth": 14,
                         "pixel_pitch": 30e-6,
                         "aperture": "f/2",
@@ -84,9 +85,9 @@
                     ],
                     "device_details": {
                         "id": "Santa Barbara Focal Plane SBF 125 Camera",
-                        "serial": "???",
-                        "resolution": [320, 256],
-                        "range": [0, 16383],
+                        "camera_serial_number": "???",
+                        "image_resolution": [320, 256],
+                        "image_range": [0, 16383],
                         "bit_depth": 14,
                         "pixel_pitch": 30e-6,
                         "aperture": "??",
@@ -108,9 +109,9 @@
                     ],
                     "device_details": {
                         "id": "Thermosensorik CMT256 LHS",
-                        "serial": "???",
-                        "resolution": [256, 256],
-                        "range": [0, 16383],
+                        "camera_serial_number": "???",
+                        "image_resolution": [256, 256],
+                        "image_range": [0, 16383],
                         "bit_depth": 14,
                         "pixel_pitch": 40e-6,
                         "aperture": "??",
@@ -150,7 +151,7 @@
                             320,
                             256
                         ],
-                        "range": [
+                        "image_range": [
                             0,
                             16383
                         ],
@@ -208,6 +209,9 @@
                     "format_coord": "format_coord",
                     "s_global": "get_s_coord_global",
                     "s_path": "get_s_coord_path",
+                    "get_wall_rz_coords": "get_wall_rz_coords",
+                    "plot_vessel_outline": "plot_vessel_outline",
+                    "plot_vessel_top_down": "plot_vessel_top_down",
                     "info": "plugin_info"
                 }
             }
@@ -278,12 +282,10 @@
             "analysis_path_dfns-{machine}-{camera}-defaults.json"
         ],
         "black_body_curve": [
-            "bb_photons-{lens}-{exposure}us.tsv",
-            "bb_photons-{lens}-{exposure:0.0f}us.tsv"
+            "bb_photons-{lens_in_mm}mm-{exposure_in_us}us.tsv"
         ],
         "temperature_coefs": [
-            "temperature_coefs-{machine}-{camera}-{lens}-{exposure}us.csv",
-            "temperature_coefs-{machine}-{camera}-{lens}-{exposure:0.0f}us.csv"
+            "temperature_coefs-{machine}-{camera}-{lens_in_mm:0.0f}mm-{exposure_in_us:0.0f}us.csv"
         ],
         "structure_coords": [
             "structure_coords-{machine}-default.csv"
@@ -307,7 +309,9 @@
             ],
             "time": [
                 "heat_flux_total",
-                "heat_flux_peak"
+                "heat_flux_peak",
+                "heat_flux_s_peak",
+                "heat_flux_r_peak"
             ],
             "image": [
                 "temperature"
@@ -376,7 +380,6 @@
             "units": "m",
             "description": "Radial coordinate of peak in heat flux along the IR analysis path"
         }
-
     },
     "checkpoints": {
         "filenames": {
