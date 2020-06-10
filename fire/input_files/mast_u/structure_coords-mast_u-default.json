@@ -1,0 +1,254 @@
+{
+  "_README": "The locations of tiles etc are defined by boxes in (R, phi, z) containing the structures. They are defined at one toroidal location and can then be coppied around the machine using a given toroidal periodicity. The order the boxes are read can be important when complex geometries (eg MAST-U nose) cause boxes to overlap.",
+  "conventions": {
+    "location_start_phi": 90,
+    "number_clockwise_from_above": true,
+    "location_number_start": 1
+  },
+  "1": {
+    "name_short": "centre_column",
+    "name_code": {
+      "format": "{component_letter}{tile_type_number}",
+      "component_letter": "C",
+      "tile_type_number": 1,
+      "location_leters": [],
+      "n_variants": 1
+    },
+    "extent": {
+      "R": [
+        0.000,
+        0.336
+      ],
+      "phi": [
+        0,
+        360
+      ],
+      "z": [
+        -1.100,
+        1.100
+      ]
+    },
+    "toroidal_periodicity": 1,
+    "mirror_z": false,
+    "material": "JET_T5_CFC",
+    "display_color": "blue",
+    "description": "Whole centre column",
+    "comments": "Calling all of centre colum C1 for simplictity - not dividing into C1-C5"
+  },
+  "2": {
+    "name_short": "C6 tile",
+    "name_code": {
+      "format": "{component_letter}{tile_type_number}-{location_letter}-{location_number:02d}",
+      "component_letter": "C",
+      "tile_type_number": 6,
+      "location_leters": ["L", "U"],
+      "n_variants": 1
+    },
+    "extent": {
+      "R": [
+        0.332, 0.336
+      ],
+      "phi": [
+        -30, 90
+      ],
+      "z": [
+        -1.100, -1.300
+      ]
+    },
+    "toroidal_periodicity": 3,
+    "mirror_z": true,
+    "material": "JET_T5_CFC",
+    "display_color": "green",
+    "description": "Tile C6 at ends of centre column",
+    "comments": ""
+  },
+  "3": {
+    "name_short": "T1 tile",
+    "name_code": {
+      "format": "{component_letter}{tile_type_number}-{location_letter}-{location_number:02d}",
+      "component_letter": "T",
+      "tile_type_number": 1,
+      "location_leters": ["L", "U"],
+      "n_variants": 1
+    },
+    "extent": {
+      "R": [
+        0.332, 0.539
+      ],
+      "phi": [
+        75, 90
+      ],
+      "z": [
+        -1.300, -1.505
+      ]
+    },
+    "toroidal_periodicity": 24,
+    "mirror_z": true,
+    "material": "JET_T5_CFC",
+    "display_color": "yellow",
+    "description": "Tile T1 at start of inner divertor slope",
+    "comments": ""
+  },
+  "4": {
+    "name_short": "T2 tile",
+    "name_code": {
+      "format": "{component_letter}{tile_type_number}-{location_letter}-{location_number:02d}",
+      "component_letter": "T",
+      "tile_type_number": 2,
+      "location_leters": ["L", "U"],
+      "n_variants": 1
+    },
+    "extent": {
+      "R": [
+        0.540, 0.905
+      ],
+      "phi": [
+        75, 90
+      ],
+      "z": [
+        -1.510, -1.879
+      ]
+    },
+    "toroidal_periodicity": 24,
+    "mirror_z": true,
+    "material": "JET_T5_CFC",
+    "display_color": "orange",
+    "description": "Tile T2 on sloping inner divertor",
+    "comments": ""
+  },
+  "5": {
+    "name_short": "T3 tile",
+    "name_code": {
+      "format": "{component_letter}{tile_type_number}-{location_letter}-{location_number:02d}",
+      "component_letter": "T",
+      "tile_type_number": 3,
+      "location_leters": ["L", "U"],
+      "n_variants": 1
+    },
+    "extent": {
+      "R": [
+        0.905, 1.073
+      ],
+      "phi": [
+        75, 90
+      ],
+      "z": [
+        -1.882, -2.047
+      ]
+    },
+    "toroidal_periodicity": 24,
+    "mirror_z": true,
+    "material": "JET_T5_CFC",
+    "display_color": "red",
+    "description": "Tile T3 on sloping inner divertor",
+    "comments": ""
+  },
+  "6": {
+    "name_short": "T4 tile",
+    "name_code": {
+      "format": "{component_letter}{tile_type_number}-{location_letter}-{location_number:02d}",
+      "component_letter": "T",
+      "tile_type_number": 4,
+      "location_leters": ["L", "U"],
+      "n_variants": 1
+    },
+    "extent": {
+      "R": [
+        1.071, 1.376
+      ],
+      "phi": [
+        75, 90
+      ],
+      "z": [
+        -2.061, -2.063
+      ]
+    },
+    "toroidal_periodicity": 24,
+    "mirror_z": true,
+    "material": "JET_T5_CFC",
+    "display_color": "red",
+    "description": "Tile T4 on flat bottom surface of divertor",
+    "comments": ""
+  },
+  "7": {
+    "name_short": "T5 tile",
+    "name_code": {
+      "format": "{component_letter}{tile_type_number}-{location_letter}{variant}-{location_number:02d}",
+      "component_letter": "T",
+      "tile_type_number": 5,
+      "location_leters": ["L", "U"],
+      "n_variants": 4
+    },
+    "extent": {
+      "R": [
+        1.377, 1.745
+      ],
+      "phi": [
+        82.5, 90
+      ],
+      "z": [
+        -2.048, -1.680
+      ]
+    },
+    "toroidal_periodicity": 48,
+    "mirror_z": true,
+    "material": "JET_T5_CFC",
+    "display_color": "red",
+    "description": "Tile T5 on upward slope of outer divertor",
+    "comments": "TODO: Split into definitions for each of four T5 tile variants"
+  },
+  "8": {
+    "name_short": "N1 tile",
+    "name_code": {
+      "format": "{component_letter}{tile_type_number}-{location_letter}-{location_number:02d}",
+      "component_letter": "N",
+      "tile_type_number": 1,
+      "location_leters": ["L", "U"],
+      "n_variants": 1
+    },
+    "extent": {
+      "R": [
+        0.902, 1.191
+      ],
+      "phi": [
+        82.5, 97.5
+      ],
+      "z": [
+        -1.299, -1.012
+      ]
+    },
+    "toroidal_periodicity": 24,
+    "mirror_z": true,
+    "material": "JET_T5_CFC",
+    "display_color": "red",
+    "description": "Tile N1 on baffle nose",
+    "comments": ""
+  },
+  "9": {
+    "name_short": "N2 tile",
+    "name_code": {
+      "format": "{component_letter}{tile_type_number}-{location_letter}-{location_number:02d}",
+      "component_letter": "N",
+      "tile_type_number": 2,
+      "location_leters": ["L", "U"],
+      "n_variants": 1
+    },
+    "extent": {
+      "R": [
+        0.821, 0.900
+      ],
+      "phi": [
+        82.5, 97.5
+      ],
+      "z": [
+        -1.301, -1.594
+      ]
+    },
+    "toroidal_periodicity": 24,
+    "mirror_z": true,
+    "material": "JET_T5_CFC",
+    "display_color": "red",
+    "description": "Tile N2 on baffle nose",
+    "comments": ""
+  }
+}
