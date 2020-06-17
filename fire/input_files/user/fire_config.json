@@ -272,6 +272,9 @@
             "{camera}0{pulse}.ipx",
             "{camera}_{pulse}.npz"
         ],
+        "camera_settings": [
+            "camera_settings-{machine}-{camera}.csv"
+        ],
         "calcam_calibs": [
             "calcam_calibs-{machine}-{camera}-defaults.csv"
         ],
@@ -285,6 +288,7 @@
             "bb_photons-{lens_in_mm}mm-{exposure_in_us}us.tsv"
         ],
         "temperature_coefs": [
+            "temperature_coefs-{machine}-{camera}.csv",
             "temperature_coefs-{machine}-{camera}-{lens_in_mm:0.0f}mm-{exposure_in_us:0.0f}us.csv"
         ],
         "structure_coords": [
