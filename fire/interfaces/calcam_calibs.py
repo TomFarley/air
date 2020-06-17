@@ -11,6 +11,7 @@ import logging, time
 from typing import Union, Sequence, Optional
 from pathlib import Path
 from collections import OrderedDict, defaultdict
+from copy import copy
 
 import numpy as np
 import pandas as pd
@@ -19,7 +20,7 @@ import skimage
 
 import calcam
 from fire import fire_paths
-from fire.geometry.geometry import cartesian_to_toroidal
+from fire.geometry.geometry import cartesian_to_toroidal, cylindrical_to_cartesian, angles_to_convention
 from fire.camera.image_processing import find_outlier_intensity_threshold
 from fire.interfaces.interfaces import lookup_pulse_row_in_csv
 from fire.misc.utils import locate_file, make_iterable, to_image_dataset
@@ -139,7 +140,7 @@ def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, ima
     wire_frame = calcam.render_cam_view(cad_model, calcam_calib, coords=image_coords)
 
     logger.debug(f'Getting surface coords...'); t0 = time.time()
-    ray_data = calcam.raycast_sightlines(calcam_calib, cad_model, coords=image_coords)
+    ray_data = calcam.raycast_sightlines(calcam_calib, cad_model, coords=image_coords, exclusion_radius=0.10)
     # TODO: Set sensor subwindow if using full sensor calcam calibration for windowed view
     # ray_data.set_detector_window(window=(Left,Top,Width,Height))
     print(f'Setup CAD model and cast rays in {time.time()-t0:1.1f} s')
@@ -245,7 +246,8 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_na
     path_coord = f'i_{path}'  # xarray index coordinate along analysis path
 
     # TODO: Handle combining multiple analysis paths? Move loop over paths below to here/outside fuction...?
-    image_shape = np.array(calcam_calib.geometry.get_display_shape())
+    subview_mask = calcam_calib.get_subview_mask(coords=image_coords)
+    image_shape = np.array(subview_mask.shape)
     # points = pd.DataFrame.from_dict(list(analysis_path_dfn.values())[0], orient='index')
     # points = pd.DataFrame.from_items(analysis_path_dfn).T
     points = pd.DataFrame.from_dict(OrderedDict(analysis_path_dfn)).T
@@ -262,56 +264,73 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_na
 
     points_xyz = points[[f'x_{path}_dfn', f'y_{path}_dfn', f'z_{path}_dfn']].to_array().T
     # Get image coordinates even if they are outside of the camera field of view
+    # NOTE: Calcam.project_points returns a list of image (x,y) coordinates for each subview. Images are indexed [y, x].
     points_pix_subviews = calcam_calib.project_points(points_xyz, fill_value=None)
-    subview_mask = calcam_calib.get_subview_mask(coords=image_coords)
-    points_pix, info = select_visible_points_from_subviews(points_pix_subviews, subview_mask,
-                                                     subviews_keep='all', raise_on_duplicate_view=True)
+    points_pix, info = select_visible_points_from_subviews(points_pix_subviews, subview_mask, points_xyz=points_xyz,
+                                                     subviews_keep='all',
+                                                     raise_on_duplicate_view=True, raise_on_out_of_frame=True)
     points_pix = points_pix.astype(int)
-    points[f'x_pix_{path}_dfn'] = (points.coords, points_pix[0])
-    points[f'y_pix_{path}_dfn'] = (points.coords, points_pix[1])
-    points[f'subview_{path}_dfn'] = (points.coords, info['subview_origin'])
-    # TODO: Handle points outside field of view
+    points[f'{path}_dfn_x_pix'] = (points.coords, points_pix[0])
+    points[f'{path}_dfn_y_pix'] = (points.coords, points_pix[1])
+    points[f'{path}_dfn_subview'] = (points.coords, info['subview_origin'])
+    points[f'{path}_dfn_visible'] = (points.coords, info['mask_visible'])
 
     pos_names = points.coords[pos_key]
     # x and y pixel value and path index number for each point along analysis path
     # Path index (path_no) indexes which pair of points in the path definition a given point along the path belongs to
-    xpix_path, ypix_path, path_no = [], [], []
+    xpix_path, ypix_path, path_no, xpix_out_of_frame, ypix_out_of_frame = [], [], [], [], []
     masks_path = {key: [] for key in masks} if masks else {}
     for i_path, (start_pos, end_pos) in enumerate(zip(pos_names, pos_names[1:])):
         if not points['include_next_interval'].sel(position=start_pos):
             continue
-        x0, y0, x1, y1 = np.round((*points[f'x_pix_{path}_dfn'].sel({pos_key: slice(start_pos, end_pos)}),
-                                   *points[f'y_pix_{path}_dfn'].sel({pos_key: slice(start_pos, end_pos)}))).astype(int)
+        x0, y0, x1, y1 = np.round((*points[f'{path}_dfn_x_pix'].sel({pos_key: slice(start_pos, end_pos)}),
+                                   *points[f'{path}_dfn_y_pix'].sel({pos_key: slice(start_pos, end_pos)}))).astype(int)
         # Use Bresenham's line drawing algorithm. npoints = max((dx, dy))
-        xpix, ypix = skimage.draw.line(x0, y0, x1, y1)
+        xpix_all, ypix_all = skimage.draw.line(x0, y0, x1, y1)
+
+        # Check if path strays outside image
+        mask_in_frame = check_in_frame(xpix_all, ypix_all, image_shape)
+        if np.any(~mask_in_frame):
+            from fire.plotting.image_figures import figure_analysis_path
+            logger.error(f'Some points defining the analysis path "{path_name}" stray outside the image')
+            data = to_image_dataset(masks[key], key)
+            xpix_path = np.concatenate(xpix_path)
+            ypix_path = np.concatenate(ypix_path)
+            data[path_coord] = (path_coord, np.arange(len(xpix_path)))
+            data[f'x_pix_{path}'] = (path_coord, xpix_path)
+            data[f'y_pix_{path}'] = (path_coord, ypix_path)
+            figure_analysis_path(data, key=key, show=True)
+            # raise
+
+        # Just keep parts of path that are visible
+        xpix = xpix_all[mask_in_frame]
+        ypix = ypix_all[mask_in_frame]
         xpix_path.append(xpix)
         ypix_path.append(ypix)
         path_no.append(np.full_like(xpix, i_path))
+
+        # Also record parts of path outside of frame for plotting/debugging etc
+        xpix_out_of_frame.append(xpix_all[~mask_in_frame])
+        ypix_out_of_frame.append(ypix_all[~mask_in_frame])
+
+        # Extract values along path from data masks
         for key in masks_path:
-            try:
-                mask_data = masks[key][ypix, xpix]
-            except IndexError as e:
-                from fire.plotting.image_figures import figure_analysis_path
-                logger.error(f'Analysis path strays outside image - not currently supported')
-                data = to_image_dataset(masks[key], key)
-                xpix_path = np.concatenate(xpix_path)
-                ypix_path = np.concatenate(ypix_path)
-                data[path_coord] = (path_coord, np.arange(len(xpix_path)))
-                data[f'x_pix_{path}'] = (path_coord, xpix_path)
-                data[f'y_pix_{path}'] = (path_coord, ypix_path)
-                figure_analysis_path(data, key=key, show=True)
-                raise
+            mask_data = masks[key][ypix, xpix]
             masks_path[key].append(mask_data)
+
     xpix_path = np.concatenate(xpix_path)
     ypix_path = np.concatenate(ypix_path)
     path_no = np.concatenate(path_no)
+    xpix_out_of_frame = np.concatenate(xpix_out_of_frame)
+    ypix_out_of_frame = np.concatenate(ypix_out_of_frame)
     for key in masks_path:
         masks_path[key] = np.concatenate(masks_path[key])
 
     # NOTE: path substitutions below are currently over generalised?
     analysis_path = xr.Dataset()
-    coords = {f'i_{path}': (f'i_{path}', np.arange(len(xpix_path)))}  #,
-              # f'segment_{path}': (f'{path}', path_no)}
+    coords = {f'i_{path}': (f'i_{path}', np.arange(len(xpix_path)))}
+    coords_oof = {f'i_{path}_out_of_frame': (f'i_{path}_out_of_frame', np.arange(len(xpix_out_of_frame)))}
+    coords.update(coords_oof)
 
     analysis_path = analysis_path.assign_coords(**coords)
     # TODO: Change to correct UDA units for arb array index
@@ -321,10 +340,13 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_na
     analysis_path[f'segment_{path}'] = ((f'i_{path}',), path_no)
     analysis_path[f'y_pix_{path}'] = ((f'i_{path}',), ypix_path)
     analysis_path[f'x_pix_{path}'] = ((f'i_{path}',), xpix_path)
+    # Include pixel coords of path elements outside of the frame
+    analysis_path[f'y_pix_{path}_out_of_frame'] = ((f'i_{path}_out_of_frame',), ypix_out_of_frame)
+    analysis_path[f'x_pix_{path}_out_of_frame'] = ((f'i_{path}_out_of_frame',), xpix_out_of_frame)
     # Calcam uses convention that the origin (0,0) is in the centre of the top-left pixel - reverse y axis for indexing?
     subview_path = subview_mask[::-1, :][ypix_path, xpix_path]
     analysis_path[f'subview_{path}'] = ((f'i_{path}',), subview_path)  # Which subview each pixel is from
-    analysis_path[f'in_frame_{path}'] = ((f'i_{path}',), check_in_frame(xpix_path, ypix_path, image_shape[::-1]))
+    # analysis_path[f'in_frame_{path}'] = ((f'i_{path}',), check_in_frame(xpix_path, ypix_path, image_shape[::-1]))
     index_path = {'x_pix': xr.DataArray(xpix_path, dims=f'i_{path}'),
                   'y_pix': xr.DataArray(ypix_path, dims=f'i_{path}')}
     for coord in ['R', 'phi', 'x', 'y', 'z']:
@@ -333,19 +355,59 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_na
         analysis_path[key+f'_{path}'] = ((f'i_{path}',), masks_path[key])
 
     # TODO: check_occlusion
-    if np.any(~analysis_path[f'in_frame_{path}']):
-        logger.warning(f'Analysis path contains sections that are not in frame: '
-                       f'{~analysis_paths["in_frame_{path}"]}')
+    if len(xpix_out_of_frame) > 0:
+        logger.warning(f'Analysis path contains sections that are not in frame: {len(xpix_out_of_frame)} points')
     return analysis_path
 
 def check_in_frame(x_points, y_points, image_shape):
     # TODO: Check calcam convension for subwindows
+    # NOTE: Calcam.project_points returns a list of image (x,y) coordinates for each subview. Images are indexed [y, x].
+    # TODO: check for alpha channel or frame number dim
     x_points, y_points = np.array(x_points), np.array(y_points)
     visible = (x_points >= 0) & (x_points < image_shape[1]) & (y_points >= 0) & (y_points < image_shape[0])
     return visible.astype(bool)
 
-def select_visible_points_from_subviews(points_pix_subviews, subview_mask, subviews_keep='all',
-                                        raise_on_duplicate_view=True):
+def cartesian_to_pixel_coordinates(calcam_calib, points_xyz, image_coords='Display', raise_on_out_of_frame=True):
+    subview_mask = calcam_calib.get_subview_mask(coords=image_coords)
+
+    # Get image coordinates even if they are outside of the camera field of view
+    # NOTE: Calcam.project_points returns a list of image (x,y) coordinates for each subview. Images are indexed [y, x].
+
+    points_pix_subviews = calcam_calib.project_points(points_xyz, fill_value=None, coords=image_coords)
+    points_pix, info = select_visible_points_from_subviews(points_pix_subviews, subview_mask, points_xyz=points_xyz,
+                                    subviews_keep='all',
+                                    raise_on_duplicate_view=True, raise_on_out_of_frame=raise_on_out_of_frame)
+
+    return points_pix, info
+
+def toroidal_to_pixel_coordinates(calcam_calib, points_rzphi, angle_units='degrees', image_coords='Display',
+                                  raise_on_out_of_frame=True):
+    """Project toroidal spatial coordinates onto the camera field of view, properly handling sub-views properly
+
+    Args:
+        calcam_calib: Calcam calibration object
+        points_rzphi: Array (npoints x 3) of toroidal spatial coordiantes ordered: [[r, z, phi], [...], ...]
+        angle_units: Units for phi (radians/degrees)
+        image_coords: Project to calcam coords Display/Original
+
+    Returns: Array (npoints, 2) of pixel coordiantes, dict of subview visibility info
+
+    """
+    points_rzphi = np.array(points_rzphi)
+    if points_rzphi.ndim == 1:
+        points_rzphi = points_rzphi[np.newaxis, :]
+    r, z, phi = points_rzphi[:, 0], points_rzphi[:, 1], points_rzphi[:, 2]
+
+    x, y = cylindrical_to_cartesian(r, phi, angles_units=angle_units)
+    points_xyz = np.array([x, y, z]).T
+
+    points_pix, info = cartesian_to_pixel_coordinates(calcam_calib, points_xyz, image_coords=image_coords,
+                                                      raise_on_out_of_frame=raise_on_out_of_frame)
+
+    return points_pix, info
+
+def select_visible_points_from_subviews(points_pix_subviews, subview_mask, points_xyz=None, subviews_keep='all',
+                                        raise_on_duplicate_view=True, raise_on_out_of_frame=True, subview_default=None):
     """Select projected points that are visible in that subview.
 
     When Calcam projects (x,y,z) coordinates onto an image, it returns are list of arrays of projected points for
@@ -355,6 +417,12 @@ def select_visible_points_from_subviews(points_pix_subviews, subview_mask, subvi
     Args:
         points_pix_subviews: List of Nx2 NumPY arrays containing the image coordinates returned by project_points
         subview_mask: Integer image mask indicating which subview each pixel belongs to
+        points_xyz: (Optional) Cartesian coordinates of projected points. If provided, also return filtered input coords
+        subviews_keep: Whether to only select points from a particular subview (default='all')
+        raise_on_duplicate_view: Raise exception if a point is imaged in multiple subviews
+        raise_on_out_of_frame: Raise exception if a projected point is not in frame
+        subview_default: Subview index to use for returning our of frame pixel coords (default 0 for single subview)
+                         (ie if raise_on_out_of_frame=False)
 
     Returns: (points, info) where poinits is a Nx2 NumPY array of projected points that fall within their respective
     subview's masked area and info is a dict of additional info
@@ -362,40 +430,86 @@ def select_visible_points_from_subviews(points_pix_subviews, subview_mask, subvi
     """
     if subviews_keep == 'all':
         subviews_keep = list(set(subview_mask.flatten()))
-    # Calcam uses convention that the origin (0,0) is in the centre of the top-left pixel - reverse for indexing
-    subview_mask = subview_mask[::-1, :]
+    if (not raise_on_out_of_frame) and (len(points_pix_subviews) == 1) and (subview_default is None):
+        # Only one subview, so safe to return out of frame pixels for subview 0 (otherwise ambiguous)
+        subview_default = 0
 
-    info = {}
-    info['mask_visible'] = defaultdict(dict)
+    # Calcam uses convention that the origin (0,0) is in the centre of the top-left pixel - reverse for indexing
+    # subview_mask = subview_mask[::-1, :]
+
+    info = {'n_subviews': len(points_pix_subviews)}
+    info['mask_in_frame'] = defaultdict(dict)
+    info['mask_in_subview'] = defaultdict(dict)
     info['points_visible'] = defaultdict(dict)
     points_keep = []
     subview_origin = []
-    # TODO: If in future paths need to span sub-views switch to looping over input points to preserve path order
+    # TODO: If in future paths need to span sub-views, switch to looping over input points to preserve path order
     for i_subview, points in enumerate(points_pix_subviews):
         if i_subview not in subviews_keep:
             continue
         # Switch order of x and y coords for indexing mask array
         # points_int = tuple(points[:, ::-1].astype(np.intp))
         points_int = points.astype(np.intp)
-        mask_values = subview_mask[points_int[:, 1], points_int[:, 0]]
-        mask_visible = mask_values == i_subview
-        points_visible = points[mask_visible, :]
-        info['mask_visible'][i_subview] = mask_visible
-        info['points_visible'][i_subview] = points_visible
+        mask_in_frame = check_in_frame(points_int[:, 0], points_int[:, 1], subview_mask.shape)
 
-        points_keep.append(points_visible)
-        subview_origin.append(np.full(len(points_visible), i_subview))
+        # Of points inside the frame find which belong to this subview
+        mask_in_subview = copy(mask_in_frame)
+        mask_values = subview_mask[points_int[mask_in_frame, 1], points_int[mask_in_frame, 0]]
+        mask_in_subview[mask_in_frame] = mask_values == i_subview
+        points_in_subview = points[mask_in_subview, :]
+
+        info['mask_in_frame'][i_subview] = mask_in_frame
+        info['mask_in_subview'][i_subview] = mask_in_subview
+        info['points_visible'][i_subview] = points_in_subview
+
+        if raise_on_out_of_frame:
+            # Only keep points in frame
+            points_keep.append(points_in_subview)
+            subview_origin.append(np.full(len(points_in_subview), i_subview))
+        else:
+            if (i_subview == subview_default):
+                # Return out of frame points from default subview
+                # TODO: In case of multiple sub-views, avoid duplication of points
+                points_keep.append(points)
+                subview_origin.append(np.full(len(points), i_subview))
+            else:
+                points_keep.append(points_in_subview)
+                subview_origin.append(np.full(len(points_in_subview), i_subview))
 
     points_keep = np.concatenate(points_keep)
     subview_origin = np.concatenate(subview_origin)
-    info['subview_origin'] = subview_origin
 
     # Check for degenerate projected points that are imaged in multiple sub views
-    n_imaged = np.sum([v for v in info['mask_visible'].values()], axis=0)
-    if np.any(n_imaged) > 1:
-        n_multi_imaged = np.sum(n_imaged > 1)
-        message = f'{n_multi_imaged} projected points are imaged in multiple sub-views'
+    n_imaged = np.sum([v for v in info['mask_in_subview'].values()], axis=0)
+    mask_visible = n_imaged > 0
+    n_multi_imaged = np.sum(n_imaged > 1)
+    n_missed = np.sum(n_imaged == 0)
+    info['mask_visible'] = mask_visible
+    info['subview_origin'] = subview_origin
+    info['n_imaged'] = n_imaged
+    info['n_multi_imaged'] = n_multi_imaged
+    info['n_missed'] = n_missed
+
+    if points_xyz is not None:
+        points_xyz = np.array(points_xyz)
+        info['xyz_visible'] = points_xyz[mask_visible, :]
+        info['xyz_out_of_frame'] = points_xyz[~mask_visible, :]
+        info['xyz_multi_imaged'] = points_xyz[n_imaged > 1, :]
+    else:
+        for key in ['xyz_visible', 'xyz_out_of_frame', 'xyz_multi_imaged']:
+            info[key] = None
+
+    if n_multi_imaged > 0:
+        message = f' {n_multi_imaged} projected points are imaged in multiple sub-views'
         if raise_on_duplicate_view:
+            raise ValueError(message)
+        else:
+            logger.warning(message)
+    if n_missed > 0:
+        message = (f' {n_missed} projected points are not visible in any sub-view (ie out of frame)\n'
+                   f'(x, y, z): {info["xyz_out_of_frame"]} ')
+                   # f'(x_pix, y_pix): {points_keep[~info["mask_visible"]]}')
+        if raise_on_out_of_frame:
             raise ValueError(message)
         else:
             logger.warning(message)
