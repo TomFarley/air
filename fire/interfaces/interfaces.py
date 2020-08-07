@@ -13,7 +13,7 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 
-from fire.misc.utils import locate_file, make_iterable
+from fire.misc.utils import locate_file, make_iterable, convert_dataframe_values_to_python_types
 from fire import fire_paths
 from fire.interfaces.exceptions import InputFileException
 
@@ -52,7 +52,7 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
 
     # Locate lookup files and extract relevant info for specific pulse - this info may be a filename for lookup at
     # next step
-    lookup_files = ['calcam_calibs', 'analysis_paths', 'temperature_coefs']
+    lookup_files = ['camera_settings', 'calcam_calibs', 'analysis_paths', 'temperature_coefs']
     lookup_info = {}
     for file_type in lookup_files:
         path, fn, info = lookup_pulse_info(pulse, camera, machine, params=params,
@@ -80,7 +80,9 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
 
     # Get filenames straight from config settings: Analysis path definition file, bb photons,
     # surface coords, surface properties
-    input_files = ['analysis_path_dfns', 'black_body_curve', 'structure_coords', 'material_props']
+    input_files = ['analysis_path_dfns',
+                   # 'black_body_curve',
+                   'structure_coords', 'material_props']
     errors = {}
     for file_type in input_files:
         fn_patterns = fn_patterns_inputs[file_type]
@@ -305,7 +307,8 @@ def two_level_dict_to_multiindex_df(d):
     return df
 
 
-def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, raise_: bool=True, **kwargs_csv
+def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, allow_overlaping_ranges: bool=False,
+                            raise_: bool=True, **kwargs_csv
     ) -> Union[pd.Series, Exception]:
     """Return row from csv file containing information for pulse range containing supplied pulse number
 
@@ -313,30 +316,37 @@ def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, raise_: bool=
     :param pulse: pulse number of interest
     :return: Pandas Series containing pulse information / Exception if unsuccessful
     """
-    table = read_csv(path_fn, **kwargs_csv)
+    table = read_csv(path_fn, python_types_kwargs=dict(list_delimiters=(',', ' ')), **kwargs_csv)
     if isinstance(table, Exception):
-        calib_info = table
+        pulse_info = table
     else:
         if not np.all([col in list(table.columns) for col in ['pulse_start', 'pulse_end']]):
-            calib_info = IOError(f'Unsupported pulse row CSV file format - '
+            pulse_info = IOError(f'Unsupported pulse row CSV file format - '
                           f'must contain "pulse_start", "pulse_end" columns: {path_fn}')
         else:
+            # TODO: Allow None for eg end of pulse range if current value
             table = table.astype({'pulse_start': int, 'pulse_end': int})
             row_mask = np.logical_and(table['pulse_start'] <= pulse, table['pulse_end'] >= pulse)
-            if np.sum(row_mask) > 1:
-                calib_info = ValueError(f'Lookup file contains overlapping ranges. Please fix: {path_fn}')
+            if (np.sum(row_mask) > 1) and (not allow_overlaping_ranges):
+                pulse_info = ValueError(f'Lookup file contains overlapping ranges. Please fix: {path_fn}')
             elif np.sum(row_mask) == 0:
                 pulse_ranges = list(zip(table['pulse_start'], table['pulse_end']))
-                calib_info = ValueError(f'Pulse {pulse} does not fall in any pulse range {pulse_ranges} in {path_fn}')
+                pulse_info = ValueError(f'Pulse {pulse} does not fall in any pulse range {pulse_ranges} in {path_fn}')
             else:
-                calib_info = table.loc[row_mask].iloc[0]
-    if isinstance(calib_info, Exception) and raise_:
-        raise calib_info
+                pulse_info = table.loc[row_mask]
+                if np.sum(row_mask) == 1:
+                    pulse_info = pulse_info.iloc[0]
+    if isinstance(pulse_info, Exception) and raise_:
+        raise pulse_info
     else:
-        return calib_info
+        return pulse_info
 
-def read_csv(path_fn: Union[Path, str], clean=True, **kwargs):
+def read_csv(path_fn: Union[Path, str], clean=True, convert_to_python_types=True, header='infer', comment='#',
+             python_types_kwargs=None, raise_not_found=False, verbose=False, **kwargs):
     """Wrapper for pandas csv reader
+
+    Other useful pandas.read_csv kwargs are:
+    - names (names to use for column headings) if no header row
 
     Args:
         path_fn: Path to csv file
@@ -348,7 +358,7 @@ def read_csv(path_fn: Union[Path, str], clean=True, **kwargs):
     path_fn = Path(path_fn)
     if 'sep' not in kwargs:
         if path_fn.suffix == '.csv':
-            kwargs['sep'] = ',\s*'
+            kwargs['sep'] = '\s*,\s*'
         elif path_fn.suffix == '.tsv':
             kwargs['sep'] = r'\s+'
         elif path_fn.suffix == '.asc':
@@ -356,9 +366,15 @@ def read_csv(path_fn: Union[Path, str], clean=True, **kwargs):
         else:
             kwargs['sep'] = None  # Use csv.Sniffer tool
     try:
-        table = pd.read_csv(path_fn, **kwargs)  # index_col
-    except FileNotFoundError:
-        return FileNotFoundError(f'CSV file does not exist: {path_fn}')
+        table = pd.read_csv(path_fn, header=header, comment=comment, **kwargs)  # index_col
+    except FileNotFoundError as e:
+        if raise_not_found:
+            raise e
+        else:
+            return FileNotFoundError(f'CSV file does not exist: {path_fn}')
+    except Exception as e:
+        logger.warning(f'Failed to read file: {path_fn}')
+        raise
 
     if clean:
         last_column = table.iloc[:, -1]
@@ -372,6 +388,16 @@ def read_csv(path_fn: Union[Path, str], clean=True, **kwargs):
                 # Remove erroneous column due to spaces at end of lines
                 table = table.iloc[:, :-1]
                 logger.debug(f'Removed column of nans from csv file: {path_fn}')
+
+    if convert_to_python_types:
+        # Convert eg "None" -> None, "true" -> True, "[1,2]" -> [1,2]
+        if python_types_kwargs is None:
+            python_types_kwargs = {}
+        table = convert_dataframe_values_to_python_types(table, **python_types_kwargs)
+
+    if verbose:
+        logger.info(f'Read data from file: {path_fn}')
+
     return table
 
 def lookup_pulse_info(pulse: Union[int, str], camera: str, machine: str, search_paths: PathList,
@@ -409,6 +435,7 @@ def lookup_pulse_info(pulse: Union[int, str], camera: str, machine: str, search_
     if raise_ and isinstance(info, Exception):
         raise info
     return path, fn, info
+
 
 def check_settings_complete(settings, machine, camera):
     """Check settings contain required information
