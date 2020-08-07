@@ -125,6 +125,110 @@ def make_iterable(obj: Any, ndarray: bool=False,
             raise TypeError(f'Invalid cast type: {cast_to}')
     return obj
 
+def get_traceback_location(level=0, format='{module_name}:{func_name}:{line_no} '):
+    """Returns an informative prefix for verbose Debug output messages"""
+    module = module_name(level=level)
+    func = func_name(level=level)
+    line = line_no(level=level)
+    return format.format(module_name=module, func_name=func, line_no=line)
+
+def is_possible_filename(fn, ext_whitelist=('py', 'txt', 'png', 'p', 'npz', 'csv',), ext_blacklist=(),
+                         ext_max_length=3):
+    """Return True if 'fn' is a valid filename else False.
+
+    Return True if 'fn' is a valid filename (even if it and its parent directory do not exist)
+    To return True, fn must contain a file extension that satisfies:
+        - Not in blacklist of extensions
+        - May be in whitelist of extensions
+        - Else has an extension with length <= ext_max_length
+    """
+    fn = str(fn)
+    ext_whitelist = ['.' + ext for ext in ext_whitelist]
+    if os.path.isfile(fn):
+        return True
+    elif os.path.isdir(fn):
+        return False
+
+    ext = os.path.splitext(fn)[1]
+    l_ext = len(ext) - 1
+    if ext in ext_whitelist:
+        return True
+    elif ext in ext_blacklist:
+        return False
+
+    if (l_ext > 0) and (l_ext <= ext_max_length):
+        return True
+    else:
+        return False
+
+def mkdir(dirs, start_dir=None, depth=None, accept_files=True, info=None, verbose=1):
+    """ Create a set of directories, provided they branch of from an existing starting directory. This helps prevent
+    erroneous directory creation. Checks if each directory exists and makes it if necessary. Alternatively, if a depth
+    is supplied only the last <depth> levels of directories will be created i.e. the path <depth> levels above must
+    pre-exist.
+    Inputs:
+        dirs 			- Directory path
+        start_dir       - Path from which all new directories must branch
+        depth           - Maximum levels of directories what will be created for each path in <dirs>
+        info            - String to write to DIR_INFO.txt file detailing purpose of directory etc
+        verbatim = 0	- True:  print whether dir was created,
+                          False: print nothing,
+                          0:     print only if dir was created
+    """
+    from pathlib import Path
+    # raise NotImplementedError('Broken!')
+    if start_dir is not None:
+        start_dir = os.path.expanduser(str(start_dir))
+        if isinstance(start_dir, Path):
+            start_dir = str(start_dir)
+        start_dir = os.path.abspath(start_dir)
+        if not os.path.isdir(start_dir):
+            print('Directories {} were not created as start directory {} does not exist.'.format(dirs, start_dir))
+            return 1
+
+    if isinstance(dirs, Path):
+        dirs = str(dirs)
+    if isinstance(dirs, (str)):  # Nest single string in list for loop
+        dirs = [dirs]
+    # import pdb; pdb.set_trace()
+    for d in dirs:
+        if isinstance(d, Path):
+            d = str(d)
+        d = os.path.abspath(os.path.expanduser(d))
+        if is_possible_filename(d):
+            if accept_files:
+                d = os.path.dirname(d)
+            else:
+                raise ValueError('mkdir was passed a file path, not a directory: {}'.format(d))
+        if depth is not None:
+            depth = np.abs(depth)
+            d_up = d
+            for i in np.arange(depth):  # walk up directory by given depth
+                d_up = os.path.dirname(d_up)
+            if not os.path.isdir(d_up):
+                logger.info('Directory {} was not created as start directory {} (depth={}) does not exist.'.format(
+                    d, d_up, depth))
+                continue
+        if not os.path.isdir(d):  # Only create if it doesn't already exist
+            if (start_dir is not None) and (start_dir not in d):  # Check dir stems from start_dir
+                if verbose > 0:
+                    logger.info('Directory {} was not created as does not start at {} .'.format(dirs,
+                                                                                          os.path.relpath(start_dir)))
+                continue
+            try:
+                os.makedirs(d)
+                if verbose > 0:
+                    logger.info('Created directory: {}   ({})'.format(d, get_traceback_location(level=2)))
+                if info:  # Write file describing purpose of directory etc
+                    with open(os.path.join(d, 'DIR_INFO.txt'), 'w') as f:
+                        f.write(info)
+            except FileExistsError as e:
+                logger.warning('Directory already created in parallel thread/process: {}'.format(e))
+        else:
+            if verbose > 1:
+                logger.info('Directory "' + d + '" already exists')
+    return 0
+
 def dirs_exist(paths: Iterable[Union[str, Path]], path_kws: Optional[dict]=None
                ) -> Tuple[List[Path], List[str], List[str]]:
     paths = make_iterable(paths)
@@ -268,6 +372,96 @@ def join_path_fn(path: Union[Path, str], fn: str):
 
     """
     return Path(path) / fn
+
+def convert_dataframe_values_to_python_types(df, col_subset=None, allow_strings=True, list_delimiters=',',
+                                             strip_chars=' '):
+    import pandas as pd
+    if col_subset is None:
+        col_subset = list(df.columns)
+
+    for col in col_subset:
+        if not isinstance(df[col].dtype, (object, pd.StringDtype, str)):
+            continue
+        column_dict = df[col].to_dict()
+        column_dict = convert_dict_values_to_python_types(column_dict, allow_strings=allow_strings,
+                                                          list_delimiters=list_delimiters, strip_chars=strip_chars)
+        for key, value in column_dict.items():
+            if isinstance(value, (list, tuple)):
+                df = df.astype({col: object})
+            df.at[key, col] = value  # Use 'at' rather than 'loc' to allow assigning lists to a cell
+
+    return df
+
+def convert_dict_values_to_python_types(dictionary, keys_subset=None, allow_strings=True, list_delimiters=',',
+                                        strip_chars=' '):
+    if keys_subset is None:
+        keys_subset = list(dictionary.keys())
+
+    for key in keys_subset:
+        value = dictionary[key]
+        if isinstance(value, str):
+            dictionary[key] = convert_string_to_python_type(value, allow_strings=allow_strings,
+                                                            list_delimiters=list_delimiters, strip_chars=strip_chars)
+
+    return dictionary
+
+def list_repr_to_list(string_list, allow_strings=True, list_delimiters=','):
+    """Convert the string representation of a list to a python list
+
+    Args:
+        string_list: String representing list
+        allow_strings: Whether to allow string elements in the list, else raise an error (bool)
+
+    Returns: python list object
+
+    """
+    # TODO: extend for tuple
+    string = string_list.strip('[ ]')
+
+    for delim in make_iterable(list_delimiters):
+        elements = string.split(delim)
+        if len(elements) > 1:
+            break
+
+    for i, element in enumerate(elements):
+        elements[i] = convert_string_to_python_type(element, allow_strings=allow_strings)
+    return elements
+
+def convert_string_to_python_type(string, allow_strings=True, strip_chars=' ', list_delimiters=','):
+    """Convert a repr string to it's python type
+
+    Supported types: int, float, None, list, (str)
+    """
+
+    if re.match("\w*\[.*\]\w*", string):
+        return list_repr_to_list(string, allow_strings=allow_strings, list_delimiters=list_delimiters)
+
+    type_dict = {'none': None, 'true': True, 'false': False}
+    for key, value in type_dict.items():
+        if string.lower() == key:
+            return value
+
+    try:
+        out = int(string)
+    except ValueError as e:
+        pass
+    else:
+        return out
+
+    try:
+        out = float(string)
+    except ValueError as e:
+        pass
+    else:
+        return out
+
+    if not allow_strings:
+        raise ValueError(f'Failed to convert string "{string}" to a python type')
+    else:
+        if strip_chars is not None:
+            string = string.strip(strip_chars)
+        return string
+
 
 def filter_kwargs(kwargs, funcs=None, include=(), exclude=(), required=None, kwarg_aliases=None,
                   extract_func_dict=True, remove_from_input=False):
