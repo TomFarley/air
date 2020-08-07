@@ -159,7 +159,7 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
         logger.warning(f'Using incorrect annulus areas for integrated/total quantities')
         annulus_areas_corrected = annulus_areas_horizontal
 
-    data_out[f'annulus_areas_{path}'] = (('i_{path}',), annulus_areas_corrected)
+    data_out[f'annulus_areas_{path}'] = ((f'i_{path}',), annulus_areas_corrected)
 
     for param in params:
         try:
