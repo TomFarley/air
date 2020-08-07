@@ -250,6 +250,7 @@
         "input_files": [
             "{fire_path}/input_files/",
             "{fire_path}/input_files/{machine}/",
+            "{fire_path}/input_files/{machine}/{camera}/",
             "{fire_path}/input_files/{machine}/calcam_calibs/",
             "~/input_files/{machine}/",
             "~/input_files/",
