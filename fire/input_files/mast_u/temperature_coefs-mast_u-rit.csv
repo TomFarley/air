@@ -1,6 +1,6 @@
-# Lab temperature calibrations for diagnostic tag RIR.
-# On MAST RIR corresponded to the SBF MWIR camera.
-# On MAST-U RIR corresponds to the FLIR MWIR camera with serial number 65800045.
+# Lab temperature calibrations for diagnostic tag RIT.
+# On MAST RIT corresponded to the Thermosensorik LWIR camera.
+# On MAST-U RIT corresponds to the IRCAM LWIR camera with serial number  0101-A18-CH.
 #
 # *Overview*
 # These calibration files can contain two forms of IR camera calibration. The calibration method used on MAST-U uses coefficients
@@ -54,14 +54,7 @@
 #             Calculated as average of y-intercepts of linear fits to ϕ(T) [/s/m^2] vs I_(DL,excess)(T) for range of integration times.
 # c1_intcp, c1_grad, c2_intcp, c2_grad: Interpolation coefficients for c_1 and c_2 parameters used on MAST, defined in equations (6), (7)
 #
-pulse_start, pulse_end, camera         , lens	         , ND_filter, wavelength_range, date      , c_1    , c_2 , photons_bg, c1_intcp, c1_grad , c2_intcp , c2_grad, notes
-19149      ,  25138   , SBF            , 25 mm         ,	None,    , 4.5-5.0um	      , 2007?     , None   , None, None      , -1.09e17, 8.09e13 , 1.300e13 , 5.10e9 , Old MAST calibration
-25139      ,  30452   , SBF            , 25 mm         ,	None,    , 4.5-5.0um	      , 2007?     , None   , None, None      , 2.9388e17, 7.98e13,-5.4344e13, 5.503e9, Old MAST calibration
-50000      , 100000   , FLIR (65800045), 50 mm (0103)  ,	None,    , 7.7-9.4um	      , 2019-02-19, 1.59e20, None, 1.80e21   , None    , None    , None     , None   , Results from calibration written up by Andrew Thornton on 19-02-2019
-
-
-
-
-pulse_start, pulse_end, lens	       , ND_filter,	wavelength_filter, date      , photons_bg, C1      , notes
-50000      , 100000   , 50 mm (0103),	None	    , None             , 2019-02-19, 1.80e21   ,	1.59e20 , Results from calibration written up by Andrew Thornton on 19-02-2019
-
+pulse_start, pulse_end, camera         , lens	         , ND_filter, wavelength_range, date      , c1     , c2  , photons_bg, c1_intcp, c1_grad , c2_intcp , c2_grad, notes
+19149      ,  25138   , SBF            , 25 mm         ,	None     , [4.5e-6 5.0e-6] , 2007?     , None   , None, None      , -1.09e17, 8.09e13 , 1.300e13 , 5.10e9 , Old MAST calibration
+25139      ,  30452   , SBF            , 25 mm         ,	None     , [4.5e-6 5.0e-6] , 2007?     , None   , None, None      , 2.9388e17, 7.98e13,-5.4344e13, 5.503e9, Old MAST calibration
+50000      , 100000   , FLIR (65800045), 50 mm (0103)  ,	None     , [7.7e-6 9.4e-6] , 2019-02-19, 1.59e20, None, 1.80e21   , None    , None    , None     , None   , Results from calibration written up by Andrew Thornton on 19-02-2019

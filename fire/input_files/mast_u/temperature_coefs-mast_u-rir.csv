@@ -24,7 +24,7 @@
 # body temperature. The photon flux [photons/s/m^2] is given by:
 # ϕ = ϕ_excess + ϕ_bg                      (4)
 #   = (n_(phot,excess) / t_int) + ϕ_bg
-#   = c_1 I_(DL,excess) / t_int) + ϕ_bg
+#   = (c_1 I_(DL,excess) / t_int) + ϕ_bg
 # ϕ_bg can be found either by:
 # 1) Interpolate the ϕ vs T lookup table at the temperature of the NUC view (ie tiles/shutter at start of pulse) (method on MAST), OR
 # 2) Use the average value for room temperature during the lab calibration found from the average value of the y_intercepts of plots of
@@ -54,8 +54,8 @@
 #             Calculated as average of y-intercepts of linear fits to ϕ(T) [/s/m^2] vs I_(DL,excess)(T) for range of integration times.
 # c1_intcp, c1_grad, c2_intcp, c2_grad: Interpolation coefficients for c_1 and c_2 parameters used on MAST, defined in equations (6), (7)
 #
-pulse_start, pulse_end, camera         , lens	         , ND_filter, wavelength_range, date      , c_1    , c_2 , photons_bg, c1_intcp, c1_grad, c2_intcp, c2_grad, notes
-19149      ,  28389   , SBF            , 13 mm         ,	None,    , 4.5-5.0um	      , 2007?     , None   , None, None      , -9.14e14, 4.30e13, None    , None   , Old MAST calibration
-28390      ,  30452   , SBF            , 13 mm         ,	None,    , 4.5-5.0um	      , 2007?     , None   , None, None      , -4.10e14, 4.31e13, None    , None   , Old MAST calibration
-50000      , 100000   , FLIR (65800045), 25 mm (211548),	None,    , 4.1-5.0um	      , 2019-02-19, 2.87e19, None, 9.20e19   , None    , None   , None    , None   , Results from calibration written up by Andrew Thornton on 19-02-2019
+pulse_start, pulse_end, camera         , lens	         , ND_filter, wavelength_range, date      , c1     , c2  , photons_bg, c1_intcp, c1_grad, c2_intcp, c2_grad, notes
+19149      ,  28389   , SBF            , 13 mm         ,	None     , [4.5e-6 5.0e-6] , 2007?     , None   , None, None      , -9.14e14, 4.30e13, None    , None   , Old MAST calibration
+28390      ,  30452   , SBF            , 13 mm         ,	None     , [4.5e-6 5.0e-6] , 2007?     , None   , None, None      , -4.10e14, 4.31e13, None    , None   , Old MAST calibration
+50000      , 100000   , FLIR (65800045), 25 mm (211548),	None     , [4.1e-6 5.0e-6] , 2019-02-19, 2.87e19, None, 9.20e19   , None    , None   , None    , None   , Results from calibration written up by Andrew Thornton on 19-02-2019
 
