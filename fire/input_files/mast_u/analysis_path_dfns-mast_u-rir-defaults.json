@@ -1,6 +1,10 @@
 {"MASTU_S4_lower_radial_1":
+  {
+    "coords":
         [
           ["start", {"R": 0.655, "z": -1.6267, "phi": 350.0, "order": 0, "include_next_interval": true}],
           ["end", {"R": 0.895, "z": -1.866, "phi": 350.0, "order": 1, "include_next_interval": false}]
-        ]
+        ],
+    "description": "Outward radial path along lower divertor tile 2 in the in sector 4"
+  }
 }
