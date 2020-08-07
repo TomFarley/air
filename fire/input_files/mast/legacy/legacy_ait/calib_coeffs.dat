@@ -1,0 +1,8 @@
+#Lab calibration coefficients for the LWIR camera
+#a is the x^2 coeff
+#b is the x coeff
+#trans is the correction for the window transmission
+
+#shot a_grad a_intcp b_grad b_intcp trans
+19149 8.0900e13 -1.0900e17 5.1000e9  1.3000e13 1.3
+25139 7.9800e13  2.9388e17 5.5030e9 -5.4344e13 1.3
