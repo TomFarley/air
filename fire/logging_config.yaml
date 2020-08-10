@@ -1,0 +1,36 @@
+version: 1
+formatters:
+  simple:
+    format: "%(levelname)s:%(name)s:%(funcName)s:%(lineno)s:   %(message)s"
+  dated:
+    format: "%(asctime)s - %(levelname)s - %(name)s - %(funcName)s:%(lineno)s: %(message)s"
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: simple
+    stream: ext://sys.stdout
+  file_rotating:
+    class: logging.handlers.RotatingFileHandler
+    maxBytes: 102400
+    backupCount: 2
+    mode: w
+    level: DEBUG
+    formatter: dated
+    filename: fire.log
+  file_timed:
+    class : logging.handlers.TimedRotatingFileHandler
+    when: m
+    interval: 2
+    backupCount: 2
+    level: DEBUG
+    formatter: dated
+    filename: ../tmp/logs/fire_debug_log.log
+loggers:
+  fire:
+    level: DEBUG
+    handlers: [console, file_timed]
+    propagate: no
+root:
+  level: WARNING
+  handlers: [console]
