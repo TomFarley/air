@@ -146,8 +146,8 @@
                     ],
                     "device_details": {
                         "id": "?",
-                        "serial": -1,
-                        "resolution": [
+                        "camera_serial_number": -1,
+                        "image_resolution": [
                             320,
                             256
                         ],
@@ -156,7 +156,7 @@
                             16383
                         ],
                         "bit_depth": 14,
-                        "pixel_pitch": -1,
+                        "pixel_pitch": 30e-6,
                         "aperture": "f/3",
                         "unfiltered_wavelength_range": [],
                         "wavelength_filters": [],
@@ -166,7 +166,8 @@
                         "manufacturer": "?",
                         "description": "?",
                         "aliases": [],
-                        "year_of_purchase": -1
+                        "year_of_purchase": -1,
+                        "warnings": ["incomplete device details, guessed most values eg pixel_pitch"]
                     }
                 }
             },
@@ -290,7 +291,7 @@
         ],
         "temperature_coefs": [
             "temperature_coefs-{machine}-{camera}.csv",
-            "temperature_coefs-{machine}-{camera}-{lens_in_mm:0.0f}mm-{exposure_in_us:0.0f}us.csv"
+            "temperature_coefs-{machine}-{camera}-{lens_in_cm:0.0f}cm-{exposure_in_us:0.0f}us.csv"
         ],
         "structure_coords": [
             "structure_coords-{machine}-default.csv"
