@@ -15,7 +15,7 @@ from scipy.constants import zero_Celsius
 import pandas as pd
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 wlr_flir = np.array([4.1e-6, 5.0e-6])
 wlr_ircam = np.array([7.7e-6, 9.4e-6])
@@ -183,7 +183,7 @@ def calc_bg_temperatures_for_calibration():
                                                                            transmittance=0.25)
     path_fn = '../input_files/mast_u/temperature_coefs-mast_u-2019_02_19.csv'
     data_calibration = read_csv(path_fn)
-    print(data_calibration)
+    # print(data_calibration)
 
     bg_photons_ircam_0101 = data_calibration.loc[0, 'photons_bg']
     bg_photons_ircam_0101_ndf = data_calibration.loc[1, 'photons_bg']
@@ -208,7 +208,7 @@ def calc_bg_temperatures_for_calibration():
                         temperature_ircam_0102_ndf=temperature_ircam_0102_ndf - zero_Celsius,
                         )
     # NOTE: Why do IRCAM data woth NDF not need 25% transmittance reduction
-    print(pd.Series(temperatures))
+    # print(pd.Series(temperatures))
     return temperatures
 
 def compare_curve_to_old_lookup_file():
