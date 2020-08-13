@@ -6,10 +6,11 @@
 Created: 
 """
 
-import logging, os
+import logging, os, re
 from pprint import pprint
 from copy import copy
 from collections import defaultdict
+from pathlib import Path
 
 import numpy as np
 import xarray as xr
@@ -18,13 +19,17 @@ import matplotlib.pyplot as plt
 import pyuda
 from fire.misc.utils import increment_figlabel, filter_kwargs, format_str, make_iterable
 
-# client = pyuda.Client()
-from mast.mast_client import MastClient
-client = MastClient(None)
-# client.server_tmp_dir = ''
+try:
+    # client = pyuda.Client()
+    from mast.mast_client import MastClient
+    client = MastClient(None)
+    # client.server_tmp_dir = ''
+except ModuleNotFoundError as e:
+    # TODO: Handle missing UDA client gracefully
+    raise e
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 # TODO: Move module defaults to json files
 signal_dims = {
@@ -210,13 +215,20 @@ def get_mastu_wall_coords():
     print(coords)
     return coords
 
+def get_uda_scheduler_filename(fn_pattern='{diag_tag}{shot:06d}.nc', path=None, kwarg_aliases=None, **kwargs):
+    fn = format_str(fn_pattern, kwargs, kwarg_aliases)
+    fn = re.sub("^r", 'a', fn)  # Change diagnostic tag from raw to analysed
+    if path is not None:
+        fn = Path(path) / fn
+    return fn
+
 def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_number=None, status=None,
                    conventions=None, data_class=None, title=None, comment=None, code=None, version=None,
                    xml=None, date=None, time=None, verbose=None,
                    kwarg_aliases=None, close=False, **kwargs):
     """
     Filename for diagnostics should be <diag_tag><shot_number>.nc
-    Where shotnumber is a 6-digit number with leading zeros (eg. 040255)
+    Where shotnumber is a 6-digit number with leading zeros (eg. air040255)
 
     Status Description
     -1: Poor Data: Do Not Use (Access to the data via IDAM is blocked
@@ -267,10 +279,14 @@ def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_numb
     check_for_required_args(create_kwargs, requried_args.keys(), none_as_missing=True)
 
     if kwargs:
-        fn = format_str(fn, kwargs, kwarg_aliases)
+        fn = get_uda_scheduler_filename(fn, kwarg_aliases=kwarg_aliases, **kwargs)
+
         create_kwargs['directory'] = os.path.abspath(format_str(create_kwargs['directory'], kwargs, kwarg_aliases))
         create_kwargs['title'] = format_str(create_kwargs['title'], kwargs, kwarg_aliases)
         create_kwargs['comment'] = format_str(create_kwargs['comment'], kwargs, kwarg_aliases)
+
+    path_fn = (Path(create_kwargs['directory'])/fn).resolve()
+    # TODO: Delete existing output file?
 
     try:
         client.put(fn, step_id="create", **create_kwargs)
@@ -279,10 +295,15 @@ def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_numb
         raise
     except Exception as e:
         raise
+    else:
+        logger.info(f'Created uda output netcdf file at {path_fn}')
+        if not path_fn.is_file():
+            # raise FileNotFoundError(f'UDA output file does not exist: {path_fn}')
+            logger.exception(f'UDA output file does not exist: {path_fn}')
     file_id = client.put_file_id
     if close:
         client.put(step_id="close", file_id=file_id, verbose=False)
-    return file_id
+    return file_id, path_fn
 
 def putdata_update(fn, path=None):
     """Reopen previously created netcdf file
@@ -315,7 +336,7 @@ def putdata_device(device_name, device_info, attributes=None):
 
     """
     group = f'/devices/{device_name}'
-    requried_args = ['id', 'serial', 'resolution', 'range']
+    requried_args = ['id', 'camera_serial_number', 'image_resolution', 'image_range']
     check_for_required_args(device_info, requried_args, none_as_missing=True, application='Device data')
     # TODO: Add attributes for wavelength range, manufacuturer, model, lens, wavelength filter, neutral density
     # filter, bit depth
@@ -362,8 +383,7 @@ def putdata_attribute(name, value, group):
     elif (isinstance(value, (list, tuple)) and (len(value) > 0) and isinstance(value[0], str)):
         subgroup = f'{group}/{name}'
         for i, v in enumerate(value):
-            k = f'{name}_{i}'
-            putdata_attribute(k, v, subgroup)
+            putdata_attribute(str(i), v, subgroup)
     else:
         try:
             client.put(value, name=name, group=group, step_id='attribute')
@@ -447,7 +467,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names,
             dimensions = ','.join(variable.dims)
             kwargs = {k: variable.attrs[k] for k in optional_dim_attrs if k in variable.attrs}
             putdata_variable(variable_name, dimensions, variable.values, group=group, **kwargs)
-    logger.info(f'Wrote variables to file: \n{variable_name}')
+    logger.info(f'Wrote variables to file: \n{variable_names_image+variable_names_path+variable_names_time}')
 
 def putdata_dimension(dimension_name, dim_length, group='/', **kwargs):
     # TODO: add attributes to dim
