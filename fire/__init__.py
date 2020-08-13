@@ -6,22 +6,29 @@ from pathlib import Path
 
 import pandas as pd
 import xarray as xr
+
 # Set up logger for module
-logging.basicConfig(
-    # format="%(levelname)s:%(module)s:%(funcName)s:%(lineno)s: %(message)s",
-    )
-
-with open('logging_config.yaml', 'r') as f:
-    config = yaml.safe_load(f.read())
-    logging.config.dictConfig(config)
-
+logging.basicConfig()
 logger_fire = logging.getLogger(__name__)
-logger_fire.setLevel(logging.DEBUG)
 
 # Store important paths for quick reference
 fire_paths = {'root': Path(__file__).parent}
 fire_paths['input_files'] = fire_paths['root'] / 'input_files'
 fire_paths['config'] = Path('~/.fire_config.json').expanduser()
+
+with open(fire_paths['root'] / 'logging_config.yaml', 'r') as f:
+    config = yaml.safe_load(f.read())
+    # Make sure relative paths are relative to fire root directory
+    for handler in config['handlers']:
+        if 'filename' in config['handlers'][handler]:
+            config['handlers'][handler]['filename'] = config['handlers'][handler]['filename'].format(fire=fire_paths[
+                'root'])
+    logging.config.dictConfig(config)
+
+# Set logging level for console output handler propagated throughout fire package
+stream_handler = logger_fire.handlers[0]
+logger_fire.setLevel(logging.DEBUG)
+stream_handler.setLevel(logging.DEBUG)
 
 active_machine_plugin = None
 active_calcam_calib = None
@@ -49,7 +56,7 @@ xr.set_options(**{'cmap_sequential': 'gray'})
 
 # Import FIRE sub-modules
 from .interfaces import interfaces
-from.misc import utils
+from .misc import utils
 # from .theodor import theo_mul_33 as theodor
 
 # from .. import tests
