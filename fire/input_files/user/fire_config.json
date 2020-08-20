@@ -21,7 +21,7 @@
                     "device_details": {
                         "id": "FLIR SC7500 MWIR Camera 1",
                         "camera_serial_number": 6580045,
-                        "image_resolution": [320, 256],
+                        "detector_resolution": [320, 256],
                         "image_range": [0, 16383],
                         "bit_depth": 14,
                         "pixel_pitch": 30e-6,
@@ -48,7 +48,7 @@
                     "device_details": {
                         "id": "IRcam Velox 81k Camera 1",
                         "camera_serial_number": "0101-A18-CH",
-                        "image_resolution": [320, 256],
+                        "detector_resolution": [320, 256],
                         "image_range": [0, 16383],
                         "bit_depth": 14,
                         "pixel_pitch": 30e-6,
@@ -87,7 +87,7 @@
                     "device_details": {
                         "id": "Santa Barbara Focal Plane SBF 125 Camera",
                         "camera_serial_number": "???",
-                        "image_resolution": [320, 256],
+                        "detector_resolution": [320, 256],
                         "image_range": [0, 16383],
                         "bit_depth": 14,
                         "pixel_pitch": 30e-6,
@@ -112,7 +112,7 @@
                     "device_details": {
                         "id": "Thermosensorik CMT256 LHS",
                         "camera_serial_number": "???",
-                        "image_resolution": [256, 256],
+                        "detector_resolution": [256, 256],
                         "image_range": [0, 16383],
                         "bit_depth": 14,
                         "pixel_pitch": 40e-6,
@@ -149,7 +149,7 @@
                     "device_details": {
                         "id": "?",
                         "camera_serial_number": -1,
-                        "image_resolution": [
+                        "detector_resolution": [
                             320,
                             256
                         ],
