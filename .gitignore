@@ -3,13 +3,16 @@
 fire.egg-info/
 **/__pycache__
 **/.directory
-tmp/
+tmp/*
+figures/*
 
 .coverage
 htmlcov
 tests/htmlcov
 
 **.bkup
+**.log
+**.log.*
 .nfs*
 *.p
 *.o
