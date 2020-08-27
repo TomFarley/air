@@ -1,19 +1,19 @@
-{"MAST_S1_L3_centre_radial_1":
+{"MAST_S1_Upper_L3_centre_radial_1":
   {
     "coords":
         [
-          ["start", {"R": 0.770, "z": -1.827, "phi": 70.6, "order": 0, "include_next_interval": true}],
-          ["end", {"R": 1.484, "z": -1.831, "phi": 70.6, "order": 1, "include_next_interval": false}]
+          ["start", {"R": 0.770, "z": 1.827, "phi": 70.6, "order": 0, "include_next_interval": true}],
+          ["end", {"R": 1.484, "z": 1.831, "phi": 70.6, "order": 1, "include_next_interval": false}]
         ],
-    "description": "Outward radial path down centre of louvre 3 in sector 1, spanning tiles 2-3?, in the lower divertor"
+    "description": "Mirror of AIR view - Outward radial path down centre of louvre 3 in sector 1, spanning tiles 2-3?, in the upper divertor"
   },
-"MAST_S1_L3_centre_radial_2":
+"MAST_S1_Upper_L3_centre_radial_2":
   {
     "coords":
         [
-          ["start", {"R": 1.3, "z": -1.827, "phi": 70.6, "order": 0, "include_next_interval": true}],
-          ["end", {"R": 1.484, "z": -1.831, "phi": 70.6, "order": 1, "include_next_interval": false}]
+          ["start", {"R": 1.300, "z": 1.830, "phi": 70.6, "order": 0, "include_next_interval": true}],
+          ["end", {"R": 1.430, "z": 1.830, "phi": 70.6, "order": 1, "include_next_interval": false}]
         ],
-    "description": "Outward radial path along lower divertor on louvre 3 in sector 1, spanning tiles 2-3?"
+    "description": "Outward radial path along upper divertor on louvre 3 in sector 1, outer divertor spanning tiles 2-3?"
   }
 }
