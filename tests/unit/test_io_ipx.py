@@ -32,22 +32,21 @@ class TestIoIpxFast(unittest.TestCase):
         ipx_meta_data = read_movie_meta(ipx_path_fn)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
-        self.assertEqual(len(ipx_meta_data), 10)
+        self.assertEqual(len(ipx_meta_data), 11)
 
         self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 3749])))
         self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
-        self.assertEqual(ipx_meta_data['frame_shape'], (8, 320))
+        self.assertEqual(ipx_meta_data['image_shape'], (8, 320))
         self.assertAlmostEqual(ipx_meta_data['fps'], 5000.006668453812)
 
-        ipx_header_expected = {
-            'size': 286, 'codec': 'JP2', 'shot': 30378, 'trigger': -0.10000000149011612, 'lens': '50mm',
-            'filter': 'LP4500nm', 'view': 'Lower divertor view#6',
-            'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu', 'width': 320, 'height': 8,
-            'depth': 14, 'orient': 0, 'taps': 4, 'left': 1, 'right': 320, 'top': 185, 'bottom': 192, 'exposure': 28,
-            'strobe': 0, 'board_temp': 50.5, 'ccd_temp': 73.47895050048828, 'n_frames': 3750, 'is_color': 0,
-            'ipx_version': 'IPX 01', 'hbin': 0, 'vbin': 0, 'datetime': '23/09/2013 15:22:20', 'preexp': 28,
-            'gain': [2.0,2.0], 'offset': [170, 170]
-        }
+        ipx_header_expected = {'date_time': '23/09/2013 15:22:20', 'shot': 30378, 'trigger': -0.10000000149011612,
+                               'lens': '50mm', 'filter': 'LP4500nm', 'view': 'Lower divertor view#6',
+                               'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu',
+                               'width': 320, 'height': 8, 'depth': 14, 'taps': 4, 'left': 1, 'right': 320, 'top': 185,
+                               'bottom': 192, 'exposure': 28, 'strobe': 0, 'board_temp': 50.5,
+                               'ccd_temp': 73.47895050048828, 'n_frames': 3750, 'codex': 'JP2', 'is_color': 0,
+                               'hbin': 0, 'vbin': 0, 'pre_exp': 28, 'file_format': 'IPX 01', 'orientation': 0,
+                               'gain': [2.0, 2.0], 'offset': [170, 170]}
         self.assertEqual(ipx_meta_data['ipx_header'], ipx_header_expected)
 
     def test_get_ipx_meta_data_rit030378(self):
@@ -56,18 +55,18 @@ class TestIoIpxFast(unittest.TestCase):
         ipx_meta_data = read_movie_meta(ipx_path_fn)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
-        self.assertEqual(len(ipx_meta_data), 10)
+        self.assertEqual(len(ipx_meta_data), 11)
 
         self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 623])))
         self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.048749,  0.69885 ])))
-        self.assertEqual(ipx_meta_data['frame_shape'], (32, 256))
+        self.assertEqual(ipx_meta_data['image_shape'], (32, 256))
         self.assertAlmostEqual(ipx_meta_data['fps'], 833.3344480129053)
 
-        ipx_header_expected = {
-            'width': 256, 'height': 32, 'depth': 14, 'codec': 'jp2', 'datetime': '2013-09-23T15:37:29', 'shot': 30378,
-            'trigger': -0.5, 'view': 'HL01 Upper divertor view#1', 'camera': 'Thermosensorik CMT 256 SM HS',
-            'top': 153, 'bottom': 184, 'offset': 0.0, 'exposure': 50.0, 'ccdtemp': 59.0, 'frames': 625, 'size': 239,
-            'n_frames': 625, 'ipx_version': 'IPX 02'}
+        ipx_header_expected = {'width': 256, 'height': 32, 'depth': 14, 'shot': 30378, 'trigger': -0.5,
+                               'view': 'HL01 Upper divertor view#1', 'camera': 'Thermosensorik CMT 256 SM HS',
+                               'top': 153, 'bottom': 184, 'offset': 0.0, 'exposure': 50.0, 'ccdtemp': 59.0,
+                               'frames': 625, 'n_frames': 625, 'codex': 'jp2', 'date_time': '2013-09-23T15:37:29',
+                               'file_format': 'IPX 02'}
 
         self.assertEqual(ipx_meta_data['ipx_header'], ipx_header_expected)
 
@@ -93,7 +92,7 @@ class TestIoIpxFast(unittest.TestCase):
         # Read specific frames
         frames = [5, 150, 177, 1595, 3749]
         nframes = len(frames)
-        frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn, frame_nos=frames)
+        frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn, frame_numbers=frames)
         self.assertTrue(isinstance(frame_data, np.ndarray))
         self.assertTrue(isinstance(frame_nos, np.ndarray))
         self.assertTrue(isinstance(frame_times, np.ndarray))
@@ -109,7 +108,7 @@ class TestIoIpxFast(unittest.TestCase):
         # Read single frame
         frames = 2678
         nframes = 1
-        frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn, frame_nos=frames)
+        frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn, frame_numbers=frames)
         self.assertTrue(isinstance(frame_data, np.ndarray))
         self.assertTrue(isinstance(frame_nos, np.ndarray))
         self.assertTrue(isinstance(frame_times, np.ndarray))
@@ -122,11 +121,11 @@ class TestIoIpxFast(unittest.TestCase):
         np.testing.assert_array_equal(frame_data[0, ::3, ::150], frame_data_expected)
 
         with self.assertRaises(TypeError):
-            read_movie_data(None, frame_nos=frames)
+            read_movie_data(None, frame_numbers=frames)
         with self.assertRaises(FileNotFoundError):
-            read_movie_data('not a path', frame_nos=frames)
+            read_movie_data('not a path', frame_numbers=frames)
         with self.assertRaises(ValueError):
-            read_movie_data(ipx_path_fn, frame_nos=np.linspace(15, 30, 20))
+            read_movie_data(ipx_path_fn, frame_numbers=np.linspace(15, 30, 20))
 
         # TODO test transforms
 

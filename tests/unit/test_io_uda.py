@@ -8,7 +8,7 @@ try:
 except ImportError as e:
     print(f'Failed to import pyuda for tests')
     pyuda = None
-from fire.plugins.movie_plugins.uda import get_uda_movie_obj, read_movie_meta, read_movie_data
+from fire.plugins.movie_plugins.uda import get_uda_movie_obj_legacy, read_movie_meta, read_movie_data
 
 pwd = Path(__file__).parent
 ipx_path = (pwd / 'test_data/mast/').resolve()
@@ -33,7 +33,7 @@ if pyuda is not None:
             pulse = 30378
             camera = 'rir'
             n_start, n_end = 100, 110
-            vid = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end)
+            vid = get_uda_movie_obj_legacy(pulse, camera, n_start=n_start, n_end=n_end)
             self.assertEqual(type(vid), pyuda._video.Video)
             self.assertEqual(vid.camera, 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu')
             self.assertEqual(vid.lens, '50mm')
@@ -45,22 +45,28 @@ if pyuda is not None:
             meta_data = read_movie_meta(pulse, camera)
 
             self.assertTrue(isinstance(meta_data, dict))
-            self.assertEqual(len(meta_data), 10)
+            self.assertEqual(len(meta_data), 11)
 
             self.assertTrue(np.all(meta_data['frame_range'] == np.array([0, 3749])))
             self.assertTrue(np.all(meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
-            self.assertEqual(meta_data['frame_shape'], (8, 320))
+            self.assertEqual(meta_data['image_shape'], (8, 320))
             self.assertAlmostEqual(meta_data['fps'], 5000.006668453812)
 
-            # TODO: Understand why datetime and preexp fields no longer read
             ipx_header_expected = {
                 'board_temp': 50.5, 'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu',
-                'ccd_temp': 73.47895050048828,
-                # 'datetime': '2013-10-23T15:22:20Z', 'preexp': 28.0,
+                'ccd_temp': 73.47895050048828, 'codex': 'JP1',
+                'date_time': '2013-10-23T15:22:20Z',
                 'depth': 14, 'exposure': 28.0,
+                'file_format': 'IPX-1',
                 'filter': 'LP4500nm', 'gain': np.array([2., 2.]), 'hbin': 0, 'height': 8, 'is_color': 0, 'left': 1,
-                'lens': '50mm', 'n_frames': 3750, 'offset': np.array([170., 170.]), 'shot': 30378,
-                'taps': 4, 'top': 185, 'vbin': 0, 'view': 'Lower divertor view#6', 'width': 320, 'bottom': 177, 'right': 321
+                'lens': '50mm', 'n_frames': 3750, 'offset': np.array([170., 170.]),
+                'orientation': 0,
+                'pre_exp': 28.0,
+                'shot': 30378,
+                'strobe': 0,
+                'taps': 4,
+                'trigger': -0.10000000149011612,
+                'top': 185, 'vbin': 0, 'view': 'Lower divertor view#6', 'width': 320, 'bottom': 177, 'right': 321
             }
             meta_data['ipx_header'].pop('frame_times')
             # Check keys are identical
@@ -73,11 +79,11 @@ if pyuda is not None:
             meta_data = read_movie_meta(pulse, camera, n_start, n_end)
 
             self.assertTrue(isinstance(meta_data, dict))
-            self.assertEqual(len(meta_data), 10)
+            self.assertEqual(len(meta_data), 11)
 
             self.assertTrue(np.all(meta_data['frame_range'] == np.array([n_start, n_end])))
             np.testing.assert_almost_equal(meta_data['t_range'], np.array([-0.029971, -0.027971]))
-            self.assertEqual(meta_data['frame_shape'], (8, 320))
+            self.assertEqual(meta_data['image_shape'], (8, 320))
             self.assertAlmostEqual(meta_data['fps'], 5000.006668453812)
 
             meta_data['ipx_header'].pop('frame_times')
@@ -119,11 +125,11 @@ if pyuda is not None:
             ipx_meta_data = read_movie_meta(pulse, camera)
 
             self.assertTrue(isinstance(ipx_meta_data, dict))
-            self.assertEqual(len(ipx_meta_data), 10)
+            self.assertEqual(len(ipx_meta_data), 11)
 
             self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 624])))
             self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.049949,  0.69885])))
-            self.assertEqual(ipx_meta_data['frame_shape'], (32, 256))
+            self.assertEqual(ipx_meta_data['image_shape'], (32, 256))
             self.assertAlmostEqual(ipx_meta_data['fps'], 833.3344480129053, places=5)
 
             # ipx_header_expected = {'ID': 'IPX 02', 'width': 256, 'height': 32, 'depth': 14, 'codec': 'jp2',
@@ -133,11 +139,12 @@ if pyuda is not None:
             #                        'frames': 625, 'size': 239, 'n_frames': 625}
             # TODO: Understand why datetime and preexp fields no longer read
             ipx_header_expected = {'board_temp': 0.0, 'camera': 'Thermosensorik CMT 256 SM HS', 'ccd_temp': 59.0,
-             # 'datetime': '2013-10-23T15:37:29Z', 'preexp': 0.0,
-             'depth': 14, 'exposure': 50.0, 'filter': '', 'gain': np.array([0., 0.]),
-             'hbin': 0, 'height': 32, 'is_color': 0, 'left': 0, 'lens': '', 'n_frames': 625, 'offset': np.array([0., 0.]),
-             'shot': 30378, 'taps': 0, 'top': 153, 'vbin': 0, 'view': 'HL01 Upper divertor view#1',
-             'width': 256, 'bottom': 121, 'right': 256}
+                                   'codex': 'JP1', 'date_time': '2013-10-23T15:37:29Z', 'depth': 14, 'exposure': 50.0,
+                                   'file_format': 'IPX-2', 'filter': '', 'gain': np.array([0., 0.]), 'hbin': 0,
+                                   'height': 32, 'is_color': 0, 'left': 0, 'lens': '', 'n_frames': 625,
+                                   'offset': np.array([0., 0.]), 'orientation': 0, 'pre_exp': 0.0, 'shot': 30378,
+                                   'strobe': 0, 'taps': 0, 'top': 153, 'trigger': -0.5, 'vbin': 0,
+                                   'view': 'HL01 Upper divertor view#1', 'width': 256, 'bottom': 121, 'right': 256}
 
             ipx_meta_data['ipx_header'].pop('frame_times')
             # Check keys are identical
