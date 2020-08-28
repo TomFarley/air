@@ -1,2 +1,2 @@
 pulse_start,pulse_end,analysis_path_name,author,comments
-0,50000,100000,MASTU_S4_lower_radial_1,Tom Farley,Test path radially out at phi=350 deg
+50000,100000,MASTU_S4_lower_radial_1,Tom Farley,Test path radially out at phi=350 deg

@@ -1,2 +1,2 @@
 pulse_start,pulse_end,analysis_path_name,author,comments
-0,50000,100000,MASTU_S1_lower_T5_radial_2,Tom Farley,Reduced length test path radially out up T5 at phi=89 deg
+50000,100000,MASTU_S1_lower_T5_radial_2,Tom Farley,Reduced length test path radially out up T5 at phi=89 deg

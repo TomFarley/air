@@ -1,3 +1,6 @@
 # Record of settings for Thermosensorik CMT256 LHS LWIR camera ait used on MAST
 pulse_start, pulse_end, camera        , port   , window, NUC_shutter, ND_filter, wavelength_range, lens , t_int , t_offset, camera_settings_comments
-10000      , 49999    , Thermosensorik, HU01   , ??    , True       , None     , [7.6e-6 9.0e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE
+26364      , 26785    , Thermosensorik, HU01   , ??    , True       , None     , [7.6e-6 9.0e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE - HU01 window
+27654      , 28148    , Thermosensorik, HU01   , ??    , True       , None     , [7.6e-6 9.0e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE - HU01 window
+28176      , 29938    , Thermosensorik, HU01   , ??    , True       , None     , [7.6e-6 9.0e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE - HU01 window
+30005      , 30209    , Thermosensorik, HU01   , ??    , True       , None     , [7.6e-6 9.0e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE - HU01 window
