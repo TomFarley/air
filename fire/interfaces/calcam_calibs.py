@@ -3,6 +3,18 @@
 
 """Functions for interfacing with Calcam
 
+Excert from Calcam documentation:
+Image Pixel Coordinates
+ Calcam follows the convention of using matrix/linear algebra style pixel coordinates for images, which is consistent with the way images are stored and addressed in 2D arrays in Python. In this convention, the origin (0,0) is in the centre of the top-left pixel in the image. The y axis runs from top to bottom down the image and the x axis runs horizontally left to right.
+ It is important to note that since 2D arrays are indexed [row, column], arrays containing images are indexed as [y,
+ x]. However, Calcam functions which deal with image coordinates are called as function(x,y). This is consistent with the way image coordinates are delt with in OpenCV.
+
+Resolution of calibration calibration can be returned with
+ geom = calcam_calibration.geometry
+ sensor_resolution = (geom.get_original_shape() if coords.lower() == 'original' else geom.get_display_shape())
+This returns a tuple of (x_width, y_height)
+A normal call to plt.imshow(frame) will display the image with the x axis running from left to right and the y axis
+running from top to bottom.
 
 Created: 11-10-19
 """
@@ -23,10 +35,11 @@ from fire import fire_paths
 from fire.geometry.geometry import cartesian_to_toroidal, cylindrical_to_cartesian, angles_to_convention
 from fire.camera.image_processing import find_outlier_intensity_threshold
 from fire.interfaces.interfaces import lookup_pulse_row_in_csv
+from fire.misc.data_quality import calc_outlier_nsigma_for_sample_size
 from fire.misc.utils import locate_file, make_iterable, to_image_dataset
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 PathList = Sequence[Union[Path, str]]
 
@@ -78,6 +91,49 @@ def get_calcam_calib_info(pulse: int, camera: str, machine: str, search_paths: O
         raise calib_info
     return calib_info
 
+def update_detector_window(calcam_calib: calcam.Calibration, detector_window: Optional[Union[list,tuple]]=None,
+                           frame_data: Optional[Union[xr.DataArray,np.ndarray]]=None, coords: str='Original'):
+    """
+
+    Args:
+        calcam_calib:    Calcam Calibration object
+        detector_window: (tuple or list) – A 4-element tuple or list of integers defining the detector window
+                         coordinates (Left,Top,Width,Height)
+        frame_data:      DataArray/ndarray of frame data
+        coords:          Whether frame data is passed in calcam "Original" or "Display" coordinates
+
+    Returns: calcam_calib, window_info
+
+    """
+    geom = calcam_calib.geometry
+    sensor_resolution = (geom.get_original_shape() if coords.lower() == 'original' else geom.get_display_shape())
+    if (detector_window is None) or np.any(np.isnan(detector_window)):
+        if frame_data is None:
+            raise ValueError(f'Require either frame data or detector window as inputs. Both None.')
+        logger.warning(f'Detector window not supplied - assuming centred detector window')
+        image_resolution = frame_data.shape[:0:-1]  # (x_width, y_hight)
+        # TODO: Check using x, y coords right way round with calcam conventions etc, +1 offsets etc
+        left = int(sensor_resolution[0]/2 - image_resolution[0]/2)
+        top = int(sensor_resolution[1]/2 - image_resolution[1]/2)  # Origin in top left
+        detector_window = np.array([left, top, *image_resolution])  # +1
+    else:
+        # TODO: Check if image_resolution needs reversing?
+        image_resolution = detector_window[2:]
+    assert len(detector_window) == 4
+
+    detector_window_applied = np.all(sensor_resolution == image_resolution)
+
+    # NOTE: Detector window coordinates must always be in "original" coordinates.
+    calcam_calib.set_detector_window(window=np.array(detector_window).astype(int))
+    # Calls to calcam_calib.geometry.get_original_shape() now return the windowed detector size
+
+    logger.info('Set calcam detector window to: %s (Left,Top,Width,Height)', detector_window)
+
+    window_info = dict(detector_window=np.array(detector_window), image_resolution=image_resolution,
+                       sensor_resolution=sensor_resolution, detector_window_applied=detector_window_applied)
+    return window_info
+
+
 def apply_frame_display_transformations(frame_data, calcam_calib, image_coords):
     """Apply transformations (rotaions, reflections etc) to map camera frames from Original to Display coordinates
 
@@ -123,8 +179,8 @@ def apply_frame_display_transformations(frame_data, calcam_calib, image_coords):
 #         raise ValueError(f'Calcam calib lookup file does not contain column "calcam_calibration_file": {path_fn}')
 #     return calcam_calib
 
-def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, image_coords='Original',
-                       phi_positive=True, remove_long_rays=True):
+def get_surface_coords(calcam_calib, cad_model, image_coords='Original', phi_positive=True, intersecting_only=True,
+                       exclusion_radius=0.10, remove_long_rays=True, outside_vesel_ray_length=10):
     if image_coords == 'Display':
         image_shape = calcam_calib.geometry.get_display_shape()
     else:
@@ -135,22 +191,29 @@ def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, ima
     data_out = xr.Dataset(coords={'x_pix': x_pix, 'y_pix': y_pix})
 
     # Get wireframe image of CAD from camera view
+    cad_model.set_flat_shading(False)  # lighting effects
     cad_model.set_wireframe(True)
-    cad_model.set_colour((1, 0, 0))
-    wire_frame = calcam.render_cam_view(cad_model, calcam_calib, coords=image_coords)
+    # cad_model.set_linewidth(3)
+    color = cad_model.get_colour()
+    # cad_model.set_colour((1, 0, 0))
+    wire_frame = calcam.render_cam_view(cad_model, calcam_calib, coords=image_coords, verbose=False)
 
     logger.debug(f'Getting surface coords...'); t0 = time.time()
-    ray_data = calcam.raycast_sightlines(calcam_calib, cad_model, coords=image_coords, exclusion_radius=0.10)
+
+    ray_data = calcam.raycast_sightlines(calcam_calib, cad_model, coords=image_coords,
+                                         exclusion_radius=exclusion_radius, intersecting_only=intersecting_only)
     # TODO: Set sensor subwindow if using full sensor calcam calibration for windowed view
     # ray_data.set_detector_window(window=(Left,Top,Width,Height))
-    print(f'Setup CAD model and cast rays in {time.time()-t0:1.1f} s')
+    logger.debug(f'Setup CAD model and cast rays in {time.time()-t0:1.1f} s')
 
     surface_coords = ray_data.get_ray_end(coords=image_coords)
     ray_lengths = ray_data.get_ray_lengths(coords=image_coords)
-    # open rays that don't terminate in the vessel
+    # open rays that don't terminate in the vessel - should no longer be required now calcam.raycast_sightlines has
+    # the keyword intersecting_only=True
     mask_bad_data = ray_lengths > outside_vesel_ray_length
-    if remove_long_rays:
-        thresh_long_rays = find_outlier_intensity_threshold(ray_lengths)
+    if remove_long_rays and (not intersecting_only):
+        nsigma = calc_outlier_nsigma_for_sample_size(ray_lengths.size)
+        thresh_long_rays = find_outlier_intensity_threshold(ray_lengths, nsigma=nsigma)
         mask_long_rays = ray_lengths > thresh_long_rays
         mask_bad_data += mask_long_rays
     ind_bad_data = np.where(mask_bad_data)
@@ -158,6 +221,8 @@ def get_surface_coords(calcam_calib, cad_model, outside_vesel_ray_length=10, ima
     ray_lengths[mask_bad_data] = np.nan
     if len(ind_bad_data[0]) > 0:
         logger.info(f'Spatial coords for {len(ind_bad_data[0])} pixels set to "nan" due to holes in CAD model')
+        if intersecting_only:
+            logger.warning(f'Excessively long rays (>{thresh_long_rays} m) despite intersecting_only=True')
 
     x = surface_coords[:, :, 0]
     y = surface_coords[:, :, 1]
@@ -507,7 +572,7 @@ def select_visible_points_from_subviews(points_pix_subviews, subview_mask, point
             logger.warning(message)
     if n_missed > 0:
         message = (f' {n_missed} projected points are not visible in any sub-view (ie out of frame)\n'
-                   f'(x, y, z): {info["xyz_out_of_frame"]} ')
+                   f'   (x, y, z): {info["xyz_out_of_frame"]} ')
                    # f'(x_pix, y_pix): {points_keep[~info["mask_visible"]]}')
         if raise_on_out_of_frame:
             raise ValueError(message)
@@ -520,7 +585,7 @@ def get_calcam_cad_obj(model_name, model_variant, check_fire_cad_defaults=True):
     logger.debug(f'Loading CAD model...');
     t0 = time.time()
     # TODO: Add error messages directing user to update Calcam CAD definitions in settings GUI if CAD not found
-    print(dir(calcam))
+    # print(dir(calcam))
     try:
         cad_model = calcam.CADModel(model_name=model_name, model_variant=model_variant)
     except ValueError as e:
