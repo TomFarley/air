@@ -262,6 +262,7 @@
             "~/data/calcam_calibrations/"
         ],
         "movie_files": [
+            "/net/fuslsc/data/MAST_Data/{pulse}/LATEST/",
             "~/data/movies/{machine}/{pulse}/{camera}/",
             "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
             "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
@@ -391,7 +392,7 @@
     },
     "checkpoints": {
         "filenames": {
-            "raycast": "raycast_{calcam_calib_stem}-{image_coords}.nf"
+            "raycast": "raycast_{calcam_calib_stem}-{image_shape[0]}_{image_shape[1]}-{image_coords}.nf"
         }
     },
     "function_kwargs": {
