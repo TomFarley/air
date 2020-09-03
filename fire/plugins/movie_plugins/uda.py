@@ -6,7 +6,7 @@
 Two functions and two module level variables are required for this file to  function as a FIRE movie plugin:
     read_movie_data(pulse, camera, n_start, n_end, stride) -> (frame_nos, frame_times, frame_data)
     read_movie_meta(pulse, camera, n_start, n_end, stride) -> dict with minimum subset of keys:
-        {'movie_format', 'n_frames', 'frame_range', 't_range', 'frame_shape', 'fps', 'lens', 'exposure', 'bit_depth'}
+        {'movie_format', 'n_frames', 'frame_range', 't_range', 'image_shape', 'fps', 'lens', 'exposure', 'bit_depth'}
     movie_plugin_name: str, typically same as module name
     plugin_info: dict, with description and any other useful information or mappings
 
@@ -14,16 +14,18 @@ Author: T. Farley
 """
 
 import logging
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, Sequence, Optional
 from copy import copy
 
 import numpy as np
 
+from fire.plugins.movie_plugins.ipx import get_detector_window_from_ipx_header
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 try:
-    import pyuda
+    import pyuda, cpyuda
     client = pyuda.Client()
 except ImportError as e:
     logger.warning(f'Failed to import pyuda. ')
@@ -33,17 +35,21 @@ movie_plugin_name = 'uda'
 plugin_info = {'description': 'This plugin reads movie data from UDA (Universal Data Access)',
                'arg_name_mapping': {'camera': 'camera'}}
 
-UDA_IPX_HEADER_FIELDS = ('board_temp', 'camera', 'ccd_temp', 'datetime', 'depth', 'exposure', 'filter', 'frame_times',
-                         'gain', 'hbin', 'height', 'is_color', 'left', 'lens', 'n_frames', 'offset', 'preexp', 'shot',
-                         'taps', 'top', 'vbin', 'view', 'width')
+UDA_IPX_HEADER_FIELDS = ('board_temp', 'camera', 'ccd_temp', 'codex', 'date_time', 'depth', 'exposure', 'file_format',
+                         'filter', 'frame_times', 'gain', 'hbin', 'height', 'is_color', 'left', 'lens',
+                         'n_frames', 'offset', 'orientation', 'pre_exp', 'shot', 'strobe', 'taps', 'top', 'trigger',
+                         'vbin', 'view', 'width')
+# UDA_IPX_HEADER_FIELDS = ('board_temp', 'camera', 'ccd_temp', 'date_time', 'depth', 'exposure', 'filter', 'frame_times',
+#                          'gain', 'hbin', 'height', 'is_color', 'left', 'lens', 'n_frames', 'offset', 'pre_exp', 'shot',
+#                          'taps', 'top', 'vbin', 'view', 'width')
 # uda_ipx_header_fields = ('board_temp', 'camera', 'ccd_temp', 'datetime', 'depth', 'exposure', 'filter', 'frame_times',
 #                          'gain', 'hbin', 'height', 'is_color', 'left', 'lens', 'n_frames', 'offset', 'preexp', 'shot',
 #                          'taps', 'top', 'vbin', 'view', 'width')
 # uda_ipx_header_fields += ('ID', 'size', 'codec', 'date_time', 'trigger', 'orient', 'color', 'hBin',
 #                           'right', 'vBin', 'bottom', 'offset_0', 'offset_1', 'gain_0', 'gain_1', 'preExp', 'strobe')
 
-def get_uda_movie_obj(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
-                      stride: Optional[int]=1):
+def get_uda_movie_obj_legacy(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
+                             stride: Optional[int]=1):
     """Return UDA movie object for given pulse, camera and frame range
     
     :param pulse: MAST-U pulse number
@@ -75,15 +81,39 @@ def get_uda_movie_obj(pulse: int, camera: str, n_start:Optional[int]=None, n_end
     # Read file
     try:
         vid = client.get(command_str, '')
+    except cpyuda.ServerException as e:
+        raise IOError(f'Failed to read ipx file with UDA command: {command_str}')
     except Exception as e:
         if n_end is not None:
             # Try getting video object without frame arguments
-            vid = get_uda_movie_obj(pulse, camera)
+            vid = get_uda_movie_obj_legacy(pulse, camera)
             if n_end > vid.n_frames:
                 raise ValueError(f'Attempted to read movie (n_frames={vid.n_frames}) with invalid frame range: '
                                  f'{command_str}')
         logger.error(f'Failed to read data from uda with command: {command_str}')
         raise e
+    return vid
+
+
+def get_uda_movie_obj(pulse: int, camera: str, n_start: Optional[int] = None, n_end: Optional[int] = None,
+                             stride: Optional[int] = 1):
+    """Return UDA movie object for given pulse, camera and frame range
+
+    :param pulse: MAST-U pulse number
+    :type pulse: int
+    :param camera: MAST-U camera 3-letter diagnostic code (e.g. rir, rbb etc.)
+    :type camera: str
+    :param n_start: Frame number of first frame to load
+    :type n_start: int
+    :param n_end: Frame number of last frame to load
+    :type n_end: int
+    :param stride: interval between frames to be loaded
+    :return: UDA movie object?
+    """
+    # TODO: Test other keywords and allow ipx path in place of pulse no?
+    vid = client.get_images(camera, pulse, first_frame=n_start, last_frame=n_end, stride=stride,
+                            # frame_number=None,
+                            header_only=False, rcc_calib_path=None)
     return vid
 
 def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
@@ -101,7 +131,8 @@ def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:O
     :param stride: interval between frames to be loaded
     :return: Movie meta data
     """
-    video = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
+    # TODO: Update to use new function client.get_images(header_only=True)
+    video = get_uda_movie_obj_legacy(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
     ipx_header = {}
     for key in UDA_IPX_HEADER_FIELDS:
         try:
@@ -125,19 +156,23 @@ def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:O
     movie_meta['n_frames'] = ipx_header['n_frames']
     movie_meta['frame_range'] = np.array([n_start, n_end])
     movie_meta['t_range'] = np.array([times[n_start], times[n_end]])
-    movie_meta['frame_shape'] = (video.height, video.width)
+    movie_meta['image_shape'] = np.array((video.height, video.width))
     movie_meta['fps'] = (video.n_frames - 1) / np.ptp(times)
-    movie_meta['lens'] = ipx_header['lens']
+    movie_meta['lens'] = ipx_header['lens'] if 'lens' in ipx_header else 'Unknown'
     movie_meta['exposure'] = ipx_header['exposure']
     movie_meta['bit_depth'] = ipx_header['depth']
     # TODO: Add filter name?
+
+    movie_meta['detector_window'] = get_detector_window_from_ipx_header(ipx_header, plugin='uda')
 
     movie_meta['ipx_header'] = ipx_header
 
     return movie_meta
 
-def read_movie_data(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
-                    stride:Optional[int]=1, transforms: Iterable[str]=None):
+def read_movie_data(pulse: int, camera: str,
+                    frame_numbers:Optional[Sequence[int]]=None,
+                    n_start:Optional[int]=None, n_end:Optional[int]=None, stride:Optional[int]=1,
+                    transforms: Iterable[str]=None):
     """Return UDA movie object for given pulse, camera and frame range
 
     :param pulse: MAST-U pulse number
@@ -155,34 +190,37 @@ def read_movie_data(pulse: int, camera: str, n_start:Optional[int]=None, n_end:O
     :type transforms: Optional[Iterable[str]]
     :return: UDA movie object?
     """
-    video = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
-    if n_start is None:
-        n_start = 0
-    if n_end is None:
-        n_end = video.n_frames - 1
-    if stride is None:
-        stride = 1
-    frame_nos = np.arange(n_start, n_end+1, stride)
+    video = get_uda_movie_obj_legacy(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
+    if frame_numbers is None:
+        if n_start is None:
+            n_start = 0
+        if n_end is None:
+            n_end = video.n_frames - 1
+        if stride is None:
+            stride = 1
+    frame_numbers = np.arange(n_start, n_end+1, stride)
 
     # Allocate memory for frames
-    frame_data = np.zeros((len(frame_nos), video.height, video.width))
+    frame_data = np.zeros((len(frame_numbers), video.height, video.width))
 
-    frame_times = video.frame_times[n_start:n_end+1:stride]
+    # TODO: allow frame numbers not starting at 0? - see mask for npz
+    frame_times = video.frame_times[frame_numbers]
 
-    for n, frame in enumerate(video.frames):
-        frame_data[n, :, :] = frame.k
+    # NOTE: video object already only contains subset of frames specified in call to uda
+    for i in np.arange(len(video.frames)):
+        frame_data[i, :, :] = video.frames[i].k
 
-    if transforms is not None:
+    if (transforms is not None) and (len(transforms) > 0):
         raise NotImplementedError
 
-    return frame_nos, frame_times, frame_data
+    return frame_numbers, frame_times, frame_data
 
 if __name__ == '__main__':
     pulse = 30378
     camera = 'rir'
     # camera = 'air'
     n_start, n_end = 100, 110
-    vid = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end)
+    vid = get_uda_movie_obj_legacy(pulse, camera, n_start=n_start, n_end=n_end)
     # import pdb; pdb.set_trace()
     meta_data = read_movie_meta(pulse, camera, n_start, n_end)
     frame_nos, frame_times, frame_data = read_movie_data(pulse, camera, n_start, n_end)

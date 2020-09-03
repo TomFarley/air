@@ -17,10 +17,11 @@ import matplotlib.pyplot as plt
 
 from pyIpx.movieReader import imstackReader
 from fire.interfaces.interfaces import json_load
+from fire.plugins.movie_plugins.ipx import get_detector_window_from_ipx_header
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 movie_plugin_name = 'imstack'
 plugin_info = {'description': "This plugin reads folders of image files ('png','jpg','bmp','tif') as a movie"}
@@ -78,13 +79,21 @@ def read_movie_meta(path: Union[str, Path], transforms: Iterable[str]=()) -> dic
         movie_meta['t_range'] = np.array([float(frame_header0['time_stamp']), float(frame_header_end['time_stamp'])])
     else:
         movie_meta['t_range'] = np.array([np.nan, np.nan])
-    movie_meta['frame_shape'] = frame0.shape
+    image_shape = np.array(frame0.shape)
+    movie_meta['image_shape'] = image_shape
     movie_meta['fps'] = (last_frame_ind) / np.ptp(movie_meta['t_range']) if t_range[0] is not None else np.nan
     movie_meta['exposure'] = np.nan   # imstack_header['exposure']
     movie_meta['bit_depth'] = bit_depth
     movie_meta['lens'] = imstack_header['lens'] if 'lens' in imstack_header else None
     # TODO: Add filter name?
 
+    # TODO: Move derived fields to common function for all movie plugins: image_shape, fps, t_range
+    # TODO: Check ipx field 'top' follows image/calcam conventions
+    movie_meta['width'] = image_shape[1]
+    movie_meta['height'] = image_shape[0]
+    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta, plugin='imstack', fn=path)
+
+    imstack_header['imstack_filenames'] = vid.file_list
     movie_meta['imstack_header'] = imstack_header
 
     # If present, also read meta data from json file with images
@@ -99,21 +108,25 @@ def read_movie_meta(path: Union[str, Path], transforms: Iterable[str]=()) -> dic
 
     return movie_meta
 
-def read_movie_data(path: Union[str, Path], frame_nos: Optional[Union[Iterable, int]]=None,
+def read_movie_data(path: Union[str, Path],
+                    n_start:Optional[int]=None, n_end:Optional[int]=None, stride:Optional[int]=1,
+                    frame_numbers: Optional[Union[Iterable, int]]=None,
                     transforms: Optional[Iterable[str]]=(), grayscale: bool=True) -> Tuple[np.ndarray, np.ndarray,
                                                                                      np.ndarray]:
     """Read frame data from imstack image directory ('png','jpg','bmp','tif').
 
     :param path: Path to imstack directory
     :type path: str, Path
-    :param frame_nos: Frame numbers to read (should be monotonically increasing)
-    :type frame_nos: Iterable[int]
+    :param frame_numbers: Frame numbers to read (should be monotonically increasing)
+    :type frame_numbers: Iterable[int]
     :param transforms: List of of strings describing transformations to apply to frame data. Options are:
                         'reverse_x', 'reverse_y', 'transpose'
     :type transforms: Optional[Iterable[str]]
     :return: frame_nos, times, data_frames,
     :type: (np.array, np.array ,np.ndarray)
     """
+    if transforms is None:
+        transforms = ()
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f'Ipx file not found: {path_fn}')
@@ -130,27 +143,30 @@ def read_movie_data(path: Union[str, Path], frame_nos: Optional[Union[Iterable, 
         logger.warning(f'Reading imstack movie data as grayscale (taking R channel) despite RGB channels not being '
                        f'equal. Consider setting grayscale=False.')
 
-    if frame_nos is None:
-        frame_nos = np.arange(n_frames_movie, dtype=int)
-    elif isinstance(frame_nos, numbers.Number):
-        frame_nos = np.array([frame_nos])
+    if frame_numbers is None:
+        if (n_start is not None) and (n_end is not None):
+            frame_numbers = np.arange(n_start, n_end + 1, stride, dtype=int)
+        else:
+            frame_numbers = np.arange(n_frames_movie, dtype=int)
+    elif isinstance(frame_numbers, numbers.Number):
+        frame_numbers = np.array([frame_numbers])
     else:
-        frame_nos = np.array(frame_nos)
-    frame_nos[frame_nos < 0] += n_frames_movie
-    if any((frame_nos >= n_frames_movie)):
+        frame_numbers = np.array(frame_numbers)
+    frame_numbers[frame_numbers < 0] += n_frames_movie
+    if any((frame_numbers >= n_frames_movie)):
         raise ValueError(f'Requested frame numbers outside of movie range: '
                          f'{frame_nos[(frame_nos >= vid.file_header["numFrames"])]}')
-    if any(np.fmod(frame_nos, 1) > 1e-5):
+    if any(np.fmod(frame_numbers, 1) > 1e-5):
         raise ValueError(f'Fractional frame numbers requested from ipx file: {frame_nos}')
     # Allocate memory for frames
     frame_shape = frame0.shape if (not grayscale) else frame0.shape[0:2]
-    frame_data = np.zeros((len(frame_nos), *frame_shape), dtype=frame0.dtype)
-    frame_times = np.zeros_like(frame_nos, dtype=float)
+    frame_data = np.zeros((len(frame_numbers), *frame_shape), dtype=frame0.dtype)
+    frame_times = np.zeros_like(frame_numbers, dtype=float)
 
     # To efficiently read the video the frames should be loaded in monotonically increasing order
-    frame_nos = np.sort(frame_nos).astype(int)
-    n, n_end = frame_nos[0], frame_nos[-1]
-    n_frames_load = len(frame_nos)
+    frame_numbers = np.sort(frame_numbers).astype(int)
+    n, n_end = frame_numbers[0], frame_numbers[-1]
+    n_frames_load = len(frame_numbers)
 
     i_data = 0
     vid.set_frame_number(n)
@@ -158,7 +174,7 @@ def read_movie_data(path: Union[str, Path], frame_nos: Optional[Union[Iterable, 
     n_log = 0
     n_step_log = 400
     while n <= n_end:
-        if n in frame_nos:
+        if n in frame_numbers:
             # frames are read with 16 bit dynamic range, but values are 10 bit!
             ret, frame, header = vid.read(transforms=transforms)
             if grayscale:
@@ -185,7 +201,7 @@ def read_movie_data(path: Union[str, Path], frame_nos: Optional[Union[Iterable, 
     if isinstance(movie_meta_json, dict) and ('frame_times' in movie_meta_json):
         frame_times = np.array(movie_meta_json['frame_times'])
 
-    return frame_nos, frame_times, frame_data
+    return frame_numbers, frame_times, frame_data
 
 
 if __name__ == '__main__':
@@ -194,7 +210,7 @@ if __name__ == '__main__':
     # frame_nos = np.arange(100, 202)
     frame_nos = None
     meta_data = read_movie_meta(directory)
-    frame_nos, frame_times, frame_data = read_movie_data(directory, frame_nos=frame_nos)
+    frame_nos, frame_times, frame_data = read_movie_data(directory, frame_numbers=frame_nos)
     print(meta_data)
     plt.imshow(frame_data[0])
     pass
