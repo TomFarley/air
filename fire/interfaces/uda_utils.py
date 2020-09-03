@@ -52,6 +52,15 @@ axis_label_key_combos_default = [['symbol', 'units'], ['label', 'units'], ['name
 # Sentinel for default keyword arguments
 module_defaults = object()
 
+def import_pyuda():
+    try:
+        import pyuda
+        client = pyuda.Client()
+    except ImportError as e:
+        logger.warning(f'Failed to import pyuda. ')
+        pyuda, client = False, False
+    return pyuda, client
+
 def read_uda_signal(signal, pulse):
     data = client.get(signal, pulse)
     return data
@@ -296,10 +305,8 @@ def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_numb
     except Exception as e:
         raise
     else:
-        logger.info(f'Created uda output netcdf file at {path_fn}')
-        if not path_fn.is_file():
-            # raise FileNotFoundError(f'UDA output file does not exist: {path_fn}')
-            logger.exception(f'UDA output file does not exist: {path_fn}')
+        logger.debug(f'Created uda output netcdf file handle for {path_fn}')
+
     file_id = client.put_file_id
     if close:
         client.put(step_id="close", file_id=file_id, verbose=False)
@@ -336,7 +343,7 @@ def putdata_device(device_name, device_info, attributes=None):
 
     """
     group = f'/devices/{device_name}'
-    requried_args = ['id', 'camera_serial_number', 'image_resolution', 'image_range']
+    requried_args = ['id', 'camera_serial_number', 'detector_resolution', 'image_range']
     check_for_required_args(device_info, requried_args, none_as_missing=True, application='Device data')
     # TODO: Add attributes for wavelength range, manufacuturer, model, lens, wavelength filter, neutral density
     # filter, bit depth
@@ -467,7 +474,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names,
             dimensions = ','.join(variable.dims)
             kwargs = {k: variable.attrs[k] for k in optional_dim_attrs if k in variable.attrs}
             putdata_variable(variable_name, dimensions, variable.values, group=group, **kwargs)
-    logger.info(f'Wrote variables to file: \n{variable_names_image+variable_names_path+variable_names_time}')
+    logger.info(f'Wrote variables to file: \n   {variable_names_image+variable_names_path+variable_names_time}')
 
 def putdata_dimension(dimension_name, dim_length, group='/', **kwargs):
     # TODO: add attributes to dim
