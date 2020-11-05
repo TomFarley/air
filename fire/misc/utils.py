@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 
 PathList = Sequence[Union[Path, str]]
 
+try:
+    string_types = (basestring, unicode)  # python2
+except Exception as e:
+    string_types = (str,)  # python3
+
 def movie_data_to_dataarray(frame_data, frame_times, frame_nos=None, meta_data=None, name='frame_data'):
     """Return frame data in xarray.DataArray object
 
@@ -125,6 +130,82 @@ def make_iterable(obj: Any, ndarray: bool=False,
         else:
             raise TypeError(f'Invalid cast type: {cast_to}')
     return obj
+
+def is_scalar(var, ndarray_0d=True):
+    """ True if variable is scalar or string"""
+    if isinstance(var, str):
+        return True
+    elif hasattr(var, "__len__"):
+        return False
+    elif isinstance(var, np.ndarray) and var.ndim == 0:
+        return ndarray_0d
+    else:
+        return True
+
+def is_number(s, cast_string=False):
+    """
+    TODO: Test on numbers and strings and arrays
+    """
+    # from numbers import
+    if (not cast_string) and isinstance(s, string_types):
+        return False
+    try:
+        n=str(float(s))
+        if n == "nan" or n=="inf" or n=="-inf" :
+            return False
+    except ValueError:
+        try:
+            complex(s)  # for complex
+        except ValueError:
+            return False
+    except TypeError as e:  # eg trying to convert an array
+        return False
+    return True
+
+def is_numeric(value):
+    """Return True if value is a number or numeric array object, else False"""
+    if isinstance(value, bool):
+        numeric = False
+    else:
+        try:
+            sum_values = np.sum(value)
+            numeric = is_number(sum_values, cast_string=False)
+        except TypeError as e:
+            numeric = False
+    return numeric
+
+def str_to_number(string, cast=None, expect_numeric=False):
+    """ Convert string to int if integer, else float. If cannot be converted to number just return original string
+    :param string: string to convert number
+    :param cast: type to cast output to eg always float
+    :return: number
+    """
+    if isinstance(string, (int, float)):
+        # leave unchanged
+        return string
+    if isinstance(string, str) and ('_' in string):
+        # Do not convert strings with underscores and digits to numbers
+        out = string
+    else:
+        try:
+            out = int(string)
+        except ValueError as e:
+            try:
+                out = float(string)
+            except ValueError as e:
+                out = string
+    if isinstance(cast, type):
+        out = cast(out)
+    if not isinstance(out, (int, float)) and expect_numeric:
+        raise ValueError('Input {string} could not be converted to a number'.format(string))
+    return out
+
+def ndarray_0d_to_scalar(array):
+    """Convert 0D (single element) array to a scalar number (ie remove nested array)"""
+    out = array
+    if isinstance(array, np.ndarray) and array.ndim == 0:
+        out = array.item()
+    return out
 
 def safe_len(var, scalar=1, all_nan=0, none=0, ndarray_0d=0, exclude_nans=False, **kwargs):
     """ Length of variable returning 1 instead of type error for scalars """
