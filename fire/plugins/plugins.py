@@ -14,12 +14,11 @@ from pathlib import Path
 from collections import OrderedDict, defaultdict
 
 from fire import fire_paths
-from fire.interfaces.interfaces import logger, PathList, get_module_from_path_fn
-from fire.plugins.plugins_movie import logger
+from fire.interfaces.interfaces import PathList, get_module_from_path_fn
 from fire.misc.utils import make_iterable
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 def search_for_plugins(plugin_paths, attributes_requried, attributes_optional=None):
     plugins_all = {}
@@ -139,22 +138,24 @@ def get_compatible_plugins(plugin_paths: PathList,
     if attributes_optional is None:
         attributes_optional = {}
     path_substitutions = {'fire_path': fire_paths['root']}
-    plugin_paths = [p.format(**path_substitutions) for p in plugin_paths]
+    plugin_paths = [str(p).format(**path_substitutions) for p in plugin_paths]
     # plugins_all = get_movie_plugins(plugin_paths)
 
     plugins, info = search_for_plugins(plugin_paths, attributes_required,
                                               attributes_optional=attributes_optional)
-    logger.info(f'Located {plugin_type} plugins for: {", ".join(list(plugins.keys()))}')
+    logger.info(f'Located {plugin_type} plugins for: {", ".join(list(plugins.keys()))} (filter: {plugin_filter})')
     if plugins_required is not None:
         missing = []
         for plugin in make_iterable(plugins_required):
             if plugin not in plugins:
                 missing.append(plugin)
         if missing:
-            raise FileNotFoundError(f'Failed to locate required {plugin_type} plugins {missing} in paths:\n'
+            raise FileNotFoundError(f'Failed to locate required {plugin_type} plugins {missing} in paths'
+                                    f'(NOTE: could be due to import/syntax error in file):\n'
                                     f'{plugin_paths}')
     if plugin_filter is not None:
-        # Return filtered plugins in order specified in json config file
+        # Return filtered plugins in order specified (in json config file)
+        plugin_filter = make_iterable(plugin_filter)
         plugins = OrderedDict([(key, plugins[key]) for key in plugin_filter if key in plugins.keys()])
         info = OrderedDict([(key, info[key]) for key in plugin_filter if key in info.keys()])
     return plugins, info
