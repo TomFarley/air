@@ -15,7 +15,7 @@ import numpy as np
 import xarray as xr
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 def get_nuc_frame(origin: Union[Dict, str, Path]='first_frame', frame_data: Optional[xr.DataArray]=None,
                   reduce_func: str='mean') -> xr.DataArray:

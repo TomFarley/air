@@ -14,7 +14,7 @@ import numpy as np
 from fire.geometry.s_coordinate import get_s_coord_global_r, get_s_coord_path_ds
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 coord = Union[float, np.ndarray]
 

@@ -12,7 +12,7 @@ import logging
 import numpy as np
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 def identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=True, bg_value = -1):
     # Create mask with values corresponding to id of structure visible in each pixel

@@ -19,7 +19,7 @@ from fire.interfaces.interfaces import read_csv
 from fire import fire_paths
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 fire_root = fire_paths['root']
 

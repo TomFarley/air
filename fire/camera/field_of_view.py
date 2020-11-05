@@ -16,7 +16,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 def calc_field_of_view(focal_length, pixel_pitch=30e-6, image_shape=(320, 256)):
     """Calculate angular field of view [degrees] and solid angle of view [steradians] for a pixel and whole image.

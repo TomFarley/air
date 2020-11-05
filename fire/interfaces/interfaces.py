@@ -13,12 +13,14 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 
-from fire.misc.utils import locate_file, make_iterable, convert_dataframe_values_to_python_types
+from fire.misc.utils import locate_file, make_iterable, convert_dataframe_values_to_python_types, logger_info
 from fire import fire_paths
 from fire.interfaces.exceptions import InputFileException
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.propagate = False
+# logger.setLevel(logging.INFO)
+# print(logger_info(logger))
 
 PathList = Sequence[Union[Path, str]]
 

@@ -20,7 +20,7 @@ from fire.geometry.s_coordinate import interpolate_rz_coords, separate_rz_points
 from fire.geometry.geometry import cartesian_to_toroidal
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 # ===================== PLUGIN MODULE ATTRIBUTES =====================
 # Required: Name of plugin module (typically name of machine == name of file), needed to be located as a plugin module

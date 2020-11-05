@@ -15,7 +15,7 @@ from fire.geometry.geometry import calc_horizontal_path_anulus_areas, calc_tile_
     calc_divertor_area_integrated_param
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 # Sentinel for default keyword arguments
 module_defaults = object()

@@ -16,7 +16,7 @@ from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d, griddata
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 def interpolate_rz_coords(r, z, ds=1e-4, tol_abs=5e-5, tol_interger_spacing=5e-2, false_surface_boxes=None):
     """Return interpolated arrays of R, Z coordinates with points separated from each other by the spacing ds

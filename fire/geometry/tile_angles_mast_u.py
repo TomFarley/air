@@ -21,7 +21,7 @@ from fire.plotting.plot_tools import create_poloidal_cross_section_figure, get_f
 from fire.geometry.geometry import cartesian_to_toroidal
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 def read_tile_surface_coords():
 

@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 movie_plugin_name = '<my_plugin>'  # Required: Name of plugin module (typically same as name of module/file format etc.)
 plugin_info = {'description': 'This plugin reads <my format> format movie files'}

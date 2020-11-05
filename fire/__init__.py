@@ -7,6 +7,9 @@ from pathlib import Path
 import pandas as pd
 import xarray as xr
 
+# TODO: Automatically pull in version number from single central location (setup.py file?)
+__version__ = "1.0.0"
+
 # Set up logger for module
 logging.basicConfig()
 logger_fire = logging.getLogger(__name__)
@@ -28,7 +31,7 @@ with open(fire_paths['root'] / 'logging_config.yaml', 'r') as f:
 # Set logging level for console output handler propagated throughout fire package
 stream_handler = logger_fire.handlers[0]
 logger_fire.setLevel(logging.DEBUG)
-stream_handler.setLevel(logging.DEBUG)
+# stream_handler.setLevel(logging.DEBUG)  # Uncomment to print debug level messages to console throughout fire
 
 active_machine_plugin = None
 active_calcam_calib = None

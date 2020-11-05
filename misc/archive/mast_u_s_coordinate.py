@@ -17,8 +17,10 @@ import matplotlib.pyplot as plt
 
 from scipy.interpolate import interp1d, griddata
 
+from fire.plotting.plot_tools import create_poloidal_cross_section_figure
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 # Boxes to pass to fire.s_coordinate.remove_false_rz_surfaces
 false_rz_surface_boxes_default = [((1.512, 1.6), (-0.81789, 0.81789)),
@@ -123,17 +125,6 @@ def get_nearest_s_coordinates_mastu(r, z, tol=5e-3, ds=1e-3, no_cal=True, signal
             s[mask] = get_nearest_s_coordinates(r_masked, z_masked, r_wall, z_wall, s_wall, tol=tol)
             position[mask] = pos
     return s, (position, table_key)
-
-def create_poloidal_cross_section_figure(nrow=1, ncol=1, cross_sec_axes=((0, 0),)):
-    fig, axes = plt.subplots(nrow, ncol)
-    if nrow==1 and ncol==1:
-        format_poloidal_plane_ax(axes)
-    else:
-        for ax_coord in cross_sec_axes:
-            ax = axes[slice(*ax_coord)]
-            format_poloidal_plane_ax(ax)
-    plt.tight_layout()
-    return fig, axes
 
 
 def plot_tile_edges_mastu(ax=None, show=True):
