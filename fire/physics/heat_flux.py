@@ -58,7 +58,7 @@ def calc_heatflux(t, temperatures, path_data, path_name, material_properties, vi
     if safe_len(theo_kwargs['alpha_top_org']) == 2:
         theo_kwargs['alpha_top_org'] = theo_kwargs['alpha_top_org'][0]
 
-    if temperature_path.shape[0] != lwn(s_path):
+    if temperature_path.shape[0] != len(s_path):
         raise ValueError(f'Spatial dimention of temperature path data ({temperature_path.shape}) does not match s_path '
                          f'dimension ({len(s_path)}). Mismatch will cause theodor to use integer index s values!')
 
