@@ -1,0 +1,576 @@
+{
+    "default_variant": "Jan 2017",
+    "features": {
+        "Jan 2017": {
+            "Beam Dumps/Sector 6": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/BEAM_DUMP_6M.obj",
+                "mesh_scale": 0.001
+            },
+            "Beam Dumps/Sector 8": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/BEAM_DUMP_8U.obj",
+                "mesh_scale": 0.001
+            },
+            "Centre Column Graphite": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/CENTRE_COLUMN.obj",
+                "mesh_scale": 0.001
+            },
+            "Lower Divertor/Gas Baffle": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "BAFFLE_LOWER_COMPLETE.obj",
+                "mesh_scale": 0.001
+            },
+            "Lower Divertor/Nose": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/NOSE_LOWER.obj",
+                "mesh_scale": 0.001
+            },
+            "Lower Divertor/Tile 1": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/T1_LOWER.obj",
+                "mesh_scale": 0.001
+            },
+            "Lower Divertor/Tile 2": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/T2_LOWER.obj",
+                "mesh_scale": 0.001
+            },
+            "Lower Divertor/Tile 3": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/T3_LOWER.obj",
+                "mesh_scale": 0.001
+            },
+            "Lower Divertor/Tile 4": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/T4_LOWER.obj",
+                "mesh_scale": 0.001
+            },
+            "Lower Divertor/Tile 5": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/T5_LOWER.obj",
+                "mesh_scale": 0.001
+            },
+            "Poloidal Field Coils/Lower": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": true,
+                "mesh_file": "magnets/RMP_LOWER.obj",
+                "mesh_scale": 0.001
+            },
+            "Poloidal Field Coils/P4 Lower": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": true,
+                "mesh_file": "magnets/P4_LOWER.obj",
+                "mesh_scale": 0.001
+            },
+            "Poloidal Field Coils/P4 Upper": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": true,
+                "mesh_file": "magnets/P4_UPPER.obj",
+                "mesh_scale": 0.001
+            },
+            "Poloidal Field Coils/P4-5 Brackets": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": true,
+                "mesh_file": "magnets/P4_P5_SUPPORT_BRACKETS.obj",
+                "mesh_scale": 0.001
+            },
+            "Poloidal Field Coils/P5 Lower": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": true,
+                "mesh_file": "magnets/P5_LOWER.obj",
+                "mesh_scale": 0.001
+            },
+            "Poloidal Field Coils/P5 Lower Protection Tiles": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/P5_LOWER_ARMOUR.obj",
+                "mesh_scale": 0.001
+            },
+            "Poloidal Field Coils/P5 Upper": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": true,
+                "mesh_file": "magnets/P5_UPPER.obj",
+                "mesh_scale": 0.001
+            },
+            "Poloidal Field Coils/P5 Upper Protection Tiles": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/P5_UPPER_ARMOUR.obj",
+                "mesh_scale": 0.001
+            },
+            "Poloidal Field Coils/P6 Lower": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": true,
+                "mesh_file": "magnets/P6_LOWER.obj",
+                "mesh_scale": 0.001
+            },
+            "Poloidal Field Coils/P6 Lower Protection Tiles": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/P6_LOWER_ARMOUR.obj",
+                "mesh_scale": 0.001
+            },
+            "Poloidal Field Coils/P6 Upper": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": true,
+                "mesh_file": "magnets/P6_UPPER.obj",
+                "mesh_scale": 0.001
+            },
+            "Poloidal Field Coils/P6 Upper Protection Tiles": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/P6_UPPER_ARMOUR.obj",
+                "mesh_scale": 0.001
+            },
+            "Poloidal Field Coils/Upper": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": true,
+                "mesh_file": "magnets/RMP_UPPER.obj",
+                "mesh_scale": 0.001
+            },
+            "Upper Divertor/ Nose": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/NOSE_UPPER.obj",
+                "mesh_scale": 0.001
+            },
+            "Upper Divertor/Gas Baffle": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/BAFFLE_UPPER.obj",
+                "mesh_scale": 0.001
+            },
+            "Upper Divertor/Tile 1": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/T1_UPPER.obj",
+                "mesh_scale": 0.001
+            },
+            "Upper Divertor/Tile 2": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/T2_UPPER.obj",
+                "mesh_scale": 0.001
+            },
+            "Upper Divertor/Tile 3": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/T3_UPPER.obj",
+                "mesh_scale": 0.001
+            },
+            "Upper Divertor/Tile 4": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/T4_UPPER.obj",
+                "mesh_scale": 0.001
+            },
+            "Upper Divertor/Tile 5": {
+                "colour": [
+                    0.3686274509803922,
+                    0.3686274509803922,
+                    0.3686274509803922
+                ],
+                "default_enable": true,
+                "mesh_file": "graphite/T5_UPPER.obj",
+                "mesh_scale": 0.001
+            },
+            "Vacuum Vessel/HE Ports": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": false,
+                "mesh_file": "vacuum_vessel/HE_PORTS.obj",
+                "mesh_scale": 0.001
+            },
+            "Vacuum Vessel/HL Ports": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": false,
+                "mesh_file": "vacuum_vessel/HL_PORTS.obj",
+                "mesh_scale": 0.001
+            },
+            "Vacuum Vessel/HM Ports": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": false,
+                "mesh_file": "vacuum_vessel/HM_PORTS.obj",
+                "mesh_scale": 0.001
+            },
+            "Vacuum Vessel/HU Ports": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": false,
+                "mesh_file": "vacuum_vessel/HU_PORTS.obj",
+                "mesh_scale": 0.001
+            },
+            "Vacuum Vessel/Lower End Plate": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": true,
+                "mesh_file": "vacuum_vessel/BOTTOM_ENDPLATE.obj",
+                "mesh_scale": 0.001
+            },
+            "Vacuum Vessel/Outer Cylinder": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": true,
+                "mesh_file": "vacuum_vessel/OUTER_CYLINDER.obj",
+                "mesh_scale": 0.001
+            },
+            "Vacuum Vessel/Upper End Plate": {
+                "colour": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "default_enable": true,
+                "mesh_file": "vacuum_vessel/TOP_ENDPLATE.obj",
+                "mesh_scale": 0.001
+            }
+        }
+    },
+    "initial_view": "HM08",
+    "machine_name": "MAST Upgrade",
+    "mesh_path_roots": {
+        "Jan 2017": ".large/Jan 2017"
+    },
+    "views": {
+        "HE05-Lower": {
+            "cam_pos": [
+                1.212,
+                -1.0,
+                -0.61
+            ],
+            "projection": "perspective",
+            "roll": 0,
+            "target": [
+                0.354,
+                -0.652,
+                -1.0
+            ],
+            "xsection": null,
+            "y_fov": 33
+        },
+        "HE05-Upper": {
+            "cam_pos": [
+                1.228,
+                -1.0511,
+                0.598
+            ],
+            "projection": "perspective",
+            "roll": 0,
+            "target": [
+                0.729,
+                -0.285,
+                1.0
+            ],
+            "xsection": null,
+            "y_fov": 33
+        },
+        "HL02": {
+            "cam_pos": [
+                1.394,
+                1.563,
+                -1.532
+            ],
+            "projection": "perspective",
+            "roll": 0.0,
+            "target": [
+                1.08,
+                0.623,
+                -1.664
+            ],
+            "xsection": null,
+            "y_fov": 39.2
+        },
+        "HL04": {
+            "cam_pos": [
+                2.13,
+                -0.421,
+                -1.532
+            ],
+            "projection": "perspective",
+            "roll": 0,
+            "target": [
+                1.202,
+                -0.777,
+                -1.643
+            ],
+            "xsection": null,
+            "y_fov": 35
+        },
+        "HL06": {
+            "cam_pos": [
+                0.784,
+                -2.086,
+                -1.5
+            ],
+            "projection": "perspective",
+            "roll": 0,
+            "target": [
+                0.0,
+                -1.486,
+                -1.661
+            ],
+            "xsection": null,
+            "y_fov": 25
+        },
+        "HM08": {
+            "cam_pos": [
+                -1.127,
+                -1.3,
+                0.0
+            ],
+            "projection": "perspective",
+            "roll": 0,
+            "target": [
+                -0.473,
+                -0.544,
+                0.0
+            ],
+            "xsection": null,
+            "y_fov": 90
+        },
+        "HM09": {
+            "cam_pos": [
+                -2.365,
+                -0.351,
+                0.0
+            ],
+            "projection": "perspective",
+            "roll": 0,
+            "target": [
+                -1.403,
+                -0.62,
+                0.0
+            ],
+            "xsection": null,
+            "y_fov": 42
+        },
+        "HM10": {
+            "cam_pos": [
+                -1.957,
+                0.505,
+                0
+            ],
+            "projection": "perspective",
+            "roll": 0,
+            "target": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "xsection": null,
+            "y_fov": 80
+        },
+        "HU04": {
+            "cam_pos": [
+                2.075,
+                -0.555,
+                1.369
+            ],
+            "projection": "perspective",
+            "roll": 0,
+            "target": [
+                1.168,
+                -0.332,
+                1.728
+            ],
+            "xsection": null,
+            "y_fov": 55
+        },
+        "HU06": {
+            "cam_pos": [
+                0.37,
+                -2.144,
+                1.49
+            ],
+            "projection": "perspective",
+            "roll": 0,
+            "target": [
+                0.808,
+                -1.294,
+                1.782
+            ],
+            "xsection": null,
+            "y_fov": 35
+        },
+        "HU10": {
+            "cam_pos": [
+                -2.026,
+                0.647,
+                1.527
+            ],
+            "projection": "perspective",
+            "roll": 0,
+            "target": [
+                -1.256,
+                0.018,
+                1.637
+            ],
+            "xsection": null,
+            "y_fov": 70
+        },
+        "HU12": {
+            "cam_pos": [
+                -0.41,
+                2.112,
+                1.489
+            ],
+            "projection": "perspective",
+            "roll": 0,
+            "target": [
+                -0.821,
+                1.246,
+                1.773
+            ],
+            "xsection": null,
+            "y_fov": 38
+        }
+    }
+}
