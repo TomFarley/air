@@ -22,9 +22,11 @@ from fire.geometry.geometry import cartesian_to_toroidal
 from fire.misc.utils import make_iterable
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 # ===================== PLUGIN MODULE ATTRIBUTES =====================
+# Which plugin attributes/functions are required or optional is set in your fire_config.json file under "plugins".
+
 # Required: Name of plugin module (typically name of machine == name of file), needed to be located as a plugin module
 machine_plugin_name = 'mast_u'
 
@@ -39,8 +41,8 @@ n_sectors = 12  # Used internally in funcs below
 None
 
 # Boxes to pass to fire.s_coordinate.remove_false_rz_surfaces
-false_rz_surface_boxes_default = [((1.512, 1.6), (-0.81789, 0.81789)),
-                                  ]
+false_rz_surface_boxes_default = [((1.512, 1.6), (-0.81789, 0.81789)),]
+# Origin for s coordinates/divider between top and bottom of machine
 s_start_coord_default = (0.260841, 0)
 
 # Use same plugin funcs for machine sector and s_path coordinate as for MAST
@@ -50,6 +52,18 @@ from fire.plugins.machine_plugins.mast import (get_machine_sector, get_tile_louv
 # ====================================================================
 
 module_default = object()
+
+# Radii of edges of different structures for top down view plot etc
+surface_radii = {'R_wall': 2.0,
+                'R_HL04': 2.1333,
+                'R_T1': 0.333,
+                'R_T2': 0.540,
+                'R_T3': 0.905,
+                'R_T4': 1.081,
+                'R_T5': 1.379,
+                'R_T5_top': 1.746,
+                'n_sectors': 12,
+                }
 
 def get_wall_rz_coords(no_cal=True, signal="/limiter/efit", shot=50000, ds=None):
     """Return (R, Z) coordinates of points defining wall outline of MAST-U tile surfaces
@@ -65,7 +79,7 @@ def get_wall_rz_coords(no_cal=True, signal="/limiter/efit", shot=50000, ds=None)
 
     """
     import pyuda
-    # TODO: Enable returning wall for shot < 50000
+    # TODO: Enable returning wall for MAST ie shot < 50000
     client=pyuda.Client()
     wall_data = client.geometry(signal, shot, no_cal=no_cal)
     r = wall_data.data.R
@@ -128,13 +142,16 @@ def get_s_coords_tables_mastu(ds=1e-4, no_cal=True, signal="/limiter/efit", shot
 
 # def get_s_coord_table_for_point():
 
+# TODO: Import from mastcodes/uda/python/mast/geom/geomTileSurfaceUtils.py ? - from mast.geom.geomTileSurfaceUtils
+
 def get_nearest_s_coordinates_mastu(r, z, tol=5e-3, ds=1e-3, no_cal=True, signal="/limiter/efit", shot=50000):
     """Return closest tile surface 's' coordinates for supplied (R, Z) coordinates
 
     Args:
         r: Array of radial R coordinates
         z: Array of vertical Z coordinates
-        tol: Tolerance distance for points from wall - return nans if further away than tolerance
+        tol: Tolerance distance for points from wall - return nans if further away than tolerance.
+             5mm is appropriate for most surfaces, but should be increased to 25mm+ for T5 to account for ripple shaping
         ds: Resolution to interpolate wall coordinate spacing to in meters
         no_cal: Whether to use idealised CAD coordinates without spatial calibration corrections
         signal: UDA signal for wall coords
@@ -159,65 +176,16 @@ def get_nearest_s_coordinates_mastu(r, z, tol=5e-3, ds=1e-3, no_cal=True, signal
             position[mask] = pos
     return s, (position, table_key)
 
-def create_poloidal_cross_section_figure(nrow=1, ncol=1, cross_sec_axes=((0, 0),)):
-    fig, axes = plt.subplots(nrow, ncol)
-    if nrow==1 and ncol==1:
-        format_poloidal_plane_ax(axes)
-    else:
-        for ax_coord in cross_sec_axes:
-            ax = axes[slice(*ax_coord)]
-            format_poloidal_plane_ax(ax)
-    plt.tight_layout()
-    return fig, axes
-
-
-def plot_tile_edges_mastu(ax=None, top=True, bottom=True, show=True, **kwargs):
-    import matplotlib.pyplot as plt
-    if ax is None:
-        fig, ax = create_poloidal_cross_section_figure(1, 1)
-    else:
-        fig = ax.figure
-
-    r0, z0 = get_tile_edge_coords_mastu(no_cal=True, shot=50000)
-
-    mask = np.ones_like(r0, dtype=bool)
-    mask = mask * (z0 > 0) if not bottom else mask
-    mask = mask * (z0 < 0) if not top else mask
-
-    ax.plot(r0[mask], z0[mask], marker='x', ls='', **kwargs)
-
-    if show:
-        plt.show()
-    return fig, ax
-
-def plot_vessel_outline_mastu(ax=None, top=True, bottom=True, shot=50000, no_cal=False, aspect='equal', ax_labels=True,
-                              axes_off=False, show=True, **kwargs):
-    import matplotlib.pyplot as plt
-    if ax is None:
-        fig, ax = create_poloidal_cross_section_figure(1, 1)
-    else:
-        fig = ax.figure
-
-    r0, z0 = get_wall_rz_coords(no_cal=no_cal, shot=shot)
-    (r_bottom, z_bottom), (r_top, z_top) = separate_rz_points_top_bottom(r0, z0, top_coord_start=s_start_coord_default,
-                                                                         bottom_coord_start=s_start_coord_default)
-    # ax.plot(r0, z0, marker='x', ls='-')
-    if bottom:
-        ax.plot(r_bottom, z_bottom, marker='', ls='-', **kwargs)
-    if top:
-        ax.plot(r_top, z_top, marker='', ls='-', **kwargs)
-
-    ax.set_aspect(aspect)
-    if axes_off:
-        ax.set_axis_off()
-    elif ax_labels:
-        ax.set_xlabel('$R$ [m]')
-        ax.set_ylabel('$z$ [m]')
-
-    if show:
-        plt.tight_layout()
-        plt.show()
-    return fig, ax
+# def create_poloidal_cross_section_figure(nrow=1, ncol=1, cross_sec_axes=((0, 0),)):
+#     fig, axes = plt.subplots(nrow, ncol)
+#     if nrow==1 and ncol==1:
+#         format_poloidal_plane_ax(axes)
+#     else:
+#         for ax_coord in cross_sec_axes:
+#             ax = axes[slice(*ax_coord)]
+#             format_poloidal_plane_ax(ax)
+#     plt.tight_layout()
+#     return fig, axes
 
 def get_s_coord_global(x_im, y_im, z_im, **kwargs):
     """Return MAST-U tile s coordinates for all pixels in image.
@@ -265,10 +233,121 @@ def format_coord(coord, **kwargs):
 
     return formatted_coord
 
+
+def plot_tile_edges_mastu(ax=None, top=True, bottom=True, show=True, **kwargs):
+    import matplotlib.pyplot as plt
+    if ax is None:
+        fig, ax = create_poloidal_cross_section_figure(1, 1)
+    else:
+        fig = ax.figure
+
+    r0, z0 = get_tile_edge_coords_mastu(no_cal=True, shot=50000)
+
+    mask = np.ones_like(r0, dtype=bool)
+    mask = mask * (z0 > 0) if not bottom else mask
+    mask = mask * (z0 < 0) if not top else mask
+
+    ax.plot(r0[mask], z0[mask], marker='x', ls='', **kwargs)
+
+    if show:
+        plt.show()
+    return fig, ax
+
+def plot_vessel_outline(ax=None, top=True, bottom=True, shot=50000, no_cal=False, aspect='equal', ax_labels=True,
+                              axes_off=False, show=True, **kwargs):
+    """ Plot vessel outline for MAST-U
+
+    Args:
+        ax:
+        top:
+        bottom:
+        shot:
+        no_cal:
+        aspect:
+        ax_labels:
+        axes_off:
+        show:
+        **kwargs:
+
+    Returns:
+
+    """
+    from fire.plotting.plot_tools import plot_vessel_outline
+
+    r0, z0 = get_wall_rz_coords(no_cal=no_cal, shot=shot)
+
+    fig, ax = plot_vessel_outline(r0, z0, ax=ax, top=top, bottom=bottom, aspect=aspect, ax_labels=ax_labels,
+                                axes_off=axes_off, show=show)
+
+    return fig, ax
+
+def plot_vessel_top_down(ax=None, keys_plot=('R_T1', 'R_T2', 'R_T3', 'R_T4', 'R_T5', 'R_T5_top', 'R_HL04'),
+                         keys_plot_strong=('R_T1', 'R_T4', 'R_T5', 'R_T5_top'),
+            axes_off=False, phi_labels=True):
+
+    from fire.plotting.plot_tools import plot_vessel_top_down
+
+    fig, ax = plot_vessel_top_down(surface_radii, keys_plot, ax=ax, axes_off=axes_off, phi_labels=phi_labels,
+                                   keys_plot_strong=keys_plot_strong)
+
+    # from matplotlib import patches
+    # from fire.plotting.plot_tools import get_fig_ax
+    # from fire.geometry.geometry import cylindrical_to_cartesian
+    # fig, ax, ax_passed = get_fig_ax(ax)
+    #
+    # r_wall = surface_radii['R_wall']
+    # n_sectors = surface_radii['n_sectors']
+    #
+    # # Plot vessel
+    # wall = patches.Circle((0, 0), radius=r_wall, facecolor='b', edgecolor='k', alpha=0.1)
+    # ax.add_patch(wall)
+    #
+    # # Plot tile radii etc
+    # for key in ['R_T1', 'R_T2', 'R_T3', 'R_T4', 'R_T5', 'R_T5_top', 'R_HL04']:
+    #     r = surface_radii[key]
+    #     alpha = 0.6 if key in ['R_T1', 'R_T4', 'R_T5', 'R_T5_top'] else 0.3
+    #     wall = patches.Circle((0, 0), radius=r, facecolor=None, fill=False, edgecolor='k', ls='--', alpha=alpha)
+    #     ax.add_patch(wall)
+    #
+    # # Lines between sectors
+    # for i in np.arange(n_sectors):
+    #     x, y = cylindrical_to_cartesian(r_wall, i*360/n_sectors, angles_units='degrees')
+    #     ax.plot([0, x], [0, y], ls='--', c='k', lw=1)
+    #
+    # # Sector numbers
+    # for i in np.arange(n_sectors):
+    #     x, y = cylindrical_to_cartesian(r_wall*0.9, 90-(i+0.5)*360/n_sectors, angles_units='degrees')
+    #     ax.text(x, y, f'{i+1}', horizontalalignment='center', verticalalignment='center')
+    #
+    # # Phi labels
+    # if phi_labels:
+    #     for i in np.arange(4):
+    #         phi = i*360/4
+    #         x, y = cylindrical_to_cartesian(r_wall, phi, angles_units='degrees')
+    #         label = f'$\phi={phi:0.0f}^\circ$'
+    #         # annotate_axis(ax, label, x, y, fontsize=16, color='k')
+    #         ax.text(x, y, label, horizontalalignment='left', verticalalignment='bottom')
+    #     ax_scale = 1.2
+    # else:
+    #     ax_scale = 1.1
+    #
+    # ax.set_aspect(1)
+    # ax.set_xlim(-r_wall * ax_scale, r_wall * ax_scale)
+    # ax.set_ylim(-r_wall * ax_scale, r_wall * ax_scale)
+    # if axes_off:
+    #     ax.set_axis_off()
+    # else:
+    #     ax.set_xlabel(r'x [m]')
+    #     ax.set_ylabel(r'y [m]')
+    #     # plt.tight_layout()
+
+    return fig, ax
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    # fig, ax = plot_vessel_outline_mastu(show=True, top=False)
-    # plot_tile_edges(ax=ax, show=True)
+    from fire.plotting.plot_tools import create_poloidal_cross_section_figure
+    fig, ax = create_poloidal_cross_section_figure()
+    plot_tile_edges_mastu(ax=ax, show=True)
     ds = 1e-4
     # ds = 1e-2
     r0, z0 = get_wall_rz_coords(no_cal=True, shot=50000)
