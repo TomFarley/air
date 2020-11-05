@@ -13,15 +13,20 @@ tests/htmlcov
 **.bkup
 **.log
 **.log.*
+**.npz
 .nfs*
 *.p
 *.o
 !test/*.p
+*.nc
 
 docs/sphinx/build
 settings/user/*
 fire/scripts/calibration_images/
 fire/input_files/mast/legacy_air
 fire/input_files/mast/legacy_ait
+fire/figures/*
+fire/*.nc
+
 
 requirements_freia_all.txt
