@@ -53,7 +53,7 @@ class TestMovieReader(unittest.TestCase):
 
             self.assertTrue(np.all(meta_data['frame_range'] == np.array([0, 3749])))
             self.assertTrue(np.all(meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
-            self.assertEqual(meta_data['image_shape'], (8, 320))
+            np.testing.assert_array_equal(meta_data['image_shape'], (8, 320))
             self.assertAlmostEqual(meta_data['fps'], 5000.006668453812)
 
             if 'ipx_header' in meta_data:
@@ -84,6 +84,8 @@ class TestMovieReader(unittest.TestCase):
                 # Check values match
                 self.assertTrue(np.all([np.all(ipx_header[key] == ipx_header_expected[key])
                                         for key in keys_compare]))
+
+
 
         # n_start, n_end = 100, 110
         # meta_data = movie_reader.read_movie_meta_data(pulse, camera, n_start, n_end)

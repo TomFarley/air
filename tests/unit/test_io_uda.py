@@ -49,7 +49,7 @@ if pyuda is not None:
 
             self.assertTrue(np.all(meta_data['frame_range'] == np.array([0, 3749])))
             self.assertTrue(np.all(meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
-            self.assertEqual(meta_data['image_shape'], (8, 320))
+            np.testing.assert_array_equal(meta_data['image_shape'], (8, 320))
             self.assertAlmostEqual(meta_data['fps'], 5000.006668453812)
 
             ipx_header_expected = {
@@ -83,7 +83,7 @@ if pyuda is not None:
 
             self.assertTrue(np.all(meta_data['frame_range'] == np.array([n_start, n_end])))
             np.testing.assert_almost_equal(meta_data['t_range'], np.array([-0.029971, -0.027971]))
-            self.assertEqual(meta_data['image_shape'], (8, 320))
+            np.testing.assert_array_equal(meta_data['image_shape'], (8, 320))
             self.assertAlmostEqual(meta_data['fps'], 5000.006668453812)
 
             meta_data['ipx_header'].pop('frame_times')
@@ -129,7 +129,7 @@ if pyuda is not None:
 
             self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 624])))
             self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.049949,  0.69885])))
-            self.assertEqual(ipx_meta_data['image_shape'], (32, 256))
+            np.testing.assert_array_equal(ipx_meta_data['image_shape'], (32, 256))
             self.assertAlmostEqual(ipx_meta_data['fps'], 833.3344480129053, places=5)
 
             # ipx_header_expected = {'ID': 'IPX 02', 'width': 256, 'height': 32, 'depth': 14, 'codec': 'jp2',

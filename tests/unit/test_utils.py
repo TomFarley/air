@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from fire.misc.utils import update_call_args, locate_file, make_iterable, movie_data_to_xarray
+from fire.misc.utils import update_call_args, locate_file, make_iterable, movie_data_to_dataarray
 
 pwd = Path(__file__).parent
 
@@ -32,7 +32,7 @@ class TestUtils(unittest.TestCase):
               'description': 'Digit level (DL) intensity counts recorded by camera sensor, dependent on photon flux'},
                 }
 
-        frame_data = movie_data_to_xarray(frame_data, frame_times, frame_nos, meta_data=meta_data)
+        frame_data = movie_data_to_dataarray(frame_data, frame_times, frame_nos, meta_data=meta_data)
         self.assertTrue(isinstance(frame_data, xr.DataArray))
         np.testing.assert_array_equal(frame_data['t'].values, frame_times)
         np.testing.assert_array_equal(frame_data['n'].values, frame_nos)

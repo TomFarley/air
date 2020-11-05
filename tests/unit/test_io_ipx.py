@@ -36,7 +36,7 @@ class TestIoIpxFast(unittest.TestCase):
 
         self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 3749])))
         self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
-        self.assertEqual(ipx_meta_data['image_shape'], (8, 320))
+        np.testing.assert_array_equal(ipx_meta_data['image_shape'], (8, 320))
         self.assertAlmostEqual(ipx_meta_data['fps'], 5000.006668453812)
 
         ipx_header_expected = {'date_time': '23/09/2013 15:22:20', 'shot': 30378, 'trigger': -0.10000000149011612,
@@ -59,7 +59,7 @@ class TestIoIpxFast(unittest.TestCase):
 
         self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 623])))
         self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.048749,  0.69885 ])))
-        self.assertEqual(ipx_meta_data['image_shape'], (32, 256))
+        np.testing.assert_array_equal(ipx_meta_data['image_shape'], (32, 256))
         self.assertAlmostEqual(ipx_meta_data['fps'], 833.3344480129053)
 
         ipx_header_expected = {'width': 256, 'height': 32, 'depth': 14, 'shot': 30378, 'trigger': -0.5,
