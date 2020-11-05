@@ -126,6 +126,60 @@ def make_iterable(obj: Any, ndarray: bool=False,
             raise TypeError(f'Invalid cast type: {cast_to}')
     return obj
 
+def safe_len(var, scalar=1, all_nan=0, none=0, ndarray_0d=0, exclude_nans=False, **kwargs):
+    """ Length of variable returning 1 instead of type error for scalars """
+    # logger.debug(var)
+    if var is None:
+        return none
+    elif isinstance(var, np.ndarray) and var.ndim == 0:
+        return ndarray_0d
+    elif is_scalar(var):  # checks if has atribute __len__ etc
+        return scalar
+    elif kwargs and var.__class__.__name__ in kwargs:
+        return kwargs[var.__class__.__name__]
+    else:
+        assert hasattr(var, '__len__')
+        try:
+            if (len(np.array(var)) == np.sum(np.isnan(np.array(var)))):
+                # If value is [Nan, Nan, ...] return zero length
+                return all_nan
+        except TypeError as e:
+            pass
+        if exclude_nans:
+            var = np.array(var)
+            nan_mask = np.isnan(var)
+            return len(var[~nan_mask])
+        else:
+            return len(var)
+
+def safe_arange(start, stop, step):
+    """Return array of elements between start and stop, each separated by step.
+
+    Replacement for np.arange that DOES always include stop.
+    Normally np.arange should not include stop, but due to floating point precision sometimes it does, so output is
+    unpredictable"""
+    n = np.abs((stop - start) / step)
+    if np.isclose(n, np.round(n)):
+        # If n only differs from an integer by floating point precision, round it
+        n = int(np.round(n))+1
+    else:
+        # If n is not approximately an integer, floor it
+        n = int(np.floor(n))+1
+        stop = start + (n-1)*step
+    out = np.linspace(start, stop, n)
+    return out
+
+def safe_isnan(value, false_for_non_numeric=True):
+    """Return false rather than throwing an error if the input type is not numeric"""
+    try:
+        out = np.isnan(value)
+    except TypeError as e:
+        if false_for_non_numeric:
+            out = False
+        else:
+            raise e
+    return out
+
 def is_in(items, collection):
     """Return boolean mask, True for each item in items that is present in collection"""
     items = make_iterable(items)
