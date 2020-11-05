@@ -9,6 +9,8 @@ omit =
     */theodor/*
     fire/plotting/*
     fire/scripts/*
+    fire/interfaces/camera_data_formats.py
+    fire/plugins/machine_plugins/jet_tools/*
 
 # branch = True
 
