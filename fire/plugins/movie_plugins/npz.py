@@ -144,10 +144,14 @@ def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> 
 
     meta_keys = ['n_frames', 'frame_range', 't_range', 'image_shape', 'fps', 'exposure', 'bit_depth', 'lens',
                  'detector_window']
+    missing_keys = []
+    missing_value = 'Unknown'
     for key in meta_keys:
-        if key not in file_dict:
-            logger.warning(f'Missing "{key}" meta data in npz movie. Setting to None.')
-        movie_meta[key] = file_dict.get(key, 'Unknown')
+        if key not in movie_meta:
+            movie_meta[key] = file_dict.get(key, missing_value)
+            missing_keys.append(key)
+    if len(missing_keys) > 0:
+        logger.warning(f'Missing meta data fields in npz movie set to "{missing_value}": {missing_keys}')
 
     file_dict.pop('frames')
     movie_meta['npz_header'] = file_dict
