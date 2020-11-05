@@ -10,6 +10,7 @@ identifying sector numbers and other location based labels and plotting methods 
 Author: Tom Farley (tom.farley@ukaea.uk)
 Created: 08-2019
 """
+import logging
 from collections import Iterable
 
 import numpy as np
@@ -31,6 +32,35 @@ first_sector_start_angle = 90.0
 sectors_clockwise = True
 # Machine specific
 n_louvres_per_sector = 4
+
+# Origin for s coordinates/divider between top and bottom of machine
+s_start_coord_default = (0.260841, 0)
+# Radii of edges of different structures for top down view plot etc
+surface_radii = {'R_wall': 2.0,
+                'R_HL04': 2.1333,
+                'R_T1': 0.333,  # TODO: Replace with correct tile raddi values
+                'R_T2': 0.7,
+                'R_T3': 1.1,
+                'R_T3_top': 1.5,
+                'n_sectors': 12,
+                }
+
+# Wall coordinates taken from MAST gfile
+wall_rz_coords = {'R': np.array([1.9, 1.555104, 1.555104, 1.407931, 1.407931, 1.039931, 1.039931,
+                 1.9, 1.9, 0.564931, 0.564931, 0.7835, 0.7835, 0.58259,
+                 0.4165, 0.28, 0.28, 0.195244, 0.195244, 0.28, 0.28,
+                 0.4165, 0.58259, 0.7835, 0.7835, 0.564931, 0.564931, 1.9,
+                 1.9, 1.039931, 1.039931, 1.407931, 1.407931, 1.555104, 1.555104,
+                 1.9, 1.9]),
+                'Z': np.array([0.405, 0.405, 0.8225, 0.8225, 1.033, 1.033,
+                 1.195, 1.195, 1.825, 1.825, 1.728082, 1.728082,
+                 1.715582, 1.547, 1.547, 1.6835, 1.229089, 1.0835,
+                 -1.0835, -1.229089, -1.6835, -1.547, -1.547, -1.715582,
+                 -1.728082, -1.728082, -1.825, -1.825, -1.195, -1.195,
+                 -1.033, -1.033, -0.8225, -0.8225, -0.405, -0.405,
+                 0.405])}
+
+logger = logging.getLogger(__name__)
 
 def get_machine_sector(x, y, z=None, n_sectors=n_sectors, first_sector_start_angle=first_sector_start_angle,
                        clockwise=sectors_clockwise, **kwargs):
@@ -163,3 +193,31 @@ def format_coord(coord, **kwargs):
     formatted_coord = formatted_coord + '\n Louvre {}'.format(louvre_label)
 
     return formatted_coord
+
+def get_wall_rz_coords(ds=None, false_rz_surface_boxes=None, **kwargs):
+    r, z = wall_rz_coords['R'], wall_rz_coords['Z']
+    if ds is not None:
+        from fire.geometry.s_coordinate import interpolate_rz_coords
+        r, z = interpolate_rz_coords(r, z, ds=ds, false_surface_boxes=false_rz_surface_boxes)
+    return r, z
+
+def plot_vessel_outline(ax=None, top=True, bottom=True, aspect='equal', ax_labels=True,
+                              axes_off=False, show=True, **kwargs):
+    from fire.plotting.plot_tools import plot_vessel_outline as plot_vessel_outline_rz
+
+    r, z = get_wall_rz_coords()
+    fig, ax = plot_vessel_outline_rz(r, z, ax=ax, top=top, bottom=bottom, aspect=aspect, ax_labels=ax_labels,
+                                axes_off=axes_off, show=show, s_start_coord=s_start_coord_default)
+    return fig, ax
+
+def plot_vessel_top_down(ax=None, keys_plot=('R_T1', 'R_T2', 'R_T3', 'R_T3_top'),
+                         keys_plot_strong=('R_T1', 'R_T3_top'),
+            axes_off=False, phi_labels=True):
+
+    from fire.plotting.plot_tools import plot_vessel_top_down
+
+    fig, ax = plot_vessel_top_down(surface_radii, keys_plot, ax=ax, axes_off=axes_off, phi_labels=phi_labels,
+                                   keys_plot_strong=keys_plot_strong)
+    logger.warning('Plotting top down view of MAST with placeholder tile radii')
+
+    return fig, ax
