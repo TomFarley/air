@@ -12,15 +12,16 @@ from pathlib import Path
 from copy import copy
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from matplotlib import pyplot as plt
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 PathList = Sequence[Union[Path, str]]
 
-def movie_data_to_xarray(frame_data, frame_times, frame_nos=None, meta_data=None):
+def movie_data_to_dataarray(frame_data, frame_times, frame_nos=None, meta_data=None, name='frame_data'):
     """Return frame data in xarray.DataArray object
 
     Args:
@@ -39,7 +40,7 @@ def movie_data_to_xarray(frame_data, frame_times, frame_nos=None, meta_data=None
                               coords={'t': frame_times, 'n': ('t', frame_nos),
                                       'y_pix': np.arange(frame_data.shape[1]),
                                       'x_pix': np.arange(frame_data.shape[2])},
-                              name='frame_data')
+                              name=name)
     # Default to indexing by frame number
     frame_data = frame_data.swap_dims({'t': 'n'})
     if 'frame_data' in meta_data:
@@ -124,6 +125,13 @@ def make_iterable(obj: Any, ndarray: bool=False,
         else:
             raise TypeError(f'Invalid cast type: {cast_to}')
     return obj
+
+def is_in(items, collection):
+    """Return boolean mask, True for each item in items that is present in collection"""
+    items = make_iterable(items)
+    collection = make_iterable(collection)
+    out = pd.Series(items).isin(collection).values
+    return out
 
 def get_traceback_location(level=0, format='{module_name}:{func_name}:{line_no} '):
     """Returns an informative prefix for verbose Debug output messages"""
@@ -656,6 +664,16 @@ def rm_files(paths, pattern, verbose=True, match=True, ignore_exceptions=()):
                     logger.info('Deleted file: {}'.format(fn))
             else:
                 pass
+
+def logger_info(logger_arg):
+    info = (f'Logger in "{logger_arg.name}" has:\n'
+          f'parent "{logger_arg.parent}", \n'
+          f'level "{logging.getLevelName(logger_arg.level)}", \n'
+          f'effective level "{logging.getLevelName(logger_arg.getEffectiveLevel())}", \n'
+          f'propagate = "{logger_arg.propagate}", \n'
+          f'handlers {logger_arg.handlers}')
+    return info
+
 
 if __name__ == '__main__':
     pass
