@@ -3,7 +3,7 @@ formatters:
   simple:
     format: "%(levelname)s:%(name)s:%(funcName)s:%(lineno)s:   %(message)s"
   dated:
-    format: "%(asctime)s - %(levelname)s - %(name)s - %(funcName)s:%(lineno)s: %(message)s"
+    format: "%(asctime)s - %(levelname)s - %(name)s - %(funcName)s:%(lineno)s:\n   %(message)s"
 handlers:
   console:
     class: logging.StreamHandler
@@ -25,7 +25,7 @@ handlers:
     backupCount: 2
     level: DEBUG
     formatter: dated
-    filename: ../tmp/logs/fire_debug_log.log
+    filename: "{fire}/../tmp/logs/fire_debug_log.log"
 loggers:
   fire:
     level: DEBUG
