@@ -529,9 +529,9 @@ def check_movie_meta_data(meta_data, required_fields=None, check_bad_values=True
                 else:
                     logger.warning(f'Bad movie meta data value for "{key}": {value}')
 
+    detector_window = meta_data['detector_window']
     if np.any(np.isnan(meta_data['detector_window'])):
         # (Left,Top,Width,Height)
-        detector_window = meta_data['detector_window']
         image_shape = np.array(meta_data['image_shape'])
         # TODO: Check if (some?) detector_window values should be incremented by 1?
         if np.isnan(detector_window[0]) and (image_shape[1] >= 256):
@@ -540,10 +540,18 @@ def check_movie_meta_data(meta_data, required_fields=None, check_bad_values=True
         if np.isnan(detector_window[1]) and (image_shape[0] >= 256):
             detector_window[1] = 0  # +1
             logger.warning(f'Assuming missing "top" value in detector_window[1] to be 0: {detector_window}')
+
     if np.any(np.isnan(meta_data['detector_window'])):
         raise ValueError(f'Movie data appears to be sub-windowed without detector_window meta data')
     else:
         meta_data['detector_window'] = meta_data['detector_window'].astype(int)
+
+    if np.all(detector_window[0:2] > 0):
+        detector_window[0:2] -= 1
+        meta_data['detector_window'] = detector_window
+        # TODO: Compare to image_shape to check validity?
+        logger.warning(f'Subtracted 1 from detector window corner coordinates (need to check validity): {detector_window}')
+    pass
 
 
 if __name__ == '__main__':
