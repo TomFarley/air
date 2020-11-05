@@ -1,0 +1,355 @@
+2020-11-03 16:28:30,183 - INFO - fire - copy_default_user_settings:45:
+   Copied template fire config file to "/home/tfarley/.fire_config.json" from "/home/tfarley/repos/air/fire/input_files/user/fire_config.json"
+2020-11-03 16:28:30,206 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2020-11-03 16:28:30,216 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "get_tile_louvre_label"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:28:30,216 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "get_tile_louvre_index"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:28:30,216 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:28:30,217 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "plot_vessel_outline"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:28:30,217 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "plot_vessel_top_down"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:28:30,218 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/mast_u.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast_u.py'>
+2020-11-03 16:28:30,219 - INFO - fire.plugins.plugins - get_compatible_plugins:146:
+   Located machine plugins for: mast, jet, mast_u (filter: None)
+2020-11-03 16:28:30,228 - INFO - fire.plugins.plugins - get_compatible_plugins:146:
+   Located output_format plugins for: uda_putdata (filter: ['uda_putdata'])
+2020-11-03 16:28:30,771 - INFO - fire.plugins.plugins - get_compatible_plugins:146:
+   Located movie plugins for: imstack, ipx, npz, uda (filter: ['ipx', 'uda', 'imstack'])
+2020-11-03 16:28:30,861 - INFO - fire.plugins.plugins_movie - try_movie_plugins_dicts:383:
+   Read movie "meta" for (mast, rir, 23586) using plugin "ipx": path="/net/fuslsc/data/MAST_Data/023/23586/LATEST", fn="rir023586.ipx"
+2020-11-03 16:28:30,862 - WARNING - fire.plugins.plugins_movie - check_movie_meta_data:553:
+   Subtracted 1 from detector window corner coordinates (need to check validity): [  0   0 320 256]
+2020-11-03 16:28:30,862 - DEBUG - fire.plugins.plugins_movie - reformat_movie_meta_data:455:
+   Converted meta data "lens" to float in meters: "13mm" -> 0.013
+2020-11-03 16:28:30,862 - DEBUG - fire.plugins.plugins_movie - reformat_movie_meta_data:463:
+   Converted meta data "exposure" from us to s: "232" -> 0.000232
+2020-11-03 16:28:32,592 - INFO - fire.plugins.plugins_movie - try_movie_plugins_dicts:383:
+   Read movie "data" for (mast, rir, 23586) using plugin "ipx": path="/net/fuslsc/data/MAST_Data/023/23586/LATEST", fn="rir023586.ipx"
+2020-11-03 16:28:32,593 - INFO - fire.plugins.plugins_movie - read_movie_data:302:
+   Read 115 frames for camera "rir", pulse "23586" from 'plugin': 'ipx', 'path_fn': PosixPath('/net/fuslsc/data/MAST_Data/023/23586/LATEST/rir023586.ipx'), 'path': PosixPath('/net/fuslsc/data/MAST_Data/023/23586/LATEST'), 'fn': 'rir023586.ipx'
+2020-11-03 16:28:32,596 - INFO - fire.interfaces.calcam_calibs - update_detector_window:133:
+   Set calcam detector window to: [  0   0 320 256] (Left,Top,Width,Height)
+2020-11-03 16:28:33,025 - WARNING - fire.misc.data_quality - identify_sudden_intensity_changes:134:
+   Movie data contains sudden discontinuities in intensity for 2/115 frames (diff>mu+3.924*sigma):
+)Coordinates:
+    t        (n) float64 0.2416 0.2479
+  * n        (n) int64 79 81
+2020-11-03 16:28:33,415 - WARNING - fire.misc.data_quality - identify_saturated_frames:107:
+   Movie data contains 4 saturated pixels (DL=2^14=16383) across 1/115 frames:
+)Coordinates:
+    t        (n) float64 0.003832
+  * n        (n) int64 4
+  * y_pix    (y_pix) int64 20 23 24 26 27
+  * x_pix    (x_pix) int64 39 40 41
+2020-11-03 16:28:33,415 - DEBUG - fire.misc.data_quality - identify_bad_frames:45:
+   Assessed 115 frame movie for bad frames in 0.658s
+2020-11-03 16:28:33,904 - DEBUG - fire.camera.camera_shake - calc_camera_shake_phase_correlation:146:
+   Camera shake stats: {'disp_abs_av': array([0.0232801 , 0.03069419]), 'disp_abs_max_overall': array([0.28100287, 0.24744054]), 'disp_norm_max': 0.5210019664487144, 'correl_min': 0.03266128385439515, 'correl_mean': 0.6748978444649344, 'correl_max': 0.9995605468739726, 'disp_correl_min': array([-0.03907407, -0.21420544])}
+2020-11-03 16:28:33,904 - INFO - fire.camera.camera_shake - calc_camera_shake_phase_correlation:150:
+   Camera shake is SUB-PIXEL for all 115 (320x320) frames
+2020-11-03 16:28:33,904 - INFO - fire.camera.camera_shake - calc_camera_shake_displacements:106:
+   Camera shake for 115 frames calculated in (0.49) s
+2020-11-03 16:28:33,907 - INFO - fire.camera.camera_shake - remove_camera_shake:192:
+   Camera shake displacement corrections applied to 0/115 0.000% frames in 0.00 s (max correction = 0.281 pixels). NOTE: This will have introduced nans to corrected frames.
+2020-11-03 16:28:34,474 - WARNING - fire.camera.nuc - apply_nuc_correction:53:
+   NUC corrected frame data contains negative intensities for 114/115 frame numbers:
+Coordinates:
+    t        (n) float64 -0.005677 -0.002507 0.000662 ... 0.3462 0.3494 0.3525
+  * n        (n) int64 1 2 3 4 5 6 7 8 9 ... 106 107 108 109 110 111 112 113 114
+  * y_pix    (y_pix) int64 0 1 2 3 4 5 6 7 8 ... 312 313 314 315 316 317 318 319
+  * x_pix    (x_pix) int64 0 1 2 3 4 5 6 7 8 ... 248 249 250 251 252 253 254 255
+Setting negative values to zero.
+2020-11-03 16:28:35,685 - INFO - fire.plotting.image_figures - figure_xarray_imshow:128:
+   Saved spatial_res_max figure to: /home/tfarley/repos/air/fire/figures/spatial_res_23586_rir.png
+2020-11-03 16:29:20,321 - INFO - fire - copy_default_user_settings:45:
+   Copied template fire config file to "/home/tfarley/.fire_config.json" from "/home/tfarley/repos/air/fire/input_files/user/fire_config.json"
+2020-11-03 16:29:20,323 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2020-11-03 16:29:20,337 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "get_tile_louvre_label"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:29:20,337 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "get_tile_louvre_index"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:29:20,337 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:29:20,337 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "plot_vessel_outline"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:29:20,337 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "plot_vessel_top_down"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:29:20,339 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/mast_u.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast_u.py'>
+2020-11-03 16:29:20,339 - INFO - fire.plugins.plugins - get_compatible_plugins:146:
+   Located machine plugins for: mast, jet, mast_u (filter: None)
+2020-11-03 16:29:20,343 - INFO - fire.plugins.plugins - get_compatible_plugins:146:
+   Located output_format plugins for: uda_putdata (filter: ['uda_putdata'])
+2020-11-03 16:29:20,873 - INFO - fire.plugins.plugins - get_compatible_plugins:146:
+   Located movie plugins for: imstack, ipx, npz, uda (filter: ['ipx', 'uda', 'imstack'])
+2020-11-03 16:29:20,906 - INFO - fire.plugins.plugins_movie - try_movie_plugins_dicts:383:
+   Read movie "meta" for (mast, rir, 23586) using plugin "ipx": path="/net/fuslsc/data/MAST_Data/023/23586/LATEST", fn="rir023586.ipx"
+2020-11-03 16:29:20,906 - WARNING - fire.plugins.plugins_movie - check_movie_meta_data:553:
+   Subtracted 1 from detector window corner coordinates (need to check validity): [  0   0 320 256]
+2020-11-03 16:29:20,906 - DEBUG - fire.plugins.plugins_movie - reformat_movie_meta_data:455:
+   Converted meta data "lens" to float in meters: "13mm" -> 0.013
+2020-11-03 16:29:20,906 - DEBUG - fire.plugins.plugins_movie - reformat_movie_meta_data:463:
+   Converted meta data "exposure" from us to s: "232" -> 0.000232
+2020-11-03 16:29:22,617 - INFO - fire.plugins.plugins_movie - try_movie_plugins_dicts:383:
+   Read movie "data" for (mast, rir, 23586) using plugin "ipx": path="/net/fuslsc/data/MAST_Data/023/23586/LATEST", fn="rir023586.ipx"
+2020-11-03 16:29:22,618 - INFO - fire.plugins.plugins_movie - read_movie_data:302:
+   Read 115 frames for camera "rir", pulse "23586" from 'plugin': 'ipx', 'path_fn': PosixPath('/net/fuslsc/data/MAST_Data/023/23586/LATEST/rir023586.ipx'), 'path': PosixPath('/net/fuslsc/data/MAST_Data/023/23586/LATEST'), 'fn': 'rir023586.ipx'
+2020-11-03 16:29:22,621 - INFO - fire.interfaces.calcam_calibs - update_detector_window:133:
+   Set calcam detector window to: [  0   0 320 256] (Left,Top,Width,Height)
+2020-11-03 16:29:23,080 - WARNING - fire.misc.data_quality - identify_sudden_intensity_changes:134:
+   Movie data contains sudden discontinuities in intensity for 2/115 frames (diff>mu+3.924*sigma):
+)Coordinates:
+    t        (n) float64 0.2416 0.2479
+  * n        (n) int64 79 81
+2020-11-03 16:29:23,550 - WARNING - fire.misc.data_quality - identify_saturated_frames:107:
+   Movie data contains 4 saturated pixels (DL=2^14=16383) across 1/115 frames:
+)Coordinates:
+    t        (n) float64 0.003832
+  * n        (n) int64 4
+  * y_pix    (y_pix) int64 20 23 24 26 27
+  * x_pix    (x_pix) int64 39 40 41
+2020-11-03 16:29:23,550 - DEBUG - fire.misc.data_quality - identify_bad_frames:45:
+   Assessed 115 frame movie for bad frames in 0.784s
+2020-11-03 16:29:24,073 - DEBUG - fire.camera.camera_shake - calc_camera_shake_phase_correlation:146:
+   Camera shake stats: {'disp_abs_av': array([0.0232801 , 0.03069419]), 'disp_abs_max_overall': array([0.28100287, 0.24744054]), 'disp_norm_max': 0.5210019664487144, 'correl_min': 0.03266128385439515, 'correl_mean': 0.6748978444649344, 'correl_max': 0.9995605468739726, 'disp_correl_min': array([-0.03907407, -0.21420544])}
+2020-11-03 16:29:24,073 - INFO - fire.camera.camera_shake - calc_camera_shake_phase_correlation:150:
+   Camera shake is SUB-PIXEL for all 115 (320x320) frames
+2020-11-03 16:29:24,075 - INFO - fire.camera.camera_shake - calc_camera_shake_displacements:106:
+   Camera shake for 115 frames calculated in (0.52) s
+2020-11-03 16:29:24,078 - INFO - fire.camera.camera_shake - remove_camera_shake:192:
+   Camera shake displacement corrections applied to 0/115 0.000% frames in 0.00 s (max correction = 0.281 pixels). NOTE: This will have introduced nans to corrected frames.
+2020-11-03 16:29:24,710 - WARNING - fire.camera.nuc - apply_nuc_correction:53:
+   NUC corrected frame data contains negative intensities for 114/115 frame numbers:
+Coordinates:
+    t        (n) float64 -0.005677 -0.002507 0.000662 ... 0.3462 0.3494 0.3525
+  * n        (n) int64 1 2 3 4 5 6 7 8 9 ... 106 107 108 109 110 111 112 113 114
+  * y_pix    (y_pix) int64 0 1 2 3 4 5 6 7 8 ... 312 313 314 315 316 317 318 319
+  * x_pix    (x_pix) int64 0 1 2 3 4 5 6 7 8 ... 248 249 250 251 252 253 254 255
+Setting negative values to zero.
+2020-11-03 16:29:25,802 - INFO - fire.plotting.image_figures - figure_xarray_imshow:128:
+   Saved spatial_res_max figure to: /home/tfarley/repos/air/fire/figures/spatial_res_23586_rir.png
+2020-11-03 16:29:38,196 - INFO - fire - copy_default_user_settings:45:
+   Copied template fire config file to "/home/tfarley/.fire_config.json" from "/home/tfarley/repos/air/fire/input_files/user/fire_config.json"
+2020-11-03 16:29:38,200 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2020-11-03 16:29:38,206 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "get_tile_louvre_label"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:29:38,206 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "get_tile_louvre_index"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:29:38,207 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:29:38,207 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "plot_vessel_outline"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:29:38,207 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "plot_vessel_top_down"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:29:38,209 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/mast_u.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast_u.py'>
+2020-11-03 16:29:38,209 - INFO - fire.plugins.plugins - get_compatible_plugins:146:
+   Located machine plugins for: mast, jet, mast_u (filter: None)
+2020-11-03 16:29:38,211 - INFO - fire.plugins.plugins - get_compatible_plugins:146:
+   Located output_format plugins for: uda_putdata (filter: ['uda_putdata'])
+2020-11-03 16:29:38,760 - INFO - fire.plugins.plugins - get_compatible_plugins:146:
+   Located movie plugins for: imstack, ipx, npz, uda (filter: ['ipx', 'uda', 'imstack'])
+2020-11-03 16:29:38,801 - INFO - fire.plugins.plugins_movie - try_movie_plugins_dicts:383:
+   Read movie "meta" for (mast, rir, 23586) using plugin "ipx": path="/net/fuslsc/data/MAST_Data/023/23586/LATEST", fn="rir023586.ipx"
+2020-11-03 16:29:38,801 - WARNING - fire.plugins.plugins_movie - check_movie_meta_data:553:
+   Subtracted 1 from detector window corner coordinates (need to check validity): [  0   0 320 256]
+2020-11-03 16:29:38,801 - DEBUG - fire.plugins.plugins_movie - reformat_movie_meta_data:455:
+   Converted meta data "lens" to float in meters: "13mm" -> 0.013
+2020-11-03 16:29:38,801 - DEBUG - fire.plugins.plugins_movie - reformat_movie_meta_data:463:
+   Converted meta data "exposure" from us to s: "232" -> 0.000232
+2020-11-03 16:29:40,524 - INFO - fire.plugins.plugins_movie - try_movie_plugins_dicts:383:
+   Read movie "data" for (mast, rir, 23586) using plugin "ipx": path="/net/fuslsc/data/MAST_Data/023/23586/LATEST", fn="rir023586.ipx"
+2020-11-03 16:29:40,525 - INFO - fire.plugins.plugins_movie - read_movie_data:302:
+   Read 115 frames for camera "rir", pulse "23586" from 'plugin': 'ipx', 'path_fn': PosixPath('/net/fuslsc/data/MAST_Data/023/23586/LATEST/rir023586.ipx'), 'path': PosixPath('/net/fuslsc/data/MAST_Data/023/23586/LATEST'), 'fn': 'rir023586.ipx'
+2020-11-03 16:29:40,528 - INFO - fire.interfaces.calcam_calibs - update_detector_window:133:
+   Set calcam detector window to: [  0   0 320 256] (Left,Top,Width,Height)
+2020-11-03 16:29:40,853 - WARNING - fire.misc.data_quality - identify_sudden_intensity_changes:134:
+   Movie data contains sudden discontinuities in intensity for 2/115 frames (diff>mu+3.924*sigma):
+)Coordinates:
+    t        (n) float64 0.2416 0.2479
+  * n        (n) int64 79 81
+2020-11-03 16:29:41,255 - WARNING - fire.misc.data_quality - identify_saturated_frames:107:
+   Movie data contains 4 saturated pixels (DL=2^14=16383) across 1/115 frames:
+)Coordinates:
+    t        (n) float64 0.003832
+  * n        (n) int64 4
+  * y_pix    (y_pix) int64 20 23 24 26 27
+  * x_pix    (x_pix) int64 39 40 41
+2020-11-03 16:29:41,256 - DEBUG - fire.misc.data_quality - identify_bad_frames:45:
+   Assessed 115 frame movie for bad frames in 0.675s
+2020-11-03 16:29:41,744 - DEBUG - fire.camera.camera_shake - calc_camera_shake_phase_correlation:146:
+   Camera shake stats: {'disp_abs_av': array([0.0232801 , 0.03069419]), 'disp_abs_max_overall': array([0.28100287, 0.24744054]), 'disp_norm_max': 0.5210019664487144, 'correl_min': 0.03266128385439515, 'correl_mean': 0.6748978444649344, 'correl_max': 0.9995605468739726, 'disp_correl_min': array([-0.03907407, -0.21420544])}
+2020-11-03 16:29:41,744 - INFO - fire.camera.camera_shake - calc_camera_shake_phase_correlation:150:
+   Camera shake is SUB-PIXEL for all 115 (320x320) frames
+2020-11-03 16:29:41,745 - INFO - fire.camera.camera_shake - calc_camera_shake_displacements:106:
+   Camera shake for 115 frames calculated in (0.49) s
+2020-11-03 16:29:41,747 - INFO - fire.camera.camera_shake - remove_camera_shake:192:
+   Camera shake displacement corrections applied to 0/115 0.000% frames in 0.00 s (max correction = 0.281 pixels). NOTE: This will have introduced nans to corrected frames.
+2020-11-03 16:29:42,348 - WARNING - fire.camera.nuc - apply_nuc_correction:53:
+   NUC corrected frame data contains negative intensities for 114/115 frame numbers:
+Coordinates:
+    t        (n) float64 -0.005677 -0.002507 0.000662 ... 0.3462 0.3494 0.3525
+  * n        (n) int64 1 2 3 4 5 6 7 8 9 ... 106 107 108 109 110 111 112 113 114
+  * y_pix    (y_pix) int64 0 1 2 3 4 5 6 7 8 ... 312 313 314 315 316 317 318 319
+  * x_pix    (x_pix) int64 0 1 2 3 4 5 6 7 8 ... 248 249 250 251 252 253 254 255
+Setting negative values to zero.
+2020-11-03 16:29:43,580 - INFO - fire.plotting.image_figures - figure_xarray_imshow:128:
+   Saved spatial_res_max figure to: /home/tfarley/repos/air/fire/figures/spatial_res_23586_rir.png
+2020-11-03 16:30:43,549 - INFO - fire.physics.temperature - get_photon_coefs_from_calib_data:125:
+   Set quadratic temperature calibration coefficient to zero: c2=0. Only have value for c1.
+2020-11-03 16:30:45,073 - WARNING - fire.physics.physics_parameters - calc_physics_params:159:
+   Using incorrect annulus areas for integrated/total quantities
+2020-11-03 16:30:45,726 - DEBUG - fire.interfaces.uda_utils - putdata_create:308:
+   Created uda output netcdf file handle for /home/tfarley/repos/air/air023586.nc
+2020-11-03 16:30:45,728 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:400:
+   Successfully wrote attribute to group "/devices/rir": "bit_depth"=14
+2020-11-03 16:30:45,729 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:400:
+   Successfully wrote attribute to group "/devices/rir": "pixel_pitch"=3e-05
+2020-11-03 16:30:45,729 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:400:
+   Successfully wrote attribute to group "/devices/rir": "aperture"=??
+2020-11-03 16:30:45,730 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:400:
+   Successfully wrote attribute to group "/devices/rir": "unfiltered_wavelength_range"=[2.5e-06, 5e-06]
+2020-11-03 16:30:45,730 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:400:
+   Successfully wrote attribute to group "/devices/rir/wavelength_filters": "sbf_mwir"=[4.5e-06, 5e-06]
+2020-11-03 16:30:45,730 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:400:
+   Successfully wrote attribute to group "/devices/rir": "available_lenses"=[0.007, 0.013, 0.025, 0.05]
+2020-11-03 16:30:45,731 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:400:
+   Successfully wrote attribute to group "/devices/rir": "neutral_density_filters"=[]
+2020-11-03 16:30:45,731 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:400:
+   Successfully wrote attribute to group "/devices/rir/window_locations": "0"=HL01
+2020-11-03 16:30:45,732 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:400:
+   Successfully wrote attribute to group "/devices/rir": "description"=Medium-wavelength infra-red camera
+2020-11-03 16:30:45,732 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:400:
+   Successfully wrote attribute to group "/devices/rir/aliases": "0"=sbf_1
+2020-11-03 16:30:45,732 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:400:
+   Successfully wrote attribute to group "/devices/rir": "year_of_purchase"=2003
+2020-11-03 16:30:45,735 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:489:
+   Successfully wrote dimension to group "/path0": "i_path0"
+2020-11-03 16:30:45,744 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:504:
+   Successfully wrote coordinate to group "/path0":  "i_path0"
+2020-11-03 16:30:45,744 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:489:
+   Successfully wrote dimension to group "/path0": "n"
+2020-11-03 16:30:45,745 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:504:
+   Successfully wrote coordinate to group "/path0":  "n"
+2020-11-03 16:30:45,745 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:489:
+   Successfully wrote dimension to group "/path0": "t"
+2020-11-03 16:30:45,746 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:504:
+   Successfully wrote coordinate to group "/path0":  "t"
+2020-11-03 16:30:45,749 - DEBUG - fire.interfaces.uda_utils - putdata_variable:519:
+   Successfully wrote data to group "/path0" for "heat_flux_path0"
+2020-11-03 16:30:45,751 - DEBUG - fire.interfaces.uda_utils - putdata_variable:519:
+   Successfully wrote data to group "/path0" for "temperature_path0"
+2020-11-03 16:30:45,751 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:489:
+   Successfully wrote dimension to group "/images": "t"
+2020-11-03 16:30:45,752 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:504:
+   Successfully wrote coordinate to group "/images":  "t"
+2020-11-03 16:30:45,752 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:489:
+   Successfully wrote dimension to group "/images": "n"
+2020-11-03 16:30:45,753 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:504:
+   Successfully wrote coordinate to group "/images":  "n"
+2020-11-03 16:30:45,753 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:489:
+   Successfully wrote dimension to group "/images": "y_pix"
+2020-11-03 16:30:45,754 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:504:
+   Successfully wrote coordinate to group "/images":  "y_pix"
+2020-11-03 16:30:45,754 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:489:
+   Successfully wrote dimension to group "/images": "x_pix"
+2020-11-03 16:30:45,755 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:504:
+   Successfully wrote coordinate to group "/images":  "x_pix"
+2020-11-03 16:30:46,697 - DEBUG - fire.interfaces.uda_utils - putdata_variable:519:
+   Successfully wrote data to group "/images" for "temperature_im"
+2020-11-03 16:30:46,697 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:489:
+   Successfully wrote dimension to group "/path0/integrated": "n"
+2020-11-03 16:30:46,698 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:504:
+   Successfully wrote coordinate to group "/path0/integrated":  "n"
+2020-11-03 16:30:46,699 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:489:
+   Successfully wrote dimension to group "/path0/integrated": "t"
+2020-11-03 16:30:46,700 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:504:
+   Successfully wrote coordinate to group "/path0/integrated":  "t"
+2020-11-03 16:30:46,701 - DEBUG - fire.interfaces.uda_utils - putdata_variable:519:
+   Successfully wrote data to group "/path0/integrated" for "heat_flux_total_path0"
+2020-11-03 16:30:46,702 - DEBUG - fire.interfaces.uda_utils - putdata_variable:519:
+   Successfully wrote data to group "/path0/integrated" for "heat_flux_peak_path0"
+2020-11-03 16:30:46,703 - DEBUG - fire.interfaces.uda_utils - putdata_variable:519:
+   Successfully wrote data to group "/path0/integrated" for "heat_flux_s_peak_path0"
+2020-11-03 16:30:46,703 - DEBUG - fire.interfaces.uda_utils - putdata_variable:519:
+   Successfully wrote data to group "/path0/integrated" for "heat_flux_r_peak_path0"
+2020-11-03 16:30:46,704 - INFO - fire.interfaces.uda_utils - putdata_variables_from_datasets:477:
+   Wrote variables to file: 
+   ['temperature', 'heat_flux', 'temperature', 'heat_flux_total', 'heat_flux_peak', 'heat_flux_s_peak', 'heat_flux_r_peak']
+2020-11-03 16:31:02,234 - INFO - fire - copy_default_user_settings:45:
+   Copied template fire config file to "/home/tfarley/.fire_config.json" from "/home/tfarley/repos/air/fire/input_files/user/fire_config.json"
+2020-11-03 16:31:02,252 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2020-11-03 16:31:02,268 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "get_tile_louvre_label"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:31:02,268 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "get_tile_louvre_index"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:31:02,268 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:31:02,269 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "plot_vessel_outline"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:31:02,269 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "plot_vessel_top_down"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2020-11-03 16:31:02,271 - DEBUG - fire.plugins.plugins - get_plugins:102:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/mast_u.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast_u.py'>
+2020-11-03 16:31:02,272 - INFO - fire.plugins.plugins - get_compatible_plugins:146:
+   Located machine plugins for: mast, jet, mast_u (filter: None)
+2020-11-03 16:31:02,280 - INFO - fire.plugins.plugins - get_compatible_plugins:146:
+   Located output_format plugins for: uda_putdata (filter: ['uda_putdata'])
+2020-11-03 16:31:02,592 - INFO - fire.plugins.plugins - get_compatible_plugins:146:
+   Located movie plugins for: imstack, ipx, npz, uda (filter: ['ipx', 'uda', 'imstack'])
+2020-11-03 16:31:03,801 - INFO - fire.plugins.plugins_movie - try_movie_plugins_dicts:383:
+   Read movie "meta" for (mast, rir, 23586) using plugin "ipx": path="/net/fuslsc/data/MAST_Data/023/23586/LATEST", fn="rir023586.ipx"
+2020-11-03 16:31:03,802 - WARNING - fire.plugins.plugins_movie - check_movie_meta_data:553:
+   Subtracted 1 from detector window corner coordinates (need to check validity): [  0   0 320 256]
+2020-11-03 16:31:03,802 - DEBUG - fire.plugins.plugins_movie - reformat_movie_meta_data:455:
+   Converted meta data "lens" to float in meters: "13mm" -> 0.013
+2020-11-03 16:31:03,802 - DEBUG - fire.plugins.plugins_movie - reformat_movie_meta_data:463:
+   Converted meta data "exposure" from us to s: "232" -> 0.000232
+2020-11-03 16:31:05,808 - INFO - fire.plugins.plugins_movie - try_movie_plugins_dicts:383:
+   Read movie "data" for (mast, rir, 23586) using plugin "ipx": path="/net/fuslsc/data/MAST_Data/023/23586/LATEST", fn="rir023586.ipx"
+2020-11-03 16:31:05,809 - INFO - fire.plugins.plugins_movie - read_movie_data:302:
+   Read 115 frames for camera "rir", pulse "23586" from 'plugin': 'ipx', 'path_fn': PosixPath('/net/fuslsc/data/MAST_Data/023/23586/LATEST/rir023586.ipx'), 'path': PosixPath('/net/fuslsc/data/MAST_Data/023/23586/LATEST'), 'fn': 'rir023586.ipx'
+2020-11-03 16:31:05,812 - INFO - fire.interfaces.calcam_calibs - update_detector_window:133:
+   Set calcam detector window to: [  0   0 320 256] (Left,Top,Width,Height)
+2020-11-03 16:31:06,417 - WARNING - fire.misc.data_quality - identify_sudden_intensity_changes:134:
+   Movie data contains sudden discontinuities in intensity for 2/115 frames (diff>mu+3.924*sigma):
+)Coordinates:
+    t        (n) float64 0.2416 0.2479
+  * n        (n) int64 79 81
+2020-11-03 16:31:06,875 - WARNING - fire.misc.data_quality - identify_saturated_frames:107:
+   Movie data contains 4 saturated pixels (DL=2^14=16383) across 1/115 frames:
+)Coordinates:
+    t        (n) float64 0.003832
+  * n        (n) int64 4
+  * y_pix    (y_pix) int64 20 23 24 26 27
+  * x_pix    (x_pix) int64 39 40 41
+2020-11-03 16:31:06,876 - DEBUG - fire.misc.data_quality - identify_bad_frames:45:
+   Assessed 115 frame movie for bad frames in 1.01s
+2020-11-03 16:31:07,397 - DEBUG - fire.camera.camera_shake - calc_camera_shake_phase_correlation:146:
+   Camera shake stats: {'disp_abs_av': array([0.0232801 , 0.03069419]), 'disp_abs_max_overall': array([0.28100287, 0.24744054]), 'disp_norm_max': 0.5210019664487144, 'correl_min': 0.03266128385439515, 'correl_mean': 0.6748978444649344, 'correl_max': 0.9995605468739726, 'disp_correl_min': array([-0.03907407, -0.21420544])}
+2020-11-03 16:31:07,398 - INFO - fire.camera.camera_shake - calc_camera_shake_phase_correlation:150:
+   Camera shake is SUB-PIXEL for all 115 (320x320) frames
+2020-11-03 16:31:07,398 - INFO - fire.camera.camera_shake - calc_camera_shake_displacements:106:
+   Camera shake for 115 frames calculated in (0.50) s
+2020-11-03 16:31:07,406 - INFO - fire.camera.camera_shake - remove_camera_shake:192:
+   Camera shake displacement corrections applied to 0/115 0.000% frames in 0.00 s (max correction = 0.281 pixels). NOTE: This will have introduced nans to corrected frames.
+2020-11-03 16:31:08,013 - WARNING - fire.camera.nuc - apply_nuc_correction:53:
+   NUC corrected frame data contains negative intensities for 114/115 frame numbers:
+Coordinates:
+    t        (n) float64 -0.005677 -0.002507 0.000662 ... 0.3462 0.3494 0.3525
+  * n        (n) int64 1 2 3 4 5 6 7 8 9 ... 106 107 108 109 110 111 112 113 114
+  * y_pix    (y_pix) int64 0 1 2 3 4 5 6 7 8 ... 312 313 314 315 316 317 318 319
+  * x_pix    (x_pix) int64 0 1 2 3 4 5 6 7 8 ... 248 249 250 251 252 253 254 255
+Setting negative values to zero.
+2020-11-03 16:31:17,717 - INFO - fire.plotting.image_figures - figure_xarray_imshow:128:
+   Saved spatial_res_max figure to: /home/tfarley/repos/air/fire/figures/spatial_res_23586_rir.png
+2020-11-03 16:31:17,998 - INFO - fire.physics.temperature - get_photon_coefs_from_calib_data:125:
+   Set quadratic temperature calibration coefficient to zero: c2=0. Only have value for c1.
