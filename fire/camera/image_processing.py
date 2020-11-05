@@ -13,8 +13,10 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
+from fire.misc.data_quality import calc_outlier_nsigma_for_sample_size
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 
 def find_outlier_pixels(image, tol=3, check_edges=True):
@@ -113,20 +115,25 @@ def find_outlier_pixels(image, tol=3, check_edges=True):
             hot_pixels = np.hstack(( hot_pixels, [[height-1],[width-1]]  ))
             fixed_image[-1,-1] = med
     t1 = time.time()
-    logger.debug(f'Found outlier pixels for frame in {t1-t0:0.3f}s')
+    logger.debug(f'Found {len(hot_pixels)} outlier pixels for frame in {t1-t0:0.3f}s')
     return hot_pixels, fixed_image
 
-def find_outlier_intensity_threshold(data, nsigma=3, sample_size_factor=5):
-    data = np.array(data).flatten()
-    thresh = np.mean(data) + nsigma * np.std(data)
-    if np.max(data) < thresh:
+def find_outlier_intensity_threshold(data, nsigma='auto', sample_size_factor=5):
+    data = np.array(data).ravel()
+    if nsigma == 'auto':
+        nsigma = calc_outlier_nsigma_for_sample_size(data.size)
+    thresh = np.nanmean(data) + nsigma * np.nanstd(data)
+    if np.nanmax(data) < thresh:
         out = np.max(data)
     else:
+        # Look for peaks in tail of histogram
         n = 3
+        # Generate list of percentiles weighted towards high values
         x = np.power(np.linspace(20, 100**n, len(data)/sample_size_factor), 1/n)
-        y = np.percentile(data, x)
+        y = np.nanpercentile(data, x)
         d = np.concatenate([[0], np.diff(y)])
-        d2 = np.concatenate([[0], np.diff(d)])
+        # d2 = np.concatenate([[0], np.diff(d)])
+        # Identify big jumps between percentiles
         jumps = np.where(d > np.max(d)/2)[0]
         out = y[jumps[-1]-1]
     return out
