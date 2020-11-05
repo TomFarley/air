@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 def calc_camera_shake_rotation(frames: Union[xr.DataArray, np.ndarray],
                                frame_reference: Union[xr.DataArray, np.ndarray],
@@ -77,7 +77,7 @@ def calc_camera_shake_rotation(frames: Union[xr.DataArray, np.ndarray],
 
 def calc_camera_shake_displacements(frames: Union[xr.DataArray, np.ndarray],
                                     frame_reference: Union[xr.DataArray, np.ndarray],
-                                    method='phase_correlation',
+                                    method='phase_correlation', erroneous_displacement=10,
                                     verbose=False):
     """Return array of pixel (x, y) displacemnts for each frame relative to a reference frame
 
@@ -105,62 +105,97 @@ def calc_camera_shake_displacements(frames: Union[xr.DataArray, np.ndarray],
     if verbose:
         logger.info(f'Camera shake for {len(frames)} frames calculated in ({t1-t0:0.2f}) s')
 
+    mask_erroneous = np.abs(displacements) > erroneous_displacement
+    if (erroneous_displacement is not None) and (np.any(mask_erroneous)):
+        frames_erroneous = np.nonzero(np.any(mask_erroneous, axis=1))[0]
+        n_erroneous = len(frames_erroneous)
+        displacements[mask_erroneous] = np.nan
+        camera_shake_stats = calc_camera_shake_stats(displacements)
+        logger.warning(f'Erroneous camera shake displacements (>{erroneous_displacement} pixels) set to nan for '
+                       f'{n_erroneous}/{len(frames)} frames, i: {frames_erroneous}\n'
+                       f'   New camera shake stats: {camera_shake_stats}')
+
     return displacements, camera_shake_stats
 
+def calc_camera_shake_stats(displacements):
+    camera_shake_stats = {}
+    displacements_abs = np.abs(displacements)
+    camera_shake_stats['disp_abs_av'] = np.nanmean(displacements_abs, axis=0)
+    camera_shake_stats['disp_abs_max_overall'] = np.nanmax(displacements_abs, axis=0)
+    camera_shake_stats['disp_norm_max'] = np.nanmax(np.linalg.norm(displacements_abs, axis=0))
+    return camera_shake_stats
+
 def calc_camera_shake_phase_correlation(frames, reference_frame, verbose=False):
+    if reference_frame.ndim == 3:
+        reference_frame = cv2.cvtColor(reference_frame, cv2.COLOR_RGB2GRAY)
     # cv2.phaseCorrelate requires 32/64 bit float arrays
     reference_frame = np.float32(reference_frame)
     frames = np.float32(frames)
-    displacemnts = np.full((len(frames), 2), np.nan)
+    displacements = np.full((len(frames), 2), np.nan)
     correlations = np.full(len(frames), np.nan)
     for n in np.arange(len(frames)):
         frame = np.array(frames[n])
-        displacemnts[n], correlations[n] = cv2.phaseCorrelate(frame, reference_frame)
-    camera_shake_stats = {}
-    camera_shake_stats['disp_abs_av'] = np.abs(displacemnts).mean(axis=0)
-    camera_shake_stats['disp_abs_av'] = np.abs(displacemnts).mean(axis=0)
-    camera_shake_stats['disp_abs_max_overall'] = np.abs(displacemnts).max(axis=0)
-    camera_shake_stats['disp_norm_max'] = np.linalg.norm(displacemnts, axis=0).max()
+        displacements[n], correlations[n] = cv2.phaseCorrelate(frame, reference_frame)
+
+    camera_shake_stats = calc_camera_shake_stats(displacements)
     camera_shake_stats['correl_min'] = correlations.min()
     camera_shake_stats['correl_mean'] = correlations.mean()
-    camera_shake_stats['disp_correl_min'] = displacemnts[correlations.argmin()]
+    camera_shake_stats['correl_max'] = correlations.max()
+    camera_shake_stats['disp_correl_min'] = displacements[correlations.argmin()]
     if verbose:
-        logger.info(f'Camera shake stats: {camera_shake_stats}')
+        logger.debug(f'Camera shake stats: {camera_shake_stats}')
         shape = frames.shape
         disp_max = np.max(camera_shake_stats['disp_abs_max_overall'])
         if disp_max < 1:
             logger.info(f'Camera shake is SUB-PIXEL for all {len(frames)} ({shape[1]}x{shape[1]}) frames')
         elif disp_max > 3:
-            logger.warning('Camera shake is LARGE (>3 pixels)')
+            logger.warning(f'Camera shake is LARGE (>3 pixels): {camera_shake_stats}')
         elif disp_max > 1:
             logger.info('Camera shake is SIGNIFICANT (1<shake<3 pixels)')
     camera_shake_stats['correlations'] = correlations
-    return displacemnts, camera_shake_stats
+    return displacements, camera_shake_stats
 
-def remove_camera_shake(frames, pixel_displacements, verbose=False):
+def remove_camera_shake(frame_data, pixel_displacements, verbose=False):
     t0 = time.time()
-    pixel_displacements = np.array(pixel_displacements)
+    pixel_displacements_int = np.round(np.array(pixel_displacements))
+    pixel_displacements_int[np.isnan(pixel_displacements_int)] = 0  # Apply no roll correction for nans
+    pixel_displacements_int = pixel_displacements_int.astype(int)
     n_corrected = 0
-    for n in np.arange(len(frames)):
-        displacement = np.round(pixel_displacements[n]).astype(int)
+    for n in np.arange(len(frame_data)):
+        displacement = pixel_displacements_int[n]
         if np.all(displacement == [0, 0]):
             continue
         n_corrected += 1
-        frames[n] = np.roll(frames[n], displacement, axis=(1, 0))
-        # Swap rapped values for nans
-        if displacement[1] > 0:
-            frames[n, :displacement[1], :] = np.nan
+        frame_data[n] = np.roll(frame_data[n], displacement, axis=(1, 0))
+
+        # Swap wrapped values for nans
+        if displacement[1] == 0:
+            pass
+        elif displacement[1] > 0:
+            frame_data[n, :displacement[1], :] = np.nan
         else:
-            frames[n, displacement[1]:, :] = np.nan
-        if displacement[0] > 0:
-            frames[n, :, :displacement[0]] = np.nan
+            frame_data[n, displacement[1]:, :] = np.nan
+
+        if displacement[0] == 0:
+            pass
+        elif displacement[0] > 0:
+            frame_data[n, :, :displacement[0]] = np.nan
         else:
-            frames[n, :, displacement[0]:] = np.nan
+            frame_data[n, :, displacement[0]:] = np.nan
+
+        if np.all(np.isnan(frame_data[n])):
+            logger.warning(f'Camera shake correction has resulted in a frame {n} being all nans. '
+                           f'Correction={displacement}.')
     t1 = time.time()
     if verbose:
-        logger.info(f'Camera shake corrected for {n_corrected} frames in ({t1-t0:0.2f}) s')
+        frac = n_corrected/len(frame_data)
+        logger.info(f'Camera shake displacement corrections applied to {n_corrected}/{len(frame_data)} '
+                    f'{frac:0.3%} frames in {t1-t0:0.2f} s '
+                    f'(max correction = {float(np.max(pixel_displacements)):0.3g} pixels). '
+                    f'NOTE: This will have introduced nans to corrected frames.')
 
-    return frames
+
+    return frame_data
 
 def remove_camera_shake_calcam(frames, calcam_calib):
     import calcam
