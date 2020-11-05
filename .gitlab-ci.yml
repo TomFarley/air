@@ -18,6 +18,7 @@ stages:
     stage: test
     before_script:
     - pwd
+    - git status
     - export USER=root
     - export LOGNAME=root
     - source /etc/profile.d/modules.sh
@@ -43,6 +44,10 @@ stages:
     - pip install --user -r ./requirements.txt
     - pip install --user .
     - pip list
+    - pwd
+    - ls
+    - ls tmp/
+    - ls tmp/logs/
 
 .my_template: &PREPARE_TESTING_UBUNTU
     stage: test
