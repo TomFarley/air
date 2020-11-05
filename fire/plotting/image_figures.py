@@ -70,9 +70,9 @@ def figure_xarray_imshow(data, key='data', slice=None, ax=None,
     if (clip_range is not None) and (isinstance(clip_range, (tuple, list, np.ndarray))):
         # Set rescaled data outside of clip range to nan
         if clip_range[0] is not None:
-            data_plot = data_plot.where(data_plot > clip_range[0], np.nan)
+            data_plot = data_plot.where(data_plot >= clip_range[0], np.nan)
         if clip_range[1] is not None:
-            data_plot = data_plot.where(data_plot < clip_range[1], np.nan)
+            data_plot = data_plot.where(data_plot <= clip_range[1], np.nan)
 
     kws = {}
     if add_colorbar:
