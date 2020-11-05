@@ -23,8 +23,11 @@ logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
 def generate_test_npz_movie_from_cad_image(fn_out, path_in, nframes=20, dt=1e-4):
+    fn_out = Path(fn_out).resolve()
+
     movie_meta = imstack.read_movie_meta(path_in)
     frame_nos, frame_times, frame = imstack.read_movie_data(path_in)
+    frame = frame[0]
 
     frame_data = np.zeros((nframes,)+frame.shape)
     frame_nos = np.arange(0, nframes)
@@ -33,6 +36,8 @@ def generate_test_npz_movie_from_cad_image(fn_out, path_in, nframes=20, dt=1e-4)
     max_value = 2**(bit_depth-1)
     expsoure = 232e-6
     lens = 13e-2  # 13e-3
+    image_shape = np.array(frame_data.shape[1:])
+    detector_window = np.array([0, 0, *image_shape[::-1]])
 
     # Raise minimum intensity well above zero
     if np.min(frame) < 0.1 * np.max(frame):
@@ -51,18 +56,20 @@ def generate_test_npz_movie_from_cad_image(fn_out, path_in, nframes=20, dt=1e-4)
         plt.show()
     frame_data = scale_factors[:, np.newaxis, np.newaxis] * frame
 
-
     data = dict(bit_depth=bit_depth, exposure=expsoure, lens=lens,
                 imstack_filenames=movie_meta['imstack_header']['imstack_filenames'],
                 n_frames=len(frame_nos), frame_range=[np.min(frame_nos), np.max(frame_nos)],
-                t_range=[np.min(frame_times), np.max(frame_times)], frame_shape=frame_data.shape[1:], fps=1/dt,
+                t_range=[np.min(frame_times), np.max(frame_times)], image_shape=image_shape,
+                detector_window=detector_window, fps=1/dt,
                 author='tfarley', date_created=str(datetime.datetime.today()))
 
     np.savez(fn_out, frames=frame_data, time=frame_times, frame_nos=frame_nos, scale_factors=scale_factors, **data)
     print(f'Wrote npz test movie to {fn_out} using calibration data with meta data: \n{data}')
 
-def generate_npz_movie_from_calib_asc_images(fn_out, path_in, exposure_time=30, dt=1e-4):
+def generate_npz_movie_from_calib_asc_images(fn_out, path_in, exposure_time=30, dt=1e-4, plot=True):
     from fire.interfaces.camera_data_formats import read_ircam_asc_image_file
+
+    fn_out = Path(fn_out).resolve()
 
     mkdir(fn_out, depth=1, verbose=True)
     fn_bb = f'bb_{exposure_time}us.ASC'
@@ -88,6 +95,9 @@ def generate_npz_movie_from_calib_asc_images(fn_out, path_in, exposure_time=30, 
     frame_data = np.zeros((nframes,) + frame_nuc.shape)
     frame_data[0] = frame_nuc
 
+    image_shape = np.array(frame_data.shape[1:])
+    detector_window =  np.array([0, 0, *image_shape[::-1]])
+
     for i, temp_dir in enumerate(temperature_dirs, start=1):
         path_bb = temp_dir / fn_bb
         frame = read_ircam_asc_image_file(path_bb, verbose=True).T
@@ -98,7 +108,7 @@ def generate_npz_movie_from_calib_asc_images(fn_out, path_in, exposure_time=30, 
     frame_nos = np.arange(0, nframes)
     frame_times = np.arange(0, nframes*dt, dt)
 
-    if True:
+    if plot:
         for n in np.arange(len(frame_data)):
             plt.imshow(frame_data[n])
             plt.show()
@@ -106,22 +116,29 @@ def generate_npz_movie_from_calib_asc_images(fn_out, path_in, exposure_time=30, 
     data = dict(bit_depth=bit_depth, exposure=expsoure, lens=lens, temperatures=temperatures,
                 calib_files_path=str(path_in),
                 n_frames=len(frame_nos), frame_range=[np.min(frame_nos), np.max(frame_nos)],
-                t_range=[np.min(frame_times), np.max(frame_times)], frame_shape=frame_data.shape[1:], fps=1/dt)
+                t_range=[np.min(frame_times), np.max(frame_times)], image_shape=image_shape,
+                detector_window=detector_window, fps=1/dt)
 
     np.savez(fn_out, frames=frame_data, time=frame_times, frame_nos=frame_nos, **data)
     print(f'Wrote npz test movie to {fn_out} with meta data: \n{data}')
 
 if __name__ == '__main__':
 
-    pulse = 50001
-    exposure_time=30
-    path_in = '/home/tfarley/repos/ir_tools/calibration/AT_IDL_tools/IR_ENH_calib/IRcam_0101_50mm_no_ND_20190219/'
-    # path_in = '/home/tfarley/repos/ir_tools/calibration/AT_IDL_tools/IR_ENH_calib/IRcam_0101_50mm_20181121/'
-    fn_out = f'/home/tfarley/data/movies/mast_u/{pulse}/rit/' + f'rit_{pulse}.npz'
-    generate_npz_movie_from_calib_asc_images(fn_out=fn_out, path_in=path_in, exposure_time=exposure_time)
-
-    if False:
-        path_in = '/home/tfarley/data/movies/mast_u/50000/rit/images/'
-        fn_out = path_in + '../' + 'rit_50000.npz'
+    if True:
+        pulse = 50000
+        path_in = f'/home/tfarley/data/movies/mast_u/{pulse}/rit/images/'
+        fn_out = path_in + '../' + f'rit_{pulse}.npz'
         generate_test_npz_movie_from_cad_image(fn_out, path_in, nframes=20)
+
+    print()
+    if True:
+        pulse = 50001
+        exposure_time=30
+        path_in = '/home/tfarley/repos/ir_tools/calibration/AT_IDL_tools/IR_ENH_calib/IRcam_0101_50mm_no_ND_20190219/'
+        # path_in = '/home/tfarley/repos/ir_tools/calibration/AT_IDL_tools/IR_ENH_calib/IRcam_0101_50mm_20181121/'
+        fn_out = f'/home/tfarley/data/movies/mast_u/{pulse}/rit/' + f'rit_{pulse}.npz'
+        generate_npz_movie_from_calib_asc_images(fn_out=fn_out, path_in=path_in, exposure_time=exposure_time,
+                                                 plot=False)
+
+
     pass

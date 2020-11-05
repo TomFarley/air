@@ -16,6 +16,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 from fire import fire_paths
+from fire.misc.utils import make_iterable
 from fire.interfaces.uda_utils import import_pyuda
 from fire.plugins.movie_plugins.uda import read_movie_meta, get_uda_movie_obj
 
@@ -122,6 +123,7 @@ def get_shot_list_meta_data(camera, shot_list,
 
 def filter_pulse_list(camera, shot_list, filter_criteria=None,
                       path='{fire}/../tmp/', fn_pattern='{camera}_{start}-{end}.xlsx'):
+    shot_list = np.array(shot_list, dtype=int)
     data = get_shot_list_meta_data(camera, shot_list=shot_list,
                                    path='{fire}/../tmp/', fn_pattern=None)
     print(data)
@@ -129,15 +131,33 @@ def filter_pulse_list(camera, shot_list, filter_criteria=None,
     print(f'\nFitler criteria: {filter_criteria}')
     print('\nFiltered data:')
     print(data)
-    pass
+    return data
+
+def plot_param_pulse_variation(data, params):
+    params = make_iterable(params)
+    n_params = len(params)
+    fig, axes = plt.subplots(nrows=n_params, sharex=True)
+
+    for param, ax in zip(params, axes):
+        ax.plot(data['shot'], data[param], ls='-', marker='o', ms=5)
+        ax.set_ylabel(param)
+
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == '__main__':
+    camera = 'rir'
+    # camera = 'rit'
+
     # vid = client.get_images('rir', 29976, header_only=False)
-    shot_start, shot_end = 26500, 30300
+    # shot_start, shot_end = 26500, 30300
     # shot_start, shot_end = 29936, 29936
 
-    # step = 1
-    step = 50
+    shot_centre, shot_range = 23586, 40
+    shot_start, shot_end = shot_centre-shot_range/2, shot_centre+shot_range/2
+
+    step = 1
+    # step = 50
 
     shot_list = np.arange(shot_start, shot_end+1, step)
     # shot_list = np.array([26957, 27228, 27232, 27642, 27880, 29936])
@@ -148,5 +168,8 @@ if __name__ == '__main__':
         # 'height': {'equal': {'value': 32}},
         # 'n_frames': {'equal': {'value': 625}},
     }
-    filter_pulse_list('rit', shot_list=shot_list, filter_criteria=filter_criteria)
+    data = filter_pulse_list(camera=camera, shot_list=shot_list, filter_criteria=filter_criteria)
+
+    params = ['width', 'height', 'top', 'left']
+    plot_param_pulse_variation(data, params)
     pass

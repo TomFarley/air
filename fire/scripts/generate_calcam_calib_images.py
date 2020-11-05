@@ -20,11 +20,11 @@ from skimage.io import imsave
 
 from ccfepyutils.mpl_tools import get_previous_artist_color, annotate_axis
 from ccfepyutils.image import hist_image_equalisation
-from fire.interfaces.movie_plugins.uda import read_movie_data
+from fire.plugins.movie_plugins.uda import read_movie_data
 from fire.camera.image_processing import find_outlier_pixels
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 # def movie_intensity_variation():
 
