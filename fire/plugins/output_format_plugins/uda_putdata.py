@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from fire.misc.utils import filter_kwargs
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 # ===================== PLUGIN MODULE ATTRIBUTES =====================
 # Required:
@@ -126,7 +126,7 @@ module load uda/develop              #-fatclient
     from fire.interfaces.uda_utils import (putdata_create, putdata_device, putdata_variables_from_datasets,
                                            putdata_close)
     # Set up output file
-    file_id = putdata_create(fn=fn_output, path=path_output, close=False, **{**header_info, **meta_data})
+    file_id, path_fn = putdata_create(fn=fn_output, path=path_output, close=False, **{**header_info, **meta_data})
 
     # Write device information
     device_name = meta_data['diag_tag']
@@ -137,15 +137,21 @@ module load uda/develop              #-fatclient
     variable_meta_data = meta_data.get('variables', {})
     # Write dimensions, coordinates, data and additional attributes from xarray.Dataset objects
     putdata_variables_from_datasets(path_data, image_data, path_names,
-                                    variable_names_path, variable_names_time, variable_names_image,
-                                    meta_data=variable_meta_data)
-    # Close file
-    putdata_close(file_id)
+                                    variable_names_path, variable_names_time, variable_names_image)
 
     # TODO: Include mapping from old MAST signal names to new signal paths?
-    # raise NotImplementedError
-    success = True
-    return success
+
+    # Close file
+    putdata_close(file_id=None)
+
+    if not path_fn.is_file():
+        # raise FileNotFoundError(f'UDA output file does not exist: {path_fn}')
+        logger.exception(f'UDA output file does not exist: {path_fn}')
+        success = False
+    else:
+        success = True
+
+    return dict(success=success, path_fn=path_fn)
 
 # ================== PLUGIN MODULE FUNCTION ALIASES ==================
 write_output_file = write_processed_ir_to_uda_file
