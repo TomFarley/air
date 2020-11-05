@@ -1,0 +1,134 @@
+
+point1, point2, point3=three_points(x_data_rows, y_data_rows, z_data_rows, 0,0)
+surface_normal_xyz=surface_normal_xyz_fn(point1,point2,point3)
+cylindrical_unit_vectors=calculate_cylindrical_unit_vectors(point1)
+surface_normal_rTz=cylindrical_transform_surface_normal_xyz(surface_normal_xyz,cylindrical_unit_vectors)
+vector_data=create_vector_data_cyl(surface_normal_rTz, cylindrical_unit_vectors, point1)
+#tilt_angle=toroidal_tilt_wrt_xy(surface_normal_xyz, cylindrical_unit_vectors
+
+point1b, point2b, point3b=three_points(x_data_rows, y_data_rows, z_data_rows, 99,0)
+surface_normal_xyzb=surface_normal_xyz_fn(point1b,point2b,point3b)
+cylindrical_unit_vectorsb=calculate_cylindrical_unit_vectors(point1b)
+surface_normal_rTzb=cylindrical_transform_surface_normal_xyz(surface_normal_xyzb,cylindrical_unit_vectorsb)
+vector_datab=create_vector_data_cyl(surface_normal_rTzb, cylindrical_unit_vectorsb, point1b)
+
+point1c, point2c, point3c=three_points(x_data_rows, y_data_rows, z_data_rows, 99,59)
+surface_normal_xyzc=surface_normal_xyz_fn(point1c,point2c,point3c)
+cylindrical_unit_vectorsc=calculate_cylindrical_unit_vectors(point1c)
+surface_normal_rTzc=cylindrical_transform_surface_normal_xyz(surface_normal_xyzc,cylindrical_unit_vectorsc)
+vector_datac=create_vector_data_cyl(surface_normal_rTzc, cylindrical_unit_vectorsc, point1c)
+
+point1d, point2d, point3d=three_points(x_data_rows, y_data_rows, z_data_rows, 50,0)
+surface_normal_xyzd=surface_normal_xyz_fn(point1d,point2d,point3d)
+cylindrical_unit_vectorsd=calculate_cylindrical_unit_vectors(point1d)
+surface_normal_rTzd=cylindrical_transform_surface_normal_xyz(surface_normal_xyzd,cylindrical_unit_vectorsd)
+vector_datad=create_vector_data_cyl(surface_normal_rTzd, cylindrical_unit_vectorsd, point1d)
+
+########################################################################
+
+
+tile='T5'
+filenameD=tile+'D.csv'
+
+x_data_rowsD, y_data_rowsD, z_data_rowsD=tile_rows(filenameD)
+
+point1D, point2D, point3D=three_points(x_data_rowsD, y_data_rowsD, z_data_rowsD, 0,0)
+surface_normal_xyzD=surface_normal_xyz_fn(point1D,point2D,point3D)
+cylindrical_unit_vectorsD=calculate_cylindrical_unit_vectors(point1D)
+surface_normal_rTzD=cylindrical_transform_surface_normal_xyz(surface_normal_xyzD,cylindrical_unit_vectorsD)
+vector_dataD=create_vector_data_cyl(surface_normal_rTzD, cylindrical_unit_vectorsD, point1D)
+#tilt_angle=toroidal_tilt_wrt_xy(surface_normal_xyz, cylindrical_unit_vectors
+
+point1bD, point2bD, point3bD=three_points(x_data_rowsD, y_data_rowsD, z_data_rowsD, 99,0)
+surface_normal_xyzbD=surface_normal_xyz_fn(point1bD,point2bD,point3bD)
+cylindrical_unit_vectorsbD=calculate_cylindrical_unit_vectors(point1bD)
+surface_normal_rTzbD=cylindrical_transform_surface_normal_xyz(surface_normal_xyzbD,cylindrical_unit_vectorsbD)
+vector_databD=create_vector_data_cyl(surface_normal_rTzbD, cylindrical_unit_vectorsbD, point1bD)
+
+point1cD, point2cD, point3cD=three_points(x_data_rowsD, y_data_rowsD, z_data_rowsD, 99,59)
+surface_normal_xyzcD=surface_normal_xyz_fn(point1cD,point2cD,point3cD)
+cylindrical_unit_vectorscD=calculate_cylindrical_unit_vectors(point1cD)
+surface_normal_rTzcD=cylindrical_transform_surface_normal_xyz(surface_normal_xyzcD,cylindrical_unit_vectorscD)
+vector_datacD=create_vector_data_cyl(surface_normal_rTzcD, cylindrical_unit_vectorscD, point1cD)
+
+point1dD, point2dD, point3dD=three_points(x_data_rowsD, y_data_rowsD, z_data_rowsD, 50,0)
+surface_normal_xyzdD=surface_normal_xyz_fn(point1dD,point2dD,point3dD)
+cylindrical_unit_vectorsdD=calculate_cylindrical_unit_vectors(point1dD)
+surface_normal_rTzdD=cylindrical_transform_surface_normal_xyz(surface_normal_xyzdD,cylindrical_unit_vectorsdD)
+vector_datadD=create_vector_data_cyl(surface_normal_rTzdD, cylindrical_unit_vectorsdD, point1dD)
+
+radius_surfaceA, theta_surfaceA, z_surfaceA=cartesian_to_cylindrical_position_coordinates(filenameA,-7.5,theta_max)
+plt.figure()
+plt.scatter(radius_surfaceA,z_surfaceA)
+plt.figure()
+plt.scatter(radius_surfaceA,theta_surfaceA*180/np.pi)
+plt.show()
+
+radius_surfaceD, theta_surfaceD, z_surfaceD=cartesian_to_cylindrical_position_coordinates(filenameD)
+plt.figure()
+plt.scatter(radius_surfaceD,z_surfaceD)
+plt.figure()
+plt.scatter(radius_surfaceD,theta_surfaceD*180/np.pi)
+plt.show()
+#####################
+
+
+
+
+
+fig=plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+for i in range(len(x_data_rows)):
+    plt.plot(x_data_rows[i],y_data_rows[i],z_data_rows[i],'o',linestyle='')
+plt.plot(vector_data[0],vector_data[1],vector_data[2])
+plt.plot(vector_datab[0],vector_datab[1],vector_datab[2])
+plt.plot(vector_datac[0],vector_datac[1],vector_datac[2])
+plt.plot(vector_datad[0],vector_datad[1],vector_datad[2])
+for i in range(len(x_data_rowsD)):
+    plt.plot(x_data_rowsD[i],y_data_rowsD[i],z_data_rowsD[i],'o',linestyle='')
+plt.plot(vector_dataD[0],vector_dataD[1],vector_dataD[2])
+plt.plot(vector_databD[0],vector_databD[1],vector_databD[2])
+plt.plot(vector_datacD[0],vector_datacD[1],vector_datacD[2])
+plt.plot(vector_datadD[0],vector_datadD[1],vector_datadD[2])
+plt.show()
+
+
+
+
+
+
+
+tile='T5'
+filename=tile+'D.csv'
+
+x_data_rowsD, y_data_rowsD, z_data_rowsD=tile_rows(filename)
+
+
+tile='T5'
+filename=tile+'A.csv'
+
+x_data_rowsA, y_data_rowsA, z_data_rowsA=tile_rows(filename)
+
+
+tile='T5'
+filename=tile+'B.csv'
+
+x_data_rowsB, y_data_rowsB, z_data_rowsB=tile_rows(filename)
+
+tile='T5'
+filename=tile+'C.csv'
+
+x_data_rowsC, y_data_rowsC, z_data_rowsC=tile_rows(filename)
+
+
+fig=plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+for i in range(len(x_data_rowsA)):
+    plt.plot(x_data_rowsA[i],y_data_rowsA[i],z_data_rowsA[i],'o',color='r',linestyle='')
+for i in range(len(x_data_rowsB)):
+    plt.plot(x_data_rowsB[i],y_data_rowsB[i],z_data_rowsB[i],'o',color='m',linestyle='')
+for i in range(len(x_data_rowsC)):
+    plt.plot(x_data_rowsC[i],y_data_rowsC[i],z_data_rowsC[i],'o',color='g',linestyle='')
+for i in range(len(x_data_rowsD)):
+    plt.plot(x_data_rowsD[i],y_data_rowsD[i],z_data_rowsD[i],'o',color='b',linestyle='')
+plt.show()

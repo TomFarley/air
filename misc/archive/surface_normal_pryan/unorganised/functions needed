@@ -1,0 +1,17 @@
+functions required
+
+identify three points
+
+cut tile appropriately
+
+locate edge of tile with most z
+
+calculate surface normal in xyz
+
+calculate unit vectors in cylindrical coordinates
+
+Calculate surface normal in cylindrical
+
+calculate probe surface normal based on tile surface normal
+
+read affine transforms and rotate surface normal
