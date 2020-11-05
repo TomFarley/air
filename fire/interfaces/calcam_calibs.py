@@ -124,7 +124,10 @@ def update_detector_window(calcam_calib: calcam.Calibration, detector_window: Op
     detector_window_applied = np.all(sensor_resolution == image_resolution)
 
     # NOTE: Detector window coordinates must always be in "original" coordinates.
-    calcam_calib.set_detector_window(window=np.array(detector_window).astype(int))
+    try:
+        calcam_calib.set_detector_window(window=np.array(detector_window).astype(int))
+    except Exception as e:
+        raise e
     # Calls to calcam_calib.geometry.get_original_shape() now return the windowed detector size
 
     logger.info('Set calcam detector window to: %s (Left,Top,Width,Height)', detector_window)
@@ -181,7 +184,7 @@ def apply_frame_display_transformations(frame_data, calcam_calib, image_coords):
 
 def get_surface_coords(calcam_calib, cad_model, image_coords='Original', phi_positive=True, intersecting_only=True,
                        exclusion_radius=0.10, remove_long_rays=True, outside_vesel_ray_length=10):
-    if image_coords == 'Display':
+    if image_coords.lower() == 'display':
         image_shape = calcam_calib.geometry.get_display_shape()
     else:
         image_shape = calcam_calib.geometry.get_original_shape()
@@ -294,7 +297,8 @@ def calc_spatial_res(x_im, y_im, z_im, res_min=1e-4, res_max=None):
 
     return spatial_res
 
-def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_name, masks=None, image_coords='Display'):
+def project_spatial_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_name, masks=None,
+                                  image_coords='Display'):
     """Project an analysis path defined by a set of spatial coordinates along tile surfaces into camera image coords
 
     Args:
@@ -307,6 +311,9 @@ def project_analysis_path(raycast_data, analysis_path_dfn, calcam_calib, path_na
     Returns: Dataset of variables defining analysis_path through image (eg. x_pix, y_pix etc.)
 
     """
+    # TODO: Split into two functions: one that projects the spatial path definition points onto image path defnintion
+    #  points and a second that uses skimage.draw to connect up the image path definition points. This will allow old
+    #  MAST image path definitions to be used for exact regression tests
     path = path_name  # abbreviation for format strings
     path_coord = f'i_{path}'  # xarray index coordinate along analysis path
 
