@@ -10,6 +10,7 @@ Created:
 import logging
 
 import numpy as np
+import xarray as xr
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -228,14 +229,20 @@ def calc_divertor_area_integrated_param(values, annulus_areas):
     """Return physics parameter integrated across the divertor surface area
 
     Args:
-        values: 1D (R) or 2D (t, R) array of parameter values
+        values: 1D (R) or 2D (R, t) array of parameter values
         annulus_areas: Annulus areas for each radial (R) coordinate
 
     Returns: Integrated parameter value (for each time point if 2D input)
 
     """
     # TODO: Check for 1/2D input
-    total = np.sum(values * annulus_areas, axis=1)
+    if (isinstance(values, xr.DataArray) and isinstance(annulus_areas, xr.DataArray)):
+        # Integrate along labeled axis
+        spatial_dim = annulus_areas.dims[0]
+        value_times_area = values * annulus_areas
+        total = value_times_area.sum(spatial_dim)
+    else:
+        total = np.sum(values * annulus_areas, axis=0)
     return total
 
 
