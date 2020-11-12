@@ -231,7 +231,7 @@ def get_surface_coords(calcam_calib, cad_model, image_coords='Original', phi_pos
     if len(ind_bad_data[0]) > 0:
         logger.info(f'Spatial coords for {len(ind_bad_data[0])} pixels set to "nan" due to holes in CAD model')
         if intersecting_only:
-            logger.warning(f'Excessively long rays (>{thresh_long_rays} m) despite intersecting_only=True')
+            logger.warning(f'Excessively long rays (>{outside_vesel_ray_length} m) despite intersecting_only=True')
 
     x = surface_coords[:, :, 0]
     y = surface_coords[:, :, 1]
