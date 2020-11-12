@@ -505,7 +505,7 @@ def check_movie_meta_data(meta_data, required_fields=None, check_bad_values=True
 
     """
     if substitute_unknown_values is True:
-        substitute_unknown_values = {'lens': 25e-2, 'exposure': 25e-6}
+        substitute_unknown_values = {'lens': 25e-2, 'exposure': 25e-6, 'bit_depth': 14}
     if required_fields is not None:
         missing_fields = []
         for field in required_fields:
@@ -515,7 +515,7 @@ def check_movie_meta_data(meta_data, required_fields=None, check_bad_values=True
             raise ValueError(f'Movie plugin "{origin}" has not returned the folloing required meta data fields:\n'
                              f'{missing_fields}')
     if check_bad_values:
-        requried_keys = ['lens', 'exposure', 'detector_window']
+        requried_keys = ['lens', 'exposure', 'detector_window', 'bit_depth']
         bad_values = ('Unknown', 'unknown', np.nan)
         for key in requried_keys:
             value = meta_data[key]
