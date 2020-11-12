@@ -105,6 +105,7 @@ def update_detector_window(calcam_calib: calcam.Calibration, detector_window: Op
     Returns: calcam_calib, window_info
 
     """
+    # TODO: Handle setting window when there are multiple subviews - need to extract subview windows from subview mask?
     geom = calcam_calib.geometry
     sensor_resolution = (geom.get_original_shape() if coords.lower() == 'original' else geom.get_display_shape())
     if (detector_window is None) or np.any(np.isnan(detector_window)):
@@ -127,7 +128,10 @@ def update_detector_window(calcam_calib: calcam.Calibration, detector_window: Op
     try:
         calcam_calib.set_detector_window(window=np.array(detector_window).astype(int))
     except Exception as e:
-        raise e
+        if calcam_calib.n_subviews > 1:
+            logger.warning(f'Setting detector window failed due to multiple subviews')
+        else:
+            raise e
     # Calls to calcam_calib.geometry.get_original_shape() now return the windowed detector size
 
     logger.info('Set calcam detector window to: %s (Left,Top,Width,Height)', detector_window)
