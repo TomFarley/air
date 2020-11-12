@@ -128,13 +128,15 @@ def update_detector_window(calcam_calib: calcam.Calibration, detector_window: Op
     try:
         calcam_calib.set_detector_window(window=np.array(detector_window).astype(int))
     except Exception as e:
+        # TODO: Work out how to divide up detector_window by sub-view and remove warning for unhandled exception
         if calcam_calib.n_subviews > 1:
             logger.warning(f'Setting detector window failed due to multiple subviews')
         else:
             raise e
-    # Calls to calcam_calib.geometry.get_original_shape() now return the windowed detector size
+    else:
+        logger.info('Set calcam detector window to: %s (Left,Top,Width,Height)', detector_window)
 
-    logger.info('Set calcam detector window to: %s (Left,Top,Width,Height)', detector_window)
+    # NOTE: Calls to calcam_calib.geometry.get_original_shape() now return the windowed detector size
 
     window_info = dict(detector_window=np.array(detector_window), image_resolution=image_resolution,
                        sensor_resolution=sensor_resolution, detector_window_applied=detector_window_applied)
