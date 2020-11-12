@@ -39,7 +39,7 @@ stages:
 #    - python -m pip show vtk   # tmp
     - python -m pip install --user vtk
     - python -m pip show vtk   # tmp
-    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@master
     - pip install --user git+https://github.com/euratom-software/calcam.git
     - pip install --user -r ./requirements.txt
     - pip install --user .
@@ -61,7 +61,7 @@ stages:
     - python -m pip install --user vtk==  # Produce message showing available versions
     - python -m pip install --user vtk #==9.0  # Import error with 8.1.2
     - python -m pip show vtk   # tmp
-    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@master
     - pip install --user git+https://github.com/euratom-software/calcam.git
     - cd fire/theodor/theofast/
     - pwd
@@ -94,7 +94,7 @@ stages:
     stage: test
     script:
     - pwd
-    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@ipx2_pip
+    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@master
     - pip install --user git+https://github.com/euratom-software/calcam.git
     - cd fire/theodor/theofast/
     - pwd
