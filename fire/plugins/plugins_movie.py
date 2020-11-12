@@ -89,6 +89,7 @@ class MovieReader:
     def read_movie_meta_data(self, pulse: Union[int, str], camera: str, machine: str,
                          check_output: bool=True, substitute_unknown_values: bool=False) -> Tuple[Dict[str, Any],
                                                                                                Dict[str, str]]:
+        exceptions = []
         for name, plugin in self.plugins.items():
             try:
                 meta_data, origin = plugin.read_movie_meta_data(pulse=pulse, camera=camera, machine=machine,
@@ -96,15 +97,18 @@ class MovieReader:
                                         movie_fns=self.movie_fns, check_output=check_output,
                                         substitute_unknown_values=substitute_unknown_values)
             except IOError as e:
+                exceptions.append(e)
                 continue
             except Exception as e:
+                exceptions.append(e)
                 raise e
             else:
                 if meta_data is not None:
                     self._active_plugin = name
                     break
         else:
-            raise IOError(f'Failed to read movie')
+            raise IOError(f'Failed to read movie for {machine}, {camera}, {pulse} with plugins {self.plugins.keys()}.\n'
+                          f'Exceptions: \n{exceptions}')
         return meta_data, origin
 
     def read_movie_data(self, pulse: Union[int, str], camera: str, machine: str,
