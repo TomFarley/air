@@ -54,13 +54,18 @@ def calc_heatflux(t, temperatures, path_data, path_name, material_properties, vi
     material_name = visible_materials[material_id]
     theo_kwargs = material_properties[material_name]
 
-    # TODO: Understand when two element values should be used
+    # TODO: Understand when two element alpha_top_org values should be used
     if safe_len(theo_kwargs['alpha_top_org']) == 2:
         theo_kwargs['alpha_top_org'] = theo_kwargs['alpha_top_org'][0]
 
     if temperature_path.shape[0] != len(s_path):
-        raise ValueError(f'Spatial dimention of temperature path data ({temperature_path.shape}) does not match s_path '
-                         f'dimension ({len(s_path)}). Mismatch will cause theodor to use integer index s values!')
+        if temperature_path.shape[1] == len(s_path):
+            temperature_path = temperature_path.T
+            logger.warning(f'Transposed THEODOR temperature input data to start with spatial dimension (t,s) -> (s,t)')
+        else:
+            raise ValueError(f'Spatial dimension of temperature path data ({temperature_path.shape}) does not match '
+                             f's_path dimension ({len(s_path)}). '
+                             f'Mismatch will cause theodor to use integer index s values!')
 
     # alpha_bot = alphas['tile_bottom']
     # alpha_top = alphas['tile_surface']
