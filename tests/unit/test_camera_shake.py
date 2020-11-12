@@ -21,22 +21,37 @@ class TestInterfaces(unittest.TestCase):
         path_fn = fire_paths['root'] / '../tests/test_data/frames_with_shake.p'
         with open(path_fn, 'rb') as f:
             self.shaky_frames = pickle.load(f)
-        self.expected_displacements = np.array([[ 0.00000000e+00,  0.00000000e+00],
+        self.expected_displacements = {
+                                 None: np.array([[ 0.00000000e+00,  0.00000000e+00],
                                                  [-1.09393997e-02,  5.05917151e-02],
                                                  [-1.14394936e-01,  3.32541698e-01],
                                                  [-2.01143945e+01, -3.96674579e+01],
-                                                 [-1.59583610e-02,  3.16369348e-02]])
+                                                 [-1.59583610e-02,  3.16369348e-02]]),
+                                 10: np.array([[ 0.      ,  0.      ],
+                                               [-0.010939,  0.050592],
+                                               [-0.114395,  0.332542],
+                                               [   np.nan,    np.nan],
+                                               [-0.015958,  0.031637]])
+        }
 
     def test_calc_camera_shake_displacements(self):
         frames = self.shaky_frames
         frame_reference = frames[0]
-        pixel_displacemnts, shake_stats = calc_camera_shake_displacements(frames, frame_reference)
+
+        pixel_displacemnts, shake_stats = calc_camera_shake_displacements(frames, frame_reference,
+                                                                          erroneous_displacement=None)
         self.assertTrue(isinstance(shake_stats, dict))
-        np.testing.assert_array_almost_equal(pixel_displacemnts, self.expected_displacements)
+        np.testing.assert_array_almost_equal(pixel_displacemnts, self.expected_displacements[None])
+
+
+        pixel_displacemnts, shake_stats = calc_camera_shake_displacements(frames, frame_reference,
+                                                                          erroneous_displacement=10)
+        self.assertTrue(isinstance(shake_stats, dict))
+        np.testing.assert_array_almost_equal(pixel_displacemnts, self.expected_displacements[10])
 
     def test_remove_camera_shake(self):
         frames = self.shaky_frames
-        pixel_displacemnts = self.expected_displacements
+        pixel_displacemnts = self.expected_displacements[None]
         # 4th frame is copy of 3rd frame shifted by (40, 20) pixels using np.roll
         self.assertTrue(np.any(np.not_equal(frames[3, 0:-41, 0:-21], frames[2, 0:-41, 0:-21])))
 

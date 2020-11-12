@@ -105,15 +105,16 @@ def calc_camera_shake_displacements(frames: Union[xr.DataArray, np.ndarray],
     if verbose:
         logger.info(f'Camera shake for {len(frames)} frames calculated in ({t1-t0:0.2f}) s')
 
-    mask_erroneous = np.abs(displacements) > erroneous_displacement
-    if (erroneous_displacement is not None) and (np.any(mask_erroneous)):
-        frames_erroneous = np.nonzero(np.any(mask_erroneous, axis=1))[0]
-        n_erroneous = len(frames_erroneous)
-        displacements[mask_erroneous] = np.nan
-        camera_shake_stats = calc_camera_shake_stats(displacements)
-        logger.warning(f'Erroneous camera shake displacements (>{erroneous_displacement} pixels) set to nan for '
-                       f'{n_erroneous}/{len(frames)} frames, i: {frames_erroneous}\n'
-                       f'   New camera shake stats: {camera_shake_stats}')
+    if (erroneous_displacement is not None):
+        mask_erroneous = np.abs(displacements) > erroneous_displacement
+        if np.any(mask_erroneous):
+            frames_erroneous = np.nonzero(np.any(mask_erroneous, axis=1))[0]
+            n_erroneous = len(frames_erroneous)
+            displacements[mask_erroneous] = np.nan
+            camera_shake_stats = calc_camera_shake_stats(displacements)
+            logger.warning(f'Erroneous camera shake displacements (>{erroneous_displacement} pixels) set to nan for '
+                           f'{n_erroneous}/{len(frames)} frames, i: {frames_erroneous}\n'
+                           f'   New camera shake stats: {camera_shake_stats}')
 
     return displacements, camera_shake_stats
 
