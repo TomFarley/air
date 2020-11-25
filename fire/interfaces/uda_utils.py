@@ -16,13 +16,13 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 
-import pyuda
+import pyuda, cpyuda
 from fire.misc.utils import increment_figlabel, filter_kwargs, format_str, make_iterable
 
 try:
-    # client = pyuda.Client()
-    from mast.mast_client import MastClient
-    client = MastClient(None)
+    client = pyuda.Client()
+    # from mast.mast_client import MastClient
+    # client = MastClient(None)
     # client.server_tmp_dir = ''
 except ModuleNotFoundError as e:
     # TODO: Handle missing UDA client gracefully
@@ -61,39 +61,80 @@ def import_pyuda():
         pyuda, client = False, False
     return pyuda, client
 
-def read_uda_signal(signal, pulse):
-    data = client.get(signal, pulse)
+def filter_uda_signals(signal_string, pulse=23586):
+    """Return list of signal names that contain the supplied signal_string
+
+    Args:
+        signal_string: String element of signal name (case insensitive) e.g. "air"
+        pulse: pulse/shot number
+
+    Returns: List of signal names
+
+    """
+    # r = client.list(client.ListType.SIGNALS, shot=shot, alias='air')
+    r = client.list_signals(shot=pulse, alias=signal_string)
+    signals = [s.signal_name for s in r]
+
+    return signals
+
+def read_uda_signal(signal, pulse, raise_exceptions=True, log_exceptions=True, **kwargs):
+    try:
+        data = client.get(signal, pulse, **kwargs)
+    except cpyuda.ServerException as e:
+        error_message = f'Failed to read UDA signal for: "{signal}", {pulse}, {kwargs}. {e}'
+        exception = RuntimeError(error_message)
+        if raise_exceptions:
+            raise exception
+        else:
+            if log_exceptions:
+                logger.warning(error_message)
+            data = exception
+
     return data
 
-def read_uda_signal_to_dataarrays(signal, pulse, dims=None, rename_dims='default', meta_defaults='default'):
+def read_uda_signal_to_dataarray(signal, pulse, dims=None, rename_dims='default', meta_defaults='default',
+                                 raise_exceptions=True):
     if rename_dims == 'default':
         rename_dims = rename_dims_default
     if meta_defaults == 'default':
         meta_defaults = meta_defaults_default
 
-    data = read_uda_signal(signal, pulse)
-    t = data.time
+    uda_data_obj = read_uda_signal(signal, pulse)
+
+    data_array = uda_signal_obj_to_dataarray(uda_data_obj, dims=dims, rename_dims=rename_dims,
+                                             meta_defaults=meta_defaults, raise_exceptions=raise_exceptions)
+
+    return data_array
+
+def uda_signal_obj_to_dataarray(uda_data_obj, dims=None, rename_dims='default', meta_defaults='default',
+                                raise_exceptions=True):
+
+    t = uda_data_obj.time
 
     if dims is None:
-        dims = [dim.label for dim in data.dims]
+        dims = [dim.label for dim in uda_data_obj.dims]
     # Rename dims
     dims = [d if d not in rename_dims else rename_dims[d] for d in dims]
     if any([d.strip() == '' for d in dims]):
-        raise ValueError(f'Missing dimension name in {dims} when reading {signal}:{pulse}')
+        error_message = f'Missing dimension name in {dims} when reading {signal}:{pulse}'
+        if raise_exceptions:
+            raise ValueError(error_message)
+        else:
+            return ValueError(error_message)
 
-    coords = [dim.data for dim in data.dims]
-    data_array = xr.DataArray(data.data, coords=coords, dims=dims)
+    coords = [dim.data for dim in uda_data_obj.dims]
+    data_array = xr.DataArray(uda_data_obj.data, coords=coords, dims=dims)
     meta_keys = {'label': 'name', 'units': 'units', 'description': 'description'}
-    meta_dict = get_uda_meta_dict(data, key_map=meta_keys)
+    meta_dict = get_uda_meta_dict(uda_data_obj, key_map=meta_keys)
     data_array.attrs.update(meta_dict)
 
     data_array.attrs['signal'] = signal
     data_array.attrs['shot'] = shot
     data_array.attrs['pulse'] = shot
-    data_array.attrs['uda_signal'] = data
+    data_array.attrs['uda_signal'] = uda_data_obj
 
     meta_keys = {'label': 'name', 'units': 'units'}  # , 'description': 'description'}
-    for coord_name, dim_obj in zip(data_array.coords, data.dims):
+    for coord_name, dim_obj in zip(data_array.coords, uda_data_obj.dims):
         coord = data_array.coords[coord_name]
         meta_dict = get_uda_meta_dict(dim_obj, key_map=meta_keys, dim_name=coord_name)
         coord.attrs.update(meta_dict)
@@ -107,8 +148,10 @@ def get_uda_meta_dict(obj, key_map, defaults=module_defaults, predefined_values=
         defaults = meta_defaults_default.get(dim_name, {})
         if len(defaults) == 0:
             logger.debug(f'No UDA meta defaults for "{dim_name}"')
+
     if predefined_values is module_defaults:
         predefined_values = meta_refinements_default.get(dim_name, {})
+
     meta_dict = copy(defaults)
     meta_dict.update(predefined_values)
     for old_key, new_key in key_map.items():
@@ -121,6 +164,7 @@ def get_uda_meta_dict(obj, key_map, defaults=module_defaults, predefined_values=
                 meta_dict[new_key] = value
         if new_key in predefined_values:
             meta_dict[new_key] = predefined_values[new_key]
+
     axis_label = gen_axis_label_from_meta_data(meta_dict)
     if axis_label is not None:
         meta_dict['axis_label'] = axis_label
@@ -143,32 +187,66 @@ def gen_axis_label_from_meta_data(meta_data, label_format=None, label_key_combos
             break
     return axis_label
 
-def describe_uda_signal(signal, pulse=23586):
-    data = read_uda_signal(signal, pulse)
+def describe_uda_signal(signal, pulse=23586, raise_exceptions=True, log_exceptions=True, **kwargs):
+    data = read_uda_signal(signal, pulse, raise_exceptions=raise_exceptions, log_exceptions=log_exceptions, **kwargs)
+    if isinstance(data, Exception):
+        return data
+
     t = data.time
     out = {}
     out['xlabel'] = f'{t.label} [{t.units}]'
     out['ylabel'] = f'{data.label} [{data.units}]'
     out['data.description'] = data.description
     out['data.shape'] = data.data.shape
+    out['data.size'] = data.data.size
     out['t.shape'] = t.data.shape
     out['data.dims'] = data.dims
     out['data.rank'] = data.rank
     out['data.meta'] = data.meta
+    out['data_obj'] = data
 
     # out['data.errors'] = data.errors
     out['dim_ranges'] = [[dim.data.min(), dim.data.max()] for dim in data.dims]
     # out['dir(data)'] = dir(data)
     return out
 
+def sort_uda_signals_by_ndims(signals, sort_by='dim_names', pulse=23586,
+                              raise_exceptions=False, log_exceptions=True, **kwargs):
+
+    out = defaultdict(list)
+
+    for signal in signals:
+        info = describe_uda_signal(signal, pulse, raise_exceptions=raise_exceptions, log_exceptions=log_exceptions,
+                                   **kwargs)
+        if isinstance(info, Exception):
+            out['error_reading_signal'].append(signal)
+        else:
+            if sort_by == 'dim_names':
+                key = tuple(dim.label for dim in info['data.dims'])
+                if len(key) == 1:
+                    key = key[0]
+                if info['data.size'] == 1:
+                    key = 'scalar:'+key
+            else:
+                key = info['data.rank']
+            out[key].append(signal)
+
+    return out
+
 def plot_uda_signal(signal, pulse, dims=None, **kwargs):
-    data_array = read_uda_signal_to_dataarrays(signal, pulse, dims=dims)
+    data_array = read_uda_signal_to_dataarray(signal, pulse, dims=dims)
     plot_uda_dataarray(data_array, **kwargs)
 
 def get_default_plot_kwargs_for_style(style):
     # TODO: Move defaults to json file and add user input option
     if style == 'line':
         plot_kwargs = dict(marker='o', markersize=4)
+    elif style == 'pcolormesh':
+        plot_kwargs = dict(robust=True, center=False, cmap='coolwarm')  # 'plasma', 'RdBu', 'RdYlBu', 'bwr'
+    elif style == 'imshow':
+        plot_kwargs = dict(robust=True, center=False)
+    elif style == 'contourf':
+        plot_kwargs = dict(robust=True, center=False)
     else:
         plot_kwargs = {}
     return plot_kwargs
@@ -178,8 +256,11 @@ def plot_uda_dataarray(data, xdim=None, style=None, plot_kwargs=None, ax=None, s
         num = increment_figlabel(f'{data.attrs["signal"]}:{data.attrs["shot"]}', i=2, suffix=' ({i})')
         fig, ax = plt.subplots(num=num)
     if style is None:
-        if len(data) == 1:
+        if len(data.dims) == 1:
             style = 'line'
+        elif len(data.dims) == 2:
+            style = 'pcolormesh'
+
     plot_kwargs_default = get_default_plot_kwargs_for_style(style)
     if plot_kwargs is None:
         plot_kwargs = plot_kwargs_default
@@ -203,15 +284,61 @@ def plot_uda_dataarray(data, xdim=None, style=None, plot_kwargs=None, ax=None, s
         plot_method = getattr(data.plot, style)
     else:
         plot_method = data.plot
-    plot_method(**plot_kwargs)
+    fig_artist = plot_method(**plot_kwargs)
 
     ax.set_xlabel(x.attrs['axis_label'])
     ax.set_ylabel(y.attrs['axis_label'])
+    if data.ndim > 1:
+        fig_artist.colorbar.ax.set_ylabel(data.attrs['axis_label'])#, rotation=270)
 
     if tight_layout:
         plt.tight_layout()
     if show:
         plt.show()
+
+def plot_uda_signal(signal, pulse, show=True, **kwargs):
+    dims = signal_dims.get(signal)
+    info = describe_uda_signal(signal, pulse, raise_exceptions=False)
+
+    data_array = read_uda_signal_to_dataarray(signal, pulse, dims=dims, raise_exceptions=False)
+    if isinstance(data_array, Exception):
+        continue
+    pprint(data_array)
+    plot_uda_signal(signal, pulse, dims=dims, show=show)
+
+
+    data_slices = data_array.T.sel(t=[0, 0.1, 0.2, 0.242, 0.3], method='nearest')
+    # plot_uda_dataarray(data_slices, style='line', plot_kwargs=dict(x='S'), show=False)
+    # plot_uda_dataarray(data_array.T, show=False)
+    # data = read_ir_uda('ip', 18299)
+    # plt.show()
+
+def plot_uda_signals_individually(pulse=23586, signals='all', diagnostic_alias='air'):
+
+    if signals == 'all':
+        signals = filter_uda_signals(diagnostic_alias, pulse=pulse)
+
+    pprint(signals)
+    signals_by_ndims = sort_uda_signals_by_ndims(signals)
+    pprint(signals_by_ndims)
+
+    print(f'pulse={shot}')
+    for signal in signals:
+        dims = signal_dims.get(signal)
+        info = describe_uda_signal(signal, pulse, raise_exceptions=False)
+        if isinstance(info, Exception):
+            continue
+        if info['data.size'] <= 1:
+            print(f'Skipping plot for scalar data: {signal}')
+            continue
+        if info['data.rank'] <= 1:
+            print(f'Skipping plot for 1D data: {signal}')
+            continue
+
+        print(f'\n\nPlotting signal "{signal}" with dims {dims}')
+        pprint(info)
+
+        plot_uda_signal(signal, pulse=pulse)
 
 def get_mastu_wall_coords():
     """
@@ -664,24 +791,37 @@ if __name__ == '__main__':
 
     # putdata_create('./hello.nc', shot=shot, pass_number=0, status=1)
 
-    wall_coords = get_mastu_wall_coords()
-    r = client.list(client.ListType.SIGNALS, shot=shot, alias='air')
-    signals = [s.signal_name for s in r]
+    # wall_coords = get_mastu_wall_coords()
+
+    signals = filter_uda_signals('air', pulse=shot)
     # signals = ['AIR_QPROFILE_OSP']
     pprint(signals)
+    signals_by_ndims = sort_uda_signals_by_ndims(signals)
+    pprint(signals_by_ndims)
     # signals = [signals[0]]
     print(f'pulse={shot}')
     for signal in signals:
         dims = signal_dims.get(signal)
+        info = describe_uda_signal(signal, shot, raise_exceptions=False)
+        if isinstance(info, Exception):
+            continue
+        if info['data.size'] <= 1:
+            print(f'Skipping plot for scalar data: {signal}')
+            continue
+        if info['data.rank'] <= 1:
+            print(f'Skipping plot for 1D data: {signal}')
+            continue
+
         print(f'\n\nPlotting signal "{signal}" with dims {dims}')
-        info = describe_uda_signal(signal, shot)
         pprint(info)
-        data = read_uda_signal(signal, shot)
+        data = read_uda_signal(signal, shot, raise_exceptions=False)
         # data.plot()
-        data_array = read_uda_signal_to_dataarrays(signal, shot, dims=dims)
+        data_array = read_uda_signal_to_dataarray(signal, shot, dims=dims, raise_exceptions=False)
+        if isinstance(data_array, Exception):
+            continue
         pprint(data_array)
         data_slices = data_array.T.sel(t=[0, 0.1, 0.2, 0.242, 0.3], method='nearest')
-        plot_uda_signal(signal, shot, dims=dims, style='line', show=False)
+        plot_uda_signal(signal, shot, dims=dims, show=False)
         # plot_uda_dataarray(data_slices, style='line', plot_kwargs=dict(x='S'), show=False)
         # plot_uda_dataarray(data_array.T, show=False)
         # data = read_ir_uda('ip', 18299)
