@@ -321,7 +321,7 @@ def project_spatial_analysis_path(raycast_data, analysis_path_dfn, calcam_calib,
     #  points and a second that uses skimage.draw to connect up the image path definition points. This will allow old
     #  MAST image path definitions to be used for exact regression tests
     path = path_name  # abbreviation for format strings
-    path_coord = f'i_{path}'  # xarray index coordinate along analysis path
+    coord_path = f'i_{path}'  # xarray index coordinate along analysis path
 
     # TODO: Handle combining multiple analysis paths? Move loop over paths below to here/outside fuction...?
     subview_mask = calcam_calib.get_subview_mask(coords=image_coords)
@@ -374,9 +374,9 @@ def project_spatial_analysis_path(raycast_data, analysis_path_dfn, calcam_calib,
             data = to_image_dataset(masks[key], key)
             xpix_path = np.concatenate(xpix_path)
             ypix_path = np.concatenate(ypix_path)
-            data[path_coord] = (path_coord, np.arange(len(xpix_path)))
-            data[f'x_pix_{path}'] = (path_coord, xpix_path)
-            data[f'y_pix_{path}'] = (path_coord, ypix_path)
+            data[coord_path] = (coord_path, np.arange(len(xpix_path)))
+            data[f'x_pix_{path}'] = (coord_path, xpix_path)
+            data[f'y_pix_{path}'] = (coord_path, ypix_path)
             figure_analysis_path(data, key=key, show=True)
             # raise
 
@@ -431,6 +431,13 @@ def project_spatial_analysis_path(raycast_data, analysis_path_dfn, calcam_calib,
         analysis_path[coord+f'_{path}'] = ((f'i_{path}',), raycast_data[coord+'_im'].sel(index_path))
     for key in masks_path:
         analysis_path[key+f'_{path}'] = ((f'i_{path}',), masks_path[key])
+
+    # Set alternative coordinates to index path data (other than path index)
+    alternative_path_coords = ('R', 's', 's_global', 'phi')  # , 'x', 'y', 'z')
+    for coord in alternative_path_coords:
+        coord = f'{coord}_{path}'
+        if coord in analysis_path:
+            analysis_path = analysis_path.assign_coords(**{coord: (coord_path, analysis_path[coord].values)})
 
     # TODO: check_occlusion
     if len(xpix_out_of_frame) > 0:

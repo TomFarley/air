@@ -149,7 +149,7 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
     if keys is None:
         keys = image_data.keys()
     frame_shape = image_data['frame_data'].shape[1:]
-    data_out = xr.Dataset(coords=path_data.coords)
+    data_path_extracted = xr.Dataset(coords=path_data.coords)
     x_pix_path = path_data[x_path]
     y_pix_path = path_data[y_path]
     for key in keys:
@@ -160,12 +160,22 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
             else:
                 new_key = f'{key}_{path}'
             # TODO: Handle 't' as active dim name
-            coords = ('n', coord_path) if ('n' in data.dims) else coord_path
-            data_out[new_key] = (coords, data.sel(x_pix=x_pix_path, y_pix=y_pix_path))
-            data_out[new_key].attrs.update(data.attrs)  # Unnecessary?
-    if ('n' in data_out.dims):
-        data_out['n'] = image_data['n']
-    return data_out
+            coords = ('n',)
+            coords = tuple((coord for coord in coords if coord in data.dims)) + (coord_path,)
+            data_path_extracted[new_key] = (coords, data.sel(x_pix=x_pix_path, y_pix=y_pix_path))
+            data_path_extracted[new_key].attrs.update(data.attrs)  # Unnecessary?
+
+    # Set alternative coordinates to index path data (other than path index)
+    alternative_path_coords = ('R', 's', 's_global', 'phi')  # , 'x', 'y', 'z')
+    for coord in alternative_path_coords:
+        coord = f'{coord}_{path}'
+        if coord in data_path_extracted:
+            data_path_extracted = data_path_extracted.assign_coords(
+                                                    **{coord: (coord_path, data_path_extracted[coord].values)})
+
+    if ('n' in data_path_extracted.dims):
+        data_path_extracted['n'] = image_data['n']
+    return data_path_extracted
 
 
 if __name__ == '__main__':
