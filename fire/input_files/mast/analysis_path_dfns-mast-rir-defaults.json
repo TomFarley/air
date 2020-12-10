@@ -5,6 +5,7 @@
           ["start", {"R": 0.770, "z": -1.827, "phi": 70.6, "order": 0, "include_next_interval": true}],
           ["end", {"R": 1.484, "z": -1.831, "phi": 70.6, "order": 1, "include_next_interval": false}]
         ],
+    "sub_view": 1,
     "description": "Outward radial path down centre of louvre 3 in sector 1, spanning tiles 2-3?, in the lower divertor"
   },
 "MAST_S1_L3_centre_radial_2":
@@ -15,5 +16,41 @@
           ["end", {"R": 1.484, "z": -1.831, "phi": 70.6, "order": 1, "include_next_interval": false}]
         ],
     "description": "Outward radial path along lower divertor on louvre 3 in sector 1, spanning tiles 2-3?"
+  },
+  "MAST_louvre3-8b":
+  {
+    "coords":
+        [
+          ["start", {"R": 0.80, "z": -1.825, "phi": -42.5, "order": 0, "include_next_interval": true}],
+          ["end", {"R": 1.55, "z": -1.825, "phi": -40, "order": 1, "include_next_interval": false}]
+        ],
+    "description": "First line defining area used in IDL sched code path for pulse 23586. Extracted from ldef/theo variable."
+  },
+    "MAST_louvre3-8b-2":
+  {
+    "coords":
+        [
+          ["start", {"R": 0.80, "z": -1.825, "phi": -41.8, "order": 0, "include_next_interval": true}],
+          ["end", {"R": 1.55, "z": -1.825, "phi": -39.3, "order": 1, "include_next_interval": false}]
+        ],
+    "description": "Seccond line defining area used in IDL sched code path for pulse 23586. Extracted from ldef/theo variable."
+  },
+  "MAST_louvre12d":
+  {
+    "coords":
+        [
+          ["start", {"R": 0.75, "z": -1.825, "phi": -28.0, "order": 0, "include_next_interval": true}],
+          ["end", {"R": 2.70, "z": -1.825, "phi": -28.0, "order": 1, "include_next_interval": false}]
+        ],
+    "description": "Line used in IDL sched code path for pulse 26505. Extracted from ldef/theo variable."
+  },
+  "MAST_louvre12d_rotated":
+  {
+    "coords":
+        [
+          ["start", {"R": 0.75, "z": -1.825, "phi": 84.8, "order": 0, "include_next_interval": true}],
+          ["end", {"R": 2.70, "z": -1.825, "phi": 84.8, "order": 1, "include_next_interval": false}]
+        ],
+    "description": "Line used in IDL sched code path for pulse 26505. Rotated in phi so that projected pixel coords aprox match those from IDL code"
   }
 }

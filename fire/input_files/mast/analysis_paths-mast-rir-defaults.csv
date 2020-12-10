@@ -1,2 +1,6 @@
 pulse_start,pulse_end,analysis_path_name,author,comments
-0,49999,MAST_S1_L3_centre_radial_2,Tom Farley,Test path
+0,23585,MAST_S1_L3_centre_radial_2,Tom Farley,Test path
+23586,23586,MAST_louvre12d_rotated,Tom Farley,MAST IDL path from ldef.dat
+23587,26338,MAST_S1_L3_centre_radial_2,Tom Farley,Test path
+26339,26530,MAST_louvre3-8b,Tom Farley,MAST IDL path from ldef.dat
+26531,49999,MAST_S1_L3_centre_radial_2,Tom Farley,Test path
