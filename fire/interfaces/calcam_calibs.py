@@ -311,28 +311,28 @@ def project_spatial_analysis_path(raycast_data, analysis_path_dfn, calcam_calib,
         raycast_data: Dataset of spatial coordinate info for each pixel in camera images
         analysis_path_dfn: Spatial coordinates of points defining analysis path
         calcam_calib: Calcam calibration object
-        path_name: Name of path (short name) used in DataArray variable and coordiante names
+        path_name: Name of path (short name) used in DataArray variable and coordinate names
         masks: (optional) Additional image data to extract along path
 
     Returns: Dataset of variables defining analysis_path through image (eg. x_pix, y_pix etc.)
 
     """
-    # TODO: Split into two functions: one that projects the spatial path definition points onto image path defnintion
+    # TODO: Split into two functions: one that projects the spatial path definition points onto image path definition
     #  points and a second that uses skimage.draw to connect up the image path definition points. This will allow old
     #  MAST image path definitions to be used for exact regression tests
     path = path_name  # abbreviation for format strings
     coord_path = f'i_{path}'  # xarray index coordinate along analysis path
 
-    # TODO: Handle combining multiple analysis paths? Move loop over paths below to here/outside fuction...?
+    # TODO: Handle combining multiple analysis paths? Move loop over paths below to here/outside function...?
     subview_mask = calcam_calib.get_subview_mask(coords=image_coords)
     image_shape = np.array(subview_mask.shape)
     # points = pd.DataFrame.from_dict(list(analysis_path_dfn.values())[0], orient='index')
     # points = pd.DataFrame.from_items(analysis_path_dfn).T
+    # TODO: Make helper function for creating standard dataframes and data arrays from ndarrys/dicts
     points = pd.DataFrame.from_dict(OrderedDict(analysis_path_dfn)).T
     points = points.rename(columns={'R': f'R_{path}_dfn', 'phi': f'phi_{path}_dfn', 'z': f'z_{path}_dfn'})
     points = points.astype({f'R_{path}_dfn': float, 'include_next_interval': bool, 'order': int, f'phi_{path}_dfn': float,
                            f'z_{path}_dfn': float})
-    # TODO: sort df point by 'order' column
     pos_key = 'position'
     points.index.name = pos_key
     points = points.sort_values('order').to_xarray()
@@ -506,10 +506,10 @@ def select_visible_points_from_subviews(points_pix_subviews, subview_mask, point
         subviews_keep: Whether to only select points from a particular subview (default='all')
         raise_on_duplicate_view: Raise exception if a point is imaged in multiple subviews
         raise_on_out_of_frame: Raise exception if a projected point is not in frame
-        subview_default: Subview index to use for returning our of frame pixel coords (default 0 for single subview)
-                         (ie if raise_on_out_of_frame=False)
+        subview_default: Subview index to use for returning out of frame pixel coords (default 0 for single subview)
+                         (used if raise_on_out_of_frame=False)
 
-    Returns: (points, info) where poinits is a Nx2 NumPY array of projected points that fall within their respective
+    Returns: (points, info) where points is a Nx2 NumPY array of projected points that fall within their respective
     subview's masked area and info is a dict of additional info
 
     """
@@ -590,6 +590,7 @@ def select_visible_points_from_subviews(points_pix_subviews, subview_mask, point
             raise ValueError(message)
         else:
             logger.warning(message)
+
     if n_missed > 0:
         message = (f' {n_missed} projected points are not visible in any sub-view (ie out of frame)\n'
                    f'   (x, y, z): {info["xyz_out_of_frame"]} ')

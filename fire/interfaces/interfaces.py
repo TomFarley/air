@@ -330,7 +330,8 @@ def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, allow_overlap
             table = table.astype({'pulse_start': int, 'pulse_end': int})
             row_mask = np.logical_and(table['pulse_start'] <= pulse, table['pulse_end'] >= pulse)
             if (np.sum(row_mask) > 1) and (not allow_overlaping_ranges):
-                pulse_info = ValueError(f'Lookup file contains overlapping ranges. Please fix: {path_fn}')
+                pulse_info = ValueError(f'Lookup file {path_fn} contains overlapping ranges. Please fix: \n'
+                                        f'{table.loc[row_mask]}')
             elif np.sum(row_mask) == 0:
                 pulse_ranges = list(zip(table['pulse_start'], table['pulse_end']))
                 pulse_info = ValueError(f'Pulse {pulse} does not fall in any pulse range {pulse_ranges} in {path_fn}')
