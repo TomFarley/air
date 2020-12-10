@@ -30,8 +30,23 @@ logger = logging.getLogger(__name__)
 
 
 def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_start=None, n_end=None, n_images=5,
-                                 path_out='.'):
-    # TODO: Switch to call plugin agnostic functions
+                                 use_raw=False, path_out='.'):
+    """
+
+    Args:
+        pulse:
+        camera:
+        machine:
+        n_start:
+        n_end:
+        n_images: Number of brightest frames in movie to save as calibration images
+        use_raw: Whether to use raw frames instead of first frame NUC correction
+        path_out:
+
+    Returns:
+
+    """
+    # TODO: Switch to call plugin agnostic movie reader class
     print(f'Reading movie data...')
     frame_nos, frame_times, frame_data_raw = read_movie_data(pulse, camera, n_start=n_start, n_end=n_end)
     print(f'Read data for {len(frame_nos)} frames from movie {camera}, {pulse}')
@@ -54,7 +69,7 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
     # NUC all data
     frame_data_nuc = frame_data_raw - frame_data_raw[0]
     # use_raw = True
-    use_raw = False
+
     if ((n_start is None) or (n_start == 0)) and (not use_raw):
         frame_data = frame_data_nuc
         nuc_str = '_nuc'
@@ -222,6 +237,7 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
                     bbox_inches='tight', transparent=True, dpi=300)
         # plt.show()
         pass
+    print(f'Summary figures saved to {path_out_summaries}')
     plt.show()
 
 if __name__ == '__main__':
@@ -232,7 +248,8 @@ if __name__ == '__main__':
 
     # Full frame air:
     # pulse = 23586  # Full frame with clear spatial calibration - ref
-    pulse = 28911
+    pulse = 26505  # Full frame OSP only, 1D analysis profile, HIGH current - REQUIRES NEW CALCAM CALIBRATION
+    # pulse = 28911
     # pulse = 29936
     # pulse = 30458
     # pulse = 29934
@@ -251,8 +268,9 @@ if __name__ == '__main__':
     # n_end = 3500
     # n_start = 0
     # n_end = 110
+    n_images = 1
     # n_images = 4
-    n_images = 15
+    # n_images = 15
     # path_out = Path('./calibration_images/{camera}/{pulse}')
     path_out = Path('~/calcam2/input_images/{camera}/{pulse}').expanduser()
     generate_calcam_calib_images(pulse=pulse, camera=camera, machine='mast', n_start=n_start, n_end=n_end,
