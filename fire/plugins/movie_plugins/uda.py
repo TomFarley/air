@@ -190,7 +190,8 @@ def read_movie_data(pulse: int, camera: str,
     :type transforms: Optional[Iterable[str]]
     :return: UDA movie object?
     """
-    video = get_uda_movie_obj_legacy(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
+    # video = get_uda_movie_obj_legacy(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
+    video = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
     if frame_numbers is None:
         if n_start is None:
             n_start = 0
