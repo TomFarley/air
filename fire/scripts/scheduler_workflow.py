@@ -242,6 +242,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # Apply NUC correction
     # nuc_frame = get_nuc_frame(origin='first_frame', frame_data=frame_data)
     # TODO: Consider using min over whole (good frame) movie range to avoid negative values from nuc subtraction
+    # TODO: consider using custon nuc time/frame number range fro each movie? IDL sched had NUC time option
     nuc_frame = nuc.get_nuc_frame(origin={'n': [0, 0]}, frame_data=frame_data, reduce_func='mean')  # Old air sched code used 3rd frame?
     # nuc_frame = get_nuc_frame(origin={'n': [None, None]}, frame_data=frame_data, reduce_func='min')
     frame_data_nuc = nuc.apply_nuc_correction(frame_data, nuc_frame, raise_on_negatives=False)
@@ -308,10 +309,19 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # data['s_im'] = (('y_pix', 'x_pix'), s_im)
 
     if debug.get('spatial_coords', False):
+        phi_offset = 112.3
+        # phi_offset = 0
         # points_rzphi = [0.8695, -1.33535, 90]  # TS nose hole: R, z, phi
         # points_rzphi = [[0.825, -1.79, 27]]  # R, z, phi
+        # points_rzphi = [[0.80, -1.825, phi_offset-42.5], [1.55, -1.825, phi_offset-40]]  # R, z, phi - old IDL
         points_rzphi = None  # R, z, phi
-        debug_plots.debug_spatial_coords(image_data, points_rzphi=points_rzphi)
+        # analysis path
+        # points_rzphi = [[0.80, -1.825, -42.5]]  # R, z, phi - old IDL analysis path
+        # points_pix = np.array([[256-137, 320-129], [256-143, 320-0]]) -1.5  # x_pix, y_pix - old IDL analysis path
+        points_pix = np.array([[256-133, 320-256], [256-150, 320-41]]) -1.5  # x_pix, y_pix - old IDL analysis path: [256, 133], [41, 150]
+        # points_pix = None
+
+        debug_plots.debug_spatial_coords(image_data, points_rzphi=points_rzphi, points_pix=points_pix)
 
     # TODO: Check if saturated/bad pixels occur along analysis path - update quality flag
 
@@ -369,8 +379,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Identify hotspots: MOI 3.2: Machine protection peak tile surface T from IR is 1300 C
     # (bulk tile 250C from T/C)
 
-    if debug.get('temperature', False):
-        debug_plots.debug_temperature(image_data)
+    if debug.get('temperature_im', False):
+        debug_plots.debug_temperature_image(image_data)
 
     # TODO: Calculate toroidally averaged radial profiles taking into account viewing geometry
     # - may be more complicated than effectively rotating image slightly as in MAST (see data in Thornton2015)
@@ -399,7 +409,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
         # Get interpolated pixel and spatial coords along path
         frame_masks = {'surface_id': surface_ids, 'material_id': material_ids}
-        # TODO: Move projection outside loop and only do pixel interpolation here
+        # TODO: Separate projection and pixel interpolation
         path_data = calcam_calibs.project_spatial_analysis_path(data_raycast, analysis_path_dfn_points, calcam_calib,
                                                                 analysis_path_key, masks=frame_masks, image_coords=image_coords)
         # image_data = xr.merge([image_data, path_data])
@@ -423,12 +433,15 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                                image_data_in_cross_sections=True, machine_plugins=machine_plugins)
             debug_plots.debug_spatial_coords(image_data, path_data=path_data, path_name=analysis_path_key)
 
+        if debug.get('temperature_path', True):
+            debug_plots.debug_temperature_profile_2d(path_data)
+
         # TODO: Calculate heat fluxes
         heat_flux, extra_results = heat_flux_module.calc_heatflux(image_data['t'], image_data['temperature_im'],
                                                 path_data, analysis_path_key, material_properties, visible_materials)
         # Move meta data assignment to function
         heat_flux_key = f'heat_flux_{analysis_path_key}'
-        path_data[heat_flux_key] = (('t', path_coord), heat_flux)
+        path_data[heat_flux_key] = ((path_coord, 't'), heat_flux)
         path_data[heat_flux_key].attrs.update(meta_data['variables'].get('heat_flux', {}))
         if 'description' in path_data[heat_flux_key].attrs:
             path_data[heat_flux_key].attrs['label'] = path_data[heat_flux_key].attrs['description']
@@ -487,7 +500,7 @@ def run_jet():  # pragma: no cover
     debug = {'debug_detector_window': True, 'camera_shake': True,
              'movie_data_annimation': False, 'movie_data_nuc_annimation': False,
              'spatial_coords': False, 'spatial_res': False, 'movie_data_nuc': True,
-             'temperature': False, 'surfaces': False, 'analysis_path': True}
+             'temperature_im': False, 'surfaces': False, 'analysis_path': True}
     # debug = {k: True for k in debug}
     # debug = {k: False for k in debug}
     figures = {'spatial_res': False}
@@ -497,7 +510,9 @@ def run_jet():  # pragma: no cover
     return status
 
 def run_mast_rir():  # pragma: no cover
-    pulse = 23586  # Full frame with clear spatial calibration
+    # pulse = 23586  # Full frame with clear spatial calibration
+    pulse = 26505  # Full frame OSP only louvre12d, 1D analysis profile, HIGH current - REQUIRES NEW CALCAM CALIBRATION
+    # pulse = 26489  # Full frame OSP only, 1D analysis profile, MODERATE current - REQUIRES NEW CALCAM CALIBRATION
     # pulse = 28866  # Low power, (8x320)
     # pulse = 29210  # High power, (8x320) - Lots of bad frames/missing data?
     # pulse = 29936  # Full frame, has good calcam calib
@@ -522,13 +537,13 @@ def run_mast_rir():  # pragma: no cover
     magnetics = False
     update_checkpoints = False
     # update_checkpoints = True
-    debug = {'debug_detector_window': True, 'camera_shake': True,
-             'movie_data_annimation': False, 'movie_data_nuc_annimation': True,
-             'spatial_coords': True, 'spatial_res': False, 'movie_data_nuc': True,
-             'surfaces': False, 'analysis_path': True, 'temperature': False}
+    debug = {'debug_detector_window': False, 'camera_shake': False,
+             'movie_data_annimation': False, 'movie_data_nuc_annimation': False,
+             'spatial_coords': True, 'spatial_res': False, 'movie_data_nuc': False,
+             'surfaces': False, 'analysis_path': False, 'temperature_im': False}
     # debug = {k: True for k in debug}
-    debug = {k: False for k in debug}
-    figures = {'spatial_res': True}
+    # debug = {k: False for k in debug}
+    figures = {'spatial_res': False}
     logger.info(f'Running MAST scheduler workflow...')
     status = scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
                        equilibrium=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures)
@@ -550,7 +565,7 @@ def run_mast_rit():  # pragma: no cover
     debug = {'debug_detector_window': True, 'camera_shake': True,
              'movie_data_annimation': False, 'movie_data_nuc_annimation': False,
              'spatial_coords': True, 'spatial_res': False, 'movie_data_nuc': False,
-             'surfaces': False, 'analysis_path': True, 'temperature': False}
+             'surfaces': False, 'analysis_path': True, 'temperature_im': False,}
     # debug = {k: True for k in debug}
     # debug = {k: False for k in debug}
     figures = {'spatial_res': False}
@@ -573,7 +588,7 @@ def run_mastu():  # pragma: no cover
     # TODO: Remove redundant movie_data step
     debug = {'debug_detector_window': True, 'movie_data_annimation': True, 'movie_data_nuc_annimation': False,
              'spatial_coords': False, 'spatial_res': False, 'movie_data_nuc': False,
-             'temperature': False, 'surfaces': False, 'analysis_path': True}
+             'temperature_im': False,'surfaces': False, 'analysis_path': True}
     # debug = {k: True for k in debug}
     # debug = {k: False for k in debug}
     figures = {'spatial_res': False}
