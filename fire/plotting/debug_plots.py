@@ -145,21 +145,39 @@ def debug_camera_shake(pixel_displacements, times=None, plot_float=True):
 
     plt.show()
 
-def debug_spatial_coords(data, path_data=None, path_name='path0', points_rzphi=None, aspect='equal', axes_off=True):
+def debug_spatial_coords(data, path_data=None, path_name='path0', points_rzphi=None, points_pix=None,
+                         aspect='equal', axes_off=True):
     fig, axes = plt.subplots(3, 3, num='spatial coords', figsize=(13, 13), sharex=True, sharey=True)
     axes = axes.flatten()
     path = path_name
 
+    if points_pix is not None:
+        points_pix = np.array(points_pix)
+        if points_pix.ndim == 1:
+            points_pix = points_pix[np.newaxis, :]
+        logger.info('Plotting %s user specified x_pix,y_pix points on image: %s', len(points_pix), points_pix)
+    if points_rzphi is not None:
+        points_rzphi = np.array(points_rzphi)
+        if points_rzphi.ndim == 1:
+            points_rzphi = points_rzphi[np.newaxis, :]
+        logger.info('Plotting %s user specified r,z,phi points on image: %s', len(points_rzphi), points_rzphi)
+
     # Frame data
-    ax0 = axes[0]
-    figure_frame_data(data, ax=ax0, key='frame_data_nuc', label_outliers=False, aspect=aspect, axes_off=False,
+    ax = axes[0]
+    figure_frame_data(data, ax=ax, key='frame_data_nuc', label_outliers=False, aspect=aspect, axes_off=False,
                       show=False)
-    figure_xarray_imshow(data, key='subview_mask_im', ax=ax0, alpha=0.3, add_colorbar=False, cmap='Pastel2', axes_off=False,
+    figure_xarray_imshow(data, key='subview_mask_im', ax=ax, alpha=0.3, add_colorbar=False, cmap='Pastel2', axes_off=False,
                          show=False)
+    if (points_rzphi is not None):
+        from fire import active_calcam_calib
+        image_figures.plot_rzphi_points(active_calcam_calib, points_rzphi, ax=ax)
+    if (points_pix is not None):
+        ax.plot(points_pix[:, 0], points_pix[:, 1], **{'ls': '', 'marker': 'x', 'color': 'g'})
+
     if (path_data is not None) and (path_name is not None):
-        plot_analysis_path(ax0, path_data[f'x_pix_{path}'], path_data[f'y_pix_{path}'],
-                                       xpix_out_of_frame=path_data[f'x_pix_{path}_out_of_frame'],
-                                       ypix_out_of_frame=path_data[f'y_pix_{path}_out_of_frame'])
+        plot_analysis_path(ax, path_data[f'x_pix_{path}'], path_data[f'y_pix_{path}'],
+                           xpix_out_of_frame=path_data[f'x_pix_{path}_out_of_frame'],
+                           ypix_out_of_frame=path_data[f'y_pix_{path}_out_of_frame'])
     # Spatial coords
     axs = axes[1:]
     keys = ['x_im', 'y_im', 'R_im', 'phi_deg_im', 'z_im', 's_global_im', 'sector_im', 'ray_lengths_im', 'wire_frame']
@@ -178,8 +196,9 @@ def debug_spatial_coords(data, path_data=None, path_name='path0', points_rzphi=N
                 raise
         if (points_rzphi is not None):
             from fire import active_calcam_calib
-            logger.info('Plotting %s user specified r,z,phi points on image: %s', len(points_rzphi), points_rzphi)
             image_figures.plot_rzphi_points(active_calcam_calib, points_rzphi, ax=ax)
+        if (points_pix is not None):
+            ax.plot(points_pix[:, 0], points_pix[:, 1], **{'ls': '', 'marker': 'x', 'color': 'g'})
 
     plt.tight_layout()
     plt.show()
@@ -361,8 +380,17 @@ def debug_analysis_path_2d(image_data, path_data=None, path_names='path0', image
 
 
 
-def debug_temperature(data):
+def debug_temperature_image(data):
     figure_xarray_imshow(data, key='temperature_im', show=True)
+
+def debug_temperature_profile_2d(data_paths=None, path_names='path0'):
+    for path_name in make_iterable(path_names):
+        data = data_paths[f'temperature_{path_name}']
+        data = data.swap_dims({'n': 't'})
+        # data = data.swap_dims({f'i_{path_name}': f's_global_{path_name}'})
+        data = data.swap_dims({f'i_{path_name}': f'R_{path_name}'})
+        data.plot(robust=True, center=False, cmap='coolwarm')
+        plt.show()
 
 
 if __name__ == '__main__':
