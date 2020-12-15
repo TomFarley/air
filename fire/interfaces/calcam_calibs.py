@@ -315,13 +315,17 @@ def standardise_analysis_path_definition(analysis_path_dfn, calcam_calib, path_n
         points_coords, points_pixels = convert_path_definition_dict_to_dataarray(analysis_path_dfn, path_name)
 
         subviews_keep = analysis_path_dfn.get('sub_view', 'all')
-        analysis_path_dfn = project_spatial_coords_onto_subviews(points_coords, calcam_calib, path_name,
+        points_coords_pixels, info = project_spatial_coords_onto_subviews(points_coords, calcam_calib, path_name,
                                                                  subviews_keep=subviews_keep, image_coords='Display')
+
+        analysis_path_dfn = convert_pixel_path_definition_array_to_dict(points_coords_pixels, path_name,
+                                                                        analysis_path_dfn)
+
     elif ('pixels' in analysis_path_dfn):
         # TODO: Convert pixels dict to data array
         raise NotImplementedError
 
-    return analysis_path_dfn
+    return points_coords_pixels, analysis_path_dfn
 
 def project_spatial_coords_onto_subviews(points_coords, calcam_calib, path_name, #masks=None,
                                   subviews_keep='all', image_coords='Display'):
@@ -347,15 +351,10 @@ def project_spatial_coords_onto_subviews(points_coords, calcam_calib, path_name,
     points_pix, info = select_visible_points_from_subviews(points_pix_subviews, subview_mask, points_xyz=points_xyz,
                                                            subviews_keep=subviews_keep,
                                                            raise_on_duplicate_view=True, raise_on_out_of_frame=False)
-    # TODO: zip loop over points and add pixel coords to original dict
-    join_analysis_path_control_points = join_analysis_path_control_points(points_pix, path_name)
-    raise NotImplementedError
 
-    points_pix = points_pix.astype(int)
-    points_coords[f'{path}_dfn_x_pix'] = (points_coords.coords, points_pix[0])
-    points_coords[f'{path}_dfn_y_pix'] = (points_coords.coords, points_pix[1])
-    points_coords[f'{path}_dfn_subview'] = (points_coords.coords, info['subview_origin'])
-    points_coords[f'{path}_dfn_visible'] = (points_coords.coords, info['mask_visible'])
+    points_coords_pixels = add_pixel_coords_to_path_dfn_dataset(points_pix, points_coords, path_name, info=info)
+
+    return points_coords_pixels, info
 
 def convert_path_definition_dict_to_dataarray(analysis_path_dfn, path_name):
     # TODO: Make helper function for creating standard dataframes and data arrays from ndarrys/dicts
@@ -398,12 +397,55 @@ def convert_path_definition_dict_to_dataarray(analysis_path_dfn, path_name):
 
     return points_coords, points_pixels
 
-def join_analysis_path_control_points(analysis_path_control_points, path_name):
-    raise NotImplementedError
-    pos_names = points.coords[pos_key]
+def add_pixel_coords_to_path_dfn_dataset(points_pixels, points_coords, path_name, info=None):
+    path = path_name
+    points_coords_pixels = points_coords
+
+    points_coords_pixels[f'{path}_dfn_x_pix'] = ((f'position',), points_pixels[:, 0])
+    points_coords_pixels[f'{path}_dfn_y_pix'] = ((f'position',), points_pixels[:, 1])
+
+    if info is not None:
+        points_coords_pixels[f'{path}_dfn_subview'] = (points_coords.coords, info['subview_index_with_defaults'])
+        # oof = out of frame (-1)
+        points_coords_pixels[f'{path}_dfn_subview_or_oof'] = (points_coords.coords, info['subview_index'])
+        points_coords_pixels[f'{path}_dfn_out_of_frame'] = (points_coords.coords, info['mask_out_of_frame'])
+        points_coords_pixels[f'{path}_dfn_multi_imaged'] = (points_coords.coords, info['mask_multi_imaged'])
+        points_coords_pixels[f'{path}_dfn_n_imaged'] = (points_coords.coords, info['n_imaged'])
+
+    return points_coords_pixels
+
+def convert_pixel_path_definition_array_to_dict(points_coords, path_name, dict_out=None):
+    """Take an array of pixel coords as produced by calcam project_points and add them to a path definition dict
+    using the existing structure for a spatial coordinate path definition"""
+    if dict_out is None:
+        dict_out = {}
+
+    if 'pixels' not in dict_out:
+        dict_out['pixels'] = defaultdict(dict)
+
+    pixel_keys = ['path0_dfn_x_pix', 'path0_dfn_y_pix', 'path0_dfn_subview', 'path0_dfn_subview_or_oof',
+                  'path0_dfn_out_of_frame', 'path0_dfn_multi_imaged', 'path0_dfn_n_imaged', 'order',
+                  'include_next_interval']
+
+    for key in pixel_keys:  # points_coords.data_vars:
+        for value in points_coords[key]:
+            position = value['position'].values.item()
+            key_short = key.replace(f'{path_name}_dfn_', '')
+            dict_out['pixels'][position][key_short] = value.values.item()
+            # dict_out['pixels'][position]['y_pix'] = point_pixels[1]
+
+    return dict_out
+
+def join_analysis_path_control_points(analysis_path_control_points, path_name, masks, image_shape):
+    pos_key = 'position'
+    path = path_name  # abbreviation for format strings
+    coord_path = f'i_{path}'  # xarray index coordinate along analysis path
+    points = analysis_path_control_points
+    pos_names = analysis_path_control_points.coords[pos_key]
     # x and y pixel value and path index number for each point along analysis path
     # Path index (path_no) indexes which pair of points in the path definition a given point along the path belongs to
     xpix_path, ypix_path, path_no, xpix_out_of_frame, ypix_out_of_frame = [], [], [], [], []
+    xpix_all_path, ypix_all_path = [], []
     masks_path = {key: [] for key in masks} if masks else {}
     for i_path, (start_pos, end_pos) in enumerate(zip(pos_names, pos_names[1:])):
         if not points['include_next_interval'].sel(position=start_pos):
@@ -415,24 +457,28 @@ def join_analysis_path_control_points(analysis_path_control_points, path_name):
 
         # Check if path strays outside image
         mask_in_frame = check_in_frame(xpix_all, ypix_all, image_shape)
-        if np.any(~mask_in_frame):
-            from fire.plotting.image_figures import figure_analysis_path
-            logger.error(f'Some points defining the analysis path "{path_name}" stray outside the image')
-            data = to_image_dataset(masks[key], key)
-            xpix_path = np.concatenate(xpix_path)
-            ypix_path = np.concatenate(ypix_path)
-            data[coord_path] = (coord_path, np.arange(len(xpix_path)))
-            data[f'x_pix_{path}'] = (coord_path, xpix_path)
-            data[f'y_pix_{path}'] = (coord_path, ypix_path)
-            figure_analysis_path(data, key=key, show=True)
-            # raise
 
         # Just keep parts of path that are visible
         xpix = xpix_all[mask_in_frame]
         ypix = ypix_all[mask_in_frame]
         xpix_path.append(xpix)
         ypix_path.append(ypix)
+        xpix_all_path.append(xpix_all)
+        ypix_all_path.append(ypix_all)
         path_no.append(np.full_like(xpix, i_path))
+
+        # if np.any(~mask_in_frame):
+        #     from fire.plotting.image_figures import figure_analysis_path
+        #     logger.error(f'Some points defining the analysis path "{path_name}" stray outside the image')
+        #     key = 'surface_id'
+        #     data = to_image_dataset(masks[key], key)
+        #     xpix_path = np.concatenate(xpix_path)
+        #     ypix_path = np.concatenate(ypix_path)
+        #     data[coord_path] = (coord_path, np.arange(len(xpix_path)))
+        #     data[f'x_pix_{path}'] = (coord_path, xpix_path)
+        #     data[f'y_pix_{path}'] = (coord_path, ypix_path)
+        #     figure_analysis_path(data, key=key, show=True)
+        #     # raise
 
         # Also record parts of path outside of frame for plotting/debugging etc
         xpix_out_of_frame.append(xpix_all[~mask_in_frame])
@@ -468,27 +514,29 @@ def join_analysis_path_control_points(analysis_path_control_points, path_name):
     # Include pixel coords of path elements outside of the frame
     analysis_path[f'y_pix_{path}_out_of_frame'] = ((f'i_{path}_out_of_frame',), ypix_out_of_frame)
     analysis_path[f'x_pix_{path}_out_of_frame'] = ((f'i_{path}_out_of_frame',), xpix_out_of_frame)
-    # Calcam uses convention that the origin (0,0) is in the centre of the top-left pixel - reverse y axis for indexing?
-    subview_path = subview_mask[::-1, :][ypix_path, xpix_path]
-    analysis_path[f'subview_{path}'] = ((f'i_{path}',), subview_path)  # Which subview each pixel is from
-    # analysis_path[f'in_frame_{path}'] = ((f'i_{path}',), check_in_frame(xpix_path, ypix_path, image_shape[::-1]))
-    index_path = {'x_pix': xr.DataArray(xpix_path, dims=f'i_{path}'),
-                  'y_pix': xr.DataArray(ypix_path, dims=f'i_{path}')}
-    for coord in ['R', 'phi', 'x', 'y', 'z']:
-        analysis_path[coord+f'_{path}'] = ((f'i_{path}',), raycast_data[coord+'_im'].sel(index_path))
-    for key in masks_path:
-        analysis_path[key+f'_{path}'] = ((f'i_{path}',), masks_path[key])
 
-    # Set alternative coordinates to index path data (other than path index)
-    alternative_path_coords = ('R', 's', 's_global', 'phi')  # , 'x', 'y', 'z')
-    for coord in alternative_path_coords:
-        coord = f'{coord}_{path}'
-        if coord in analysis_path:
-            analysis_path = analysis_path.assign_coords(**{coord: (coord_path, analysis_path[coord].values)})
+    # # Calcam uses convention that the origin (0,0) is in the centre of the top-left pixel - reverse y axis for indexing?
+    # subview_path = subview_mask[::-1, :][ypix_path, xpix_path]
+    # analysis_path[f'subview_{path}'] = ((f'i_{path}',), subview_path)  # Which subview each pixel is from
+    # # analysis_path[f'in_frame_{path}'] = ((f'i_{path}',), check_in_frame(xpix_path, ypix_path, image_shape[::-1]))
+    # index_path = {'x_pix': xr.DataArray(xpix_path, dims=f'i_{path}'),
+    #               'y_pix': xr.DataArray(ypix_path, dims=f'i_{path}')}
+    # for coord in ['R', 'phi', 'x', 'y', 'z']:
+    #     analysis_path[coord+f'_{path}'] = ((f'i_{path}',), raycast_data[coord+'_im'].sel(index_path))
+    # for key in masks_path:
+    #     analysis_path[key+f'_{path}'] = ((f'i_{path}',), masks_path[key])
+
+    # # Set alternative coordinates to index path data (other than path index)
+    # alternative_path_coords = ('R', 's', 's_global', 'phi')  # , 'x', 'y', 'z')
+    # for coord in alternative_path_coords:
+    #     coord = f'{coord}_{path}'
+    #     if coord in analysis_path:
+    #         analysis_path = analysis_path.assign_coords(**{coord: (coord_path, analysis_path[coord].values)})
 
     # TODO: check_occlusion
     if len(xpix_out_of_frame) > 0:
         logger.warning(f'Analysis path contains sections that are not in frame: {len(xpix_out_of_frame)} points')
+    raise NotImplementedError
     return analysis_path
 
 def project_spatial_analysis_path(analysis_path_dfn, raycast_data, calcam_calib, path_name, masks=None,
@@ -632,8 +680,23 @@ def project_spatial_analysis_path(analysis_path_dfn, raycast_data, calcam_calib,
         logger.warning(f'Analysis path contains sections that are not in frame: {len(xpix_out_of_frame)} points')
     return analysis_path
 
-def check_in_frame(x_points, y_points, image_shape):
+def check_in_frame(x_points, y_points, image_shape, window_offset=(0,0)):
+    """
+
+    Args:
+        x_points: x pixel coordinates (across image width)
+        y_points: y pixel coordinates (down image height)
+        image_shape: [height, width]
+        window_offset
+
+    Returns: Bool array giving whether pixel falls within image
+
+    """
     # TODO: Check calcam convension for subwindows
+    window_offset = np.array(window_offset)
+
+    if not np.all(window_offset == 0):
+        raise NotImplementedError
     # NOTE: Calcam.project_points returns a list of image (x,y) coordinates for each subview. Images are indexed [y, x].
     # TODO: check for alpha channel or frame number dim
     x_points, y_points = np.array(x_points), np.array(y_points)
