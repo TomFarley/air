@@ -404,14 +404,21 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         logger.info(f'Performing analysis along analysis path "{analysis_path_name}" ("{analysis_path_key}")')
 
         path_coord = f'i_{analysis_path_key}'
-        analysis_path_dfn_points = analysis_path_dfn_points_all[analysis_path_name]['coords']
-        analysis_path_description = analysis_path_dfn_points_all[analysis_path_name]['description']
+        analysis_path_dfn = analysis_path_dfn_points_all[analysis_path_name]
+        analysis_path_dfn, analysis_path_dfn_dict = calcam_calibs.standardise_analysis_path_definition(
+                        analysis_path_dfn, calcam_calib, analysis_path_key, image_coords=image_coords)
+        # TODO: store record of analysis_path_dfn to preserve after next loop
+
+        analysis_path_dfn_points = analysis_path_dfn_dict['coords']
+        analysis_path_description = analysis_path_dfn_dict['description']
 
         # Get interpolated pixel and spatial coords along path
         frame_masks = {'surface_id': surface_ids, 'material_id': material_ids}
-        # TODO: Separate projection and pixel interpolation
-        path_data = calcam_calibs.project_spatial_analysis_path(data_raycast, analysis_path_dfn_points, calcam_calib,
-                                                                analysis_path_key, masks=frame_masks, image_coords=image_coords)
+
+        # TODO: Test with windowing
+        path_data = calcam_calibs.join_analysis_path_control_points(analysis_path_dfn, analysis_path_key,
+                                                                    frame_masks, meta_data['image_shape'])
+
         # image_data = xr.merge([image_data, path_data])
         path_data_extracted = image_processing.extract_path_data_from_images(image_data, path_data,
                                                                              path_name=analysis_path_key)
@@ -434,7 +441,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             debug_plots.debug_spatial_coords(image_data, path_data=path_data, path_name=analysis_path_key)
 
         if debug.get('temperature_path', True):
-            debug_plots.debug_temperature_profile_2d(path_data)
+            debug_plots.debug_plot_profile_2d(path_data, param='temperature', path_names=analysis_path_key)
 
         # TODO: Calculate heat fluxes
         heat_flux, extra_results = heat_flux_module.calc_heatflux(image_data['t'], image_data['temperature_im'],
@@ -447,6 +454,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             path_data[heat_flux_key].attrs['label'] = path_data[heat_flux_key].attrs['description']
         path_data.coords['t'] = image_data.coords['t']
         path_data = path_data.swap_dims({'n': 't'})
+
+        if debug.get('heat_flux_path', True):
+            debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key)
 
         # TODO: Calculate moving time average and std heat flux profiles against which transients on different time
         # scales can be identified?
@@ -497,9 +507,9 @@ def run_jet():  # pragma: no cover
     magnetics = False
     update_checkpoints = False
     # update_checkpoints = True
-    debug = {'debug_detector_window': True, 'camera_shake': True,
+    debug = {'debug_detector_window': False, 'camera_shake': True,
              'movie_data_annimation': False, 'movie_data_nuc_annimation': False,
-             'spatial_coords': False, 'spatial_res': False, 'movie_data_nuc': True,
+             'spatial_coords': True, 'spatial_res': False, 'movie_data_nuc': False,
              'temperature_im': False, 'surfaces': False, 'analysis_path': True}
     # debug = {k: True for k in debug}
     # debug = {k: False for k in debug}
@@ -601,10 +611,10 @@ if __name__ == '__main__':
     # delete_file('~/.fire_config.json', verbose=True, raise_on_fail=True)
     copy_default_user_settings(replace_existing=True)
 
-    status = run_mast_rir()
+    # status = run_mast_rir()
     # status = run_mast_rit()
     # status = run_mastu()
-    # status = run_jet()
+    status = run_jet()
 
     outputs = status['outputs']
     if ('uda_putdata' in outputs) and (outputs['uda_putdata']['success']):
