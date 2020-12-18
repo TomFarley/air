@@ -417,20 +417,22 @@ def add_pixel_coords_to_path_dfn_dataset(points_pixels, points_coords, path_name
 def convert_pixel_path_definition_array_to_dict(points_coords, path_name, dict_out=None):
     """Take an array of pixel coords as produced by calcam project_points and add them to a path definition dict
     using the existing structure for a spatial coordinate path definition"""
+    path = path_name
+    
     if dict_out is None:
         dict_out = {}
 
     if 'pixels' not in dict_out:
         dict_out['pixels'] = defaultdict(dict)
 
-    pixel_keys = ['path0_dfn_x_pix', 'path0_dfn_y_pix', 'path0_dfn_subview', 'path0_dfn_subview_or_oof',
-                  'path0_dfn_out_of_frame', 'path0_dfn_multi_imaged', 'path0_dfn_n_imaged', 'order',
+    pixel_keys = [f'{path}_dfn_x_pix', f'{path}_dfn_y_pix', f'{path}_dfn_subview', f'{path}_dfn_subview_or_oof',
+                  f'{path}_dfn_out_of_frame', f'{path}_dfn_multi_imaged', f'{path}_dfn_n_imaged', 'order',
                   'include_next_interval']
 
     for key in pixel_keys:  # points_coords.data_vars:
         for value in points_coords[key]:
             position = value['position'].values.item()
-            key_short = key.replace(f'{path_name}_dfn_', '')
+            key_short = key.replace(f'{path}_dfn_', '')
             dict_out['pixels'][position][key_short] = value.values.item()
             # dict_out['pixels'][position]['y_pix'] = point_pixels[1]
 
@@ -450,7 +452,7 @@ def join_analysis_path_control_points(analysis_path_control_points, path_name, m
     for i_path, (start_pos, end_pos) in enumerate(zip(pos_names, pos_names[1:])):
         if not points['include_next_interval'].sel(position=start_pos):
             continue
-        x0, y0, x1, y1 = np.round((*points[f'{path}_dfn_x_pix'].sel({pos_key: slice(start_pos, end_pos)}),
+        x0, x1, y0, y1 = np.round((*points[f'{path}_dfn_x_pix'].sel({pos_key: slice(start_pos, end_pos)}),
                                    *points[f'{path}_dfn_y_pix'].sel({pos_key: slice(start_pos, end_pos)}))).astype(int)
         # Use Bresenham's line drawing algorithm. npoints = max((dx, dy))
         xpix_all, ypix_all = skimage.draw.line(x0, y0, x1, y1)
@@ -515,6 +517,7 @@ def join_analysis_path_control_points(analysis_path_control_points, path_name, m
     analysis_path[f'y_pix_{path}_out_of_frame'] = ((f'i_{path}_out_of_frame',), ypix_out_of_frame)
     analysis_path[f'x_pix_{path}_out_of_frame'] = ((f'i_{path}_out_of_frame',), xpix_out_of_frame)
 
+    # TODO: Reinstate adding alternative coords in separate function
     # # Calcam uses convention that the origin (0,0) is in the centre of the top-left pixel - reverse y axis for indexing?
     # subview_path = subview_mask[::-1, :][ypix_path, xpix_path]
     # analysis_path[f'subview_{path}'] = ((f'i_{path}',), subview_path)  # Which subview each pixel is from
@@ -536,7 +539,7 @@ def join_analysis_path_control_points(analysis_path_control_points, path_name, m
     # TODO: check_occlusion
     if len(xpix_out_of_frame) > 0:
         logger.warning(f'Analysis path contains sections that are not in frame: {len(xpix_out_of_frame)} points')
-    raise NotImplementedError
+    # raise NotImplementedError
     return analysis_path
 
 def project_spatial_analysis_path(analysis_path_dfn, raycast_data, calcam_calib, path_name, masks=None,
@@ -743,7 +746,7 @@ def toroidal_to_pixel_coordinates(calcam_calib, points_rzphi, angle_units='degre
     return points_pix, info
 
 def select_visible_points_from_subviews(points_pix_subviews, subview_mask, points_xyz=None, subviews_keep='all',
-                                        raise_on_duplicate_view=True, raise_on_out_of_frame=False):
+                                        raise_on_duplicate_view=True, raise_on_out_of_frame=False, to_int=True):
     """Select projected points that are visible in that subview.
 
     When Calcam projects (x,y,z) coordinates onto an image, it returns are list of arrays of projected points for
@@ -757,6 +760,7 @@ def select_visible_points_from_subviews(points_pix_subviews, subview_mask, point
         subviews_keep: Whether to only select points from a particular subview (default='all')
         raise_on_duplicate_view: Raise exception if a point is imaged in multiple subviews
         raise_on_out_of_frame: Raise exception if a projected point is not in frame
+        to_int: Whether to round pixel coords to ints
 
     Returns: (points, info) where points is a Nx2 NumPY array of projected points that fall within their respective
     subview's masked area and info is a dict of additional info
@@ -794,7 +798,7 @@ def select_visible_points_from_subviews(points_pix_subviews, subview_mask, point
                 # project_points called with fill_value=np.nan, so nan points are out of frame
                 in_frame = False
             elif i_subview in subviews_keep:
-                point = point.astype(int)  # Safe now we know not containing nans
+                point = point.astype(int)  # Cast is safe now we know not containing nans
                 in_frame = check_in_frame(point[0], point[1], subview_mask.shape)
             else:
                 # Mark as out of frame (-1) as told to discard this subview
@@ -815,15 +819,19 @@ def select_visible_points_from_subviews(points_pix_subviews, subview_mask, point
                     # Mark as out of frame for now (may still be allocated to higher index subview)
                     subview_index[i_point] = -1
             elif (subview_index[i_point] == -1):
-                if (in_frame):
+                if (in_frame) and (i_subview_mask == i_subview):
                     # Replace out of frame allocation from previous subview with new in frame allocation
                     subview_index[i_point] = i_subview
                     visible_in_subviews[i_point].append(i_subview)
                 else:
                     pass  # No change
             else:
-                # Already allocated to previous subview. Keep original allocation, but record.
-                visible_in_subviews[i_point].append(i_subview)
+                # Already allocated to previous subview.
+                if in_frame and (i_subview_mask == i_subview):
+                    # Keep original allocation, but record that point is imaged in multiple subviews.
+                    visible_in_subviews[i_point].append(i_subview)
+                else:
+                    pass
 
     if np.any(np.isnan(subview_index)):
         raise ValueError(f'Some points do not have subview identified...')
@@ -859,10 +867,14 @@ def select_visible_points_from_subviews(points_pix_subviews, subview_mask, point
             points_pix_keep.append(points_pix_subviews[subview_default][i_point])
         else:
             points_pix_keep.append(points_pix_subviews[subview][i_point])
+
     points_pix_keep = np.array(points_pix_keep)
+    if to_int:
+        points_pix_keep = np.round(points_pix_keep).astype(int)
 
     if n_multi_imaged > 0:
-        message = f' {n_multi_imaged} projected points are imaged in multiple sub-views'
+        message = f' {n_multi_imaged} projected points are imaged in multiple sub-views. ' \
+                  f'{points_pix_subviews}]{info["n_imaged"]}'
         if raise_on_duplicate_view:
             raise ValueError(message)
         else:
