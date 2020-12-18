@@ -150,7 +150,7 @@
                         "id": "?",
                         "camera_serial_number": -1,
                         "detector_resolution": [
-                            320,
+                            400,
                             256
                         ],
                         "image_range": [
