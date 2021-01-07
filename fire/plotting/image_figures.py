@@ -199,8 +199,8 @@ def figure_analysis_path(path_data, image_data=None, key=None, path_names='path0
         # TODO: colorcode line by path section index
         try:
             plot_analysis_path(ax, path_data[f'x_pix_{path}'], path_data[f'y_pix_{path}'],
-                                   xpix_out_of_frame=path_data[f'x_pix_{path}_out_of_frame'],
-                                   ypix_out_of_frame=path_data[f'y_pix_{path}_out_of_frame'], color=color_path)
+                                   xpix_out_of_frame=path_data[f'x_pix_out_of_frame_{path}'],
+                                   ypix_out_of_frame=path_data[f'y_pix_out_of_frame_{path}'], color=color_path)
         except KeyError as e:
             logger.warning(f'Failed to plot analysis path: {str(e)}')
     if show:

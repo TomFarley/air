@@ -139,6 +139,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: format trings to numbers eg lens exposure etc
     meta_data.update(field_of_view.calc_field_of_view(meta_data['lens'], pixel_pitch=meta_data['pixel_pitch'],
                                         image_shape=meta_data['detector_resolution']))
+    # NOTE: meta_data['image_shape'] and ipx header hight/width etc prior to calcam image transformations
+
     # TODO: Tidy up duplicate names for image_resolution
 
     # Identify and check existence of input files
@@ -194,7 +196,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     frame_data = utils.movie_data_to_dataarray(frame_data, frame_times, frame_nos, meta_data=meta_data['variables'])
 
-
+    image_shape = np.array(frame_data.shape[1:]) # NOTE: meta_data['image_shape'] and ipx header info is without image
+    # transformations
 
     # Detect saturated pixels, uniform frames etc
     bad_frames_info = data_quality.identify_bad_frames(frame_data, bit_depth=movie_meta['bit_depth'],
@@ -417,12 +420,17 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
         # TODO: Test with windowing
         path_data = calcam_calibs.join_analysis_path_control_points(analysis_path_dfn, analysis_path_key,
-                                                                    frame_masks, meta_data['image_shape'])
+                                                                    frame_masks, image_shape)
+        # NOTE: meta_data['image_shape'] and ipx header hight/width etc prior to calcam image transformations
 
         # image_data = xr.merge([image_data, path_data])
         path_data_extracted = image_processing.extract_path_data_from_images(image_data, path_data,
                                                                              path_name=analysis_path_key)
         path_data = xr.merge([path_data, path_data_extracted])
+
+        filter_unknown_materials = True  # Set to False to reproduce legacy MAST analysis
+        if filter_unknown_materials:
+            path_data = image_processing.filter_unknown_materials_from_analysis_path(path_data, analysis_path_key)
 
         # x_path, y_path, z_path = (path_data[f'{coord}_path'] for coord in ['x', 'y', 'z'])
         # s_path = get_s_coord_path(x_path, y_path, z_path, machine_plugins)
@@ -455,8 +463,11 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         path_data.coords['t'] = image_data.coords['t']
         path_data = path_data.swap_dims({'n': 't'})
 
-        if debug.get('heat_flux_path', True):
+        if debug.get('heat_flux_path_2d', True):
             debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key)
+
+        if debug.get('heat_flux_path_1d', True):
+            debug_plots.debug_analysis_path_1d(image_data, path_data=path_data, path_names=analysis_path_key)
 
         # TODO: Calculate moving time average and std heat flux profiles against which transients on different time
         # scales can be identified?
@@ -550,7 +561,7 @@ def run_mast_rir():  # pragma: no cover
     debug = {'debug_detector_window': False, 'camera_shake': False,
              'movie_data_annimation': False, 'movie_data_nuc_annimation': False,
              'spatial_coords': True, 'spatial_res': False, 'movie_data_nuc': False,
-             'surfaces': False, 'analysis_path': False, 'temperature_im': False}
+             'surfaces': False, 'analysis_path': True, 'temperature_im': False}
     # debug = {k: True for k in debug}
     # debug = {k: False for k in debug}
     figures = {'spatial_res': False}
@@ -611,10 +622,10 @@ if __name__ == '__main__':
     # delete_file('~/.fire_config.json', verbose=True, raise_on_fail=True)
     copy_default_user_settings(replace_existing=True)
 
-    # status = run_mast_rir()
+    status = run_mast_rir()
     # status = run_mast_rit()
     # status = run_mastu()
-    status = run_jet()
+    # status = run_jet()
 
     outputs = status['outputs']
     if ('uda_putdata' in outputs) and (outputs['uda_putdata']['success']):

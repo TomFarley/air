@@ -44,6 +44,8 @@ def figure_path_1d(data, key, slice=None, ax=None, plot_kwargs=None):
 
     data_plot = data[key]
     if data_plot.ndim > 1:
+        if 'n' not in data_plot.dims:
+            data_plot = data_plot.swap_dims({'t': 'n'})
         data_plot = data_plot.sel(slice)
 
     data_plot.plot.line(ax=ax, **kws)

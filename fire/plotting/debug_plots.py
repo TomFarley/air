@@ -176,8 +176,8 @@ def debug_spatial_coords(data, path_data=None, path_name='path0', points_rzphi=N
 
     if (path_data is not None) and (path_name is not None):
         plot_analysis_path(ax, path_data[f'x_pix_{path}'], path_data[f'y_pix_{path}'],
-                           xpix_out_of_frame=path_data[f'x_pix_{path}_out_of_frame'],
-                           ypix_out_of_frame=path_data[f'y_pix_{path}_out_of_frame'])
+                           xpix_out_of_frame=path_data[f'x_pix_out_of_frame_{path}'],
+                           ypix_out_of_frame=path_data[f'y_pix_out_of_frame_{path}'])
     # Spatial coords
     axs = axes[1:]
     keys = ['x_im', 'y_im', 'R_im', 'phi_deg_im', 'z_im', 's_global_im', 'sector_im', 'ray_lengths_im', 'wire_frame']
@@ -190,8 +190,8 @@ def debug_spatial_coords(data, path_data=None, path_name='path0', points_rzphi=N
             path = path_name
             try:
                 plot_analysis_path(ax, path_data[f'x_pix_{path}'], path_data[f'y_pix_{path}'],
-                                   xpix_out_of_frame=path_data[f'x_pix_{path}_out_of_frame'],
-                                   ypix_out_of_frame=path_data[f'y_pix_{path}_out_of_frame'])
+                                   xpix_out_of_frame=path_data[f'x_pix_out_of_frame_{path}'],
+                                   ypix_out_of_frame=path_data[f'y_pix_out_of_frame_{path}'])
             except Exception as e:
                 raise
         if (points_rzphi is not None):
@@ -284,7 +284,7 @@ def debug_analysis_path_1d(image_data, path_data=None, path_names='path0', image
     # Line plots of parameters along path
     if path_data:
         share_x = None
-        keys = (('frame_data_{path}', 'frame_data_nuc_{path}'), 'temperature_{path}','s_global_{path}',
+        keys = (('frame_data_{path}', 'frame_data_nuc_{path}'), 'temperature_{path}', 's_global_{path}',
                 'spatial_res_max_{path}',
                 'surface_id_{path}')  # , 'sector_{path}'
         for i_row, keys_format in enumerate(keys):
@@ -383,14 +383,56 @@ def debug_analysis_path_2d(image_data, path_data=None, path_names='path0', image
 def debug_temperature_image(data):
     figure_xarray_imshow(data, key='temperature_im', show=True)
 
-def debug_temperature_profile_2d(data_paths=None, path_names='path0'):
+def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0'):
+    # TODO: Move general code to plot_tools.py func
     for path_name in make_iterable(path_names):
-        data = data_paths[f'temperature_{path_name}']
-        data = data.swap_dims({'n': 't'})
+        plt.figure(f'{param}_profile_2d {path_name}')
+        data = data_paths[f'{param}_{path_name}']
+        if 'n' in data.dims:
+            data = data.swap_dims({'n': 't'})
+        # data = data.swap_dims({f'i_{path_name}': f's_global_{path_name}'})
+        try:
+            if f'i_{path_name}' in data.dims:
+                data = data.swap_dims({f'i_{path_name}': f'R_{path_name}'})
+            data.plot(robust=True, center=False, cmap='coolwarm')
+        except (KeyError, ValueError) as e:
+            # R data not monotonic - switch back to index or s_path
+            # data = data.sortby('')
+            # data = data.swap_dims({f'R_{path_name}': f's_path_{path_name}'})
+            if f'R_{path_name}' in data.dims:
+                data = data.swap_dims({f'R_{path_name}': f'i_{path_name}'})
+            data.plot(robust=True, center=False, cmap='coolwarm')
+        plt.tight_layout()
+        plt.show()
+
+def debug_plot_profile_1d(data_paths, param='temperature', path_names='path0', t=None):
+    # TODO: Move general code to plot_tools.py func
+    NotImplementedError
+    for path_name in make_iterable(path_names):
+        plt.figure(f'{param}_profile_2d {path_name}')
+        data = data_paths[f'{param}_{path_name}']
+        if 'n' in data.dims:
+            data = data.swap_dims({'n': 't'})
+        if t is None:
+            t_slices = identify_profile_time_highlights()
+        else:
+            t_slices = t
+
         # data = data.swap_dims({f'i_{path_name}': f's_global_{path_name}'})
         data = data.swap_dims({f'i_{path_name}': f'R_{path_name}'})
-        data.plot(robust=True, center=False, cmap='coolwarm')
+        try:
+            data.plot(robust=True, center=False, cmap='coolwarm')
+        except ValueError as e:
+            # R data not monotonic - switch back to index or s_path
+            # data = data.sortby('')
+            # data = data.swap_dims({f'R_{path_name}': f's_path_{path_name}'})
+            data = data.swap_dims({f'R_{path_name}': f'i_{path_name}'})
+            data.plot(robust=True, center=False, cmap='coolwarm')
+        plt.tight_layout()
         plt.show()
+
+def identify_profile_time_highlights(profile_2d):
+    raise NotImplementedError
 
 
 if __name__ == '__main__':

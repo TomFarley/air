@@ -145,7 +145,13 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
     path = path_name
     x_path = x_path.format(path=path_name)
     y_path = y_path.format(path=path_name)
-    coord_path = f'i_{path}'
+
+    in_frame_str = '_in_frame'
+    coord_path = f'i{in_frame_str}_{path}'
+    if coord_path not in path_data.coords:
+        in_frame_str = ''
+        coord_path = f'i{in_frame_str}_{path}'
+
     if keys is None:
         keys = image_data.keys()
     frame_shape = image_data['frame_data'].shape[1:]
@@ -156,9 +162,9 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
         data = image_data[key]
         if (data.shape == frame_shape) or (data.shape[1:] == frame_shape):
             if re.match('.*_im$', key):
-                new_key = re.sub('_im$', f'_{path}', key)
+                new_key = re.sub('_im$', f'{in_frame_str}_{path}', key)
             else:
-                new_key = f'{key}_{path}'
+                new_key = f'{key}{in_frame_str}_{path}'
             # TODO: Handle 't' as active dim name
             coords = ('n',)
             coords = tuple((coord for coord in coords if coord in data.dims)) + (coord_path,)
@@ -168,7 +174,7 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
     # Set alternative coordinates to index path data (other than path index)
     alternative_path_coords = ('R', 's', 's_global', 'phi')  # , 'x', 'y', 'z')
     for coord in alternative_path_coords:
-        coord = f'{coord}_{path}'
+        coord = f'{coord}{in_frame_str}_{path}'
         if coord in data_path_extracted:
             data_path_extracted = data_path_extracted.assign_coords(
                                                     **{coord: (coord_path, data_path_extracted[coord].values)})
@@ -177,6 +183,48 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
         data_path_extracted['n'] = image_data['n']
     return data_path_extracted
 
+def filter_unknown_materials_from_analysis_path(path_data, path_name):
+    path = path_name
+
+    in_frame_str = '_in_frame'
+    material_id_key = f'material_id{in_frame_str}_{path}'
+    if material_id_key not in path_data.data_vars:
+        in_frame_str = ''
+        material_id_key = f'material_id{in_frame_str}_{path}'
+    coord_i_path = f'i{in_frame_str}_{path}'
+
+    material_id = path_data[material_id_key]
+    mask_unknown_material = (material_id == -1)
+    mask_known_material = ~mask_unknown_material
+    coords_i_path_known_mat = f'i_{path}'
+    coords_known_mat = {coords_i_path_known_mat: (coords_i_path_known_mat, np.arange(np.sum(mask_known_material)))}
+    path_data = path_data.assign_coords(**coords_known_mat)
+
+    path_data[f'mask_known_material{in_frame_str}_{path}'] = (coord_i_path, mask_known_material)
+
+    if np.any(mask_unknown_material):
+        for var_name in path_data.data_vars:
+            if coord_i_path not in path_data[var_name].coords:
+                continue
+            # Variables without details in name meet all filter criteria ie in_frame, known_material etc
+            var_name_known_mat = var_name.replace(in_frame_str, '')
+            data_known_mat = path_data[var_name].sel({coord_i_path: mask_known_material})
+            coords = [coord if coord != coord_i_path else coords_i_path_known_mat
+                        for coord in path_data[var_name].dims]
+            path_data[var_name_known_mat] = (coords, data_known_mat)
+
+        for coord in path_data.coords:
+            if coord_i_path not in path_data[coord].dims:
+                continue
+
+            coord_name_known_mat = coord.replace(in_frame_str, '')
+            data_known_mat = path_data[coord].sel({coord_i_path: mask_known_material})
+            path_data[coord_name_known_mat] = (coords_i_path_known_mat, data_known_mat)
+            path_data = path_data.assign_coords(**{coord_name_known_mat:
+                                        (coords_i_path_known_mat, path_data[coord_name_known_mat].values)})
+        # TODO separate coordinate for unknown material sections
+
+    return path_data
 
 if __name__ == '__main__':
     pass
