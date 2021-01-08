@@ -12,6 +12,8 @@ from pathlib import Path
 from copy import copy
 
 import numpy as np
+import scipy as sp
+from scipy import stats, interpolate
 import pandas as pd
 import xarray as xr
 from matplotlib import pyplot as plt
@@ -267,6 +269,50 @@ def is_in(items, collection):
     collection = make_iterable(collection)
     out = pd.Series(items).isin(collection).values
     return out
+
+import numpy as np
+
+def nan_helper(y):
+    """Helper to handle indices and logical indices of NaNs.
+
+    from https://stackoverflow.com/questions/6518811/interpolate-nan-values-in-a-numpy-array
+
+    Input:
+        - y, 1d numpy array with possible NaNs
+    Output:
+        - nans, logical indices of NaNs
+        - index, a function, with signature indices= index(logical_indices),
+          to convert logical indices of NaNs to 'equivalent' indices
+    Example:
+        >>> # linear interpolation of NaNs
+        >>> nans, x= nan_helper(y)
+        >>> y[nans]= np.interp(x(nans), x(~nans), y[~nans])
+    """
+
+    return np.isnan(y), lambda z: z.nonzero()[0]
+
+def interpolate_out_nans(array_with_nans, interp_kind='linear', boundary_fill_value='extrapolate', **kwargs):
+    """Replace nans in 1d array with interpolated values. Boundary nans are extrapolated.
+
+    Args:
+        array_with_nans: 1D array (ideally monotonically, steadily changing) containing gaps in data filled by nans
+        boundary_fill_value: fill_value for sp.interpolate.interp1d
+        interp_kind: interpolation method 'kind' for sp.interpolate.interp1d
+        kwargs: Args to pass to sp.interpolate.interp1d
+    Returns: 1D array with nans replaced by interpolated/extrapolated values
+
+    """
+    nan_mask, nonzero0 = nan_helper(array_with_nans)
+
+    array_out = copy(array_with_nans)
+    i_nan = nonzero0(nan_mask)
+    i_not_nan = nonzero0(~nan_mask)
+    y_not_nan = array_with_nans[~nan_mask]
+
+    f = interpolate.interp1d(i_not_nan, y_not_nan, kind=interp_kind, fill_value=boundary_fill_value, **kwargs)
+    array_out[nan_mask] = f(i_nan)
+
+    return array_out
 
 def get_traceback_location(level=0, format='{module_name}:{func_name}:{line_no} '):
     """Returns an informative prefix for verbose Debug output messages"""

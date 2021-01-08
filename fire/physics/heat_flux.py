@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 
 from fire.interfaces.interfaces import read_csv
 from fire.misc.utils import safe_len
+from fire.misc import utils
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -75,7 +76,7 @@ def calc_heatflux(t, temperatures, path_data, path_name, material_properties, vi
         logger.warning('s_global coordinate contains nans. Replacing with R')
         s_path = np.array(path_data[f'R_{path}'])
     if np.any(np.isnan(s_path)):
-        s_path = replace_nans_with_local_diff(s_path)
+        s_path = utils.interpolate_out_nans(s_path)
 
     material_id = list(material_ids)[0] if (force_material_sub_index is None) else force_material_sub_index
     material_name = visible_materials[material_id]
