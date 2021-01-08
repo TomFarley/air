@@ -183,7 +183,7 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
         data_path_extracted['n'] = image_data['n']
     return data_path_extracted
 
-def filter_unknown_materials_from_analysis_path(path_data, path_name):
+def filter_unknown_materials_from_analysis_path(path_data, path_name, missing_material_key=-1):
     path = path_name
 
     in_frame_str = '_in_frame'
@@ -194,34 +194,41 @@ def filter_unknown_materials_from_analysis_path(path_data, path_name):
     coord_i_path = f'i{in_frame_str}_{path}'
 
     material_id = path_data[material_id_key]
-    mask_unknown_material = (material_id == -1)
+    if missing_material_key is not None:
+        mask_unknown_material = (material_id == missing_material_key)
+    else:
+        mask_unknown_material = np.zeros_like(material_id, dtype=bool)
+
     mask_known_material = ~mask_unknown_material
     coords_i_path_known_mat = f'i_{path}'
-    coords_known_mat = {coords_i_path_known_mat: (coords_i_path_known_mat, np.arange(np.sum(mask_known_material)))}
-    path_data = path_data.assign_coords(**coords_known_mat)
+
 
     path_data[f'mask_known_material{in_frame_str}_{path}'] = (coord_i_path, mask_known_material)
 
-    if np.any(mask_unknown_material):
-        for var_name in path_data.data_vars:
-            if coord_i_path not in path_data[var_name].coords:
-                continue
-            # Variables without details in name meet all filter criteria ie in_frame, known_material etc
-            var_name_known_mat = var_name.replace(in_frame_str, '')
-            data_known_mat = path_data[var_name].sel({coord_i_path: mask_known_material})
-            coords = [coord if coord != coord_i_path else coords_i_path_known_mat
-                        for coord in path_data[var_name].dims]
-            path_data[var_name_known_mat] = (coords, data_known_mat)
+    for coord in path_data.coords:
+        if coord_i_path not in path_data[coord].dims:
+            continue
 
-        for coord in path_data.coords:
-            if coord_i_path not in path_data[coord].dims:
-                continue
+        coord_name_known_mat = coord.replace(in_frame_str, '')
+        data_known_mat = path_data[coord].sel({coord_i_path: mask_known_material})
+        path_data[coord_name_known_mat] = (coords_i_path_known_mat, data_known_mat)
+        path_data = path_data.assign_coords(**{coord_name_known_mat:
+                                                   (coords_i_path_known_mat, path_data[coord_name_known_mat].values)})
 
-            coord_name_known_mat = coord.replace(in_frame_str, '')
-            data_known_mat = path_data[coord].sel({coord_i_path: mask_known_material})
-            path_data[coord_name_known_mat] = (coords_i_path_known_mat, data_known_mat)
-            path_data = path_data.assign_coords(**{coord_name_known_mat:
-                                        (coords_i_path_known_mat, path_data[coord_name_known_mat].values)})
+    # Make sure new i path index starts at 1 and is unity spaced
+    coords_known_mat = {coords_i_path_known_mat: (coords_i_path_known_mat, np.arange(np.sum(mask_known_material)))}
+    path_data = path_data.assign_coords(**coords_known_mat)
+
+    for var_name in path_data.data_vars:
+        if coord_i_path not in path_data[var_name].coords:
+            continue
+        # Variables without details in name meet all filter criteria ie in_frame, known_material etc
+        var_name_known_mat = var_name.replace(in_frame_str, '')
+        data_known_mat = path_data[var_name].sel({coord_i_path: mask_known_material})
+        coords = [coord if coord != coord_i_path else coords_i_path_known_mat
+                    for coord in path_data[var_name].dims]
+        path_data[var_name_known_mat] = (coords, data_known_mat)
+
         # TODO separate coordinate for unknown material sections
 
     return path_data

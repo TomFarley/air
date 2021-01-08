@@ -428,9 +428,10 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                                                              path_name=analysis_path_key)
         path_data = xr.merge([path_data, path_data_extracted])
 
-        filter_unknown_materials = True  # Set to False to reproduce legacy MAST analysis
-        if filter_unknown_materials:
-            path_data = image_processing.filter_unknown_materials_from_analysis_path(path_data, analysis_path_key)
+        # missing_material_key = -1  # Set to None to reproduce legacy MAST analysis
+        missing_material_key = None  # Set to None to reproduce legacy MAST analysis
+        path_data = image_processing.filter_unknown_materials_from_analysis_path(path_data, analysis_path_key,
+                                                                    missing_material_key=missing_material_key)
 
         # x_path, y_path, z_path = (path_data[f'{coord}_path'] for coord in ['x', 'y', 'z'])
         # s_path = get_s_coord_path(x_path, y_path, z_path, machine_plugins)
@@ -453,7 +454,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
         # TODO: Calculate heat fluxes
         heat_flux, extra_results = heat_flux_module.calc_heatflux(image_data['t'], image_data['temperature_im'],
-                                                path_data, analysis_path_key, material_properties, visible_materials)
+                                                                  path_data, analysis_path_key, material_properties, visible_materials,
+                                                                  force_material_sub_index=(None if (missing_material_key == -1) else 1))  # TODO: remove conditional
+
         # Move meta data assignment to function
         heat_flux_key = f'heat_flux_{analysis_path_key}'
         path_data[heat_flux_key] = ((path_coord, 't'), heat_flux)

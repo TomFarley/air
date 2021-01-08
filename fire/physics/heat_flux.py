@@ -24,8 +24,23 @@ logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
 
-def calc_heatflux(t, temperatures, path_data, path_name, material_properties, visible_materials):
-    """"""
+def calc_heatflux(t, temperatures, path_data, path_name, material_properties, visible_materials,
+                  force_material_sub_index=None):
+    """
+
+    Args:
+        t: 1d array of time values
+        temperatures: 3d array of frame temperatures (t, y_pix, x_pix)
+        path_data: dataarray describing analysis path. Includes analysis path pixel coordinates and material indexes
+        path_name: key name of analysis path eg 'path0'
+        material_properties: dict of material properties for each material index
+        visible_materials:
+        force_material_sub_index: Material index to use for whole analysis path. Eg use to still analyse sections of
+                                  analysis path with unknown material index (-1)
+
+    Returns: heat_flux, extra_results
+
+    """
     from fire import theodor
     t = np.array(t)
     path = path_name
@@ -44,13 +59,25 @@ def calc_heatflux(t, temperatures, path_data, path_name, material_properties, vi
     material_ids = set(material_ids[~np.isnan(material_ids)])
     if len(material_ids) == 0:
         raise ValueError(f'No surface materials identified along analysis path: {path}')
+    elif -1 in material_ids:
+        if (force_material_sub_index is not None) and (len(material_ids) == 2):
+            pass  # Treat whole path as being material given by force_material_sub_index
+        else:
+            raise ValueError('Analysis path contains unknown materials')
     elif len(material_ids) > 1:
-        raise NotImplementedError
+        raise NotImplementedError(f'Multiple materials along analysis path')
     # TODO: Loop over sections of path with different material properties or tile gaps etc
     xpix_path, ypix_path = path_data[f'x_pix_{path}'], path_data[f'y_pix_{path}']
     temperature_path = np.array(temperatures[:, ypix_path, xpix_path])
+
     s_path = np.array(path_data[f's_global_{path}'])  # spatial coordinate along tile surface
-    material_id = list(material_ids)[0]
+    if np.any(np.isnan(s_path)):
+        logger.warning('s_global coordinate contains nans. Replacing with R')
+        s_path = np.array(path_data[f'R_{path}'])
+    if np.any(np.isnan(s_path)):
+        s_path = replace_nans_with_local_diff(s_path)
+
+    material_id = list(material_ids)[0] if (force_material_sub_index is None) else force_material_sub_index
     material_name = visible_materials[material_id]
     theo_kwargs = material_properties[material_name]
 
@@ -110,6 +137,14 @@ def calc_heatflux(t, temperatures, path_data, path_name, material_properties, vi
     heat_flux, extra_results = theodor.theo_mul_33(temperature_path, t, s_path, test=True, verbose=True,
                                                    **theo_kwargs)
     #               d_target, alpha_bot, alpha_top, diff, lam, aniso, x_Tb=x_Tb, y_Tb=y_Tb,
+
+    # Check theo output
+    mask_nans = np.isnan(heat_flux)
+    if np.any(mask_nans):
+        n_nans = np.sum(mask_nans)
+        logger.warning(f'Heat flux data contains {n_nans}/{heat_flux.size} {n_nans/heat_flux.size:0.1%} nans')
+        if n_nans/heat_flux.size > 0.1:
+            raise ValueError(f'Heat flux output contains more than 10% nans: {n_nans/heat_flux.size:0.1%}')
 
     return heat_flux, extra_results
 
