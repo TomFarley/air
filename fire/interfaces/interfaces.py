@@ -8,7 +8,7 @@ import os, logging, json
 import importlib.util
 from typing import Union, Sequence, Optional
 from pathlib import Path
-from copy import deepcopy
+from copy import copy, deepcopy
 
 import numpy as np
 import pandas as pd
@@ -222,17 +222,17 @@ def json_dump(obj, path_fn: Union[str, Path], path: Optional[Union[str, Path]]=N
 
 # def json_load(path_fn: Union[str, Path], fn: Optional(str)=None, keys: Optional[Sequence[Sequence]]=None):
 def json_load(path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None,
-              key_paths: Optional[Sequence[Sequence]]=None, lists_to_arrays: bool=False,
-              raise_on_filenotfound: bool=True):
+              key_paths_keep: Optional[Sequence[Sequence]]=None, key_paths_drop=('README',),
+              compress_key_paths=True, lists_to_arrays: bool=False, raise_on_filenotfound: bool=True):
     """Read json file with optional indexing
 
     Args:
         path_fn         : Path to json file
-        path            : Optional path to prepend to filename
-        key_paths       : Optional keys to subsets of contents to return. Each element of keys should be an iterable
+        path            : (Optional) path to prepend to filename
+        key_paths_keep  : (Optional) keys to subsets of contents to return. Each element of keys should be an iterable
                           specifiying a key path through the json file.
-        lists_to_arrays : Whether to cast lists in output to arrays for easier slicing etc.
-        raise_on_filenotfound : Whether to raise (or else return) FileNotFoundError if file not located
+        lists_to_arrays : (Bool) Whether to cast lists in output to arrays for easier slicing etc.
+        raise_on_filenotfound : (Bool) Whether to raise (or else return) FileNotFoundError if file not located
 
     Returns: Contents of json file
 
@@ -252,26 +252,82 @@ def json_load(path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None,
     except json.decoder.JSONDecodeError as e:
         # raise InputFileException(original_exception=e, info={'fn': path_fn})
         raise InputFileException(f'Invalid json formatting in input file "{path_fn}"', e)
+
     # Return indexed subset of file
-    if key_paths is not None:
-        key_paths = make_iterable(key_paths)
-        out = {}
-        for key_path in key_paths:
+    out = filter_nested_dict_key_paths(contents, key_paths_keep=key_paths_keep, compress_key_paths=compress_key_paths)
+
+    # Drop some keys
+    out = drop_nested_dict_key_paths(out, key_paths_drop=key_paths_drop)
+
+    if lists_to_arrays:
+        out = cast_lists_in_dict_to_arrays(out)
+    return out
+
+def filter_nested_dict_key_paths(dict_in, key_paths_keep, compress_key_paths=True):
+    """Return a subset of nested dicts for given paths
+
+    Args:
+        dict_in: dict of dicts
+        key_paths_keep: iterable of key names navigating nested dict structure
+        compress_key_paths: Only keep last key in key_path eg key_path=('mast', 29852, 'signal') -> {'signal': 'rir'}
+
+    Returns: Filtered nested dict
+
+    """
+
+    if key_paths_keep is not None:
+        key_paths_keep = make_iterable(key_paths_keep)
+        dict_out = {}
+        for key_path in key_paths_keep:
             key_path = make_iterable(key_path)
-            subset = contents
+            subset = dict_in
             for key in key_path:
                 try:
                     subset = subset[key]
                 except KeyError as e:
                     raise KeyError(f'json file ({path_fn}) does not contain key "{key}" in key path "{key_path}":\n'
                                    f'{subset}')
-            out[key_path[-1]] = subset
-
+            if compress_key_paths:
+                # Compress the key path into just the last key
+                dict_out[key_path[-1]] = subset
+            else:
+                for i, key in enumerate(key_path):
+                    if i == len(key_path)-1:
+                        dict_out[key] = subset
+                    else:
+                        if key not in dict_out:
+                            dict_out[key] = {}
     else:
-        out = contents
-    if lists_to_arrays:
-        out = cast_lists_in_dict_to_arrays(out)
-    return out
+        dict_out = dict_in
+
+    return dict_out
+
+def drop_nested_dict_key_paths(dict_in, key_paths_drop):
+    """Return a subset of nested dicts for given paths
+
+    Args:
+        dict_in: dict of dicts
+        key_paths_drop: iterable of key names navigating nested dict structure to drop
+
+    Returns: Filtered nested dict
+
+    """
+    dict_out = copy(dict_in)
+    if (key_paths_drop is not None):
+        for key_path in make_iterable(key_paths_drop):
+            key_path = make_iterable(key_path)
+            subset = dict_out
+            for i, key in enumerate(key_path):
+                if i == len(key_path)-1:
+                    if key in subset:
+                        subset.pop(key)
+                else:
+                    try:
+                        subset = subset[key]
+                    except KeyError as e:
+                        raise KeyError(f'json file ({path_fn}) does not contain key "{key}" in key path "{key_path}":\n'
+                                       f'{subset}')
+    return dict_out
 
 def cast_lists_in_dict_to_arrays(dict_in):
     dict_out = deepcopy(dict_in)
