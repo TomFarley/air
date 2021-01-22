@@ -39,7 +39,7 @@ def calc_heatflux(t, temperatures, path_data, path_name, material_properties, vi
         force_material_sub_index: Material index to use for whole analysis path. Eg use to still analyse sections of
                                   analysis path with unknown material index (-1)
 
-    Returns: heat_flux, extra_results
+    Returns: heat_flux_2d(s_path, t), extra_results
 
     """
     from fire import theodor
@@ -138,6 +138,9 @@ def calc_heatflux(t, temperatures, path_data, path_name, material_properties, vi
     heat_flux, extra_results = theodor.theo_mul_33(temperature_path, t, s_path, test=True, verbose=True,
                                                    **theo_kwargs)
     #               d_target, alpha_bot, alpha_top, diff, lam, aniso, x_Tb=x_Tb, y_Tb=y_Tb,
+
+    # Convert W -> MW
+    heat_flux *= 1e-6
 
     # Check theo output
     mask_nans = np.isnan(heat_flux)
