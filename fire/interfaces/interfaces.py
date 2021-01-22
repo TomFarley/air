@@ -408,12 +408,24 @@ def read_csv(path_fn: Union[Path, str], clean=True, convert_to_python_types=True
     - names (names to use for column headings) if no header row
 
     Args:
-        path_fn: Path to csv file
-        **kwargs:
+        path_fn:                    Path to csv file
+        clean:                      (bool) Remove erroneous column due to spaces at end of lines
+        convert_to_python_types:    Convert eg "None" -> None, "true" -> True, "[1,2]" -> [1,2]
+        header:                     Row number(s) to use as the column names, and the start of the data.
+        comment:                    Comment charachter
+        python_types_kwargs:        kwargs to pass to convert_dataframe_values_to_python_types:
+                                    col_subset, allow_strings, list_delimiters, strip_chars
+        raise_not_found:            Whether to raise to return exception if file not found
+        verbose:                    Whether to log reading of file
+        **kwargs: kwargs to pass to pd.read_csv, in particular:
+                    'sep' column separator
+                    'names' list of column names
+                    'index_col' column name to set as index
 
-    Returns:
+    Returns: table pd.DataFrame of file contents
 
     """
+
     path_fn = Path(path_fn)
     if 'sep' not in kwargs:
         if path_fn.suffix == '.csv':
