@@ -1,4 +1,8 @@
-{"MAST_S1_L3_centre_radial_1":
+{ "README":  {
+    "file_description": "This file defines IR analysis paths either in terms of spatial or pixel coordinates.",
+    "valid_coord_keys": ["R", "z", "phi", "x_pix", "y_pix", "order", "include_next_interval"]
+  },
+  "MAST_S1_L3_centre_radial_1":
   {
     "coords":
         [
