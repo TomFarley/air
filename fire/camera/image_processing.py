@@ -13,7 +13,8 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from fire.misc.data_quality import calc_outlier_nsigma_for_sample_size
+from fire.misc import data_quality
+from fire.misc import data_structures
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -121,7 +122,7 @@ def find_outlier_pixels(image, tol=3, check_edges=True):
 def find_outlier_intensity_threshold(data, nsigma='auto', sample_size_factor=5):
     data = np.array(data).ravel()
     if nsigma == 'auto':
-        nsigma = calc_outlier_nsigma_for_sample_size(data.size)
+        nsigma = data_quality.calc_outlier_nsigma_for_sample_size(data.size)
     thresh = np.nanmean(data) + nsigma * np.nanstd(data)
     if np.nanmax(data) < thresh:
         out = np.max(data)
@@ -163,21 +164,27 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
         if (data.shape == frame_shape) or (data.shape[1:] == frame_shape):
             if re.match('.*_im$', key):
                 new_key = re.sub('_im$', f'{in_frame_str}_{path}', key)
+                key_var = re.sub('_im$', '', key)
             else:
                 new_key = f'{key}{in_frame_str}_{path}'
+                key_var = key
             # TODO: Handle 't' as active dim name
             coords = ('n',)
             coords = tuple((coord for coord in coords if coord in data.dims)) + (coord_path,)
             data_path_extracted[new_key] = (coords, data.sel(x_pix=x_pix_path, y_pix=y_pix_path))
             data_path_extracted[new_key].attrs.update(data.attrs)  # Unnecessary?
+            data_path_extracted = data_structures.attach_standard_meta_attrs(data_path_extracted, varname=new_key,
+                                                                             replace=True, key=key_var)
 
     # Set alternative coordinates to index path data (other than path index)
     alternative_path_coords = ('R', 's', 's_global', 'phi')  # , 'x', 'y', 'z')
     for coord in alternative_path_coords:
         coord = f'{coord}{in_frame_str}_{path}'
         if coord in data_path_extracted:
+            attrs = data_path_extracted[coord].attrs  # attrs get lost in conversion to coordinate
             data_path_extracted = data_path_extracted.assign_coords(
                                                     **{coord: (coord_path, data_path_extracted[coord].values)})
+            data_path_extracted[coord].attrs.update(attrs)
 
     if ('n' in data_path_extracted.dims):
         data_path_extracted['n'] = image_data['n']
@@ -211,9 +218,12 @@ def filter_unknown_materials_from_analysis_path(path_data, path_name, missing_ma
 
         coord_name_known_mat = coord.replace(in_frame_str, '')
         data_known_mat = path_data[coord].sel({coord_i_path: mask_known_material})
+        attrs = path_data[coord].attrs
         path_data[coord_name_known_mat] = (coords_i_path_known_mat, data_known_mat)
         path_data = path_data.assign_coords(**{coord_name_known_mat:
                                                    (coords_i_path_known_mat, path_data[coord_name_known_mat].values)})
+        path_data[coord_name_known_mat].attrs.update(attrs)
+        path_data = data_structures.attach_standard_meta_attrs(path_data, varname=coord_name_known_mat, replace=False)
 
     # Make sure new i path index starts at 1 and is unity spaced
     coords_known_mat = {coords_i_path_known_mat: (coords_i_path_known_mat, np.arange(np.sum(mask_known_material)))}
@@ -225,11 +235,14 @@ def filter_unknown_materials_from_analysis_path(path_data, path_name, missing_ma
         # Variables without details in name meet all filter criteria ie in_frame, known_material etc
         var_name_known_mat = var_name.replace(in_frame_str, '')
         data_known_mat = path_data[var_name].sel({coord_i_path: mask_known_material})
+        attrs = path_data[var_name].attrs
         coords = [coord if coord != coord_i_path else coords_i_path_known_mat
                     for coord in path_data[var_name].dims]
         path_data[var_name_known_mat] = (coords, data_known_mat)
+        path_data[var_name_known_mat].attrs.update(attrs)
+        path_data = data_structures.attach_standard_meta_attrs(path_data, varname=var_name_known_mat, replace=False)
 
-        # TODO separate coordinate for unknown material sections
+        # TODO store data with separate coordinate for unknown material sections?
 
     return path_data
 
