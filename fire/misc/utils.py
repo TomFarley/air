@@ -18,6 +18,8 @@ import pandas as pd
 import xarray as xr
 from matplotlib import pyplot as plt
 
+from fire.misc import data_structures
+
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
@@ -564,6 +566,18 @@ def join_path_fn(path: Union[Path, str], fn: str):
 
 def convert_dataframe_values_to_python_types(df, col_subset=None, allow_strings=True, list_delimiters=',',
                                              strip_chars=' '):
+    """Convert eg "None" -> None, "true" -> True, "[1,2]" -> [1,2]
+
+    Args:
+        df:
+        col_subset:
+        allow_strings:
+        list_delimiters:
+        strip_chars:
+
+    Returns:
+
+    """
     import pandas as pd
     if col_subset is None:
         col_subset = list(df.columns)
@@ -782,7 +796,8 @@ def to_image_dataset(data, key='data'):
             'long_name': '$y_{pix}$',
             'units': '',
             'description': 'Camera y pixel coordinate'})
-        # TODO: Move to utils?
+        dataset = data_structures.attach_standard_meta_attrs(dataset, varname=key)
+        # TODO: Move to utils/data_structures?
         # TODO: fix latex display of axis labels
         # TODO: use this func in calcam_calibs get_surface_coords
     else:
