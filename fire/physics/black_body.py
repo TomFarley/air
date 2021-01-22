@@ -217,8 +217,8 @@ def compare_curve_to_old_lookup_file():
     - Good agreement for emissivity=1, solid_angle=2pi, integration_time=1s, wavelegth_step = 1.5e-8
     - Discrepancy is of order that resulting from numerical integration of photon flux. Setting
         wavelength_step=1.5e-8 causes discrepancy to be both sides of 0.
-    - Smaller discrepancy if use 273 def offset for deg -> Kelvin rather than 273.15 (1.9% max discrepancy cf 2.5%)
-    - With 273C offset and wl step of 1.5e-8 get max percentage error of: 0.52%
+    - Smaller max discrepancy if use 273 deg offset for deg->Kelvin rather than 273.15 (0.52% max discrepancy cf 1.08%)
+    - With 273C offset, 1.5e-8 wl step, get av percentage error of: -0.258% (smaller av error for 273.15: -0.118%
     """
     import matplotlib.pyplot as plt
     from fire.interfaces.interfaces import read_csv
@@ -227,34 +227,34 @@ def compare_curve_to_old_lookup_file():
     bb_curve_legacy['temperature'] = bb_curve_legacy['temperature_celcius'] + zero_Celsius
     bb_curve_legacy.set_index('temperature')
 
-    bb_analytic, _, _ = calc_photons_to_temperature(bb_curve_legacy.index + 273,
+    bb_analytic, _, _ = calc_photons_to_temperature(bb_curve_legacy.index + 273,  #  + zero_Celsius,  #
                                                     wavelength_range=wlr_sbf,
                                                     emissivity=1, solid_angle=2*np.pi,
                                                     integration_time=1, wavelength_step=1.5e-8, transmittance=1)
 
 
     fig, (ax0, ax1) = plt.subplots(2, 1)
-    ax0.plot(bb_curve_legacy['photon_flux'], bb_curve_legacy['temperature_celcius'], label='legacy')
-    ax0.plot(bb_analytic['n_photons'], bb_analytic['temperature_celcius'], label='analytic')
+    ax0.plot(bb_curve_legacy['photon_flux'], bb_curve_legacy['temperature_celcius'], label='legacy', alpha=0.7, ls=':')
+    ax0.plot(bb_analytic['n_photons'], bb_analytic['temperature_celcius'], label='analytic', alpha=0.7)
     ax0.set_xlabel(r'Photons')
     ax0.set_ylabel(r'Temperature [C]')
     ax0.legend()
 
     photons_difference = bb_analytic['n_photons'] - bb_curve_legacy['photon_flux']
     diff_percent = (photons_difference / bb_curve_legacy['photon_flux'])*100
-    ax1.plot(bb_curve_legacy['temperature_celcius'], bb_curve_legacy['photon_flux'],  label='legacy')
-    ax1.plot(bb_analytic['temperature_celcius'], bb_analytic['n_photons'], label='analytic')
-    ax1.plot(bb_analytic['temperature_celcius'], photons_difference,
-            label='difference (new-leg)')
+    ax1.plot(bb_curve_legacy['temperature_celcius'], bb_curve_legacy['photon_flux'],  label='legacy', alpha=0.7, ls=':')
+    ax1.plot(bb_analytic['temperature_celcius'], bb_analytic['n_photons'], label='analytic', alpha=0.7)
+    ax1.plot(bb_analytic['temperature_celcius'], photons_difference, label='difference (new-leg)', alpha=0.7)
     ax1.set_xlabel(r'Temperature [C]')
     ax1.set_ylabel(r'Photons')
     # ax1.set_yscale('log')
     ax1.legend()
 
-    print(f'Diff abs: {photons_difference}')
-    print(f'Diff percent: {diff_percent}')
-    print(f'Diff percent max: {np.max(np.abs(diff_percent))}')
-    print(f'Diff percent av: {np.mean(diff_percent)}')
+    print(f'photons diff: {photons_difference}')
+    print(f'photons diff percent: {diff_percent}')
+    print(f'photons abs diff percent max: {np.max(np.abs(diff_percent)):0.3g}%')
+    print(f'photons diff percent min: {np.min((diff_percent)):0.3g}%')
+    print(f'photons diff percent av: {np.mean(diff_percent):0.3g}%')
 
     plt.tight_layout()
     plt.show()
