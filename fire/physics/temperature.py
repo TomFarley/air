@@ -21,7 +21,7 @@ from fire.physics.black_body import calc_photons_to_temperature
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
-def dl_to_photon_count_legacy(frame_data, calib_coefs, exposure):
+def dl_to_photon_count_legacy(frame_data, calib_coefs, exposure, trans_correction=None):
     """In the old MAST scheduler, rather than calculating the photon count arriving at the detector,
     the output from the camera was rescaled to match a fixed lookup table. Therefore:
     - Rather than multiplying the photon counts by the exposure time, the camera counts were effectively divided by
@@ -29,17 +29,24 @@ def dl_to_photon_count_legacy(frame_data, calib_coefs, exposure):
     - Rather than multiplying the photon counts by the transmision factor, the camera counts were scaled up by
         dividing by the "trans_correction" = 1/(transmission coeff)
     """
-    c1 = (calib_coefs['a_grad'])/(exposure)+calib_coefs['a_intcp']  # Not used
-    c2 = (calib_coefs['b_grad'])/(exposure)+calib_coefs['b_intcp']
-    trans_correction = calib_coefs['trans']  # window transmission correction (>1 as window attenuates)
+    if 'b_grad' in calib_coefs:
+        # Use original IDL temperature calibration file format
+        # Following convention of IDL code for naming c1, c2  variables (inconsistent for air and ait)
+        c1 = (calib_coefs['a_grad'])/(exposure)+calib_coefs['a_intcp']  # Not used
+        c2 = (calib_coefs['b_grad'])/(exposure)+calib_coefs['b_intcp']
+        trans_correction = calib_coefs['trans']  # window transmission correction (>1 as window attenuates)
+    else:
+        # Use FIRE temperature calibration format
+        c2 = (calib_coefs['c1_grad'])/(exposure)+calib_coefs['c1_intcp']
+        trans_correction = 1.61  # MAST air value - should be 1.3 for ait
 
     # Convert counts to photons. Include the attenuation caused by the window
     frame_photons = c2*(frame_data*trans_correction)
 
     return frame_photons
 
-def dl_to_temerature_legacy(frame_data, calib_coefs, bb_curve, exposure, solid_angle_pixel, temperature_bg_nuc=23,
-                            meta_data=None):
+def dl_to_temerature_legacy(frame_data, calib_coefs, bb_curve, exposure, solid_angle_pixel, trans_correction,
+                            temperature_bg_nuc=23, meta_data=None):
     if meta_data is None:
         meta_data = {}
 
@@ -86,7 +93,7 @@ def dl_to_excess_photon_flux(frame_data, c1, c2=0.0, c0=0.0):
         c1: Linear coefficient - photons/count/s [photons/s/m^2]
         c2: Quadratic coefficient - photons/count^2/s [photons/s/m^2]
         c0: Zero order coefficient (Not currently used)
-    Returns: 'Excess photons' over integration time for each pixel
+    Returns: 'Excess photons' x 1/integration time for each pixel
 
     """
 
@@ -155,18 +162,20 @@ def photons_to_temperature_celcius(frame_photons, photon_lookup_table, to_celciu
     frame_temperature = xr.apply_ufunc(f_temp, frame_photons)
     return frame_temperature
 
-def dl_to_temerature(frame_data_nuc, calib_coefs, bb_curve, wavelength_range, integration_time, transmittance=1,
+def dl_to_temerature(frame_data_nuc, calib_coefs, wavelength_range, integration_time, transmittance=1.0,
                      solid_angle_pixel=2*np.pi, temperature_bg_nuc=23, temperature_range=(0,800), meta_data=None,
                      use_calib_bg_value=False):
     """Convert NUC corrected IR camera Digital Level (DL) values to temperatures in deg C.
 
     Args:
-        frame_data_nuc  : 3D array of frame DL values (frame_no, ypix, xpix) TODO: Check pix order
+        frame_data_nuc  : 3D array of frame DL values after nuc subtraction (frame_no, ypix, xpix) TODO: Check pix order
         calib_coefs : Dict of temperature calibration coefficients (a_grad, a_intcp, b_grad, b_intcp, window_trans)
-        bb_curve    : 2 column array mapping temperatures in deg C to numbers of photons
+        wavelength_range    : Wavelength range to integrate photon flux over
         integration_time    : Camera exposure time in us
         solid_angle_pixel: Solid angle viewed by a single pixel (calcualted in calc_field_of_view)
         temperature_bg_nuc : Temperature in deg C of uniform background subtracted in NUC correction (typically room temp)
+        temperature_range: Temperature range to calculate photon conversion table over
+        meta_data:
 
     Returns: 3D array of frame data converted to temperatures in deg C
 
@@ -195,11 +204,14 @@ def dl_to_temerature(frame_data_nuc, calib_coefs, bb_curve, wavelength_range, in
     # Calculate lookup table of photon fluxes (ie integration_time=1.0s) for range of temperatures
     photons_lookup_table, _, _ = calc_photons_to_temperature(temperature_range_kelvin, wavelength_range=wavelength_range,
                                                     emissivity=1, solid_angle=solid_angle_pixel,
-                                                    integration_time=1, wavelength_step=1e-8, transmittance=1)
+                                                    integration_time=1, wavelength_step=1.5e-8, transmittance=1)
     # Convert calibration data to photon conversion coefficients
     photon_coefs = get_photon_coefs_from_calib_data(calib_coefs, integration_time=integration_time)
     # Calculate excess photon flux above room temperature
     frame_photon_flux_excess = dl_to_excess_photon_flux(frame_data_nuc, **photon_coefs)
+
+    # TODO: Pass in correct window transmittance
+    frame_photon_flux_excess = frame_photon_flux_excess / transmittance
 
     # from fire.plotting.image_figures import annimate_image_data
     # annimate_image_data(frame_data)
@@ -222,7 +234,7 @@ def dl_to_temerature(frame_data_nuc, calib_coefs, bb_curve, wavelength_range, in
             plt.colorbar()
             plt.show()
 
-    # Add meta data
+    # Add meta data  # TODO: remove as now done outside function
     frame_temperature.name = 'frame_temperature'
     frame_temperature.attrs.update(meta_data.get('temperature', {}))
     if 'description' in frame_temperature.attrs:
