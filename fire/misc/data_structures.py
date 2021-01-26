@@ -69,6 +69,49 @@ def init_data_structures() -> Tuple[dict, dict, xr.Dataset, dict]:
 
     return settings, files, data, meta_data
 
+
+def movie_data_to_dataarray(frame_data, frame_times=None, frame_nos=None, meta_data=None, name='frame_data'):
+    """Return frame data in xarray.DataArray object
+
+    Args:
+        frame_data  : Array of camera digit level data with dimensions [t, y, x]
+        frame_times : Array of frame times
+        frame_nos   : Array of frame numbers
+
+    Returns: DataArray of movie data
+
+    """
+    if frame_nos is None:
+        frame_nos = np.arange(frame_data.shape[0])
+    if frame_times is None:
+        frame_times = copy(frame_nos)
+    if meta_data is None:
+        meta_data = {}
+
+    frame_data = xr.DataArray(frame_data, dims=['t', 'y_pix', 'x_pix'],
+                              coords={'t': frame_times, 'n': ('t', frame_nos),
+                                      'y_pix': np.arange(frame_data.shape[1]),
+                                      'x_pix': np.arange(frame_data.shape[2])},
+                              name=name)
+    # Default to indexing by frame number
+    frame_data = frame_data.swap_dims({'t': 'n'})
+    if 'frame_data' in meta_data:
+        frame_data.attrs.update(meta_data['frame_data'])
+        frame_data.attrs['label'] = frame_data.attrs['description']
+    else:
+        logger.warning(f'No meta data supplied for coordinate: {"frame_data"}')
+
+    coords = ['n', 't', 'x_pix', 'y_pix']
+    for coord in coords:
+        if coord in meta_data:
+            frame_data[coord].attrs.update(meta_data[coord])
+            # UDA requires 'label' while xarray uses description
+            frame_data[coord].attrs['label'] = frame_data[coord].attrs['description']
+        else:
+            logger.warning(f'No meta data supplied for coordinate: {coord}')
+
+    return frame_data
+
 def attach_standard_meta_attrs(data, varname='all', replace=False, key=None):
 
     if varname == 'all':
@@ -98,3 +141,33 @@ def attach_standard_meta_attrs(data, varname='all', replace=False, key=None):
                        f'Defaults for: {[k for k in meta_defaults_default.keys()]}')
 
     return data
+
+
+def to_image_dataset(data, key='data'):
+    if isinstance(data, xr.Dataset):
+        dataset = data
+    elif isinstance(data, xr.DataArray):
+        dataset = xr.Dataset({data.name: data})
+    elif isinstance(data, np.ndarray):
+        # Use calcam convention: image data is indexed [y, x], but image shape description is (nx, ny)
+        ny, nx = data.shape
+        x_pix = np.arange(nx)
+        y_pix = np.arange(ny)
+        dataset = xr.Dataset(coords={'x_pix': x_pix, 'y_pix': y_pix})
+        # data = xr.Dataset({'data': (('y_pix', 'x_pix'), data)}, coords={'x_pix': x_pix, 'y_pix': y_pix})
+        dataset[key] = (('y_pix', 'x_pix'), data)
+        dataset['x_pix'].attrs.update({
+            'long_name': '$x_{pix}$',
+            'units': '',
+            'description': 'Camera x pixel coordinate'})
+        dataset['y_pix'].attrs.update({
+            'long_name': '$y_{pix}$',
+            'units': '',
+            'description': 'Camera y pixel coordinate'})
+        dataset = data_structures.attach_standard_meta_attrs(dataset, varname=key)
+        # TODO: Move to utils/data_structures?
+        # TODO: fix latex display of axis labels
+        # TODO: use this func in calcam_calibs get_surface_coords
+    else:
+        raise ValueError(f'Unexpected image data type {data}')
+    return dataset
