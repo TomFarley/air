@@ -7,12 +7,9 @@ Created:
 """
 
 import logging
-from typing import Union, Iterable, Sequence, Tuple, Optional, Any, Dict
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
-import xarray as xr
 import matplotlib.pyplot as plt
 
 from fire.interfaces.interfaces import read_csv
@@ -53,7 +50,82 @@ def read_ircam_asc_image_file(path_fn, verbose=True):
     image = read_csv(path_fn, sep='\t', skiprows=0, header=None, verbose=verbose)
     return image
 
+def hex8_to_int(hex):
+	temp = hex[-2:]+hex[4:6]+hex[2:4]+hex[0:2]
+	return int(temp,16)
+
+def hex4_to_int(hex):
+	temp = hex[-2:]+hex[0:2]
+	return int(temp,16)
+
+def hex8_to_float(hex):
+	import struct
+	temp = hex[-2:]+hex[4:6]+hex[2:4]+hex[0:2]
+	return struct.unpack('!f', bytes.fromhex(temp))[0]
+
+def raw_to_image(raw_digital_level,width,height,digital_level_bytes):
+    pixels = width*height
+    # raw_digital_level_splitted = textwrap.wrap(raw_digital_level, 4)
+    # iterator=map(hex4_to_int,raw_digital_level_splitted)
+    # return np.flip(np.array(list(iterator)).reshape((height,width)),axis=0)
+    counts_digital_level = []
+    for i in range(pixels):
+        counts_digital_level.append(hex4_to_int(raw_digital_level[i*digital_level_bytes:(i+1)*digital_level_bytes]))
+    return np.flip(np.array(counts_digital_level).reshape((height, width)), axis=0)
+
+def read_ircam_raw_int16_sequence_file(path_fn):
+
+    bit_depth = 14
+    # digital_level_bytes = 2
+    digital_level_bytes = 4
+    data_raw = open(str(path_fn), 'rb').read()
+    data_hex = data_raw.hex()
+    n_bytes_file = len(data_hex)
+    width, height = 320, 256
+    n_pixels = width * height
+    bytes_per_frame = digital_level_bytes * n_pixels
+    n_frames = n_bytes_file / bytes_per_frame
+    if np.fmod(n_frames, 1) != 0:
+        raise ValueError(f'File does not contain integer number of ({height}x{width}) frames: {n_frames}')
+    n_frames = int(n_frames)
+
+    data_movie = np.zeros((n_frames, height, width))
+
+    print(f'Reading IRCAM raw file, {n_bytes_file} bytes, {n_frames} frames, "{path_fn}"')
+    for i_frame in np.arange(n_frames):
+        frame_hexdata = data_hex[i_frame*bytes_per_frame:(i_frame+1)*bytes_per_frame]
+
+        data = raw_to_image(frame_hexdata, width, height, digital_level_bytes)
+        data_movie[i_frame] = data
+        # print(f'min={data.min():0.4g}, mean={data.mean():0.4g}, 1%={np.percentile(data,1):0.4g}, '
+        #       f'99%={np.percentile(data,99):0.4g}, max={data.max():0.4g}')
+    return data_movie
+
+
 if __name__ == '__main__':
+    from fire.camera.nuc import get_nuc_frame
+    from fire.misc.data_structures import movie_data_to_dataarray
+    from fire.plotting.image_figures import plot_movie_frames
+    from fire.plotting.temporal_figures import plot_movie_data_stats
+
+    path_fn_nuc = '/home/tfarley/repos/air/tests/test_data/lab/IRCAM_test_sequence_files/1f_test_nuc_int16.raw'
+    # path_fn = '/home/tfarley/repos/air/tests/test_data/lab/IRCAM_test_sequence_files/1f_test_sequence_int16_2.raw'
+    path_fn_movie = '/home/tfarley/repos/air/tests/test_data/lab/IRCAM_test_sequence_files/400f_test_sequence_int16_2.RAW'
+
+    data_movie = read_ircam_raw_int16_sequence_file(path_fn_movie)
+    data_movie = movie_data_to_dataarray(data_movie)
+
+    # data_nuc = read_ircam_raw_int16_sequence_file(path_fn_nuc)
+    data_nuc = get_nuc_frame(origin={'n': [1, 40]}, frame_data=data_movie, reduce_func='min')
+
+    data_movie_nucsub = data_movie - data_nuc
+    # data_movie_nucsub = data_movie + data_nuc
+    # data_movie_nucsub = data_movie
+
+    plot_movie_frames(data_nuc, frame_label='nuc')
+    plot_movie_data_stats(data_movie_nucsub)
+    plot_movie_frames(data_movie_nucsub, cmap_percentiles=(2, 98)) #(0, 100))
+
     path = Path(fire_root) / '../tests/test_data/lab/'
 
     bbname = 'bb_10us.ASC'
