@@ -44,6 +44,7 @@
                 "rit": {
                     "movie_plugins": [
                         "ipx",
+                        "raw",
                         "uda",
                         "npz",
                         "imstack"
@@ -278,7 +279,8 @@
     "filenames_input": {
         "movie_files": [
             "{camera}0{pulse}.ipx",
-            "{camera}_{pulse}.npz"
+            "{camera}_{pulse}.npz",
+            "{camera}_{pulse}.raw"
         ],
         "camera_settings": [
             "camera_settings-{machine}-{camera}.csv"
