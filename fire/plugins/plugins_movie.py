@@ -91,6 +91,7 @@ class MovieReader:
                                                                                                Dict[str, str]]:
         exceptions = []
         for name, plugin in self.plugins.items():
+            # TODO: Fix hanging on some UDA calls for inexistent pulse numbers
             try:
                 meta_data, origin = plugin.read_movie_meta_data(pulse=pulse, camera=camera, machine=machine,
                                                   movie_paths=self.movie_paths,
@@ -256,15 +257,15 @@ def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movi
 
     """
     # TODO: Make all plugins return consistent format for exposure - currently have either str or float?
-    movie_meta_required_fields = ['n_frames', 'frame_range', 't_range', 'image_shape', 'fps', 'lens', 'exposure',
-                                  'bit_depth']
+    movie_meta_required_fields = ['n_frames', 'frame_range', 't_range', 'fps', 'lens', 'exposure',
+                                  'bit_depth', 'image_shape', 'detector_window']
     plugin_key = 'meta'
     meta_data, origin = try_movie_plugins_dicts(plugin_key, pulse, camera, machine, movie_plugins,
                                                 movie_paths=movie_paths, movie_fns=movie_fns)
 
     rename_meta_data_fields(meta_data)
     check_movie_meta_data(meta_data, required_fields=movie_meta_required_fields, check_bad_values=True,
-                          substitute_unknown_values=substitute_unknown_values)
+                          substitute_unknown_values=substitute_unknown_values, origin=origin['plugin'])
     meta_data = reformat_movie_meta_data(meta_data)
     meta_data = add_alternative_meta_data_representations(meta_data)
 
@@ -495,7 +496,8 @@ def add_alternative_meta_data_representations(meta_data):
 
     return meta_data
 
-def check_movie_meta_data(meta_data, required_fields=None, check_bad_values=True, substitute_unknown_values=False):
+def check_movie_meta_data(meta_data, required_fields=None, check_bad_values=True, substitute_unknown_values=False,
+                          origin=None):
     """Check movie meta data dictionary contains required values for FIRE analysis and substitute/update values
     inplace where appropriate
 
@@ -504,6 +506,7 @@ def check_movie_meta_data(meta_data, required_fields=None, check_bad_values=True
         required_fields             : List of field names that must be present
         check_bad_values            : Bool for whether to check for bad (nan/'Unknown') values
         substitute_unknown_values   : Whether to substitute default values for missing data (intended for debugging)
+        origin                      : Name of plugin for error messages
 
     Returns:
 
@@ -516,7 +519,7 @@ def check_movie_meta_data(meta_data, required_fields=None, check_bad_values=True
             if field not in meta_data:
                 missing_fields.append(field)
         if len(missing_fields) > 0:
-            raise ValueError(f'Movie plugin "{origin}" has not returned the folloing required meta data fields:\n'
+            raise ValueError(f'Movie plugin "{origin}" has not returned the following required meta data fields:\n'
                              f'{missing_fields}')
     if check_bad_values:
         requried_keys = ['lens', 'exposure', 'detector_window', 'bit_depth']
