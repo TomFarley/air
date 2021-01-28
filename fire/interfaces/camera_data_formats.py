@@ -101,6 +101,42 @@ def read_ircam_raw_int16_sequence_file(path_fn):
         #       f'99%={np.percentile(data,99):0.4g}, max={data.max():0.4g}')
     return data_movie
 
+def generate_json_meta_data_file(path, fn, frame_data, meta_data_dict):
+    """
+    See movie_meta_required_fields in plugins_movie.py, line ~260:
+      ['n_frames', 'frame_range', 't_range', 'fps', 'lens', 'exposure', 'bit_depth', 'image_shape', 'detector_window']
+
+    Args:
+        path:
+        fn:
+        frame_data:
+        meta_data_dict:
+
+    Returns:
+
+    """
+    from fire.interfaces.interfaces import json_dump
+
+    fps = meta_data_dict['fps']
+    period = 1/fps
+
+    n_frames = len(frame_data)
+    image_shape = list(frame_data.shape[1:])
+    detector_window = [0, 0] + image_shape
+    frame_numbers = np.arange(n_frames).tolist()
+    frame_times = np.arange(0, n_frames*period, period).tolist()
+    t_range = [min(frame_times), max(frame_times)]
+    frame_range = [min(frame_numbers), max(frame_numbers)]
+
+    dict_out = dict(n_frames=n_frames, image_shape=image_shape, detector_window=detector_window, frame_period=period,
+                    lens=25e-3, bit_depth=14, t_range=t_range, frame_range=frame_range, exposure=0.25e-3,
+                    frame_numbers=frame_numbers, frame_times=frame_times)
+    dict_out.update(meta_data_dict)
+
+    list_out = list(dict_out.items())
+
+    json_dump(list_out, fn, path, overwrite=True)
+    print(f'Wrote meta data file to: {path}/{fn}')
 
 if __name__ == '__main__':
     from fire.camera.nuc import get_nuc_frame
@@ -121,6 +157,10 @@ if __name__ == '__main__':
     data_movie_nucsub = data_movie - data_nuc
     # data_movie_nucsub = data_movie + data_nuc
     # data_movie_nucsub = data_movie
+
+    fn = 'movie_meta_data.json'
+    path_out = '/home/tfarley/data/movies/mast_u/50002/rit/'
+    generate_json_meta_data_file(path_out, fn, frame_data=data_movie, meta_data_dict={'fps': 400})
 
     plot_movie_frames(data_nuc, frame_label='nuc')
     plot_movie_data_stats(data_movie_nucsub)
