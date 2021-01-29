@@ -19,8 +19,8 @@ import matplotlib.pyplot as plt
 import pyuda, cpyuda
 from fire.misc.utils import increment_figlabel, filter_kwargs, format_str, make_iterable
 
+use_mast_client = True
 try:
-    use_mast_client = True
     if use_mast_client:
         from mast.mast_client import MastClient
         client = MastClient(None)
@@ -33,6 +33,12 @@ except ModuleNotFoundError as e:
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
+
+"""UDA documentation at: https://users.mastu.ukaea.uk/data-access-and-tools/pyuda
+UDA code at: https://git.ccfe.ac.uk/MAST-U/UDA
+"""
+
+from fire.misc.data_structures import meta_defaults_default
 
 # TODO: Move module defaults to json files
 # Ordered names of dimensions for different signals, as many uda signals have missing dimension names. These names
@@ -57,16 +63,10 @@ rename_dims_default = {'Time': 't',
                        'Temperature profiles': 'T',
                        'IR power profiles': 'q'}
 
-meta_defaults_default = {
-    't': {'units': 's', 'symbol': '$t$'},
-    'S': {'label': 'Divertor tile S coordinate', 'units': 'm', 'symbol': '$S$'},
-    'R': {'label': 'Major radius', 'units': 'm', 'symbol': '$R$'},
-    'T': {'label': 'Divertor tile temperature', 'units': '$^\circ$C', 'symbol': '$T$'},
-    'q': {'label': 'Divertor tile incident heat flux', 'units': 'Wm^{-2}', 'symbol': '$q_\perp$'},
-}
+
 # Replacements for existing uda meta data eg add latex formatting
 meta_refinements_default = {
-    'IR power profiles': {'units': '$kW m^{-2}$'},
+    'IR power profiles': {'units': '$kW m^{-2}$'},  # TODO: check kW vs MW
     'Temperature profiles': {'units': '$^\circ$C'},
 }
 
@@ -85,6 +85,34 @@ def import_pyuda():
         pyuda, client = False, False
     return pyuda, client
 
+def import_mast_client():
+    try:
+        from mast.mast_client import MastClient
+        client = MastClient(None)
+        client.server_tmp_dir = ''
+    except ImportError as e:
+        logger.warning(f'Failed to import MastClient. ')
+        MastClient, client = False, False
+    return MastClient, client
+
+def get_uda_client(use_mast_client=True, try_alternative=True):
+    try:
+        if use_mast_client:
+            MastClient, client = import_mast_client()
+        else:
+            pyuda, client = import_pyuda()
+            client = pyuda.Client()
+    except (ModuleNotFoundError, ImportError) as e:
+        # TODO: Handle missing UDA client gracefully
+        if try_alternative:
+            try:
+                client = get_uda_client(use_mast_client=~use_mast_client)
+            except Exception as e:
+                raise e
+        else:
+            raise e
+    return client
+
 def filter_uda_signals(signal_string, pulse=23586):
     """Return list of signal names that contain the supplied signal_string
 
@@ -96,23 +124,31 @@ def filter_uda_signals(signal_string, pulse=23586):
 
     """
     # r = client.list(client.ListType.SIGNALS, shot=shot, alias='air')
+    client = get_uda_client(use_mast_client=True, try_alternative=True)
     r = client.list_signals(shot=pulse, alias=signal_string)
     signals = [s.signal_name for s in r]
 
     return signals
 
-def read_uda_signal(signal, pulse, raise_exceptions=True, log_exceptions=True, **kwargs):
+def read_uda_signal(signal, pulse, raise_exceptions=True, log_exceptions=True, use_mast_client=True,
+                    try_alternative=True, **kwargs):
+    client = get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
     try:
         data = client.get(signal, pulse, **kwargs)
-    except cpyuda.ServerException as e:
-        error_message = f'Failed to read UDA signal for: "{signal}", {pulse}, {kwargs}. {e}'
-        exception = RuntimeError(error_message)
-        if raise_exceptions:
-            raise exception
+    except (cpyuda.ServerException, AttributeError) as e:
+        if try_alternative:
+            logger.debug(f'Trying alternative uda client: use_mast_client={not use_mast_client}')
+            data = read_uda_signal(signal, pulse, raise_exceptions=raise_exceptions, log_exceptions=log_exceptions,
+                                   use_mast_client=(not use_mast_client), try_alternative=False, **kwargs)
         else:
-            if log_exceptions:
-                logger.warning(error_message)
-            data = exception
+            error_message = f'Failed to read UDA signal for: "{signal}", {pulse}, {kwargs}. "{e}"'
+            exception = RuntimeError(error_message)
+            if raise_exceptions:
+                raise exception
+            else:
+                if log_exceptions:
+                    logger.warning(error_message)
+                data = exception
 
     return data
 
@@ -309,8 +345,9 @@ def sort_uda_signals_by_ndims(signals, sort_by='dim_names', pulse=23586,
 
     return out
 
-def plot_uda_signal(signal, pulse, dims=None, **kwargs):
+def plot_uda_signal(signal, pulse, dims=None, verbose=False, **kwargs):
     data_array = read_uda_signal_to_dataarray(signal, pulse, dims=dims)
+
     plot_uda_dataarray(data_array, **kwargs)
 
 def get_default_plot_kwargs_for_style(style):
@@ -328,6 +365,8 @@ def get_default_plot_kwargs_for_style(style):
     return plot_kwargs
 
 def plot_uda_dataarray(data, xdim=None, style=None, plot_kwargs=None, ax=None, show=True, tight_layout=True):
+    # TODO: Generalise to non-UDA data and enable swapping of axis coordinates eg n->t, R->s etc (see FIRE 2d debug
+    # plots)
     if ax is None:
         num = increment_figlabel(f'{data.attrs["signal"]}:{data.attrs["shot"]}', i=2, suffix=' ({i})')
         fig, ax = plt.subplots(num=num)
@@ -376,11 +415,15 @@ def plot_uda_dataarray(data, xdim=None, style=None, plot_kwargs=None, ax=None, s
     if show:
         plt.show()
 
-def plot_uda_signal(signal, pulse, dims=None, show=True, **kwargs):
+def plot_uda_signal(signal, pulse, dims=None, show=True, verbose=False, **kwargs):
 
     data_array = read_uda_signal_to_dataarray(signal, pulse, dims=dims, raise_exceptions=False)
     if isinstance(data_array, Exception):
-        return
+        return data_array
+
+    if verbose:
+        logger.info(f'{signal}, {pulse}: min={data_array.min().values:0.4g}, mean={data_array.mean().values:0.4g}, '
+                    f'99%={np.percentile(data_array.values,99):0.4g}, max={data_array.max().values:0.4g}')
 
     # pprint(data_array)
     plot_uda_dataarray(data_array, **kwargs)
@@ -393,7 +436,7 @@ def plot_uda_signal(signal, pulse, dims=None, show=True, **kwargs):
     # data = read_ir_uda('ip', 18299)
     # plt.show()
 
-def plot_uda_signals_individually(pulse=23586, signals='all', diagnostic_alias='air', min_rank=1):
+def plot_uda_signals_individually(pulse=23586, signals='all', diagnostic_alias='air', min_rank=1, verbose=True):
     """
 
     Args:
@@ -429,7 +472,7 @@ def plot_uda_signals_individually(pulse=23586, signals='all', diagnostic_alias='
         print(f'\n\nPlotting {info["data.rank"]}D signal "{signal}" for pulse {pulse} with dims {dims}')
         # pprint(info)
 
-        plot_uda_signal(signal, pulse=pulse)
+        plot_uda_signal(signal, pulse=pulse, verbose=verbose)
 
 def get_mastu_wall_coords():
     """
@@ -870,8 +913,17 @@ def putdata_example():
 
     client.put(step_id='close')
 
+def uda_get_signal_example():
+    import pyuda
+    client = pyuda.Client()
+    ip = client.get('ip', 18299)
+    rir = client.get_images('rir', 29976, first_frame=400, last_frame=900)
+    print(f'ip: {ip}')
+    print(f'rir: {rir}')
+
 if __name__ == '__main__':
 
+    uda_get_signal_example()
     putdata_example()
 
     pulse = 23586
