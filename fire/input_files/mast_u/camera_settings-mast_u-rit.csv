@@ -1,3 +1,5 @@
 # Record of settings for rit diagnostic (generally IRCAM LWIR camera ait with serial number 0101-A18-CH)
 pulse_start, pulse_end, camera              , port  , window  , window_transmission, NUC_shutter, ND_filter, wavelength_range, lens , t_int , t_offset, camera_settings_comments
-50000      , 50003    , IRCAM_Velox81kL_0102, HL04_A, ZnS_FLIR, 99.18              , False      , None     , [7.7e-6 9.4e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE. Need to check window number.
+43123      , 50000    , IRCAM_Velox81kL_0102, HL04_A, ZnS_FLIR, 0.9918              , False      , None     , [7.7e-6 9.4e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE. Need to check window number.
+50001      , 50001    , IRCAM_Velox81kL_0102, HL04_A, ZnS_FLIR, 0.9918              , False      , None     , [7.7e-6 9.4e-6] , 50e-3, 232e-6, 0       , Test settings for debugging FIRE. Need to check window number.
+50002      , 50003    , IRCAM_Velox81kL_0102, HL04_A, ZnS_FLIR, 0.9918              , False      , None     , [7.7e-6 9.4e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE. Need to check window number.

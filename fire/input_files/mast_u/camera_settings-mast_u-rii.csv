@@ -1,3 +1,3 @@
 # Record of settings for rii diagnostic (SBF/IRCAM_Velox_81kM MWIR camera installed at sector 8 midplane with mirror assembly to view inner strike point/main chamber)
 pulse_start, pulse_end, camera, port  , window  , window_transmission, NUC_shutter, ND_filter, wavelength_range, lens , t_int , t_offset, camera_settings_comments
-50000      , 50001    , SBF   , HM08_B, Sapphire, 97.93              , False      , None     , [4.5e-6 5.0e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE
+50000      , 50001    , SBF   , HM08_B, Sapphire, 0.9793              , False      , None     , [4.5e-6 5.0e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE
