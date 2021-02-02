@@ -34,5 +34,14 @@
           ["end", {"R": 0.903, "z": -1.875, "phi": 21.5, "order": 1, "include_next_interval": false}]
         ],
     "description": "Outward radial path down lower divertor tile 2 in sector 3. Probably starts out of view."
+  },
+  "MASTU_S3_lower_T2T3_radial_1":
+  {
+    "coords":
+        [
+          ["start", {"R": 0.75, "z": -1.720, "phi": 21.5, "order": 0, "include_next_interval": true}],
+          ["end", {"R": 0.994, "z": -1.960, "phi": 21.5, "order": 1, "include_next_interval": false}]
+        ],
+    "description": "Outward radial path down lower divertor tiles 2-3 in sector 3. Spans loose LP cable."
   }
 }
