@@ -56,5 +56,20 @@
           ["end", {"R": 1.70, "z": -1.825, "phi": 84.8, "order": 1, "include_next_interval": false}]
         ],
     "description": "Line used in IDL sched code path for pulse 26505. Rotated in phi so that projected pixel coords aprox match those from IDL code"
+  },
+  "MAST_louvre12d_rotated_pix":
+  {
+    'pixels':
+      ['start': {'x_pix': 121, 'y_pix': 63, 'subview': 0, 'order': 0, 'include_next_interval': true},
+              'end': {'x_pix': 108,
+               'y_pix': 311,
+               'subview': 0,
+               'subview_or_oof': 0,
+               'out_of_frame': False,
+               'multi_imaged': False,
+               'n_imaged': 1,
+               'order': 1,
+               'include_next_interval': False}})}
+    "description": "Line used in IDL sched code path for pulse 26505. End pixel coordinates extracted from IDL code."
   }
 }
