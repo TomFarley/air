@@ -1,6 +1,6 @@
 # Lab temperature calibrations for diagnostic tag RIT.
 # On MAST RIT corresponded to the Thermosensorik LWIR camera.
-# On MAST-U RIT corresponds to the IRCAM LWIR camera with serial number  0101-A18-CH.
+# On MAST-U RIT corresponds to the IRCAM LWIR camera 2 with serial number  0102-A18-CH.
 #
 # *Overview*
 # These calibration files can contain two forms of IR camera calibration. The calibration method used on MAST-U uses coefficients
@@ -8,7 +8,7 @@
 #
 # *MAST-U Methodology*
 # This is the calibration methodology used by Andrew Thornton, documented in IR_calibration_final_20190219.docx, with IDL scripts in:
-# /home/athorn/IR_ENH_calib and on gitlab at https://git.ccfe.ac.uk/tfarley/ir_tools.
+# /home/athorn/IR_ENH_calib/perform_calib.pro and on gitlab at https://git.ccfe.ac.uk/tfarley/ir_tools.
 # We define the excess photon flux as the photon flux [photons/s/m^2] arriving at the detector due to the temperature being above the
 # background (NUC) temperature:
 # ϕ_excess=(ϕ-ϕ_bg)   (1)
@@ -24,7 +24,7 @@
 # body temperature. The photon flux [photons/s/m^2] is given by:
 # ϕ = ϕ_excess + ϕ_bg                      (4)
 #   = (n_(phot,excess) / t_int) + ϕ_bg
-#   = c_1 I_(DL,excess) / t_int) + ϕ_bg
+#   = (c_1 I_(DL,excess) / t_int) + ϕ_bg
 # ϕ_bg can be found either by:
 # 1) Interpolate the ϕ vs T lookup table at the temperature of the NUC view (ie tiles/shutter at start of pulse) (method on MAST), OR
 # 2) Use the average value for room temperature during the lab calibration found from the average value of the y_intercepts of plots of
@@ -55,6 +55,6 @@
 # c1_intcp, c1_grad, c2_intcp, c2_grad: Interpolation coefficients for c_1 and c_2 parameters used on MAST, defined in equations (6), (7)
 #
 pulse_start, pulse_end, camera         , lens	         , ND_filter, wavelength_range, date      , c1     , c2  , photons_bg, c1_intcp, c1_grad , c2_intcp , c2_grad, notes
-19149      ,  25138   , SBF            , 25 cm         ,	None     , [4.5e-6 5.0e-6] , 2007?     , None   , None, None      , -1.09e17, 8.09e13 , 1.300e13 , 5.10e9 , Old MAST calibration
-25139      ,  30452   , SBF            , 25 cm         ,	None     , [4.5e-6 5.0e-6] , 2007?     , None   , None, None      , 2.9388e17, 7.98e13,-5.4344e13, 5.503e9, Old MAST calibration
-50000      , 100000   , FLIR (65800045), 50 cm (0103)  ,	None     , [7.7e-6 9.4e-6] , 2019-02-19, 1.59e20, None, 1.80e21   , None    , None    , None     , None   , Results from calibration written up by Andrew Thornton on 19-02-2019
+19149      ,  25138   , SBF            , 25 mm         ,	None     , [4.5e-6 5.0e-6] , 2007?     , None   , None, None      , -1.09e17, 8.09e13 , 1.300e13 , 5.10e9 , Old MAST calibration
+25139      ,  30452   , SBF            , 25 mm         ,	None     , [4.5e-6 5.0e-6] , 2007?     , None   , None, None      , 2.9388e17, 7.98e13,-5.4344e13, 5.503e9, Old MAST calibration
+43123      , 100000   , IRCAM (0102)   , 50 mm (0104)  ,	None     , [7.7e-6 9.4e-6] , 2019-02-19, 1.18e20, None, 1.78e21   , None    , None    , None     , None   , Results from calibration written up by Andrew Thornton on 19-02-2019

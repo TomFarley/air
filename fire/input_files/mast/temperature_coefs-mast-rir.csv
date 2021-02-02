@@ -55,7 +55,7 @@
 # c1_intcp, c1_grad, c2_intcp, c2_grad: Interpolation coefficients for c_1 and c_2 parameters used on MAST, defined in equations (6), (7)
 #
 pulse_start, pulse_end, camera         , lens	         , ND_filter, wavelength_range, date      , c1     , c2  , photons_bg, c1_intcp, c1_grad, c2_intcp, c2_grad, notes
-19149      ,  28389   , SBF            , 13 cm         ,	None     , [4.5e-6 5.0e-6] , 2007?     , None   , None, None      , -9.14e14, 4.30e13, None    , None   , Old MAST calibration
-28390      ,  30471   , SBF            , 13 cm         ,	None     , [4.5e-6 5.0e-6] , 2007?     , None   , None, None      , -4.10e14, 4.31e13, None    , None   , Old MAST calibration
-50000      , 100000   , FLIR (65800045), 25 cm (211548),	None     , [4.1e-6 5.0e-6] , 2019-02-19, 2.87e19, None, 9.20e19   , None    , None   , None    , None   , Results from calibration written up by Andrew Thornton on 19-02-2019
+19149      ,  28389   , SBF            , 13 mm         ,	None     , [4.5e-6 5.0e-6] , 2007?     , None   , None, None      , -9.14e14, 4.30e13, None    , None   , Old MAST calibration
+28390      ,  30471   , SBF            , 13 mm         ,	None     , [4.5e-6 5.0e-6] , 2007?     , None   , None, None      , -4.10e14, 4.31e13, None    , None   , Old MAST calibration
+50000      , 100000   , FLIR (65800045), 25 mm (211548),	None     , [4.1e-6 5.0e-6] , 2019-02-19, 2.87e19, None, 9.20e19   , None    , None   , None    , None   , Results from calibration written up by Andrew Thornton on 19-02-2019
 
