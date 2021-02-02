@@ -51,6 +51,25 @@ def calc_field_of_view(focal_length, pixel_pitch=30e-6, image_shape=(320, 256)):
                     detector_dimensions=detector_dimensions, detector_area=detector_area)
     return fov_info
 
+def calc_photon_flux_correction_for_focal_length_change(focal_length_calib, focal_length_actual,
+                                                        pixel_pitch=30e-6, image_shape=(320, 256)):
+    if isinstance(focal_length_calib, str):
+        parts = focal_length_calib.split(' ')
+        if parts[1] == 'mm':
+            focal_length_calib = float(parts[0])*1e-3
+        else:
+            raise ValueError()
+
+    fov_info_calib = calc_field_of_view(focal_length_calib, pixel_pitch=pixel_pitch, image_shape=image_shape)
+    fov_info_actual = calc_field_of_view(focal_length_actual, pixel_pitch=pixel_pitch, image_shape=image_shape)
+
+    flux_correction_factor = fov_info_actual['solid_angle_pixel'] / fov_info_calib['solid_angle_pixel']
+    flux_correction_factor = (focal_length_actual/focal_length_calib)**-2
+    if flux_correction_factor != 1:
+        logger.warning(f'Focal length correction factor is not unity: {flux_correction_factor}, '
+                       f'lens_calib={focal_length_calib}m, lens_actual={focal_length_actual}m')
+
+    return flux_correction_factor
 
 if __name__ == '__main__':
     pass
