@@ -193,7 +193,7 @@ def remove_camera_shake(frame_data, pixel_displacements, verbose=False):
         logger.info(f'Camera shake displacement corrections applied to {n_corrected}/{len(frame_data)} '
                     f'{frac:0.3%} frames in {t1-t0:0.2f} s '
                     f'(max correction = {float(np.max(pixel_displacements)):0.3g} pixels). '
-                    f'NOTE: This will have introduced nans to corrected frames.')
+                    +bool(n_corrected)*f'NOTE: This will have introduced nans to corrected frames.')
 
 
     return frame_data
