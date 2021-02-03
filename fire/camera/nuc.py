@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 def get_nuc_frame(origin: Union[Dict, str, Path]='first_frame', frame_data: Optional[xr.DataArray]=None,
                   reduce_func: str='mean') -> xr.DataArray:
     if origin in ('first_frame', 'first frame'):
-        origin = {'n': [0, 0]}
+        n0 = frame_data['n'].values[0]
+        origin = {'n': [n0, n0]}
     elif isinstance(origin, (str, Path)):
         load_nuc_frame_from_file(origin)
     else:
@@ -31,6 +32,7 @@ def get_nuc_frame(origin: Union[Dict, str, Path]='first_frame', frame_data: Opti
     coord_slice = slice(coord_range[0], coord_range[1])
     nuc_frame = frame_data.sel({coord: coord_slice})
     nuc_frame = getattr(nuc_frame, reduce_func)(dim='n')
+    nuc_frame = nuc_frame.astype(int)  # mean etc can give float output
 
     # TODO: Check properties of frame are appropriate for NUC ie. sufficiently uniform and dim
     return nuc_frame
