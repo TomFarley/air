@@ -205,6 +205,7 @@ def json_dump(obj, path_fn: Union[str, Path], path: Optional[Union[str, Path]]=N
     Returns: Output file path if successful, else captured exception
 
     """
+    # TODO: Convert ndarrays to lists so json serialisable
     path_fn = Path(path_fn)
     if path is not None:
         path_fn = Path(path) / path_fn
@@ -260,7 +261,8 @@ def json_load(path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None,
     out = drop_nested_dict_key_paths(out, key_paths_drop=key_paths_drop)
 
     if lists_to_arrays:
-        out = cast_lists_in_dict_to_arrays(out)
+        out = cast_lists_to_arrays(out)
+
     return out
 
 def filter_nested_dict_key_paths(dict_in, key_paths_keep, compress_key_paths=True):
@@ -329,15 +331,67 @@ def drop_nested_dict_key_paths(dict_in, key_paths_drop):
                                        f'{subset}')
     return dict_out
 
-def cast_lists_in_dict_to_arrays(dict_in):
+def cast_lists_in_dict_to_arrays(dict_in, raise_on_no_lists=False):
     dict_out = deepcopy(dict_in)
+    n_lists_converted = 0
+
     for key, value in dict_out.items():
         if isinstance(value, (list)):
-            dict_out[key] = np.array(value)
+            dict_out[key] = cast_nested_lists_to_arrays(value, raise_on_no_lists=False)
+            n_lists_converted += 1
         elif isinstance(value, dict):
-            dict_out[key] = cast_lists_in_dict_to_arrays(value)
+            dict_out[key] = cast_lists_in_dict_to_arrays(value, raise_on_no_lists=False)
+        else:
+            pass
+
+    if raise_on_no_lists and (n_lists_converted==0):
+        raise TypeError(f'Input dict does not contain any lists to convert to ndarrays: {dict_in}')
 
     return dict_out
+
+def cast_nested_lists_to_arrays(list_in, raise_on_no_lists=False):
+    list_out = deepcopy(list_in)
+    n_lists_converted = 0
+
+    if all_list_elements_same_type(list_in, invalid_types=(list, tuple)):
+        list_out = np.array(list_in)
+        n_lists_converted += 1
+    else:
+        for i, value in enumerate(list_in):
+            if isinstance(value, (list)):
+                if all_list_elements_same_type(value, invalid_types=(list, tuple)):
+                    list_out[i] = np.array(value)
+                else:
+                    list_out[i] = cast_nested_lists_to_arrays(value, raise_on_no_lists=False)
+                if isinstance(list_out[i], np.ndarray):
+                    n_lists_converted += 1
+            elif isinstance(value, dict):
+                list_out[i] = cast_lists_in_dict_to_arrays(value, raise_on_no_lists=False)
+            else:
+                pass
+
+    if raise_on_no_lists and (n_lists_converted == 0):
+        raise TypeError(f'Input list does not contain any lists to convert to ndarrays: {list_in}')
+
+    return list_out
+
+def cast_lists_to_arrays(list_or_dict):
+    if isinstance(list_or_dict, list):
+        out = cast_nested_lists_to_arrays(list_or_dict)
+    elif isinstance(list_or_dict, dict):
+        out = cast_lists_in_dict_to_arrays(list_or_dict)
+    else:
+        raise TypeError(f'Input is not list or dict: {list_or_dict}')
+
+    return out
+
+def all_list_elements_same_type(list_in, invalid_types=(list, tuple)):
+    types = [type(item) for item in list_in]
+    ref_type = types[-1]
+    all_types_same = all(t == ref_type for t in types)
+    if all_types_same and (ref_type in invalid_types):
+        all_types_same = False
+    return all_types_same
 
 def two_level_dict_to_multiindex_df(d):
     """Convert nested dictionary to two level multiindex dataframe
