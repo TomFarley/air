@@ -1,6 +1,7 @@
 {
     "README": {
-        "file_description": "This file provides the basic configuration settings for the FIRE IR analysis code. When values are given in a list, the order  often given the order of preference for those options e.g. 'movie_plugins'"
+        "file_description": "This file provides the basic configuration settings for the FIRE IR analysis code. When values are given in a list, the order  often given the order of preference for those options e.g. 'movie_plugins'",
+        "TODO": "Consolidate variable_meta_dat from data_structures.py"
     },
     "user_details": {
         "name": null,
@@ -18,8 +19,9 @@
                 "rir": {
                     "movie_plugins": [
                         "ipx",
-                        "uda",
-                        "imstack"
+                        "npz",
+                        "imstack",
+                        "uda"
                     ],
                     "device_details": {
                         "id": "FLIR SC7500 MWIR Camera 1",
@@ -44,10 +46,10 @@
                 "rit": {
                     "movie_plugins": [
                         "ipx",
-                        "raw",
-                        "uda",
+                        "raw_movie",
                         "npz",
-                        "imstack"
+                        "imstack",
+                        "uda"
                     ],
                     "device_details": {
                         "id": "IRcam Velox 81k Camera 1",
@@ -299,7 +301,7 @@
         ],
         "temperature_coefs": [
             "temperature_coefs-{machine}-{camera}.csv",
-            "temperature_coefs-{machine}-{camera}-{lens_in_cm:0.0f}cm-{exposure_in_us:0.0f}us.csv"
+            "temperature_coefs-{machine}-{camera}-{lens_in_mm:0.0f}mm-{exposure_in_us:0.0f}us.csv"
         ],
         "structure_coords": [
             "structure_coords-{machine}-default.csv"
