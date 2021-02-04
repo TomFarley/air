@@ -31,7 +31,7 @@ def identify_bad_frames(frame_data, bit_depth=None, tol_discontinuities=0.01,
     bad_frame_info['uniform'] = uniform_frames
 
     discontinuous_frames = identify_sudden_intensity_changes(frame_data, tol=tol_discontinuities,
-                                                             raise_on_sudden_intensity_changes=raise_on_sudden_intensity_changes)
+                                                raise_on_sudden_intensity_changes=raise_on_sudden_intensity_changes)
     bad_frame_info['discontinuous'] = discontinuous_frames
 
     if bit_depth is not None:
@@ -120,7 +120,20 @@ def identify_sudden_intensity_changes(frame_data: xr.DataArray, tol: float=0.01,
     # discontinuous_frames = diffs.where(diffs > (diffs.mean() * tol), drop=True).coords
     # TODO: Use more robust method of identifying outliers?
     nsigma = calc_outlier_nsigma_for_sample_size(len(frame_data), tol=tol)
-    discontinuous_frames = diffs.where(diffs > (diffs.mean() + diffs.std() * nsigma), drop=True).coords
+    discontinuous_mask = diffs > (diffs.mean() + diffs.std() * nsigma)
+
+    n_with_start = discontinuous_mask['n'].values
+    if (n_with_start[0] == 1) and discontinuous_mask.sel(n=1):
+        # Generally want to identify a frame if it is a sudden change from the previous frame, but in case of first
+        # frame want to identify first frame as discontinuous if it differs a lot from following frame
+        n_with_start = np.concatenate(([0], n_with_start[1:]))
+        t_with_start = np.concatenate(([frame_data['t'].values[0]], discontinuous_mask['t'].values[1:]))
+        discontinuous_mask = discontinuous_mask.assign_coords(n=n_with_start)
+        diffs = diffs.assign_coords(n=n_with_start)
+        logger.info(f'First frame has discontinuous intensity. Reordered xarray coord accordingly.')
+        # discontinuous_mask = discontinuous_mask.assign_coords(t=t_with_start)
+
+    discontinuous_frames = diffs.where(discontinuous_mask, drop=True).coords
 
     n_bad = len(discontinuous_frames['n'])
     if n_bad > 0:
@@ -170,9 +183,9 @@ def remove_bad_opening_and_closing_frames(frame_data, bad_frames):
 
     while i in bad_frames:
         frame_data = frame_data[1:]
-        i -= 1
         info['start'] += 1
         info["n_removed"].append(i)
+        i -= 1
 
     while n in bad_frames:
         frame_data = frame_data[:-1]
