@@ -345,10 +345,10 @@ def sort_uda_signals_by_ndims(signals, sort_by='dim_names', pulse=23586,
 
     return out
 
-def plot_uda_signal(signal, pulse, dims=None, verbose=False, **kwargs):
+def plot_uda_signal(signal, pulse, dims=None, ax=None, verbose=False, **kwargs):
     data_array = read_uda_signal_to_dataarray(signal, pulse, dims=dims)
 
-    plot_uda_dataarray(data_array, **kwargs)
+    plot_uda_dataarray(data_array, ax=ax, **kwargs)
 
 def get_default_plot_kwargs_for_style(style):
     # TODO: Move defaults to json file and add user input option
@@ -495,7 +495,7 @@ def get_uda_scheduler_filename(fn_pattern='{diag_tag}{shot:06d}.nc', path=None, 
 def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_number=None, status=None,
                    conventions=None, data_class=None, title=None, comment=None, code=None, version=None,
                    xml=None, date=None, time=None, verbose=None,
-                   kwarg_aliases=None, close=False, **kwargs):
+                   kwarg_aliases=None, close=False, use_mast_client=True, **kwargs):
     """
     Filename for diagnostics should be <diag_tag><shot_number>.nc
     Where shotnumber is a 6-digit number with leading zeros (eg. air040255)
@@ -520,6 +520,7 @@ def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_numb
     Returns:
 
     """
+    client = get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
     # Arguments that are different every time
     requried_args = {'shot': shot, 'pass_number': pass_number}#, 'status': status}
 
