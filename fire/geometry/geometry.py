@@ -12,6 +12,8 @@ import logging
 import numpy as np
 import xarray as xr
 
+from fire.misc.utils import ndarray_0d_to_scalar
+
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
@@ -87,7 +89,8 @@ def segment_path_by_material():  # pragma: no cover
                 f'r={r[no_tile_info_mask]}\nz={z[no_tile_info_mask]}')
     return tile_names
 
-def angles_to_convention(angles, units_input='radians', units_output='degrees', negative_angles=False):
+def angles_to_convention(angles, units_input='radians', units_output='degrees', negative_angles=False,
+                         cast_scalars=True):
     """Convert angles between radians and degrees and from +/-180 deg range to 0-360 range
 
     Args:
@@ -95,7 +98,7 @@ def angles_to_convention(angles, units_input='radians', units_output='degrees', 
         units_input: Units of input data (radians/degrees)
         units_output: Units angles should be converted to (radians/degrees)
         negative_angles: Whether angles should be in range  +/-180 deg or 0-360 range
-
+        cast_scalars: If output is 0D array cast to scalar float
     Returns:
 
     """
@@ -120,6 +123,9 @@ def angles_to_convention(angles, units_input='radians', units_output='degrees', 
     else:
         half_circle = 180 if (units_output == 'degrees') else np.pi
         angles = np.where(angles > half_circle, angles-shift, angles)
+
+    if cast_scalars:
+        angles = ndarray_0d_to_scalar(angles)
 
     return angles
 
