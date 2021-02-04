@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 fire_root = fire_paths['root']
 
-def read_altair_asc_image_file(path_fn):
+def read_altair_asc_image_file(path_fn, verbose=True):
     """Read .asc image file produced by the Altair software.
 
     Args:
@@ -29,7 +29,7 @@ def read_altair_asc_image_file(path_fn):
     Returns: Dataframe of image data
 
     """
-    image = read_csv(path_fn, sep='\t', skiprows=29, header=None,
+    image = read_csv(path_fn, sep='\t', skiprows=29, header=None, verbose=verbose, raise_not_found=True,
                      # skipinitialspace=True,
                      # keep_default_na=False,
                      # na_filter=False,
@@ -40,9 +40,9 @@ def read_altair_asc_image_file(path_fn):
         image = image.iloc[:, :-1]
     return image
 
-def read_reasearchir_csv_image_file(path_fn):
+def read_reasearchir_csv_image_file(path_fn, verbose=True):
 
-    image = read_csv(path_fn, sep=',', skiprows=31, header=None)
+    image = read_csv(path_fn, sep=',', skiprows=31, header=None, verbose=verbose, raise_not_found=True)
     return image
 
 def read_ircam_asc_image_file(path_fn, verbose=True):
@@ -73,7 +73,7 @@ def raw_to_image(raw_digital_level,width,height,digital_level_bytes):
         counts_digital_level.append(hex4_to_int(raw_digital_level[i*digital_level_bytes:(i+1)*digital_level_bytes]))
     return np.flip(np.array(counts_digital_level).reshape((height, width)), axis=0)
 
-def read_ircam_raw_int16_sequence_file(path_fn):
+def read_ircam_raw_int16_sequence_file(path_fn, flip_y=True, n_start=0, n_end=-1):
 
     bit_depth = 14
     # digital_level_bytes = 2
@@ -84,22 +84,34 @@ def read_ircam_raw_int16_sequence_file(path_fn):
     width, height = 320, 256
     n_pixels = width * height
     bytes_per_frame = digital_level_bytes * n_pixels
-    n_frames = n_bytes_file / bytes_per_frame
-    if np.fmod(n_frames, 1) != 0:
-        raise ValueError(f'File does not contain integer number of ({height}x{width}) frames: {n_frames}')
-    n_frames = int(n_frames)
+    n_frames_movie = n_bytes_file / bytes_per_frame
+    if np.fmod(n_frames_movie, 1) != 0:
+        raise ValueError(f'File does not contain integer number of ({height}x{width}) frames: {n_frames_movie}')
+    n_frames_movie = int(n_frames_movie)
 
+    if n_start is None:
+        n_start = 0
+    if (n_end == -1) or (n_end is None):
+        n_end = n_frames_movie-1
+
+    frame_numbers = np.arange(n_start, n_end+1)
+    n_frames = len(frame_numbers)
     data_movie = np.zeros((n_frames, height, width))
 
-    print(f'Reading IRCAM raw file, {n_bytes_file} bytes, {n_frames} frames, "{path_fn}"')
-    for i_frame in np.arange(n_frames):
+    logger.info(f'Reading {n_frames} frames from IRCAM raw file ({n_bytes_file} bytes, {n_frames_movie} frames): '
+                f'"{path_fn}"')
+    for i_array, i_frame in enumerate(frame_numbers):
         frame_hexdata = data_hex[i_frame*bytes_per_frame:(i_frame+1)*bytes_per_frame]
 
         data = raw_to_image(frame_hexdata, width, height, digital_level_bytes)
-        data_movie[i_frame] = data
+        data_movie[i_array] = data
         # print(f'min={data.min():0.4g}, mean={data.mean():0.4g}, 1%={np.percentile(data,1):0.4g}, '
         #       f'99%={np.percentile(data,99):0.4g}, max={data.max():0.4g}')
-    return data_movie
+
+    if flip_y:
+        data_movie = data_movie[:,::-1,:]
+
+    return frame_numbers, data_movie
 
 def generate_json_meta_data_file(path, fn, frame_data, meta_data_dict):
     """
@@ -122,7 +134,7 @@ def generate_json_meta_data_file(path, fn, frame_data, meta_data_dict):
 
     n_frames = len(frame_data)
     image_shape = list(frame_data.shape[1:])
-    detector_window = [0, 0] + image_shape
+    detector_window = [0, 0] + image_shape[::-1]
     frame_numbers = np.arange(n_frames).tolist()
     frame_times = np.arange(0, n_frames*period, period).tolist()
     t_range = [min(frame_times), max(frame_times)]
@@ -144,11 +156,16 @@ if __name__ == '__main__':
     from fire.plotting.image_figures import plot_movie_frames
     from fire.plotting.temporal_figures import plot_movie_data_stats
 
+    # pulse = 43183
+    pulse = 43163
+
     path_fn_nuc = '/home/tfarley/repos/air/tests/test_data/lab/IRCAM_test_sequence_files/1f_test_nuc_int16.raw'
     # path_fn = '/home/tfarley/repos/air/tests/test_data/lab/IRCAM_test_sequence_files/1f_test_sequence_int16_2.raw'
-    path_fn_movie = '/home/tfarley/repos/air/tests/test_data/lab/IRCAM_test_sequence_files/400f_test_sequence_int16_2.RAW'
+    # path_fn_movie = '/home/tfarley/repos/air/tests/test_data/lab/IRCAM_test_sequence_files/400f_test_sequence_int16_2.RAW'
+    # path_fn_movie = '/home/tfarley/data/movies/mast_u/43141/rit/rit_43141.raw'
+    path_fn_movie = f'/home/tfarley/data/movies/mast_u/{pulse}/rit/rit_{pulse}.raw'
 
-    data_movie = read_ircam_raw_int16_sequence_file(path_fn_movie)
+    frame_nos, data_movie = read_ircam_raw_int16_sequence_file(path_fn_movie)
     data_movie = movie_data_to_dataarray(data_movie)
 
     # data_nuc = read_ircam_raw_int16_sequence_file(path_fn_nuc)
@@ -158,12 +175,16 @@ if __name__ == '__main__':
     # data_movie_nucsub = data_movie + data_nuc
     # data_movie_nucsub = data_movie
 
-    fn = 'movie_meta_data.json'
-    path_out = '/home/tfarley/data/movies/mast_u/50002/rit/'
-    generate_json_meta_data_file(path_out, fn, frame_data=data_movie, meta_data_dict={'fps': 400})
+    # fn = 'movie_meta_data.json'
+    fn = (str(Path(path_fn_movie).stem) + '_meta.json')
+    path_out = str(Path(path_fn_movie).parent)
+    generate_json_meta_data_file(path_out, fn, frame_data=data_movie,
+                                 meta_data_dict={'fps': 400, 'exposure': 0.25e-3, 'lens': 25e-3})
 
     plot_movie_frames(data_nuc, frame_label='nuc')
+    plot_movie_data_stats(data_movie)
     plot_movie_data_stats(data_movie_nucsub)
+
     plot_movie_frames(data_movie_nucsub, cmap_percentiles=(2, 98)) #(0, 100))
 
     path = Path(fire_root) / '../tests/test_data/lab/'
