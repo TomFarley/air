@@ -37,7 +37,8 @@ from fire.geometry.geometry import cartesian_to_toroidal, cylindrical_to_cartesi
 from fire.camera.image_processing import find_outlier_intensity_threshold
 from fire.interfaces.interfaces import lookup_pulse_row_in_csv
 from fire.misc.data_quality import calc_outlier_nsigma_for_sample_size
-from fire.misc.utils import locate_file, make_iterable, to_image_dataset
+from fire.misc.utils import locate_file, make_iterable
+from fire.misc.data_structures import to_image_dataset
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -135,7 +136,7 @@ def update_detector_window(calcam_calib: calcam.Calibration, detector_window: Op
         else:
             raise e
     else:
-        logger.info('Set calcam detector window to: %s (Left,Top,Width,Height)', detector_window)
+        logger.info('Detector sub-window set to: %s (Left,Top,Width,Height)', detector_window)
 
     # NOTE: Calls to calcam_calib.geometry.get_original_shape() now return the windowed detector size
 
@@ -161,6 +162,7 @@ def apply_frame_display_transformations(frame_data, calcam_calib, image_coords):
         # frame_data = np.moveaxis(frame_data, [0, 1, 2], [2, 1, 0])
         frame_data = np.moveaxis(frame_data, [0, 1, 2], [2, 0, 1])
         frame_data = calcam_calib.geometry.original_to_display_image(frame_data)
+        logger.info(f'Applied calcam image transformations to frame data: {calcam_calib.geometry.transform_actions}')
         # frame_data = np.moveaxis(frame_data, [0, 1, 2], [2, 1, 0])
         frame_data = np.moveaxis(frame_data, 2, 0)
     else:
