@@ -30,7 +30,7 @@
     },
     "toroidal_periodicity": 1,
     "mirror_z": false,
-    "material": "JET_T5_CFC",
+    "material": "MAST_U_CFC",
     "display_color": "blue",
     "description": "Whole centre column",
     "comments": "Calling all of centre colum C1 for simplictity - not dividing into C1-C5"
@@ -57,7 +57,7 @@
     },
     "toroidal_periodicity": 3,
     "mirror_z": true,
-    "material": "JET_T5_CFC",
+    "material": "MAST_U_CFC",
     "display_color": "green",
     "description": "Tile C6 at ends of centre column",
     "comments": ""
@@ -84,7 +84,7 @@
     },
     "toroidal_periodicity": 24,
     "mirror_z": true,
-    "material": "JET_T5_CFC",
+    "material": "MAST_U_CFC",
     "display_color": "yellow",
     "description": "Tile T1 at start of inner divertor slope",
     "comments": ""
@@ -111,7 +111,7 @@
     },
     "toroidal_periodicity": 24,
     "mirror_z": true,
-    "material": "JET_T5_CFC",
+    "material": "MAST_U_CFC",
     "display_color": "orange",
     "description": "Tile T2 on sloping inner divertor",
     "comments": ""
@@ -138,7 +138,7 @@
     },
     "toroidal_periodicity": 24,
     "mirror_z": true,
-    "material": "JET_T5_CFC",
+    "material": "MAST_U_CFC",
     "display_color": "red",
     "description": "Tile T3 on sloping inner divertor",
     "comments": ""
@@ -165,7 +165,7 @@
     },
     "toroidal_periodicity": 24,
     "mirror_z": true,
-    "material": "JET_T5_CFC",
+    "material": "MAST_U_CFC",
     "display_color": "red",
     "description": "Tile T4 on flat bottom surface of divertor",
     "comments": ""
@@ -192,7 +192,7 @@
     },
     "toroidal_periodicity": 48,
     "mirror_z": true,
-    "material": "JET_T5_CFC",
+    "material": "MAST_U_CFC",
     "display_color": "red",
     "description": "Tile T5 on upward slope of outer divertor",
     "comments": "TODO: Split into definitions for each of four T5 tile variants"
@@ -219,7 +219,7 @@
     },
     "toroidal_periodicity": 24,
     "mirror_z": true,
-    "material": "JET_T5_CFC",
+    "material": "MAST_U_CFC",
     "display_color": "red",
     "description": "Tile N1 on baffle nose",
     "comments": ""
@@ -246,7 +246,7 @@
     },
     "toroidal_periodicity": 24,
     "mirror_z": true,
-    "material": "JET_T5_CFC",
+    "material": "MAST_U_CFC",
     "display_color": "red",
     "description": "Tile N2 on baffle nose",
     "comments": ""
