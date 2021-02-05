@@ -113,7 +113,7 @@ def read_ircam_raw_int16_sequence_file(path_fn, flip_y=True, n_start=0, n_end=-1
 
     return frame_numbers, data_movie
 
-def generate_json_meta_data_file(path, fn, frame_data, meta_data_dict):
+def generate_json_meta_data_file(path, fn, frame_data, meta_data_dict, t_before_pulse=1e-1):
     """
     See movie_meta_required_fields in plugins_movie.py, line ~260:
       ['n_frames', 'frame_range', 't_range', 'fps', 'lens', 'exposure', 'bit_depth', 'image_shape', 'detector_window']
@@ -136,13 +136,13 @@ def generate_json_meta_data_file(path, fn, frame_data, meta_data_dict):
     image_shape = list(frame_data.shape[1:])
     detector_window = [0, 0] + image_shape[::-1]
     frame_numbers = np.arange(n_frames).tolist()
-    frame_times = np.arange(0, n_frames*period, period).tolist()
+    frame_times = np.arange(0, n_frames*period, period).tolist() - t_before_pulse
     t_range = [min(frame_times), max(frame_times)]
     frame_range = [min(frame_numbers), max(frame_numbers)]
 
     dict_out = dict(n_frames=n_frames, image_shape=image_shape, detector_window=detector_window, frame_period=period,
                     lens=25e-3, bit_depth=14, t_range=t_range, frame_range=frame_range, exposure=0.25e-3,
-                    frame_numbers=frame_numbers, frame_times=frame_times)
+                    frame_numbers=frame_numbers, frame_times=frame_times, t_before_pulse=t_before_pulse)
     dict_out.update(meta_data_dict)
 
     list_out = list(dict_out.items())
@@ -178,7 +178,7 @@ if __name__ == '__main__':
     # fn = 'movie_meta_data.json'
     fn = (str(Path(path_fn_movie).stem) + '_meta.json')
     path_out = str(Path(path_fn_movie).parent)
-    generate_json_meta_data_file(path_out, fn, frame_data=data_movie,
+    generate_json_meta_data_file(path_out, fn, frame_data=data_movie, t_before_pulse=1e-1,
                                  meta_data_dict={'fps': 400, 'exposure': 0.25e-3, 'lens': 25e-3})
 
     plot_movie_frames(data_nuc, frame_label='nuc')
