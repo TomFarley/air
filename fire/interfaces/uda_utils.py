@@ -412,6 +412,7 @@ def plot_uda_dataarray(data, xdim=None, style=None, plot_kwargs=None, ax=None, s
 
     if tight_layout:
         plt.tight_layout()
+
     if show:
         plt.show()
 
@@ -426,7 +427,7 @@ def plot_uda_signal(signal, pulse, dims=None, show=True, verbose=False, **kwargs
                     f'99%={np.percentile(data_array.values,99):0.4g}, max={data_array.max().values:0.4g}')
 
     # pprint(data_array)
-    plot_uda_dataarray(data_array, **kwargs)
+    plot_uda_dataarray(data_array, show=show, **kwargs)
 
 
     # TODO: Add function for plotting slices through data
