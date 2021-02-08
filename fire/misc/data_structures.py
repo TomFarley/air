@@ -48,9 +48,19 @@ meta_defaults_default = {
                   'description': 'Spatial coordinate along surface of PFCs'},
     'surface_id': {'label': 'Surface id', 'units': 'count', 'symbol': '$ID_{surface}$',
                   'description': 'Integer ID specifying what machine component/tile etc is visible at that pixel'},
+    'heat_flux_peak': {'label': 'Peak heat flux', 'units': 'MWm$^{-2}$', 'symbol': '$q_{\perp,peak}$',
+                  'description': 'Peak target heat flux as a function of time'},
+    'heat_flux_r_peak': {'label': 'Target location', 'units': 'm', 'symbol': '$R_{target}$',
+                  'description': 'Radial location of peak target heatflux'},
 
 }
 # TODO: Add dict of alternative names for each variable in meta_defaults_default eg 'S', 's_global'
+param_aliases = {
+    'temperature': 'T',
+    's_global': 'S',
+    's_local': 'S',
+    'frame_data_nuc': 'frame_data'
+}
 
 for key in meta_defaults_default:
     meta_defaults_default[key]['long_name'] = meta_defaults_default[key]['symbol']  # Set longname for xarray plots
@@ -120,6 +130,9 @@ def attach_standard_meta_attrs(data, varname='all', replace=False, key=None):
 
     if key is None:
         key = varname
+
+    if key in param_aliases:
+        key = param_aliases[key]
 
     if (key in meta_defaults_default):
         new_attrs = copy(meta_defaults_default[key])
