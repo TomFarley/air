@@ -348,7 +348,7 @@ def sort_uda_signals_by_ndims(signals, sort_by='dim_names', pulse=23586,
 def plot_uda_signal(signal, pulse, dims=None, ax=None, verbose=False, **kwargs):
     data_array = read_uda_signal_to_dataarray(signal, pulse, dims=dims)
 
-    plot_uda_dataarray(data_array, ax=ax, **kwargs)
+    plot_uda_dataarray(data_array, ax=ax, plot_kwargs=kwargs)
 
 def get_default_plot_kwargs_for_style(style):
     # TODO: Move defaults to json file and add user input option
@@ -403,7 +403,8 @@ def plot_uda_dataarray(data, xdim=None, style=None, plot_kwargs=None, ax=None, s
         plot_method = getattr(data.plot, style)
     else:
         plot_method = data.plot
-    fig_artist = plot_method(**plot_kwargs)
+
+    fig_artist = plot_method(ax=ax, **plot_kwargs)
 
     # ax.set_xlabel(x.attrs['axis_label'])
     # ax.set_ylabel(y.attrs['axis_label'])
@@ -416,7 +417,7 @@ def plot_uda_dataarray(data, xdim=None, style=None, plot_kwargs=None, ax=None, s
     if show:
         plt.show()
 
-def plot_uda_signal(signal, pulse, dims=None, show=True, verbose=False, **kwargs):
+def plot_uda_signal(signal, pulse, dims=None, ax=None, show=True, verbose=False, **kwargs):
 
     data_array = read_uda_signal_to_dataarray(signal, pulse, dims=dims, raise_exceptions=False)
     if isinstance(data_array, Exception):
@@ -427,7 +428,7 @@ def plot_uda_signal(signal, pulse, dims=None, show=True, verbose=False, **kwargs
                     f'99%={np.percentile(data_array.values,99):0.4g}, max={data_array.max().values:0.4g}')
 
     # pprint(data_array)
-    plot_uda_dataarray(data_array, show=show, **kwargs)
+    plot_uda_dataarray(data_array, ax=ax, show=show, plot_kwargs=kwargs)
 
 
     # TODO: Add function for plotting slices through data
