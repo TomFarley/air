@@ -13,7 +13,8 @@ from copy import copy, deepcopy
 import numpy as np
 import pandas as pd
 
-from fire.misc.utils import locate_file, make_iterable, convert_dataframe_values_to_python_types, logger_info
+from fire.misc import utils
+from fire.misc.utils import locate_file, make_iterable, convert_dataframe_values_to_python_types, logger_info, mkdir
 from fire import fire_paths
 from fire.interfaces.exceptions import InputFileException
 
@@ -524,6 +525,35 @@ def read_csv(path_fn: Union[Path, str], clean=True, convert_to_python_types=True
         logger.info(f'Read data from file: {path_fn}')
 
     return table
+
+def to_csv(path_fn: Union[Path, str], data, cols=None, index=None, x_range=None, drop_other_coords=False, sep=',',
+           na_rep='nan', float_format='%0.5g', makedir=True, verbose=True,**kwargs):
+
+    if makedir:
+        mkdir(path_fn, verbose=True)
+
+    if cols is not None:
+        data = data[cols]
+
+    if (index is not None) and (index not in data.dims):
+        data = data.swap_dims({data.dims[0]: index})
+
+    if x_range is not None:
+        x = data.dims[0]
+        data = data.sel({x: slice(*x_range)})
+
+    if drop_other_coords:
+        data = data.reset_coords()[cols]
+
+    table = data.to_dataframe()
+
+    table.to_csv(path_fn, sep=sep, na_rep=na_rep, float_format=float_format, **kwargs)
+
+    if verbose:
+        logger.info(f'Wrote data to file: {path_fn}')
+
+    return table
+
 
 def lookup_pulse_info(pulse: Union[int, str], camera: str, machine: str, search_paths: PathList,
                           filename_patterns: Union[str, Path], params: Optional[dict]=None,
