@@ -1,3 +1,5 @@
 pulse_start,pulse_end,analysis_path_name,author,comments
-43123,43500,MASTU_S3_lower_T2T3_radial_1,Tom Farley,Radial path down most of T2-T3 over LP cable
-43501,100000,MASTU_S1_lower_T5_radial_2,Tom Farley,Reduced length test path radially out up T5 at phi=89 deg
+43123,43159,MASTU_lower_T2T3T4T5_radial_2,Tom Farley,Radial path down most of T2-T3 over LP cable
+43160,43500,MASTU_lower_T2T3T4T5_radial_2,Tom Farley,Radial path down most of T2-T3 over LP cable
+43501,50000,MASTU_S3_lower_T2T3_radial_1,Tom Farley,Reduced length test path radially out up T5 at phi=89 deg
+50001,100000,MASTU_S1_lower_T5_radial_2,Tom Farley,Reduced length test path radially out up T5 at phi=89 deg
