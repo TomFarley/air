@@ -276,7 +276,8 @@
         ]
     },
     "paths_output": {
-        "checkpoint_data": "~/.fire/checkpoint_data/"
+        "checkpoint_data": "~/.fire/checkpoints/",
+        "csv_data": "~/.fire/csvs/"
     },
     "filenames_input": {
         "movie_files": [
