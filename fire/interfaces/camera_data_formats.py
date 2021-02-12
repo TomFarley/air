@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 
 from fire.interfaces.interfaces import read_csv
 from fire import fire_paths
+from fire.scripts.organise_ircam_raw_files import generate_json_meta_data_file_for_ircam_raw
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -63,7 +64,7 @@ def hex8_to_float(hex):
 	temp = hex[-2:]+hex[4:6]+hex[2:4]+hex[0:2]
 	return struct.unpack('!f', bytes.fromhex(temp))[0]
 
-def raw_to_image(raw_digital_level,width,height,digital_level_bytes):
+def raw_frame_data_to_image(raw_digital_level, width, height, digital_level_bytes):
     pixels = width*height
     # raw_digital_level_splitted = textwrap.wrap(raw_digital_level, 4)
     # iterator=map(hex4_to_int,raw_digital_level_splitted)
@@ -73,7 +74,31 @@ def raw_to_image(raw_digital_level,width,height,digital_level_bytes):
         counts_digital_level.append(hex4_to_int(raw_digital_level[i*digital_level_bytes:(i+1)*digital_level_bytes]))
     return np.flip(np.array(counts_digital_level).reshape((height, width)), axis=0)
 
-def read_ircam_raw_int16_sequence_file(path_fn, flip_y=True, n_start=0, n_end=-1):
+def raw_frame_stack_to_images(raw_digital_level, width, height, nframes, digital_level_bytes):
+    raise NotImplementedError
+    pixels = width*height
+    # raw_digital_level_splitted = textwrap.wrap(raw_digital_level, 4)
+    # iterator=map(hex4_to_int,raw_digital_level_splitted)
+    # return np.flip(np.array(list(iterator)).reshape((height,width)),axis=0)
+    counts_digital_level = []
+    for i in range(pixels):
+        counts_digital_level.append(hex4_to_int(raw_digital_level[i*digital_level_bytes:(i+1)*digital_level_bytes]))
+    return np.flip(np.array(counts_digital_level).reshape((height, width)), axis=0)
+
+def get_ircam_raw_int_nframes_and_shape(path_fn, shape=(256, 320), flip_y=True):
+    bit_depth = 14
+    # digital_level_bytes = 2
+    digital_level_bytes = 4
+    data_raw = open(str(path_fn), 'rb').read()
+    data_hex = data_raw.hex()
+    n_bytes_file = len(data_hex)
+    width, height = shape
+    n_pixels = width * height
+    bytes_per_frame = digital_level_bytes * n_pixels
+    n_frames_movie = int(n_bytes_file / bytes_per_frame)
+    return n_frames_movie, shape
+
+def read_ircam_raw_int16_sequence_file(path_fn, flip_y=True, transpose=False, n_start=0, n_end=-1):
 
     bit_depth = 14
     # digital_level_bytes = 2
@@ -98,66 +123,33 @@ def read_ircam_raw_int16_sequence_file(path_fn, flip_y=True, n_start=0, n_end=-1
     n_frames = len(frame_numbers)
     data_movie = np.zeros((n_frames, height, width))
 
+    # TODO: Speed up by having single vectorised function to convert data? raw_frame_stack_to_images
     logger.info(f'Reading {n_frames} frames from IRCAM raw file ({n_bytes_file} bytes, {n_frames_movie} frames): '
                 f'"{path_fn}"')
     for i_array, i_frame in enumerate(frame_numbers):
         frame_hexdata = data_hex[i_frame*bytes_per_frame:(i_frame+1)*bytes_per_frame]
 
-        data = raw_to_image(frame_hexdata, width, height, digital_level_bytes)
+        data = raw_frame_data_to_image(frame_hexdata, width, height, digital_level_bytes)
         data_movie[i_array] = data
         # print(f'min={data.min():0.4g}, mean={data.mean():0.4g}, 1%={np.percentile(data,1):0.4g}, '
         #       f'99%={np.percentile(data,99):0.4g}, max={data.max():0.4g}')
 
     if flip_y:
-        data_movie = data_movie[:,::-1,:]
+        data_movie = data_movie[:, ::-1, :]
+    if transpose:
+        data_movie = data_movie.T
 
     return frame_numbers, data_movie
 
-def generate_json_meta_data_file(path, fn, frame_data, meta_data_dict, t_before_pulse=1e-1):
-    """
-    See movie_meta_required_fields in plugins_movie.py, line ~260:
-      ['n_frames', 'frame_range', 't_range', 'fps', 'lens', 'exposure', 'bit_depth', 'image_shape', 'detector_window']
-
-    Args:
-        path:
-        fn:
-        frame_data:
-        meta_data_dict:
-
-    Returns:
-
-    """
-    from fire.interfaces.interfaces import json_dump
-
-    fps = meta_data_dict['fps']
-    period = 1/fps
-
-    n_frames = len(frame_data)
-    image_shape = list(frame_data.shape[1:])
-    detector_window = [0, 0] + image_shape[::-1]
-    frame_numbers = np.arange(n_frames).tolist()
-    frame_times = np.arange(0, n_frames*period, period).tolist() - t_before_pulse
-    t_range = [min(frame_times), max(frame_times)]
-    frame_range = [min(frame_numbers), max(frame_numbers)]
-
-    dict_out = dict(n_frames=n_frames, image_shape=image_shape, detector_window=detector_window, frame_period=period,
-                    lens=25e-3, bit_depth=14, t_range=t_range, frame_range=frame_range, exposure=0.25e-3,
-                    frame_numbers=frame_numbers, frame_times=frame_times, t_before_pulse=t_before_pulse)
-    dict_out.update(meta_data_dict)
-
-    list_out = list(dict_out.items())
-
-    json_dump(list_out, fn, path, overwrite=True)
-    print(f'Wrote meta data file to: {path}/{fn}')
 
 if __name__ == '__main__':
     from fire.camera.nuc import get_nuc_frame
     from fire.misc.data_structures import movie_data_to_dataarray
     from fire.plotting.image_figures import plot_movie_frames
-    from fire.plotting.temporal_figures import plot_movie_data_stats
+    from fire.plotting.temporal_figures import plot_movie_intensity_stats
 
-    # pulse = 43183
-    pulse = 43163
+    pulse = 43183
+    # pulse = 43163
 
     path_fn_nuc = '/home/tfarley/repos/air/tests/test_data/lab/IRCAM_test_sequence_files/1f_test_nuc_int16.raw'
     # path_fn = '/home/tfarley/repos/air/tests/test_data/lab/IRCAM_test_sequence_files/1f_test_sequence_int16_2.raw'
@@ -178,12 +170,12 @@ if __name__ == '__main__':
     # fn = 'movie_meta_data.json'
     fn = (str(Path(path_fn_movie).stem) + '_meta.json')
     path_out = str(Path(path_fn_movie).parent)
-    generate_json_meta_data_file(path_out, fn, frame_data=data_movie, t_before_pulse=1e-1,
-                                 meta_data_dict={'fps': 400, 'exposure': 0.25e-3, 'lens': 25e-3})
+    generate_json_meta_data_file_for_ircam_raw(path_out, fn, frame_data=data_movie, t_before_pulse=1e-1,
+                                               meta_data_dict={'fps': 400, 'exposure': 0.25e-3, 'lens': 25e-3})
 
     plot_movie_frames(data_nuc, frame_label='nuc')
-    plot_movie_data_stats(data_movie)
-    plot_movie_data_stats(data_movie_nucsub)
+    plot_movie_intensity_stats(data_movie)
+    plot_movie_intensity_stats(data_movie_nucsub)
 
     plot_movie_frames(data_movie_nucsub, cmap_percentiles=(2, 98)) #(0, 100))
 
