@@ -820,5 +820,25 @@ def check_calcam_cad_found(required_models, raise_on_missing=False):
                                 f'conf.cad_def_paths.append(cad_path)')
     return missing_models
 
+def get_calcam_calib(calcam_calib_fn, calcam_calib_path='~/calcam2/calibrations/'):
+    """Return calcam Calibration object for given calibration filename and path
+
+    :param calcam_calib_fn: Calibration filename
+    :param calcam_calib_path: Calcam calibrations path
+    :return: Calibration object
+    """
+    try:
+        # Calcam 2.0+
+        from calcam import Calibration
+        calcam_calib_path_fn = Path(calcam_calib_path).expanduser().resolve() / calcam_calib_fn
+        if calcam_calib_path_fn.suffix != '.ccc':
+            calcam_calib_path_fn = calcam_calib_path_fn.with_suffix(calcam_calib_path_fn.suffix + '.ccc')
+        calcam_calib = Calibration(calcam_calib_path_fn)
+    except ImportError as e:
+        # Calcam 1
+        from calcam import fitting
+        calcam_calib = fitting.CalibResults(calcam_calib_fn)
+    return calcam_calib
+
 if __name__ == '__main__':
     pass
