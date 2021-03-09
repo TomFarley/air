@@ -42,7 +42,8 @@ class MovieReader:
                     "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
                     "{fire_path}/../tests/test_data/{machine}/"]
     movie_fns = ["{camera}0{pulse}.ipx",
-                 "{camera}_{pulse}.npz"]
+                 "{camera}_{pulse}.npz",
+                 "{camera}_{pulse}.raw"]
 
     def __init__(self, movie_plugin_paths: Optional[PathList]=None, plugin_filter: Optional[Sequence[str]]=None,
                  plugin_precedence: Optional[Sequence[str]]=None,
@@ -100,6 +101,13 @@ class MovieReader:
             except IOError as e:
                 exceptions.append(e)
                 continue
+            except ValueError as e:
+                exceptions.append(e)
+                if 'has not returned the following required meta data fields' in str(e):
+                    logger.warning(e)
+                    continue
+                else:
+                    raise e
             except Exception as e:
                 exceptions.append(e)
                 raise e
@@ -118,6 +126,7 @@ class MovieReader:
                         transforms: Optional[Iterable[str]] = ()
                          # check_output: bool=True,
                         ) -> Tuple[Dict[str, Any], Dict[str, str]]:
+        exceptions = []
         for name, plugin in self.plugins.items():
             try:
                 movie_data, origin = plugin.read_movie_data(pulse=pulse, camera=camera, machine=machine,
@@ -128,15 +137,18 @@ class MovieReader:
                                                            # check_output=check_output,
                                                     )
             except IOError as e:
+                exceptions.append(e)
                 continue
             except Exception as e:
+                exceptions.append(e)
                 raise e
             else:
                 if movie_data is not None:
                     self._active_plugin = name
                     break
         else:
-            raise IOError(f'Failed to read movie')
+            raise IOError(f'Failed to read movie meta data for {machine}, {camera}, {pulse} with plugins '
+                          f'{self.plugins.keys()}.\nExceptions: \n{exceptions}')
         return movie_data, origin
 
     @property
@@ -484,9 +496,9 @@ def add_alternative_meta_data_representations(meta_data):
     value = meta_data.get(key, None)
     if value:
         try:
-            meta_data['lens_in_cm'] = int(value*1e2)
+            meta_data['lens_in_mm'] = int(value*1e3)
         except TypeError as e:
-            logger.exception(f'Failed to convert lens focal length value "{value}" to cm')
+            logger.exception(f'Failed to convert lens focal length value "{value}" to mm')
             raise e
 
     key = 'exposure'

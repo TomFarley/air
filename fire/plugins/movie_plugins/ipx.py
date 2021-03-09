@@ -45,6 +45,8 @@ def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> 
     :return: Dictionary of ipx file information
     :type: dict
     """
+    if not Path(path_fn).is_file():
+        raise FileNotFoundError(f'IPX file does not exist: {path_fn}')
     # Read file header and first frame
     vid = ipxReader(filename=path_fn)
     ipx_header = vid.file_header

@@ -39,6 +39,7 @@ UDA_IPX_HEADER_FIELDS = ('board_temp', 'camera', 'ccd_temp', 'codex', 'date_time
                          'filter', 'frame_times', 'gain', 'hbin', 'height', 'is_color', 'left', 'lens',
                          'n_frames', 'offset', 'orientation', 'pre_exp', 'shot', 'strobe', 'taps', 'top', 'trigger',
                          'vbin', 'view', 'width')
+use_mast_client = True
 # UDA_IPX_HEADER_FIELDS = ('board_temp', 'camera', 'ccd_temp', 'date_time', 'depth', 'exposure', 'filter', 'frame_times',
 #                          'gain', 'hbin', 'height', 'is_color', 'left', 'lens', 'n_frames', 'offset', 'pre_exp', 'shot',
 #                          'taps', 'top', 'vbin', 'view', 'width')
@@ -132,7 +133,9 @@ def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:O
     :return: Movie meta data
     """
     # TODO: Update to use new function client.get_images(header_only=True)
-    video = get_uda_movie_obj_legacy(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
+    # video = get_uda_movie_obj_legacy(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
+    video = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
+
     ipx_header = {}
     for key in UDA_IPX_HEADER_FIELDS:
         try:
@@ -192,6 +195,7 @@ def read_movie_data(pulse: int, camera: str,
     """
     # video = get_uda_movie_obj_legacy(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
     video = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end, stride=stride)
+
     if frame_numbers is None:
         if n_start is None:
             n_start = 0
