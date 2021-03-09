@@ -14,12 +14,14 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from fire.misc.utils import make_iterable, to_image_dataset
+from fire.misc.utils import make_iterable
+from fire.misc.data_structures import to_image_dataset
 from fire.plotting.plot_tools import get_fig_ax, legend
-from matplotlib import colors
+from matplotlib import colors, pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from fire.camera.image_processing import find_outlier_pixels
+from fire.plotting import plot_tools
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -41,7 +43,7 @@ cbar_label_defaults = {
                       'ray_lengths_im': r'Distance from camera [m]',
                       }
 
-def figure_xarray_imshow(data, key='data', slice=None, ax=None,
+def figure_xarray_imshow(data, key='data', slice_=None, ax=None,
                          add_colorbar=True, cbar_label=None, robust=True,
                          scale_factor=None, clip_range=(None, None),
                          cmap=None, log_cmap=False, nan_color=('red', 0.2),
@@ -51,10 +53,10 @@ def figure_xarray_imshow(data, key='data', slice=None, ax=None,
     fig, ax, ax_passed = get_fig_ax(ax, num=key)
     data = to_image_dataset(data, key=key)
     data_plot = data[key]
-    if (data_plot.ndim > 2) and (slice is None):
-        slice = {'n': np.floor(np.median(data_plot['n']))}
-    if slice is not None:
-        data_plot = data_plot.sel(slice)
+    if (data_plot.ndim > 2) and (slice_ is None):
+        slice_ = {'n': np.floor(np.median(data_plot['n']))}
+    if slice_ is not None:
+        data_plot = data_plot.sel(slice_)
 
     if cbar_label is None:
         cbar_label = cbar_label_defaults.get(key, key)
@@ -76,7 +78,7 @@ def figure_xarray_imshow(data, key='data', slice=None, ax=None,
 
     kws = {}
     if add_colorbar:
-        # Force xarray generated colorbar to only be hight of image axes and thinner
+        # Force xarray generated colorbar to only be hieght of image axes and thinner
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
         kws.update(dict(cbar_kwargs=dict(label=cbar_label, cax=cax),  # , extend='both'
@@ -108,12 +110,15 @@ def figure_xarray_imshow(data, key='data', slice=None, ax=None,
 
     try:
         data_plot.plot.imshow(ax=ax,
-                          interpolation='none', origin=origin, cmap=cmap, norm=norm, add_colorbar=add_colorbar,
-                          **kws)
+                          interpolation='none', origin=origin, cmap=cmap, norm=norm, add_colorbar=add_colorbar, **kws)
     except ValueError as e:
         logger.warning(f'Failed to plot {key} image data. Data has {data_plot.ndims} dims.')
         raise
-    ax.title.set_fontsize(10)
+    ax.title.set_fontsize(10)  # TODO: Add option to turn off axes titles
+
+    # Make axes interactive so clicking prints out coordinates and values
+    cs = plot_tools.CoordSelector(fig, data=data, vars=['R_im', 'phi_deg_im', 'z_im', 'x_im', 'y_im'] + [key],
+                                  slice_=slice_, axes=ax)
 
     if axes_off:
         ax.set_axis_off()
@@ -139,7 +144,7 @@ def figure_frame_data(data, ax=None, n='median', key='frame_data', label_outlier
         n = frame_data.mean(dim=('x_pix', 'y_pix')).argmax(dim='n', skipna=True)
     slice = {'n': n} if (n is not None) else None
 
-    figure_xarray_imshow(data, key, slice=slice, ax=ax, axes_off=axes_off, aspect=aspect,
+    figure_xarray_imshow(data, key, slice_=slice, ax=ax, axes_off=axes_off, aspect=aspect,
                          save_fn=save_fn, show=show, **kwargs)
     if label_outliers:
         plot_outlier_pixels(data, key=key, ax=ax, **kwargs)
@@ -182,12 +187,12 @@ def figure_analysis_path(path_data, image_data=None, key=None, path_names='path0
     if image_data:
         if key is not None:
             image_kwargs = {} if image_kwargs is None else image_kwargs
-            figure_xarray_imshow(image_data, key=key, slice=slice, ax=ax, show=False, **image_kwargs)
+            figure_xarray_imshow(image_data, key=key, slice_=slice, ax=ax, show=False, **image_kwargs)
         if image_shape is None:
             if key is None:
                 key = 'frame_data'
             if slice is None:
-                slice = {} if image_data[key].ndim == 2 else {'n': 0}
+                slice = {} if image_data[key].ndim == 2 else {'n': image_data['n'].values[0]}
             image_shape = image_data[key].sel(slice).shape
     # Frame outline
     if frame_border and (image_shape is not None):
@@ -208,9 +213,18 @@ def figure_analysis_path(path_data, image_data=None, key=None, path_names='path0
     return ax
 
 def plot_frame_border(ax, image_shape):
+    """
+    NOTE imshow puts integer coords at centre of pixels so borders of pixels are offset by [--0.5, -0.5]
+    Args:
+        ax: mpl axis instance
+        image_shape: size of image in pixels (y, x)
+
+    Returns: None
+
+    """
     if len(image_shape) != 2:
         raise ValueError(f'Expected 2D image shape, not: {image_shape}')
-    ax.add_patch(mpl.patches.Rectangle((0, 0), image_shape[1], image_shape[0], color='k', fill=False))
+    ax.add_patch(mpl.patches.Rectangle((-0.5, -0.5), image_shape[1]-0.5, image_shape[0]-0.5, color='k', fill=False))
 
 def plot_detector_window(ax, detector_window):
     if len(detector_window) != 4:
@@ -333,8 +347,8 @@ def plot_image_data_temporal_stats(data, key, ax=None, stats=('max', 'mean', 'me
     if show:
         plt.show()
 
-def animate_frame_data(data, key='frame_data', ax=None, duration=10, interval=None, cmap='gray',
-                       axes_off=True, fig_kwargs=None, nth_frame='dynamic', save_kwargs=None,
+def animate_frame_data(data, key='frame_data', ax=None, duration=10, interval=None, cmap='gray', cbar_range=None,
+                       axes_off=True, fig_kwargs=None, nth_frame='dynamic', n_start=None, n_end=None, save_kwargs=None,
                        save_path_fn=None, show=True, **kwargs):
     if fig_kwargs is None:
         fig_kwargs = {'num': key}
@@ -343,6 +357,14 @@ def animate_frame_data(data, key='frame_data', ax=None, duration=10, interval=No
     #     if save_path_fn.is_dir():
     #         fn = fn_pattern.format(pulse=pulse, key=key)
     frames = data[key]
+
+    if (n_start is not None) or (n_end is not None):
+        if n_start is None:
+            n_start = 0
+        if n_end is None:
+            n_end = len(frames)-1
+        frames = frames[n_start:n_end]
+
     n_frames = len(frames)
     if nth_frame == 'dynamic':
         nth_frame = int(np.floor(np.max([1, (np.log10(n_frames)-1)**3])))
@@ -350,11 +372,12 @@ def animate_frame_data(data, key='frame_data', ax=None, duration=10, interval=No
 
     fig, ax, anim = animate_image_data(frames, ax=ax, duration=duration, interval=interval, cmap=cmap,
                                        axes_off=axes_off, fig_kwargs=fig_kwargs, nth_frame=nth_frame,
+                                       cbar_range=cbar_range,
                                        save_path_fn=save_path_fn, show=show, **kwargs)
     return fig, ax, anim
 
 def animate_image_data(frames, ax=None, duration=None, interval=None, cmap='viridis', axes_off=True, fig_kwargs=None,
-                       nth_frame=1, save_kwargs=None, save_path_fn=None, show=True):
+                       nth_frame=1, cbar_range=None, save_kwargs=None, save_path_fn=None, show=True):
     # import numpy as np
     # import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation
@@ -364,10 +387,11 @@ def animate_image_data(frames, ax=None, duration=None, interval=None, cmap='viri
     if fig_kwargs is None:
         fig_kwargs = {}
 
-    nframes = int(len(frames) / nth_frame)
-    frame_nos = np.arange(0, nframes, nth_frame, dtype=int)
+    nframes_total = len(frames)
+    nframes_animate = int(nframes_total / nth_frame)
+    frame_nos = np.arange(0, nframes_total, nth_frame, dtype=int)
 
-    logger.info(f'Plotting matplotlib annimation ({nframes} frames)')
+    logger.info(f'Plotting matplotlib annimation ({nframes_animate} frames)')
 
     fig, ax, ax_passed = get_fig_ax(ax=ax, **fig_kwargs)
 
@@ -375,15 +399,29 @@ def animate_image_data(frames, ax=None, duration=None, interval=None, cmap='viri
         if (duration is None):  # duration fo whole movie/animation in s
             interval = 200  # ms
         else:
-            interval = duration / nframes * 1000
+            interval = duration / nframes_animate * 1000
 
     img_data = frames[0]
     img = ax.imshow(img_data, cmap=cmap)
 
+    if cbar_range is not None:
+        vmin, vmax = np.percentile(frames, cbar_range[0]), np.percentile(frames, cbar_range[1])
+        if cbar_range[1] != 100 and cbar_range[0] != 0:
+            extend = 'both'
+        elif cbar_range[1] != 100 and cbar_range[0] == 0:
+            extend = 'max'
+        elif cbar_range[1] == 100 and cbar_range[0] != 0:
+            extend = 'min'
+        else:
+            extend = 'neither'
+    else:
+        vmin, vmax = None, None
+        extend = 'neither'
+
     div = make_axes_locatable(ax)
     ax_cbar = div.append_axes('right', '5%', '5%')
-    cbar = fig.colorbar(img, cax=ax_cbar)
-    tx = ax.set_title(f'Frame 0/{nframes-1}')
+    cbar = fig.colorbar(img, cax=ax_cbar, extend=extend)
+    tx = ax.set_title(f'Frame 0/{nframes_animate-1}')
 
     if axes_off:
         ax.set_axis_off()
@@ -398,13 +436,15 @@ def animate_image_data(frames, ax=None, duration=None, interval=None, cmap='viri
         # return ln,
         pass
 
-    def update(frame_no):
+    def update(frame_no, vmin, vmax):
         # xdata.append(frame)
         # ydata.append(np.sin(frame))
         # ln.set_data(xdata, ydata)
         frame = frames[frame_no]
-        vmax = np.max(frame)
-        vmin = np.min(frame)
+        if vmin is None:
+            vmax = np.max(frame)
+        if vmax is None:
+            vmin = np.min(frame)
 
         img.set_data(frame)
         img.set_clim(vmin, vmax)
@@ -413,16 +453,16 @@ def animate_image_data(frames, ax=None, duration=None, interval=None, cmap='viri
         # cf = ax.contourf(frame, vmax=vmax, vmin=vmin, levels=levels)
         # ax_cbar.cla()
         # fig.colorbar(img, cax=ax_cbar)
-        tx.set_text(f'Frame {frame_no}/{nframes-1}')
+        tx.set_text(f'Frame {frame_no}/{nframes_animate-1}')
         # return img, cbar, tx
         # return ln,
 
-    anim = FuncAnimation(fig, update, frames=frame_nos, #np.linspace(0, 2 * np.pi, 128),
+    anim = FuncAnimation(fig, update, frames=frame_nos, fargs=(vmin, vmax),  # np.linspace(0, 2 * np.pi, 128),
                         interval=interval,
                         # init_func=init,
                         blit=False)
     if save_path_fn is not None:
-        save_path_fn = str(Path(save_path_fn).resolve())
+        save_path_fn = str(Path(save_path_fn).expanduser().resolve())
         try:
             kwargs = dict(fps=30)
             if save_kwargs is not None:
@@ -450,3 +490,36 @@ if __name__ == '__main__':
 
     animate_image_data(frames)
     pass
+
+
+def plot_movie_frames(data_movie, cmap_percentiles=(1, 99), frame_label=None):
+    """Plot image for each frame of 3D ndarray
+
+    Args:
+        data_movie: 3D/2D ndarray, shape (t, y, x) or (y, x)
+        cmap_percentiles: tuple of percentiles to use for vmin, vmax to be robust to outliers
+
+    Returns: None
+
+    """
+    # print('Plotting movie')
+    if data_movie.ndim == 3:
+        n_frames = len(data_movie)
+
+        for i_frame in np.arange(n_frames):
+            data_frame = data_movie[i_frame]
+            frame_lab = i_frame if frame_label is None else frame_label
+            plot_frame(data_frame, frame_label=frame_lab, cmap_percentiles=cmap_percentiles)
+    elif data_movie.ndim == 2:
+        frame_lab = 0 if frame_label is None else frame_label
+        plot_frame(data_movie, frame_label=frame_lab, cmap_percentiles=cmap_percentiles)
+
+
+def plot_frame(data_frame, frame_label=np.nan, cmap_percentiles=(1, 99)):
+    plt.figure(f'Frame {frame_label}')
+    plt.imshow(data_frame, interpolation='none', cmap='gray',
+               vmin=np.percentile(data_frame, cmap_percentiles[0]),
+               vmax=np.percentile(data_frame, cmap_percentiles[1]))
+    plt.colorbar()
+    plt.tight_layout()
+    plt.show()
