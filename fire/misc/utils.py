@@ -6,19 +6,16 @@
 Created: 11-10-19
 """
 
-import logging, inspect, os, re
+import logging, inspect, os, re, time
 from typing import Union, Iterable, Tuple, List, Optional, Any, Sequence, Callable
 from pathlib import Path
 from copy import copy
 
 import numpy as np
-import scipy as sp
-from scipy import stats, interpolate
-import pandas as pd
 import xarray as xr
+from scipy import interpolate
+import pandas as pd
 from matplotlib import pyplot as plt
-
-from fire.misc import data_structures
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -30,44 +27,6 @@ try:
 except Exception as e:
     string_types = (str,)  # python3
 
-def movie_data_to_dataarray(frame_data, frame_times, frame_nos=None, meta_data=None, name='frame_data'):
-    """Return frame data in xarray.DataArray object
-
-    Args:
-        frame_data  : Array of camera digit level data with dimensions [t, y, x]
-        frame_times : Array of frame times
-        frame_nos   : Array of frame numbers
-
-    Returns: DataArray of movie data
-
-    """
-    if frame_nos is None:
-        frame_nos = np.arange(frame_data.shape[0])
-    if meta_data is None:
-        meta_data = {}
-    frame_data = xr.DataArray(frame_data, dims=['t', 'y_pix', 'x_pix'],
-                              coords={'t': frame_times, 'n': ('t', frame_nos),
-                                      'y_pix': np.arange(frame_data.shape[1]),
-                                      'x_pix': np.arange(frame_data.shape[2])},
-                              name=name)
-    # Default to indexing by frame number
-    frame_data = frame_data.swap_dims({'t': 'n'})
-    if 'frame_data' in meta_data:
-        frame_data.attrs.update(meta_data['frame_data'])
-        frame_data.attrs['label'] = frame_data.attrs['description']
-    else:
-        logger.warning(f'No meta data supplied for coordinate: {"frame_data"}')
-
-    coords = ['n', 't', 'x_pix', 'y_pix']
-    for coord in coords:
-        if coord in meta_data:
-            frame_data[coord].attrs.update(meta_data[coord])
-            # UDA requires 'label' while xarray uses description
-            frame_data[coord].attrs['label'] = frame_data[coord].attrs['description']
-        else:
-            logger.warning(f'No meta data supplied for coordinate: {coord}')
-
-    return frame_data
 
 def update_call_args(user_defaults, pulse, camera, machine):
     """Replace 'None' values with user's preassigned default values
@@ -135,13 +94,15 @@ def make_iterable(obj: Any, ndarray: bool=False,
             raise TypeError(f'Invalid cast type: {cast_to}')
     return obj
 
-def is_scalar(var, ndarray_0d=True):
+def is_scalar(var, ndarray_0d=True, dataarray_0d=True):
     """ True if variable is scalar or string"""
     if isinstance(var, str):
         return True
+    elif isinstance(var, (xr.DataArray)) and var.values.ndim == 0:
+        return dataarray_0d
     elif hasattr(var, "__len__"):
         return False
-    elif isinstance(var, np.ndarray) and var.ndim == 0:
+    elif isinstance(var, (np.ndarray)) and var.ndim == 0:
         return ndarray_0d
     else:
         return True
@@ -207,7 +168,7 @@ def str_to_number(string, cast=None, expect_numeric=False):
 def ndarray_0d_to_scalar(array):
     """Convert 0D (single element) array to a scalar number (ie remove nested array)"""
     out = array
-    if isinstance(array, np.ndarray) and array.ndim == 0:
+    if isinstance(array, (np.ndarray, xr.DataArray)) and array.ndim == 0:
         out = array.item()
     return out
 
@@ -272,8 +233,6 @@ def is_in(items, collection):
     out = pd.Series(items).isin(collection).values
     return out
 
-import numpy as np
-
 def nan_helper(y):
     """Helper to handle indices and logical indices of NaNs.
 
@@ -315,6 +274,40 @@ def interpolate_out_nans(array_with_nans, interp_kind='linear', boundary_fill_va
     array_out[nan_mask] = f(i_nan)
 
     return array_out
+
+
+def func_name(level=0):
+    return inspect.stack()[level+1][3]
+
+def module_name(level=0):
+    """ Return name of the module level levels from where this
+    function was called. level = 1 goes 1 level further up the stack """
+    # return inspect.getmodulename(inspect.stack()[level+1][1])
+    # print 'tf_debug.py, 85:', os.path.basename(inspect.stack()[level+1][1])
+    try:
+        name = os.path.basename(inspect.stack()[level+1][1])
+    except IndexError:
+        print('tf_debug: Failed to return module name. See stack:')
+        try:
+            print(inspect.stack())
+        except:
+            print("inspect module doesn't seem to be working at all!")
+        name = '*UNKNOWN*'
+    return name
+
+def line_no(level=0):
+    """ Return line number level levels from where this
+    function was called. level = 1 goes 1 level further up the stack """
+    try:
+        line = str(inspect.stack()[level+1][2])
+    except IndexError:
+        print('tf_debug: Failed to return line number. See stack:')
+        try:
+            print(inspect.stack())
+        except:
+            print("inspect module doesn't seem to be working at all!")
+        line = '*UNKNOWN*'
+    return line
 
 def get_traceback_location(level=0, format='{module_name}:{func_name}:{line_no} '):
     """Returns an informative prefix for verbose Debug output messages"""
@@ -767,6 +760,19 @@ def format_str(string, kwargs, kwarg_aliases=None, kwarg_aliases_key='key_mappin
             raise e
     return string_out
 
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst.
+
+    Args:
+        lst: Series object eg list or string
+        n: Chunk size
+
+    Returns: Generator for chunks
+
+    """
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
 def increment_figlabel(label, i=2, suffix=' ({i})', start_With_siffix=False):
     num = label if not start_With_siffix else label + suffix.format(i=i)
     while num in plt.get_figlabels():
@@ -774,35 +780,6 @@ def increment_figlabel(label, i=2, suffix=' ({i})', start_With_siffix=False):
         i += 1
     return num
 
-
-def to_image_dataset(data, key='data'):
-    if isinstance(data, xr.Dataset):
-        dataset = data
-    elif isinstance(data, xr.DataArray):
-        dataset = xr.Dataset({data.name: data})
-    elif isinstance(data, np.ndarray):
-        # Use calcam convention: image data is indexed [y, x], but image shape description is (nx, ny)
-        ny, nx = data.shape
-        x_pix = np.arange(nx)
-        y_pix = np.arange(ny)
-        dataset = xr.Dataset(coords={'x_pix': x_pix, 'y_pix': y_pix})
-        # data = xr.Dataset({'data': (('y_pix', 'x_pix'), data)}, coords={'x_pix': x_pix, 'y_pix': y_pix})
-        dataset[key] = (('y_pix', 'x_pix'), data)
-        dataset['x_pix'].attrs.update({
-            'long_name': '$x_{pix}$',
-            'units': '',
-            'description': 'Camera x pixel coordinate'})
-        dataset['y_pix'].attrs.update({
-            'long_name': '$y_{pix}$',
-            'units': '',
-            'description': 'Camera y pixel coordinate'})
-        dataset = data_structures.attach_standard_meta_attrs(dataset, varname=key)
-        # TODO: Move to utils/data_structures?
-        # TODO: fix latex display of axis labels
-        # TODO: use this func in calcam_calibs get_surface_coords
-    else:
-        raise ValueError(f'Unexpected image data type {data}')
-    return dataset
 
 def delete_file(fn, path=None, ignore_exceptions=(), raise_on_fail=True, verbose=True):
     """Delete file with error handelling
@@ -870,6 +847,261 @@ def logger_info(logger_arg):
           f'handlers {logger_arg.handlers}')
     return info
 
+def func_name(level=0):
+    return inspect.stack()[level+1][3]
+
+def module_name(level=0):
+    """ Return name of the module level levels from where this
+    function was called. level = 1 goes 1 level further up the stack """
+    # return inspect.getmodulename(inspect.stack()[level+1][1])
+    # print 'tf_debug.py, 85:', os.path.basename(inspect.stack()[level+1][1])
+    try:
+        name = os.path.basename(inspect.stack()[level+1][1])
+    except IndexError:
+        print('tf_debug: Failed to return module name. See stack:')
+        try:
+            print(inspect.stack())
+        except:
+            print("inspect module doesn't seem to be working at all!")
+        name = '*UNKNOWN*'
+    return name
+
+def line_no(level=0):
+    """ Return line number level levels from where this
+    function was called. level = 1 goes 1 level further up the stack """
+    try:
+        line = str(inspect.stack()[level+1][2])
+    except IndexError:
+        print('tf_debug: Failed to return line number. See stack:')
+        try:
+            print(inspect.stack())
+        except:
+            print("inspect module doesn't seem to be working at all!")
+        line = '*UNKNOWN*'
+    return line
+
+def get_traceback_location(level=0, format='{module_name}:{func_name}:{line_no}'):
+    """Returns an informative prefix for verbose Debug output messages"""
+    module = module_name(level=level)
+    func = func_name(level=level)
+    line = line_no(level=level)
+    return format.format(module_name=module, func_name=func, line_no=line)
+
+def whereami(level=0):
+    """ Return a string detailing the line number, function name and filename from level relative to where this
+    function was called """
+
+    # string = module_name(level=level+1)+', '+func_name(level=level+1)+', '+line_no(level=level+1)+': '
+    string = line_no(level=level+1)+', '+func_name(level=level+1)+', '+module_name(level=level+1)+':\t'
+    return string
+
+def file_line(level=1):
+    """ Return string containing filename and line number at level """
+    return module_name(level=level+1)+', '+line_no(level=level+1)+': '
+
+
+def traceback(level=0):
+    """ Return string listing the full fraceback at the level relative to where this function was called """
+    string = 'Traceback:\n'
+    while not (func_name(level=level) == '<module>'):
+        string += line_no(level=level+1)+', '+func_name(level=level+1)+', '+module_name(level=level+1)+'\n'
+        level += 1
+    return string.rstrip()
+
+def print_progress(iteration, total, prefix='', suffix='', frac=False, t0=None,
+                  decimals=2, nth_loop=2, barLength=50, flush=True):
+    """
+    Based on http://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
+
+    Call at start of a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration starting at 0 (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : number of decimals in percent complete (Int)
+        barLength   - Optional  : character length of bar (Int)
+    """
+    # TODO: convert to class with __call__ (print 0% on __init__) - add to timeline class
+    # TODO: Change/add nth_loop to min time between updates
+    # TODO: Add compatibility for logger handlers
+    # TODO: Make bar optional
+    if (iteration % nth_loop != 0) and (
+            iteration != total - 1):  # Only print every nth loop to reduce slowdown from printing
+        return
+    from datetime import datetime
+    from dateutil.relativedelta import relativedelta
+    filledLength = int(round(barLength * iteration / float(total)))
+    percents = round(100.00 * (iteration / float(total)), decimals)
+    bar = '|' * filledLength + '-' * (barLength - filledLength)
+    frac = '{}/{} '.format(iteration, total) if frac else ''
+    if t0 is None:
+        time = ''
+    else:
+        if isinstance(t0, float):
+            # Convert float time from time.time() (seconds since the Epoch) to datetime
+            t0 = datetime.fromtimestamp(t0)
+        t1 = datetime.now()
+        t_diff_past = relativedelta(t1, t0)  # time past in loop
+        mul = float(total - iteration) / iteration if iteration > 0 else 0
+        t_diff_rem = t_diff_past * mul  # estimate of remaining time
+        t_diff_past = '({h}h {m}m {s}s)'.format(h=t_diff_past.hours, m=t_diff_past.minutes, s=t_diff_past.seconds)
+        if t_diff_rem.hours > 0:  # If expected to take over an hour display date and time of completion
+            t_diff_rem = (datetime.now() + t_diff_rem).strftime("(%d/%m/%y %H:%M)")
+        else:  # Display expected time remaining
+            t_diff_rem = '({h}h {m}m {s}s)'.format(h=t_diff_rem.hours, m=t_diff_rem.minutes, s=t_diff_rem.seconds)
+        if mul == 0:
+            t_diff_rem = '?h ?m ?s'
+        time = ' {past} -> {remain}'.format(past=t_diff_past, remain=t_diff_rem)
+
+    sys.stdout.write('\r %s |%s| %s%s%s%s %s' % (prefix, bar, frac, percents, '%', time, suffix)),
+    if flush:
+        sys.stdout.flush()
+    if iteration == total:
+        sys.stdout.write('\n')
+        sys.stdout.flush()
+
+
+def compare_dict(dict1, dict2, tol=1e-12, top=True):
+    """ Recursively check that two dictionaries and all their constituent sub dictionaries have the same numerical
+    values. Avoids floating point precision comparison problems.
+    """
+    assert(isinstance(dict1, dict) and isinstance(dict2, dict))
+    from collections import Counter
+    if Counter(dict1.keys()) != Counter(dict2.keys()):  # Use counter to ignore order (if objects are hashable)
+        print('def compare_numeric_dict: Dictionaries have different keys:\ndict1: {}\ndict2: {}'.format(
+            dict1.keys(), dict2.keys()))
+        return False
+
+    for key in dict1.keys():
+        if isinstance(dict1[key], dict) or isinstance(dict2[key], dict):
+
+            if not (isinstance(dict1[key], dict) and isinstance(dict2[key], dict)):
+                logger.debug('Dictionaries are different - One value is a dict while the other is not')
+                return False
+            if compare_dict(dict1[key], dict2[key], top=False) is False:
+                return False
+        # elif isinstance(dict2[key], dict):
+        #     if compare_numeric_dict(dict1, dict2[key], top=False) is False:
+        #         return False
+        else:
+            try:
+                if np.abs(dict1[key]-dict2[key]) > tol:  # numerical
+                    return False
+            except TypeError:
+                if dict1[key] != dict2[key]:  # string etc
+                    return False
+    return True
+
+
+def is_subset(subset, full_set):
+    """Return True if all elements of subset are in fullset"""
+    return set(subset).issubset(set(full_set))
+
+def args_for(func, kwargs, include=(), exclude=(), match_signature=True, named_dict=True, remove=True):
+    """Return filtered dict of args from kwargs that match input for func.
+    :param - Effectively filters kwargs to return those arguments
+    :param - func            - function(s) to provide compatible arguments for
+    :param - kwargs          - list of kwargs to filter for supplied function
+    :param - exclude         - list of kwargs to exclude from filtering
+    :param - match_signature - apply filtering to kwargs based on func call signature
+    :param - named_dict      - if kwargs contains a dict under key '<func_name>_args' return its contents (+ filtered kwargs)
+    :param - remove          - remove filtered kwargs from original kwargs
+    """
+    #TODO: Include positional arguments!
+    func = make_iterable(func)  # Nest lone function in list for itteration, TODO: Handle itterable classes
+    kws = {}
+    keep = []  # list of argument names
+    name_args = []
+    for f in func:
+        # Add arguments for each function to list of arguments to keep
+        if isinstance(f, type):
+            # If a class look at it's __init__ method
+            keep += list(inspect.signature(f.__init__).parameters.keys())
+        else:
+            keep += list(inspect.signature(f).parameters.keys())
+        name_args += ['{name}_args'.format(name=f.__name__)]
+    if match_signature:
+        matches = {k: v for k, v in kwargs.items() if (((k in keep) and (k not in exclude)) or (k in include))}
+        kws.update(matches)
+    if named_dict:  # Look for arguments <function>_args={dict of keyword arguments}
+        keep_names = {k: v for k, v in kwargs.items() if (k in name_args)}
+        kws.update(keep_names)
+    if remove:  # Remove key value pairs from kwargs that were transferred to kws
+        for key in kws:
+            kwargs.pop(key)
+    return kws
+
+
+def argsort(itterable):
+    #http://stackoverflow.com/questions/3382352/equivalent-of-numpy-argsort-in-basic-python/3382369#3382369
+    #by unutbu
+    try:
+        out = sorted(range(len(itterable)), key=itterable.__getitem__)
+    except TypeError as e:
+        itterable = [str(val) for val in itterable]
+        out = sorted(range(len(itterable)), key=itterable.__getitem__)
+    return out
+
+def args_for(func, kwargs, include=(), exclude=(), match_signature=True, named_dict=True, remove=True):
+    """Return filtered dict of args from kwargs that match input for func.
+    :param - Effectively filters kwargs to return those arguments
+    :param - func            - function(s) to provide compatible arguments for
+    :param - kwargs          - list of kwargs to filter for supplied function
+    :param - exclude         - list of kwargs to exclude from filtering
+    :param - match_signature - apply filtering to kwargs based on func call signature
+    :param - named_dict      - if kwargs contains a dict under key '<func_name>_args' return its contents (+ filtered kwargs)
+    :param - remove          - remove filtered kwargs from original kwargs
+    """
+    #TODO: Include positional arguments!
+    func = make_iterable(func)  # Nest lone function in list for itteration, TODO: Handle itterable classes
+    kws = {}
+    keep = []  # list of argument names
+    name_args = []
+    for f in func:
+        # Add arguments for each function to list of arguments to keep
+        if isinstance(f, type):
+            # If a class look at it's __init__ method
+            keep += list(inspect.signature(f.__init__).parameters.keys())
+        else:
+            keep += list(inspect.signature(f).parameters.keys())
+        name_args += ['{name}_args'.format(name=f.__name__)]
+    if match_signature:
+        matches = {k: v for k, v in kwargs.items() if (((k in keep) and (k not in exclude)) or (k in include))}
+        kws.update(matches)
+    if named_dict:  # Look for arguments <function>_args={dict of keyword arguments}
+        keep_names = {k: v for k, v in kwargs.items() if (k in name_args)}
+        kws.update(keep_names)
+    if remove:  # Remove key value pairs from kwargs that were transferred to kws
+        for key in kws:
+            kwargs.pop(key)
+    return kws
+
+def in_freia_batch_mode():
+    """Return True if current python interpreter is being run as a batch job (ie no display for plotting etc)"""
+    batch_mode = os.getenv('LOADL_ACTIVE', None)
+    return batch_mode == 'yes'
+
+def ask_input_yes_no(message, suffix=' ([Y]/n)? ', message_format='{message}{suffix}', default_yes=True,
+                     batch_mode_default=True, sleep=0.1):
+    """Ask yes/no question to raw input"""
+    if in_freia_batch_mode():
+        return batch_mode_default
+    if default_yes is False:
+        suffix = ' (y/[N])? '
+    if sleep:
+        # Make sure logging output has time to clear before prompt is printed
+        time.sleep(sleep)
+    question = message_format.format(message=message, suffix=suffix)
+    answer = input(question)
+    accept = ['y', 'yes']
+    if default_yes:
+        accept.append('')
+    if answer.lower() in accept:
+        out = True
+    else:
+        out = False
+    return out
 
 if __name__ == '__main__':
     pass
