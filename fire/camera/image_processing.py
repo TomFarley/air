@@ -217,13 +217,15 @@ def filter_unknown_materials_from_analysis_path(path_data, path_name, missing_ma
             continue
 
         coord_name_known_mat = coord.replace(in_frame_str, '')
+        coord_key = 'i_path'
         data_known_mat = path_data[coord].sel({coord_i_path: mask_known_material})
         attrs = path_data[coord].attrs
         path_data[coord_name_known_mat] = (coords_i_path_known_mat, data_known_mat)
         path_data = path_data.assign_coords(**{coord_name_known_mat:
                                                    (coords_i_path_known_mat, path_data[coord_name_known_mat].values)})
         path_data[coord_name_known_mat].attrs.update(attrs)
-        path_data = data_structures.attach_standard_meta_attrs(path_data, varname=coord_name_known_mat, replace=False)
+        path_data = data_structures.attach_standard_meta_attrs(path_data, varname=coord_name_known_mat,
+                                                               replace=False, key=coord_key)
 
     # Make sure new i path index starts at 1 and is unity spaced
     coords_known_mat = {coords_i_path_known_mat: (coords_i_path_known_mat, np.arange(np.sum(mask_known_material)))}
