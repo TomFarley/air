@@ -26,6 +26,7 @@ def search_for_plugins(plugin_paths, attributes_requried, attributes_optional=No
 
     plugin_paths = make_iterable(plugin_paths)
     for path in plugin_paths:
+        # TODO: Catch module not found errors for failed plugins
         plugins, info = get_plugins(path, attributes_requried, attributes_optional=attributes_optional)
         plugins_all.update(plugins)
         info_all.update(info)

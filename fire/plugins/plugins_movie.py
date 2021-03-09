@@ -85,6 +85,7 @@ class MovieReader:
 
             self._plugins[name] = MoviePlugin.build_from_plugin_dict(name, plugin_dict, plugin_info=info)
         if len(self._plugins) == 0:
+            # TODO: catch module not found errors eg pyIpx missing
             raise IOError(f'Failed to load any movie reader plugins')
 
     def read_movie_meta_data(self, pulse: Union[int, str], camera: str, machine: str,
