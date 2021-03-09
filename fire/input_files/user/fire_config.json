@@ -221,6 +221,7 @@
                     "get_wall_rz_coords": "get_wall_rz_coords",
                     "plot_vessel_outline": "plot_vessel_outline",
                     "plot_vessel_top_down": "plot_vessel_top_down",
+                    "label_tiles": "label_tiles",
                     "info": "plugin_info"
                 }
             }
@@ -277,7 +278,8 @@
     },
     "paths_output": {
         "checkpoint_data": "~/.fire/checkpoints/",
-        "csv_data": "~/.fire/csvs/"
+        "csv_data": "~/.fire/csvs/",
+        "gifs": "~/.fire/gifs/"
     },
     "filenames_input": {
         "movie_files": [
@@ -313,6 +315,7 @@
     },
     "outputs": {
         "active_formats": [
+            "pickle_output",
             "uda_putdata"
         ],
         "file_header": {
