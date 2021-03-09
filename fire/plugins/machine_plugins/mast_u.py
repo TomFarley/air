@@ -12,6 +12,7 @@ Author: Tom Farley (tom.farley@ukaea.uk)
 Created: 01-2020
 """
 import logging
+from copy import copy
 
 import numpy as np
 from fire.plotting.plot_tools import format_poloidal_plane_ax
@@ -20,6 +21,7 @@ from fire.geometry.s_coordinate import interpolate_rz_coords, separate_rz_points
 
 from fire.geometry.geometry import cartesian_to_toroidal
 from fire.misc.utils import make_iterable
+from fire.plotting import plot_tools
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -65,7 +67,7 @@ surface_radii = {'R_wall': 2.0,
                 'n_sectors': 12,
                 }
 
-def get_wall_rz_coords(no_cal=True, signal="/limiter/efit", shot=50000, ds=None):
+def get_wall_rz_coords(no_cal=True, signal="/limiter/efit", shot=50000, ds=None, use_mast_client=False):
     """Return (R, Z) coordinates of points defining wall outline of MAST-U tile surfaces
 
     This is normally safe to call with default arguments.
@@ -74,13 +76,16 @@ def get_wall_rz_coords(no_cal=True, signal="/limiter/efit", shot=50000, ds=None)
         no_cal: Whether to return idealised CAD coordinates without spatial calibration corrections
         signal: UDA signal for wall coords
         shot: Shot number to get wall definition for
+        use_mast_client: Whether to use mast uda client
 
     Returns: Tuple of (R, Z) coordinate arrays
 
     """
-    import pyuda
+    # import pyuda
+    from fire.interfaces import uda_utils
     # TODO: Enable returning wall for MAST ie shot < 50000
-    client=pyuda.Client()
+    # client=pyuda.Client()
+    client = uda_utils.get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
     wall_data = client.geometry(signal, shot, no_cal=no_cal)
     r = wall_data.data.R
     z = wall_data.data.Z
@@ -137,14 +142,14 @@ def get_s_coords_tables_mastu(ds=1e-4, no_cal=True, signal="/limiter/efit", shot
     s = {'s_bottom': s_bottom, 's_top': s_top}
     # s_bottom = s_bottom.to_xarray().rename({'s': 's_bottom'})
     # s_top = s_top.to_xarray().rename({'s': 's_top'})
-    # s = xr.merge([s_bottom, s_top])
+    # s = xr.merge([s_bottom, s_top])  # , combine_attrs='no_conflicts')
     return s
 
 # def get_s_coord_table_for_point():
 
 # TODO: Import from mastcodes/uda/python/mast/geom/geomTileSurfaceUtils.py ? - from mast.geom.geomTileSurfaceUtils
 
-def get_nearest_s_coordinates_mastu(r, z, tol=5e-3, ds=1e-3, no_cal=True, signal="/limiter/efit", shot=50000):
+def get_nearest_s_coordinates_mastu(r, z, tol=25e-3, ds=1e-3, no_cal=True, signal="/limiter/efit", shot=50000):
     """Return closest tile surface 's' coordinates for supplied (R, Z) coordinates
 
     Args:
@@ -152,6 +157,7 @@ def get_nearest_s_coordinates_mastu(r, z, tol=5e-3, ds=1e-3, no_cal=True, signal
         z: Array of vertical Z coordinates
         tol: Tolerance distance for points from wall - return nans if further away than tolerance.
              5mm is appropriate for most surfaces, but should be increased to 25mm+ for T5 to account for ripple shaping
+             A larger theshold will mean more erroneous points (eg tile edges) will be assigned s coords
         ds: Resolution to interpolate wall coordinate spacing to in meters
         no_cal: Whether to use idealised CAD coordinates without spatial calibration corrections
         signal: UDA signal for wall coords
@@ -234,7 +240,7 @@ def format_coord(coord, **kwargs):
     return formatted_coord
 
 
-def plot_tile_edges_mastu(ax=None, top=True, bottom=True, show=True, **kwargs):
+def plot_poloidal_tile_edges_mastu(ax=None, top=True, bottom=True, show=True, **kwargs):
     import matplotlib.pyplot as plt
     if ax is None:
         fig, ax = create_poloidal_cross_section_figure(1, 1)
@@ -283,12 +289,62 @@ def plot_vessel_outline(ax=None, top=True, bottom=True, shot=50000, no_cal=False
 
 def plot_vessel_top_down(ax=None, keys_plot=('R_T1', 'R_T2', 'R_T3', 'R_T4', 'R_T5', 'R_T5_top', 'R_HL04'),
                          keys_plot_strong=('R_T1', 'R_T4', 'R_T5', 'R_T5_top'),
-            axes_off=False, phi_labels=True):
+                         louvres=((('louvres_per_sector', 2), ('radii', ('R_T1', 'R_T5'))),
+                                  (('louvres_per_sector', 4), ('radii', ('R_T5', 'R_T5_top')))),
+                         axes_off=False, phi_labels=True):
 
     from fire.plotting.plot_tools import plot_vessel_top_down
 
     fig, ax = plot_vessel_top_down(surface_radii, keys_plot, ax=ax, axes_off=axes_off, phi_labels=phi_labels,
-                                   keys_plot_strong=keys_plot_strong)
+                                   keys_plot_strong=keys_plot_strong, louvres=louvres)
+    return fig, ax
+
+def label_tiles(ax, coords, coords_axes=('i_path', 't'), tiles=('R_T1', 'R_T2', 'R_T3', 'R_T4', 'R_T5', 'R_T5_top'),
+                y='min', plot_kwargs=None):
+
+    plot_kws = dict(ls=':', lw=1, color='k', alpha=0.5)
+    if plot_kwargs is not None:
+        plot_kws.update(plot_kwargs)
+
+    coords = copy(coords)
+
+    tile_labels = {'R_T1': 'T1', 'R_T2': 'T2', 'R_T3': 'T3', 'R_T4': 'T4', 'R_T5': 'T5', 'R_T5_top': ''}
+
+    coord_r = 'R_path0'
+    r = coords[coord_r].values
+    r_range = [np.min(r), np.max(r)]
+    r_tiles = np.array([surface_radii[key] for key in tiles])
+
+    # Just keep tiles in R range
+    tiles_visible = [(r_i > r_range[0] and r_i < r_range[1]) for r_i in r_tiles]
+    tiles = np.array(tiles)[tiles_visible]
+    r_tiles = r_tiles[tiles_visible]
+
+    # TODO: generalise path no.
+    if (len(coords_axes) == 2):
+        coord = coords_axes[1]
+
+        if (coord == 'i_path0'):
+            mask = np.argmin(np.abs(np.tile(r, (len(tiles), 1)).T - r_tiles), axis=0)
+            x = coords[coord].sel({coord: mask}, method='nearest')
+        elif (coord == 'R_path0'):
+            coord_data = coords[coord].swap_dims({coord: 'i_path0'})
+            mask = np.argmin(np.abs(np.tile(r, (len(tiles), 1)).T - r_tiles), axis=0)
+            x = coord_data.sel({'i_path0': mask}, method='nearest')
+            # x = coords[coord].sel(**{coord: r_tiles}, method='nearest')
+
+        if y == 'min':
+            y = coords[coords_axes[0]].min()
+
+        for x_i, key in zip(x, tiles):
+            label = tile_labels[key]
+            ax.axvline(x_i, label=label, **plot_kws)
+            plot_tools.annotate_axis(ax, label, loc=None, x=x_i, y=y, coords='data', horizontalalignment='left',
+                                     verticalalignment='bottom', box=False)
+    else:
+        raise NotImplementedError
+
+    return tiles, r_tiles
 
     # from matplotlib import patches
     # from fire.plotting.plot_tools import get_fig_ax
@@ -341,13 +397,11 @@ def plot_vessel_top_down(ax=None, keys_plot=('R_T1', 'R_T2', 'R_T3', 'R_T4', 'R_
     #     ax.set_ylabel(r'y [m]')
     #     # plt.tight_layout()
 
-    return fig, ax
-
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from fire.plotting.plot_tools import create_poloidal_cross_section_figure
     fig, ax = create_poloidal_cross_section_figure()
-    plot_tile_edges_mastu(ax=ax, show=True)
+    plot_poloidal_tile_edges_mastu(ax=ax, show=True)
     ds = 1e-4
     # ds = 1e-2
     r0, z0 = get_wall_rz_coords(no_cal=True, shot=50000)

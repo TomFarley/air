@@ -107,10 +107,10 @@ output_signals = {
 }
 
 
-def write_processed_ir_to_uda_file(path_data, image_data, path_names,
-                                   variable_names_path, variable_names_time, variable_names_image,
-                                   header_info, device_info, meta_data,
-                                   fn_output='{diag_tag}{shot:06d}.nc', path_output='./'):
+def write_processed_ir_to_uda_netcdf_file(path_data, image_data, path_names,
+                                          variable_names_path, variable_names_time, variable_names_image,
+                                          header_info, device_info, meta_data,
+                                          fn_output='{diag_tag}{shot:06d}.nc', path_output='./'):
     """
     NETCDF output code from /home/athorn/IR/Latest/sched_air_netcdf/src/netcdfout.pro:
     Returns:
@@ -154,7 +154,7 @@ module load uda/develop              #-fatclient
     return dict(success=success, path_fn=path_fn)
 
 # ================== PLUGIN MODULE FUNCTION ALIASES ==================
-write_output_file = write_processed_ir_to_uda_file
+write_output_file = write_processed_ir_to_uda_netcdf_file
 # ====================================================================
 
 if __name__ == '__main__':
