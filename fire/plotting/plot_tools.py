@@ -9,26 +9,28 @@ Created:
 import logging, os
 from typing import Union, Iterable, Sequence, Tuple, Optional, Any, Dict
 from pathlib import Path
+from copy import copy
 
 import numpy as np
 import pandas as pd
 import xarray as xr
-import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from fire.misc.utils import mkdir
+from fire.misc import utils
+from fire.misc.utils import mkdir, make_iterable, is_scalar
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
 
-def get_fig_ax(ax=None, num=None, fig_shape=(1, 1), dimensions=2, **kwargs):
+def get_fig_ax(ax=None, num=None, ax_grid_dims=(1, 1), dimensions=2, axes_flatten=False, **kwargs):
     """If passed None for the ax keyword, return new figure and axes
 
     Args:
         ax: Existing axis instance to return figure instance for. If None, a new figure and axis is returned.
         num: Name of new figure window (if ax=None)
-        fig_shape: Dimensions of new figure window (if ax=None)
+        ax_grid_dims: Dimensions of new figure axis grid (nrows, ncols) (if ax=None)
         dimensions: Number of dimensions axes for axis (2/3)
         **kwargs: Additional kwargs passed to plt.subplots
 
@@ -38,22 +40,26 @@ def get_fig_ax(ax=None, num=None, fig_shape=(1, 1), dimensions=2, **kwargs):
 
     if ax is None:
         if dimensions == 3:
-            if np.sum(fig_shape) > 2:
+            if np.sum(ax_grid_dims) > 2:
                 raise NotImplementedError
             from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
             fig = plt.figure(num=num)
             ax = fig.add_subplot(1, 1, 1, projection='3d')
         else:
-            fig, ax = plt.subplots(*fig_shape, num=num, constrained_layout=True, **kwargs)
+            fig, ax = plt.subplots(*ax_grid_dims, num=num, constrained_layout=True, **kwargs)
+            if axes_flatten and isinstance(ax, (np.ndarray)):
+                ax = ax.flatten()
+
         ax_passed = False
     else:
         fig = ax.figure
         ax_passed = True
     return fig, ax, ax_passed
 
-def annotate_axis(ax, string, x=0.85, y=0.955, fontsize=16, coords='axis',
+def annotate_axis(ax, string, loc='top_right', x=0.85, y=0.955, fontsize=14, coords='axis', box=True,
                   bbox=(('facecolor', 'w'), ('ec', None), ('lw', 0), ('alpha', 0.5), ('boxstyle', 'round')),
-                  horizontalalignment='center', verticalalignment='center', multialignment='center', **kwargs):
+                  horizontalalignment='center', verticalalignment='center', multialignment='center',
+                  sub_underscores=True, margin=0.03, **kwargs):
     if isinstance(bbox, (tuple, list)):
         bbox = dict(bbox)
     elif isinstance(bbox, dict):
@@ -61,40 +67,148 @@ def annotate_axis(ax, string, x=0.85, y=0.955, fontsize=16, coords='axis',
         bbox = dict((('facecolor', 'w'), ('ec', None), ('lw', 0), ('alpha', 0.5), ('boxstyle', 'round')))
         bbox.update(bbox_user)
 
+    if sub_underscores:
+        string = string.replace('_', ' ')
+
+    if loc is None:
+        pass  # Use passed x,y and alignment values
+    elif loc.replace(' ', '_') == 'top_right':
+        x = 1-margin
+        y = 1-margin
+        horizontalalignment = 'right'
+        verticalalignment = 'top'
+        multialignment = 'right'
+    elif loc.replace(' ', '_') == 'top_left':
+        x = margin
+        y = 1-margin
+        horizontalalignment = 'left'
+        verticalalignment = 'top'
+        multialignment = 'left'
+    else:
+        raise NotImplementedError(f'Annotate location: "{loc}"')
+
     if coords == 'axis':
         transform = ax.transAxes
     elif coords == 'data':
         transform = ax.transData
-    ax.text(x, y, string, fontsize=fontsize, bbox=bbox, transform=transform,
+    if not box:
+        bbox = None
+
+    artist = ax.text(x, y, string, fontsize=fontsize, bbox=bbox, transform=transform,
             horizontalalignment=horizontalalignment, verticalalignment=verticalalignment, multialignment=multialignment,
             **kwargs)
+    return artist
 
-def legend(ax, handles=None, labels=None, legend=True, only_multiple_artists=True, zorder=None, **kwargs):
+def annotate_providence(ax, label='{machine} {pulse} {camera}\n({path_label})', loc='top_right', meta_data=None,
+                        aliases=None, fontsize=12, upper_case=('machine', 'camera'), replace_chars=(('_', '-'), ),
+                        cut_strings='_path0', annotate=True, **kwargs):
+    if not annotate:
+        return
+
+    backup_labels = [
+        '{machine} {camera} {pulse} {path_label}',
+        '{machine} {camera} {pulse}',
+        '{camera} {pulse}',
+    ]
+
+    # TODO: split into meta prep function
+    if meta_data is not None:
+        if isinstance(meta_data, (xr.DataArray, xr.Dataset)):
+            meta_dict = copy(meta_data.attrs.get('meta', meta_data.attrs))
+            meta_dict['param'] = meta_data.attrs.get('symbol', meta_data.name)
+        else:
+            meta_dict = copy(meta_data)
+
+        if aliases is not None:
+            for key, alias in aliases.items():
+                if key in meta_dict:
+                    meta_dict[alias] = meta_dict.get(key)
+
+        if upper_case is not None:
+            for key in make_iterable(upper_case):
+                meta_dict[key] = meta_dict.get(key, '').upper()
+
+        try:
+            label = label.format(**meta_dict)
+        except KeyError as e:
+            for label_bkup in backup_labels:
+                try:
+                    label = label_bkup.format(**meta_dict)
+                except Exception as e:
+                    pass
+                else:
+                    break
+
+        # label = data_plot.attrs.get('symbol', data_plot.name).replace('_', ' ').replace(f'_{path_name}', '')
+        if cut_strings is not None:
+            for string in make_iterable(cut_strings):
+                label = label.replace(string, '')
+
+        for replace_char in make_iterable(replace_chars):
+            label = label.replace(*replace_char)
+    else:
+        meta_dict = None
+
+    if '{' in label:
+        logger.warning(f'Unformatted annotation string: {label}, {meta_dict}')
+
+    artist = annotate_axis(ax=ax, string=label, loc=loc, fontsize=fontsize, **kwargs)
+
+    return label, artist
+
+def legend(ax, handles=None, labels=None, legend=True, only_multiple_artists=True, box=True, zorder=None, **kwargs):
     """Finalise legends of each axes"""
-    kws = {'fontsize': 14, 'framealpha': 0.7, 'facecolor': 'white', 'fancybox': True}
-    leg = None
-    try:
-        handles_current, labels_current = ax.get_legend_handles_labels()
-        # Only produce legend if more than one  artist has a label
-        if (not only_multiple_artists) or (len(handles_current) > 1) or (handles is not None):
-            args = () if handles is None else (handles, labels)
-            kws.update(kwargs)
-            leg = ax.legend(*args, **kws)
-            leg.set_draggable(True)
-            if zorder is not None:
-                leg.set_zorder(zorder)
-    except ValueError as e:
-        #  https: // github.com / matplotlib / matplotlib / issues / 10053
-        logger.error('Not sure how to avoid this error: {}'.format(e))
-    if not legend:
+    if legend:
+        kws = {'loc': 'best'}  #'fontsize': 14,
+        if box:
+            kws['facecolor'] = 'white'
+            kws['framealpha'] = 0.65
+            kws['fancybox'] = True
+        else:
+            kws['fancybox'] = False
+            kws['framealpha'] = 0
+            kws['facecolor'] = 'none'
+        leg = None
+        try:
+            handles_current, labels_current = ax.get_legend_handles_labels()
+            # Only produce legend if more than one  artist has a label
+            if (not only_multiple_artists) or (len(handles_current) > 1) or (handles is not None):
+                args = () if handles is None else (handles, labels)
+                kws.update(kwargs)
+                leg = ax.legend(*args, **kws)
+                leg.set_draggable(True)
+                if zorder is not None:
+                    leg.set_zorder(zorder)
+        except ValueError as e:
+            #  https: // github.com / matplotlib / matplotlib / issues / 10053
+            logger.error('Not sure how to avoid this error: {}'.format(e))
+    else:
         leg = ax.legend()
         leg.remove()
     return leg
 
+def close_all_mpl_plots(close_all=True, verbose=True):
+    """Close all existing figure windows"""
+    if close_all:
+        nums = plt.get_fignums()
+        for n in nums[:-1]:
+            plt.close(n)
+        if verbose:
+            logger.info('Closed all mpl plot windows')
+
+def show_if(show, close_all=False, tight_layout=False):
+    """If show is true show plot. If clear all is true clear all plot windows before showing."""
+    close_all_mpl_plots(close_all)
+
+    if show:
+        if tight_layout:
+            plt.tight_layout()
+        plt.show()
+
 def save_fig(path_fn, fig=None, path=None, transparent=True, bbox_inches='tight', dpi=90, save=True,
              image_formats=None, image_format_subdirs='subsequent',
              mkdir_depth=None, mkdir_start=None, description='', verbose=True):
-    if not save:
+    if (not save) or (path_fn is None):
         return False
     if fig is None:
         fig = plt.gcf()
@@ -146,7 +260,7 @@ def get_previous_artist_color(ax=None, artist_ranking=('line', 'pathcollection')
             color = artist.get_color()
             break
         elif artist_type == 'pathcollection' and len(ax.collections) != 0:
-            artists = [a for a in ax.collections if isinstance(a, matplotlib.collections.PathCollection)]
+            artists = [a for a in ax.collections if isinstance(a, mpl.collections.PathCollection)]
             if len(artists) > 0:
                 artist = artists[-1]
                 color = artist.get_facecolor()[0]  # [:2]
@@ -186,6 +300,78 @@ def repeat_color(ax=None, shade_percentage=None, artist_string=None):
     if shade_percentage is not None:
         c = color_shade(color, shade_percentage)
     return c
+
+def setup_xarray_colorbar_ax(ax, data_plot, robust=True, cbar_label=None, cmap=None, position='right',
+                             add_colorbar=True, size="5%", pad=0.05, **kwargs):
+    from matplotlib import ticker
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+    kws = {}
+    if add_colorbar:
+        # Force xarray generated colorbar to only be hieght of image axes and thinner
+        divider = make_axes_locatable(ax)
+        ax_cbar = divider.append_axes(position=position, size=size, pad=pad)
+        kws.update(dict(cbar_kwargs=dict(cax=ax_cbar),  # , extend='both'
+                        robust=robust))
+        kws.update(kwargs)
+        if position in ('top', 'bottom'):
+            tick_locator = ticker.MaxNLocator(nbins=5)
+            kws['cbar_kwargs']['orientation'] = 'horizontal'
+            kws['cbar_kwargs']['ticklocation'] = position
+            kws['cbar_kwargs']['ticks'] = tick_locator
+            ax_cbar.xaxis.set_ticks_position(position)
+            ax_cbar.xaxis.set_label_position(position)
+
+        if cbar_label is not None:
+            kws['cbar_kwargs']['label'] = cbar_label  # If not passed xarray auto generates from dataarray name/attrs
+
+        if np.issubdtype(data_plot.dtype, np.int64) and (np.max(data_plot.values) < 20):
+            # Integer/quantitative data
+            bad_value = -1
+            data_plot = xr.where(data_plot == bad_value, np.nan, data_plot)
+
+            values = data_plot.values.flatten()
+            values = set(list(values[~np.isnan(values)]))
+            ticks = np.sort(list(values))
+            kws['cbar_kwargs']['ticks'] = ticks
+            kws['vmin'] = np.min(ticks)
+            kws['vmax'] = np.max(ticks)
+            if cmap is None:
+                cmap = 'jet'
+            cmap = mpl.cm.get_cmap(cmap, (ticks[-1]-ticks[0])+1)
+        kws['cmap'] = cmap
+
+    return kws
+
+def label_axis_windows(windows, axis='y', labels=None, ax=None, line_kwargs=None):
+    windows = make_iterable(windows)
+
+    line_kws = dict(ls='--', lw=1, color='k')
+    if isinstance(line_kwargs, dict):
+        line_kws.update(line_kwargs)
+
+    if labels is None:
+        labels = [None for win in windows]
+
+    if ax is None:
+        ax = plt.gca()
+
+    if axis in ('x', 0):
+        func = ax.axvline
+    elif axis in ('y', 1):
+        func = ax.axhline
+    else:
+        raise ValueError
+
+    for i_win, (window, label) in enumerate(zip(windows, labels)):
+        if isinstance(line_kwargs, (tuple, list)):
+            line_kws = line_kwargs[i_win]
+        for i_val, value in enumerate(make_iterable(window)):
+            if i_val > 0:
+                label = None
+            func(value, label=str(label), **line_kws)
+
+
 
 def format_poloidal_plane_ax(ax, units='m'):
     ax.set_xlabel(f'R [{units}]')
@@ -233,10 +419,12 @@ def plot_vessel_outline(r, z, ax=None, top=True, bottom=True, s_start_coord=(0,0
         plt.show()
     return fig, ax
 
-def plot_vessel_top_down(surface_radii, keys_plot, ax=None, axes_off=False, phi_labels=True, keys_plot_strong=()):
+def plot_vessel_top_down(surface_radii, keys_plot, ax=None, axes_off=False, phi_labels=True, keys_plot_strong=(),
+                         louvres=None):
     from matplotlib import patches
     from fire.plotting.plot_tools import get_fig_ax
     from fire.geometry.geometry import cylindrical_to_cartesian
+    # TODO: Shade reference annulus, eg T4: https://stackoverflow.com/questions/22789356/plot-a-donut-with-fill-or-fill-between-use-pyplot-in-matplotlib
     fig, ax, ax_passed = get_fig_ax(ax)
 
     r_wall = surface_radii['R_wall']
@@ -255,8 +443,30 @@ def plot_vessel_top_down(surface_radii, keys_plot, ax=None, axes_off=False, phi_
 
     # Lines between sectors
     for i in np.arange(n_sectors):
-        x, y = cylindrical_to_cartesian(r_wall, i*360/n_sectors, angles_units='degrees')
+        phi_sector_edge = i*360/n_sectors
+        x, y = cylindrical_to_cartesian(r_wall, phi_sector_edge, angles_units='degrees')
         ax.plot([0, x], [0, y], ls='--', c='k', lw=1)
+
+        # Lines between louvre edges
+        if louvres is not None:
+            for louvres_info in make_iterable(louvres): # louvres is tuple of dicts
+                if isinstance(louvres_info, tuple):
+                    louvres_info = dict(louvres_info)
+
+                phi_louvre_sep = (360 / n_sectors / louvres_info['louvres_per_sector'])
+
+                if 'radii' in louvres_info:
+                    r0 = surface_radii[louvres_info['radii'][0]]
+                    r1 = surface_radii[louvres_info['radii'][1]]
+                else:
+                    r0, r1 = 0, r_wall
+
+                for j in np.arange(1, louvres_info['louvres_per_sector']):
+                    phi = phi_sector_edge + phi_louvre_sep * j
+
+                    x0, y0 = cylindrical_to_cartesian(r0, phi, angles_units='degrees')
+                    x1, y1 = cylindrical_to_cartesian(r1, phi, angles_units='degrees')
+                    ax.plot([x0, x1], [y0, y1], ls=':', c='k', lw=1)
 
     # Sector numbers
     for i in np.arange(n_sectors):
@@ -287,6 +497,119 @@ def plot_vessel_top_down(surface_radii, keys_plot, ax=None, axes_off=False, phi_
 
     return fig, ax
 
+# class LineBuilder:
+#     def __init__(self, line):
+#         self.line = line
+#         self.xs = list(line.get_xdata())
+#         self.ys = list(line.get_ydata())
+#         self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
+#
+#     def __call__(self, event):
+#         print('click', event)
+#         if event.inaxes != self.line.axes:
+#             return
+#         self.xs.append(event.xdata)
+#         self.ys.append(event.ydata)
+#         self.line.set_data(self.xs, self.ys)
+#         self.line.figure.canvas.draw()
+#
+# class LineDrawer(object):
+#     lines = []
+#     xy = []
+#     def draw_line(self):
+#         ax = plt.gca()
+#         xy = plt.ginput(2)
+#
+#         x = [p[0] for p in xy]
+#         y = [p[1] for p in xy]
+#         line = plt.plot(x,y)
+#         ax.figure.canvas.draw()
+#
+#         self.lines.append(line)
+#         self.xy.append([x, y])
+
+def onclick(event):
+    """
+    cid = fig.canvas.mpl_connect('button_press_event', onclick)
+    Args:
+        event:
+
+    Returns:
+
+    """
+    print('%s click: button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %
+          ('double' if event.dblclick else 'single', event.button,
+           event.x, event.y, event.xdata, event.ydata))
+
+class CoordSelector:
+    def __init__(self, fig, data=None, vars=None, slice_=None, axes=None):
+        # fig = ax.figure
+        # line, = ax.plot([0], [0])  # empty line
+
+        self.fig = fig
+        self.axes = make_iterable(axes) if (axes is not None) else axes
+        # self.line = line
+        # self.xs = list(line.get_xdata())
+        # self.ys = list(line.get_ydata())
+
+        self.data = data
+        self.vars = vars
+        self.slice = slice_
+
+        # self.cid = fig.canvas.mpl_connect('button_press_event', self.left_click)
+        self.cid = fig.canvas.mpl_connect('button_press_event', self)
+        # self.cid = fig.canvas.mpl_connect('button_press_event', onclick)
+
+        # logger.info(vars)
+
+    def __call__(self, event):
+    # def left_click(self, event):
+    #     logger.info('click', event)
+        if (self.axes is not None) and (event.inaxes not in self.axes):
+            return
+
+        coords = {}
+        try:
+            x, y = int(np.round(event.xdata)), int(np.round(event.ydata))
+        except AttributeError as e:
+            pass
+        else:
+            coords['pix'] = np.array([x, y])
+
+            if (self.data is not None) and (self.vars is not None):
+                # coords['data'] = []
+                for var in make_iterable(self.vars):
+                    try:
+                        data = self.data[var]
+                        value = data.sel(x_pix=x, y_pix=y)
+                        if not is_scalar(value, dataarray_0d=True):
+                            value = value.sel(self.slice)
+                    except Exception as e:
+                        pass
+                    else:
+                        # coords['data'].append(value)
+                        try:
+                            coords[var] = float(value)
+                        except TypeError as e:
+                            pass
+                # coords['data'] = np.array(coords['data'])
+
+            logger.info(coords)
+            for key, value in coords.items():
+                if key == 'pix':
+                    continue
+                logger.info(f'{key} = {value:0.4g}')
+
+            # self.xs.append(event.xdata)
+            # self.ys.append(event.ydata)
+            # self.line.set_data(self.xs, self.ys)
+            # self.line.figure.canvas.draw()
 
 if __name__ == '__main__':
+    plt.plot([1, 2, 3, 4, 5])
+    ld = LineDrawer()
+    ld.draw_line()  # here you click on the plot
+    print(ld.lines)
+    print(ld.xy)
+    plt.show()
     pass
