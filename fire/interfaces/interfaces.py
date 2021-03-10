@@ -4,7 +4,7 @@
 The `interfaces` module contains functions for interfacing with other codes and files.
 """
 
-import os, logging, json
+import os, logging, json, warnings
 import importlib.util
 from typing import Union, Sequence, Optional
 from pathlib import Path
@@ -492,7 +492,8 @@ def read_csv(path_fn: Union[Path, str], clean=True, convert_to_python_types=True
         else:
             kwargs['sep'] = None  # Use csv.Sniffer tool
     try:
-        table = pd.read_csv(path_fn, header=header, comment=comment, **kwargs)  # index_col
+        with warnings.catch_warnings(record=True) as w:
+            table = pd.read_csv(path_fn, header=header, comment=comment, **kwargs)  # index_col
     except FileNotFoundError as e:
         if raise_not_found:
             raise e
