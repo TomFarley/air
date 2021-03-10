@@ -203,12 +203,22 @@ def get_surface_coords(calcam_calib, cad_model, image_coords='Original', phi_pos
     data_out = xr.Dataset(coords={'x_pix': x_pix, 'y_pix': y_pix})
 
     # Get wireframe image of CAD from camera view
+    # Steps copied from calcam gui
+    orig_colours = cad_model.get_colour()
+    cad_model.set_wireframe(True)
+    cad_model.set_colour((0, 0, 1))
+    overlay = calcam.render_cam_view(cad_model, calcam_calib, transparency=True, verbose=False, aa=2)
+    cad_model.set_colour(orig_colours)
+    cad_model.set_wireframe(False)
+
+
     cad_model.set_flat_shading(False)  # lighting effects
     cad_model.set_wireframe(True)
     # cad_model.set_linewidth(3)
     color = cad_model.get_colour()
     # cad_model.set_colour((1, 0, 0))
-    wire_frame = calcam.render_cam_view(cad_model, calcam_calib, coords=image_coords, verbose=False)
+    wire_frame = calcam.render_cam_view(cad_model, calcam_calib, coords=image_coords, transparency=False, verbose=False)
+    wire_frame_gray = np.max(wire_frame, axis=2)
 
     logger.debug(f'Getting surface coords...'); t0 = time.time()
 
@@ -260,7 +270,7 @@ def get_surface_coords(calcam_calib, cad_model, image_coords='Original', phi_pos
     data_out['spatial_res_max'].attrs['units'] = 'm'
     # Just take red channel of wireframe image
     # TODO: Fix wireframe image being returned black
-    data_out['wire_frame'] = (('y_pix', 'x_pix'), wire_frame[:, :, 0])
+    data_out['wire_frame'] = (('y_pix', 'x_pix'), wire_frame_gray)  # wire_frame[:, :, 0])
 
     return data_out
 
