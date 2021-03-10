@@ -266,7 +266,8 @@
             "~/input_files/",
             "~/calcam/calibrations/",
             "~/calcam2/calibrations/",
-            "~/data/calcam_calibrations/"
+            "~/data/calcam_calibrations/",
+            "/home/tfarley/calcam2/calibrations/"
         ],
         "movie_files": [
             "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
