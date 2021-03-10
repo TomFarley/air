@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from fire.misc.utils import (make_iterable, compare_dict, is_number, is_subset, str_to_number, args_for,
-                               print_progress, argsort, get_traceback_location)
+                               print_progress, argsort, get_traceback_location, ask_input_yes_no)
 
 logger = logging.getLogger(__name__)
 try:
@@ -422,6 +422,9 @@ def delete_files_recrusive(pattern, path=None, delete_files=True, delete_directo
         print(f'The following {n_files} files and {n_dirs} directories were deleted: \n{to_be_removed}'.format(
             to_be_removed=to_be_removed))
 
+def check_safe_path_string(path):
+    return bool(re.match('^[a-z0-9\.\/_]+$', path))
+
 def is_possible_filename(fn, ext_whitelist=('py', 'txt', 'png', 'p', 'npz', 'csv',), ext_blacklist=(),
                          ext_max_length=3):
     """Return True if 'fn' is a valid filename else False.
@@ -451,7 +454,7 @@ def is_possible_filename(fn, ext_whitelist=('py', 'txt', 'png', 'p', 'npz', 'csv
     else:
         return False
 
-def mkdir(dirs, start_dir=None, depth=None, accept_files=True, info=None, verbose=1):
+def mkdir(dirs, start_dir=None, depth=None, accept_files=True, info=None, check_characters=True, verbose=1):
     """ Create a set of directories, provided they branch of from an existing starting directory. This helps prevent
     erroneous directory creation. Checks if each directory exists and makes it if necessary. Alternatively, if a depth
     is supplied only the last <depth> levels of directories will be created i.e. the path <depth> levels above must
@@ -461,7 +464,8 @@ def mkdir(dirs, start_dir=None, depth=None, accept_files=True, info=None, verbos
         start_dir       - Path from which all new directories must branch
         depth           - Maximum levels of directories what will be created for each path in <dirs>
         info            - String to write to DIR_INFO.txt file detailing purpose of directory etc
-        verbatim = 0	- True:  print whether dir was created,
+        check_characters- Whether to check for inappropriate characters in path, eg unformatted strings "/{pulse}/"
+        verbose = 0	    - True:  print whether dir was created,
                           False: print nothing,
                           0:     print only if dir was created
     """
@@ -505,6 +509,9 @@ def mkdir(dirs, start_dir=None, depth=None, accept_files=True, info=None, verbos
                     logger.info('Directory {} was not created as does not start at {} .'.format(dirs,
                                                                                           os.path.relpath(start_dir)))
                 continue
+            if check_characters and (not check_safe_path_string(d)):
+                if not ask_input_yes_no(f'Path "{d}" contains invalid character. Do you still want to create it?'):
+                    continue
             try:
                 os.makedirs(d)
                 if verbose > 0:
@@ -561,9 +568,9 @@ def test_pickle(obj):
     else:
         return False
 
-def pickle_dump(obj, path, **kwargs):
+def pickle_dump(obj, path, verbose=True, **kwargs):
     """Wrapper for pickle.dump, accepting multiple path formats (file, string, pathlib.Path).
-    - Automatically appends .p if not pressent.
+    - Automatically appends .p if not present.
     - Uses cpickle when possible.
     - Automatically closes file objects.
 
@@ -585,6 +592,9 @@ def pickle_dump(obj, path, **kwargs):
             path.close()
         except:
             raise ValueError('Unexpected path format/type: {}'.format(path))
+
+    if verbose:
+        logger.info('Wrote pickle data to: %s' % path)
 
 def pickle_load(path_fn, path=None, **kwargs):
     """Wrapper for pickle.load accepting multiple path formats (file, string, pathlib.Path).
