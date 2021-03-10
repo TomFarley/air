@@ -1,4 +1,6 @@
 pulse_start,pulse_end,calcam_calibration_file,author,comments
-43123,49997,rit_43141_218_nuc_eq_glob-v1.ccc,Tom Farley,Manual alignment calibration from first diverted plasmas
+43123,43647,rit_43141_218_nuc_eq_glob-v1.ccc,Tom Farley,Manual alignment calibration from first diverted plasmas
+43648,43648,HL04_A_LWIR_virtual_50mm_v1.ccc,Tom Farley,Test virtual calibration for 50mm lens
+43649,49997,rit_43141_218_nuc_eq_glob-v1.ccc,Tom Farley,Manual alignment calibration from first diverted plasmas
 49998,49999,HL04_A-LWIR-25mm-43141_233-manual-v1.ccc,Tom Farley,Manual alignment calibration from first diverted plasmas
 50000,50003,HL04_A_LWIR_virtual_25mm_v3.ccc,Tom Farley,Virtual calib from pre-plasma view check
