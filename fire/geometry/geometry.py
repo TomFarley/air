@@ -219,6 +219,19 @@ def calc_horizontal_path_anulus_areas(r_path):
 def calc_tile_tilt_area_coorection_factors(poloidal_plane_tilt, toroidal_tilt, nlouvres):
     """Return correction factors for areas returned by calc_horizontal_path_anulus_areas() accounting for tile tilts.
 
+    See Matthew Dunn's MAST wetted area correction in:
+    fire/misc/wetted_area_mdunn.py
+
+    NOTES:
+        - Wetted area fraction correction is independent of tile width - only depends on tile shadowing tilt and B
+            field angle
+        - Don't think tilt of tiles in poloidal plane will affect wetted area
+        - In MAST typical wetted fraction was ~0.62
+        - In MAST-U greater radial movement/width of leg will presumably make theta (B-field angle) radially dependent
+
+    Wetted w_frac  = sin(θ)/sin(θ+α)
+    sin(θ) =−B_z/√(B_tor^2+B_R^2+B_z^2 )
+
     Args:
         poloidal_plane_tilt: Angles of tile tilts in degrees relative to horizontal in poloidal plane
         toroidal_tilt: Toroidal inclination of tile surfaces in degrees relative to horizontal
@@ -250,7 +263,6 @@ def calc_divertor_area_integrated_param(values, annulus_areas):
     else:
         total = np.sum(values * annulus_areas, axis=0)
     return total
-
 
 if __name__ == '__main__':
     pass
