@@ -17,6 +17,7 @@ import scipy.interpolate
 from scipy.constants import zero_Celsius
 
 from fire.physics.black_body import calc_photons_to_temperature
+from fire.camera.field_of_view import calc_photon_flux_correction_for_focal_length_change
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -111,7 +112,10 @@ def dl_to_excess_photon_flux(frame_data, c1, c2=0.0, c0=0.0):
 
 def get_photon_coefs_from_calib_data(calib_coefs, integration_time):
     """Convert camera calibration data to photon flux conversion coefficients.
-    # ϕ_excess = c2 I_(DL,excess)^2 + c1 I_(DL,excess) + c0   (5)
+    ϕ_excess = c2 I_(DL,excess)^2 + c1 I_(DL,excess) + c0   (5)
+    c coefficients are stored as photons*t_int/DL ie accumulated photons per exposure time per Digital Level.
+    Therefore, to get excess photon flux (photons/s) we must divide by exposure time.
+    The full excess photon flux can then be added to be background photon flux to look up the surface temperature.
 
     Args:
         calib_coefs: Calibration coefficients as read from FIRE calibration file
@@ -121,7 +125,7 @@ def get_photon_coefs_from_calib_data(calib_coefs, integration_time):
 
     """
     if (calib_coefs['c1'] is not None):
-        c1 = calib_coefs['c1'] / (integration_time*1e6)
+        c1 = calib_coefs['c1'] / (integration_time*1e6)  # /1e6  # Enhancements cameras calibrated in us
     elif (calib_coefs['c1_grad'] is not None) and (calib_coefs['c1_intcp'] is not None):
         c1 = (calib_coefs['c1_grad']) / (integration_time) + calib_coefs['c1_intcp']
     else:
@@ -151,7 +155,7 @@ def get_background_photons(photon_lookup_table, temperature_bg_nuc_celcius=23, c
         temperatures, photons = photon_lookup_table['temperature_celcius'], photon_lookup_table['n_photons']
         f_photons = scipy.interpolate.interp1d(temperatures, photons, kind='linear')
         photons_background = f_photons(temperature_bg_nuc_celcius)
-    if photons_background.size == 1:
+    if isinstance(photons_background, np.ndarray) and (photons_background.size == 1):
         photons_background = photons_background.item()
     return photons_background
 
@@ -163,8 +167,8 @@ def photons_to_temperature_celcius(frame_photons, photon_lookup_table, to_celciu
     return frame_temperature
 
 def dl_to_temerature(frame_data_nuc, calib_coefs, wavelength_range, integration_time, transmittance=1.0,
-                     solid_angle_pixel=2*np.pi, temperature_bg_nuc=23, temperature_range=(0,800), meta_data=None,
-                     use_calib_bg_value=False):
+                     solid_angle_pixel=2*np.pi, lens_focal_length=25e-3, temperature_bg_nuc=23,
+                     temperature_range=(0,800), meta_data=None, use_calib_bg_value=False):
     """Convert NUC corrected IR camera Digital Level (DL) values to temperatures in deg C.
 
     Args:
@@ -172,7 +176,9 @@ def dl_to_temerature(frame_data_nuc, calib_coefs, wavelength_range, integration_
         calib_coefs : Dict of temperature calibration coefficients (a_grad, a_intcp, b_grad, b_intcp, window_trans)
         wavelength_range    : Wavelength range to integrate photon flux over
         integration_time    : Camera exposure time in us
-        solid_angle_pixel: Solid angle viewed by a single pixel (calcualted in calc_field_of_view)
+        transmittance       : Transmittance of optics (eg windows, lens) between surface and detector in range [0,1]
+        solid_angle_pixel   : Solid angle viewed by a single pixel (calculated in calc_field_of_view)
+        lens_focal_length   : Focal length of lens used for correction from lab calibration lens focal length
         temperature_bg_nuc : Temperature in deg C of uniform background subtracted in NUC correction (typically room temp)
         temperature_range: Temperature range to calculate photon conversion table over
         meta_data:
@@ -211,16 +217,24 @@ def dl_to_temerature(frame_data_nuc, calib_coefs, wavelength_range, integration_
     frame_photon_flux_excess = dl_to_excess_photon_flux(frame_data_nuc, **photon_coefs)
 
     # TODO: Pass in correct window transmittance
+    # Divide by transmittance as calculating photons emitted by surface rather than recieved at detector
     frame_photon_flux_excess = frame_photon_flux_excess / transmittance
 
     # from fire.plotting.image_figures import annimate_image_data
     # annimate_image_data(frame_data)
 
     # Calculate room temperature photon flux
+    # use_calib_bg_value = True
     photon_flux_nuc_bg = get_background_photons(photons_lookup_table, temperature_bg_nuc_celcius=temperature_bg_nuc,
                                             calib_coefs=calib_coefs, use_calib_bg_value=use_calib_bg_value)
     # Total photons arriving at detector
     frame_photon_flux_total = frame_photon_flux_excess + photon_flux_nuc_bg
+
+    # Account for difference in lens compared to that used for lab calibration - CHANGE OF LENS HAS NO EFFECT
+    # focal_length_correction_factor = calc_photon_flux_correction_for_focal_length_change(calib_coefs['lens'],
+    #                                                                             focal_length_actual=lens_focal_length)
+    # frame_photon_flux_total *= focal_length_correction_factor
+
     # Look up temperatures for each pixel's photon count
     frame_temperature = photons_to_temperature_celcius(frame_photon_flux_total, photons_lookup_table)
 
@@ -235,10 +249,10 @@ def dl_to_temerature(frame_data_nuc, calib_coefs, wavelength_range, integration_
             plt.show()
 
     # Add meta data  # TODO: remove as now done outside function
-    frame_temperature.name = 'frame_temperature'
-    frame_temperature.attrs.update(meta_data.get('temperature', {}))
-    if 'description' in frame_temperature.attrs:
-        frame_temperature.attrs['label'] = frame_temperature.attrs['description']
+    # frame_temperature.name = 'frame_temperature'
+    # frame_temperature.attrs.update(meta_data.get('temperature', {}))
+    # if 'description' in frame_temperature.attrs:
+    #     frame_temperature.attrs['label'] = frame_temperature.attrs['description']
 
     return frame_temperature
 
