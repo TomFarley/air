@@ -16,20 +16,21 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 
-import pyuda, cpyuda
+# import pyuda, cpyuda
 from fire.misc.utils import increment_figlabel, filter_kwargs, format_str, make_iterable
+from fire.plotting import plot_tools
 
-use_mast_client = True
-try:
-    if use_mast_client:
-        from mast.mast_client import MastClient
-        client = MastClient(None)
-        client.server_tmp_dir = ''
-    else:
-        client = pyuda.Client()
-except ModuleNotFoundError as e:
-    # TODO: Handle missing UDA client gracefully
-    raise e
+# use_mast_client = True
+# try:
+#     if use_mast_client:
+#         from mast.mast_client import MastClient
+#         client = MastClient(None)
+#         client.server_tmp_dir = ''
+#     else:
+#         client = pyuda.Client()
+# except ModuleNotFoundError as e:
+#     # TODO: Handle missing UDA client gracefully
+#     raise e
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -39,6 +40,15 @@ UDA code at: https://git.ccfe.ac.uk/MAST-U/UDA
 """
 
 from fire.misc.data_structures import meta_defaults_default
+
+# Improved names for signals (replacing uda name meta data) used for eg axis labels
+signal_aliases = {
+    'analysed_ext_rog_TF': r'$I_p$',  # /AMC/ROGEXT/TF
+    '/xim/da/hm10/t': r'$D_{\alpha,\paralell}$',  # /xim/da/hm10/t
+    '/xim/da/hm10/r': r'$D_{\alpha,\perp}$',  # /xim/da/hm10/t
+    'V': r'$D_{\alpha}$',  # /xim/da/hm10/t  # TODO: tmp
+}
+# TODO: Add simplified alias for labelling axis when plotting similar signals eg different channels of same signal
 
 # TODO: Move module defaults to json files
 # Ordered names of dimensions for different signals, as many uda signals have missing dimension names. These names
@@ -73,6 +83,46 @@ meta_refinements_default = {
 axis_label_format_default = '{name} [{units}]'
 axis_label_key_combos_default = [['symbol', 'units'], ['label', 'units'], ['name', 'units']]
 
+signal_abbreviations = {
+    'Ip': "amc_plasma current",
+    'ne': "ESM_NE_BAR",  # (electron line averaged density)
+    'ne2': "ane_density",  # Gives lower density - what is this?
+    'Pnbi': "anb_tot_sum_power",  # Total NBI power
+    'Pohm': "esm_pphi",  # Ohmic heating power (noisy due to derivatives!)
+    'Ploss': "esm_p_loss",  # Total power crossing the separatrix
+    'q95': "efm_q_95",  # q95
+    'q0': "efm_q_axis",  # q0
+    'q952': "EFM_Q95",  # (q95)
+    'Da': "ada_dalpha integrated",
+    # 'Da-mp': 'ph/s/cm2/sr',
+    'sXray': 'xsx/tcam/1',
+    'Bphi': 'efm_bphi_rmag',
+    'zmag': "efm_magnetic_axis_z",  # Hight of magnetic axis (used to distinguish LSND and DND)
+    'dn_edge': "ADG_density_gradient",
+    'Bvac': "EFM_BVAC_VAL",  # (vacuum field at R=0.66m)
+    'LPr': "arp_rp radius",  # (radial position of the reciprocating probe)
+    'LWIR1_trig': 'xpx/clock/lwir-1'
+}
+signal_sets = {
+    'set1': [
+        "amc_plasma current",
+        "ESM_NE_BAR",  # (electron line averaged density)
+        "ane_density",  # Gives lower density - what is this?
+        "anb_tot_sum_power",  # Total NBI power
+        "esm_pphi",  # Ohmic heating power (noisy due to derivatives!)
+        "esm_p_loss",  # Total power crossing the separatrix
+        "efm_q_95",  # q95
+        "efm_q_axis",  # q0
+        "EFM_Q95",  # (q95)
+        "ada_dalpha integrated",
+        'xsx/tcam/1',  # soft xray 1
+        'efm_bphi_rmag',
+        "efm_magnetic_axis_z",  # Hight of magnetic axis (used to distinguish LSND and DND)
+        "ADG_density_gradient",
+        "EFM_BVAC_VAL",  # (vacuum field at R=0.66m)
+        "arp_rp radius"]   # (radial position of the reciprocating probe)
+    }
+
 # Sentinel for default keyword arguments
 module_defaults = object()
 
@@ -95,13 +145,13 @@ def import_mast_client():
         MastClient, client = False, False
     return MastClient, client
 
-def get_uda_client(use_mast_client=True, try_alternative=True):
+def get_uda_client(use_mast_client=False, try_alternative=True):
     try:
         if use_mast_client:
             MastClient, client = import_mast_client()
         else:
             pyuda, client = import_pyuda()
-            client = pyuda.Client()
+            # client = pyuda.Client()
     except (ModuleNotFoundError, ImportError) as e:
         # TODO: Handle missing UDA client gracefully
         if try_alternative:
@@ -124,15 +174,19 @@ def filter_uda_signals(signal_string, pulse=23586):
 
     """
     # r = client.list(client.ListType.SIGNALS, shot=shot, alias='air')
-    client = get_uda_client(use_mast_client=True, try_alternative=True)
+    client = get_uda_client(use_mast_client=False, try_alternative=True)
     r = client.list_signals(shot=pulse, alias=signal_string)
     signals = [s.signal_name for s in r]
 
     return signals
 
-def read_uda_signal(signal, pulse, raise_exceptions=True, log_exceptions=True, use_mast_client=True,
+def read_uda_signal(signal, pulse, raise_exceptions=True, log_exceptions=True, use_mast_client=False,
                     try_alternative=True, **kwargs):
     client = get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
+    import cpyuda
+
+    signal = signal_abbreviations.get(signal, signal)
+
     try:
         data = client.get(signal, pulse, **kwargs)
     except (cpyuda.ServerException, AttributeError) as e:
@@ -153,11 +207,16 @@ def read_uda_signal(signal, pulse, raise_exceptions=True, log_exceptions=True, u
     return data
 
 def read_uda_signal_to_dataarray(signal, pulse, dims=None, rename_dims='default', meta_defaults='default',
-                                 raise_exceptions=True):
+                                 normalise=False, raise_exceptions=True):
     uda_data_obj = read_uda_signal(signal, pulse)
 
     data_array = uda_signal_obj_to_dataarray(uda_data_obj, signal, pulse, dims=dims, rename_dims=rename_dims,
                                                  meta_defaults=meta_defaults, raise_exceptions=raise_exceptions)
+    if normalise is not False:
+        # Normalise data by supplied normalisation factor
+        if normalise is True:
+            normalise = np.max(np.abs(data_array))
+        data_array = data_array / normalise
 
     return data_array
 
@@ -248,6 +307,7 @@ def get_uda_meta_dict(uda_obj, key_map, defaults=module_defaults, predefined_val
         if new_key in predefined_values:
             meta_dict[new_key] = predefined_values[new_key]
 
+    # TODO: Split into separate function to update meta_dict with aliases
     axis_label = gen_axis_label_from_meta_data(meta_dict)
     if axis_label is not None:
         meta_dict['axis_label'] = axis_label
@@ -269,7 +329,12 @@ def gen_axis_label_from_meta_data(meta_data, label_format=None, label_key_combos
     for name, units in label_key_combos:
         axis_label = None
         try:
-            axis_label = label_format.format(name=meta_data[name], units=meta_data[units])
+            name = meta_data[name]
+            if name in signal_aliases:
+                name = signal_aliases[name]
+                meta_data['name'] = name
+                meta_data['symbol'] = name
+            axis_label = label_format.format(name=name, units=meta_data[units])
         except KeyError as e:
             pass
         else:
@@ -353,7 +418,8 @@ def plot_uda_signal(signal, pulse, dims=None, ax=None, verbose=False, **kwargs):
 def get_default_plot_kwargs_for_style(style):
     # TODO: Move defaults to json file and add user input option
     if style == 'line':
-        plot_kwargs = dict(marker='o', markersize=4)
+        # plot_kwargs = dict(marker='o', markersize=3)
+        plot_kwargs = dict()
     elif style == 'pcolormesh':
         plot_kwargs = dict(robust=True, center=False, cmap='coolwarm')  # 'plasma', 'RdBu', 'RdYlBu', 'bwr'
     elif style == 'imshow':
@@ -364,7 +430,8 @@ def get_default_plot_kwargs_for_style(style):
         plot_kwargs = {}
     return plot_kwargs
 
-def plot_uda_dataarray(data, xdim=None, style=None, plot_kwargs=None, ax=None, show=True, tight_layout=True):
+def plot_uda_dataarray(data, xdim=None, style=None, plot_kwargs=None, ax=None, label=True, show=True,
+                       tight_layout=True):
     # TODO: Generalise to non-UDA data and enable swapping of axis coordinates eg n->t, R->s etc (see FIRE 2d debug
     # plots)
     if ax is None:
@@ -387,6 +454,11 @@ def plot_uda_dataarray(data, xdim=None, style=None, plot_kwargs=None, ax=None, s
         plot_kwargs_default.update(plot_kwargs)
         plot_kwargs = plot_kwargs_default
 
+    if (label not in (False, None)) and ('label' not in plot_kwargs):
+        if label is True:
+            label = data.attrs.get('symbol', data.name)
+        plot_kwargs['label'] = label
+
     if xdim is None:
         xdim = list(data.coords)[0]
     if (data.ndim == 1) or (style in ('line',)):
@@ -406,20 +478,21 @@ def plot_uda_dataarray(data, xdim=None, style=None, plot_kwargs=None, ax=None, s
 
     fig_artist = plot_method(ax=ax, **plot_kwargs)
 
+    if 'axis_label' in data.attrs:
+        ax.set_ylabel(data.attrs['axis_label'])
+
     # ax.set_xlabel(x.attrs['axis_label'])
     # ax.set_ylabel(y.attrs['axis_label'])
     # if data.ndim > 1:
     #     fig_artist.colorbar.ax.set_ylabel(data.attrs['axis_label'])#, rotation=270)
 
-    if tight_layout:
-        plt.tight_layout()
+    plot_tools.show_if(show=show, tight_layout=tight_layout)
 
-    if show:
-        plt.show()
+    return ax, fig_artist
 
-def plot_uda_signal(signal, pulse, dims=None, ax=None, show=True, verbose=False, **kwargs):
+def plot_uda_signal(signal, pulse, dims=None, ax=None, normalise=False, show=True, verbose=False, **kwargs):
 
-    data_array = read_uda_signal_to_dataarray(signal, pulse, dims=dims, raise_exceptions=False)
+    data_array = read_uda_signal_to_dataarray(signal, pulse, dims=dims, normalise=normalise, raise_exceptions=False)
     if isinstance(data_array, Exception):
         return data_array
 
@@ -428,9 +501,9 @@ def plot_uda_signal(signal, pulse, dims=None, ax=None, show=True, verbose=False,
                     f'99%={np.percentile(data_array.values,99):0.4g}, max={data_array.max().values:0.4g}')
 
     # pprint(data_array)
-    plot_uda_dataarray(data_array, ax=ax, show=show, plot_kwargs=kwargs)
+    ax, artist = plot_uda_dataarray(data_array, ax=ax, show=show, plot_kwargs=kwargs)
 
-
+    return ax, data_array, artist
     # TODO: Add function for plotting slices through data
     # data_slices = data_array.T.sel(t=[0, 0.1, 0.2, 0.242, 0.3], method='nearest')
     # plot_uda_dataarray(data_slices, style='line', plot_kwargs=dict(x='S'), show=False)
@@ -483,6 +556,7 @@ def get_mastu_wall_coords():
     Returns:
 
     """
+    client = get_uda_client(use_mast_client=False, try_alternative=True)
     coords = client.geometry("/limiter/efit", 50000, no_cal=True)
     print(coords)
     return coords
@@ -497,7 +571,7 @@ def get_uda_scheduler_filename(fn_pattern='{diag_tag}{shot:06d}.nc', path=None, 
 def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_number=None, status=None,
                    conventions=None, data_class=None, title=None, comment=None, code=None, version=None,
                    xml=None, date=None, time=None, verbose=None,
-                   kwarg_aliases=None, close=False, use_mast_client=True, **kwargs):
+                   kwarg_aliases=None, close=False, use_mast_client=False, **kwargs):
     """
     Filename for diagnostics should be <diag_tag><shot_number>.nc
     Where shotnumber is a 6-digit number with leading zeros (eg. air040255)
@@ -523,6 +597,7 @@ def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_numb
 
     """
     client = get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
+    import pyuda
     # Arguments that are different every time
     requried_args = {'shot': shot, 'pass_number': pass_number}#, 'status': status}
 
@@ -590,7 +665,7 @@ def putdata_update(fn, path=None):
     Returns:
 
     """
-
+    client = get_uda_client(use_mast_client=False, try_alternative=True)
     client.put(fn, step_id="update", directory=path, verbose=False)
     file_id = client.put_file_id
     return file_id
@@ -610,6 +685,9 @@ def putdata_device(device_name, device_info, attributes=None):
     Returns:
 
     """
+    client = get_uda_client(use_mast_client=False, try_alternative=True)
+    import pyuda
+
     group = f'/devices/{device_name}'
     requried_args = ['id', 'camera_serial_number', 'detector_resolution', 'image_range']
     check_for_required_args(device_info, requried_args, none_as_missing=True, application='Device data')
@@ -650,6 +728,9 @@ def putdata_attribute(name, value, group):
     Returns: None
 
     """
+    client = get_uda_client(use_mast_client=False, try_alternative=True)
+    import pyuda
+
     if isinstance(value, (dict,)):
         # NOTE: Arrays of strings or structures are not supported as single attributes.
         subgroup = f'{group}/{name}'
@@ -746,6 +827,8 @@ def putdata_variables_from_datasets(path_data, image_data, path_names,
 
 def putdata_dimension(dimension_name, dim_length, group='/', **kwargs):
     # TODO: add attributes to dim
+    client = get_uda_client(use_mast_client=False, try_alternative=True)
+    import pyuda
     group = format_netcdf_group(group)
 
     try:
@@ -757,6 +840,9 @@ def putdata_dimension(dimension_name, dim_length, group='/', **kwargs):
         logger.debug(f'Successfully wrote dimension to group "{group}": "{dimension_name}"')
 
 def putdata_coordinate(coordinate_name, values, coord_class, group='/', units=None, label=None, comment=None):
+    client = get_uda_client(use_mast_client=False, try_alternative=True)
+    import pyuda
+
     group = format_netcdf_group(group)
     units = units_to_uda_conventions(units)
     kwargs = dict(units=units, label=label, comment=comment)
@@ -773,6 +859,9 @@ def putdata_coordinate(coordinate_name, values, coord_class, group='/', units=No
 
 def putdata_variable(variable_name, dimension, values, units=None, label=None, comment=None, group='/',
                      device=None, errors_variable=None, attributes=None, **kwargs):
+    client = get_uda_client(use_mast_client=False, try_alternative=True)
+    import pyuda
+
     group = format_netcdf_group(group)
     units = units_to_uda_conventions(units)
 
@@ -805,6 +894,8 @@ def putdata_variable(variable_name, dimension, values, units=None, label=None, c
 #                 raise
 
 def putdata_close(file_id=None):
+    client = get_uda_client(use_mast_client=False, try_alternative=True)
+
     success = False
     kwargs = {}
     if file_id is not None:
@@ -849,6 +940,9 @@ def units_to_uda_conventions(units):
     return units
 
 def putdata_example():
+    client = get_uda_client(use_mast_client=False, try_alternative=True)
+    import pyuda
+
     diag_tag = 'xxx'
     shot = 12345
     pass_number = 0
@@ -917,14 +1011,15 @@ def putdata_example():
     client.put(step_id='close')
 
 def uda_get_signal_example():
-    import pyuda
-    client = pyuda.Client()
+    client = get_uda_client(use_mast_client=False, try_alternative=True)
+
     ip = client.get('ip', 18299)
     rir = client.get_images('rir', 29976, first_frame=400, last_frame=900)
     print(f'ip: {ip}')
     print(f'rir: {rir}')
 
 if __name__ == '__main__':
+    client = get_uda_client(use_mast_client=False, try_alternative=True)
 
     uda_get_signal_example()
     putdata_example()
