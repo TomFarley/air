@@ -454,7 +454,7 @@ def debug_analysis_path_2d(image_data, path_data=None, path_names='path0', image
     im_data = image_data if image_data_in_cross_sections else None
     try:
 
-        fire.plotting.spatial_figures.figure_poloidal_cross_section(image_data=im_data, path_data=path_data, path_names=path_names,
+        spatial_figures.figure_poloidal_cross_section(image_data=im_data, path_data=path_data, path_names=path_names,
                                                                     no_cal=True, legend=False, axes_off=True, ax=ax2, show=False)
     except Exception as e:
         pass  # Fails for MAST, JET due to no wall definition etc
@@ -531,7 +531,7 @@ def debug_analysis_path_cross_sections(path_data=None, image_data=None, path_nam
 def debug_temperature_image(data):
     figure_xarray_imshow(data, key='temperature_im', show=True)
 
-def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', robust=True, extend='min',
+def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', robust=True, extend=None,
                           annotate=True, mark_peak=True, meta=None, ax=None, t_range=(0.0, 0.6), t_wins=None,
                           machine_plugins=None,
                           colorbar_kwargs=None, show=True,
@@ -582,12 +582,13 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
         param_peak = f'{param}_peak_{path_name}'
         param_r_peak = f'{param}_r_peak_{path_name}'
         if mark_peak and (param_r_peak in data_paths):
+            # TODO: filter instead with moving window stdev of r pos?
             data_peak = data_paths[param_peak].values
             data_r_peak = data_paths[param_r_peak]
             mask_low = data_peak < (np.nanmin(data_peak) + 0.01 * (np.nanmax(data_peak)-np.nanmin(data_peak)))
-            # TODO: filter instead with moving window stdev of r pos?
             data_r_peak.loc[mask_low] = np.nan
-            ax_i.plot(data_r_peak.values, data_r_peak[data.dims[0]], ls=':', color='g', lw=1.5, alpha=0.6, label='peak')
+            ax_i.plot(data_r_peak.values, data_r_peak[data.dims[0]], ls='', marker='.', ms=1.5, color='k',  # 'g'
+                      lw=2.5, alpha=0.4, label='peak')
 
         if annotate and (meta is not None):
             # TODO: Make figure pulse label func
@@ -615,7 +616,8 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             plot_tools.label_axis_windows(windows=t_wins, labels=t_wins, ax=ax_i, axis='y', line_kwargs=None)
 
         if extend == 'min':
-            cmap.set_over(None)
+            pass
+            # cmap.set_over(data.max())
 
         # TODO: Switch to using same routine as for uda_utils.plot_uda_dataarray
         if verbose:
@@ -651,52 +653,53 @@ def debug_plot_spatial_profile_1d(data_paths, param='temperature', path_names='p
         plt.tight_layout()
         plt.show()
 
-def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_r_peak', 'heat_flux_peak'), path_names='path0',
+def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_r_peak', 'heat_flux_peak'), path_name='path0',
                                    x_var='t', heat_flux_thresh=-0.0, meta_data=None):
     # TODO: Move general code to plot_tools.py func
     colors = ('tab:blue', 'tab:orange', 'tab:green', 'tab:red')
-    for path in make_iterable(path_names):
-        fig, ax1, ax_passed = plot_tools.get_fig_ax(num=f'{params} temporal profile {path}')
-        ax = ax1
-        ax.tick_params(axis='y', labelcolor=colors[0])
+    path = path_name
 
-        if heat_flux_thresh not in (None, False):
-            peak_heat_flux = data_paths[f'heat_flux_peak_{path}']
-            mask_pos_heat_flux = peak_heat_flux > heat_flux_thresh
-            peak_heat_flux_pos = peak_heat_flux[mask_pos_heat_flux]
+    fig, ax1, ax_passed = plot_tools.get_fig_ax(num=f'{params} temporal profile {path}')
+    ax = ax1
+    ax.tick_params(axis='y', labelcolor=colors[0])
 
-        for i, (param, color) in enumerate(zip(make_iterable(params), colors)):
-            if i == 1:
-                ax = ax1.twinx()
-                ax.tick_params(axis='y', labelcolor=color)
-            key = f'{param}_{path}'
-            data = data_paths[key]
-            if x_var not in data.dims:
-                data = data.swap_dims({data.dims[0]: x_var})
+    if heat_flux_thresh not in (None, False):
+        peak_heat_flux = data_paths[f'heat_flux_peak_{path}']
+        mask_pos_heat_flux = peak_heat_flux > heat_flux_thresh
+        peak_heat_flux_pos = peak_heat_flux[mask_pos_heat_flux]
 
-            data_pos_q = deepcopy(data)
-            data_pos_q[~mask_pos_heat_flux] = np.nan
+    for i, (param, color) in enumerate(zip(make_iterable(params), colors)):
+        if i == 1:
+            ax = ax1.twinx()
+            ax.tick_params(axis='y', labelcolor=color)
+        key = f'{param}_{path}'
+        data = data_paths[key]
+        if x_var not in data.dims:
+            data = data.swap_dims({data.dims[0]: x_var})
 
-            try:
-                data.plot(label=f'{param} (all)', ax=ax, ls=':', alpha=0.3, color=color)
-                fire.plotting.temporal_figures.plot_temporal_profile(data_paths, key, path_name=path, mask=mask_pos_heat_flux,
-                                                                     label=f'{param} (pos q)', ax=ax, ls='-', alpha=0.6, color=color, show=False)
-            except ValueError as e:
-                raise NotImplementedError
-                # R data not monotonic - switch back to index or s_path
-                # data = data.sortby('')
-                # data = data.swap_dims({f'R_{path_name}': f's_path_{path_name}'})
-                data = data.swap_dims({f'R_{path}': f'i_{path}'})
-                data.plot(robust=True, center=False, cmap='coolwarm')
-            else:
-                plot_tools.legend(ax=ax)
-        if heat_flux_thresh not in (None, False):
-            ax.axhline(heat_flux_thresh, ls='--', color='k')
-            ax.set_xlim([peak_heat_flux_pos['t'].min(), peak_heat_flux_pos['t'].max()])
+        data_pos_q = deepcopy(data)
+        data_pos_q[~mask_pos_heat_flux] = np.nan
 
-        plot_tools.annotate_providence(ax, meta_data=meta_data)
+        try:
+            data.plot(label=f'{param} (all)', ax=ax, ls=':', alpha=0.3, color=color)
+            temporal_figures.plot_temporal_profile(data_paths, key, path_name=path, mask=mask_pos_heat_flux,
+                                                                 label=f'{param} (pos q)', ax=ax, ls='-', alpha=0.6, color=color, show=False)
+        except ValueError as e:
+            raise NotImplementedError
+            # R data not monotonic - switch back to index or s_path
+            # data = data.sortby('')
+            # data = data.swap_dims({f'R_{path_name}': f's_path_{path_name}'})
+            data = data.swap_dims({f'R_{path}': f'i_{path}'})
+            data.plot(robust=True, center=False, cmap='coolwarm')
+        else:
+            plot_tools.legend(ax=ax)
+    if heat_flux_thresh not in (None, False):
+        ax.axhline(heat_flux_thresh, ls='--', color='k')
+        ax.set_xlim([peak_heat_flux_pos['t'].min(), peak_heat_flux_pos['t'].max()])
 
-        plot_tools.show_if(show=True, tight_layout=True)
+    plot_tools.annotate_providence(ax, meta_data=meta_data)
+
+    plot_tools.show_if(show=True, tight_layout=True)
 
     return fig, ax
 
@@ -713,10 +716,10 @@ def debug_plot_timings(data_profiles, pulse, params=('heat_flux_peak_{path}','te
 
     if not separate_axes:
         n_axes = 1
-        fig, axes, ax_passed = plot_tools.get_fig_ax(num='timings check', figsize=figsize, ax_grid_dims=(1, 1))
     else:
         n_axes = len(params) + len(comparison_signals)
-        fig, axes, ax_passed = plot_tools.get_fig_ax(num='timings check', figsize=figsize, ax_grid_dims=(n_axes, 1),
+
+    fig, axes, ax_passed = plot_tools.get_fig_ax(num='timings check', figsize=figsize, ax_grid_dims=(n_axes, 1),
                                                                                                sharex=True)#'col')
     axes = make_iterable(axes, cast_to=np.ndarray).flatten()
     i_ax = 0
@@ -766,7 +769,7 @@ def debug_plot_timings(data_profiles, pulse, params=('heat_flux_peak_{path}','te
 
         ax = axes[i_ax]
         # param.format(path=path_name)
-        fire.plotting.temporal_figures.plot_temporal_profile(data_profiles, param=param, path_name=path_name, ax=ax,
+        temporal_figures.plot_temporal_profile(data_profiles, param=param, path_name=path_name, ax=ax,
                                                              show=False, label=True)
         plot_tools.legend(ax)
 
