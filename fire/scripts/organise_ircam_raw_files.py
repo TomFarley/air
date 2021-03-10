@@ -51,7 +51,7 @@ def generate_json_meta_data_file_for_ircam_raw(path, fn, n_frames, image_shape, 
 
     # Make sure frame frame times are centred around frame at t=0
     frame_times = list(np.arange(0, -t_before_pulse, -period)[::-1])
-    frame_times = frame_times + list(np.arange(period, (n_frames-len(frame_times))*period, period))
+    frame_times = frame_times + list(np.arange(period, (n_frames-len(frame_times)+1)*period, period))
 
     t_range = [min(frame_times), max(frame_times)]
     frame_range = [min(frame_numbers), max(frame_numbers)]
@@ -139,7 +139,8 @@ if __name__ == '__main__':
 
     camera_settings = dict(camera='rit', fps=400, exposure=0.25e-3, lens=25e-3, t_before_pulse=100e-3)
     # path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210301/'
-    path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210302/'
+    # path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210302/'
+    path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210309/'
 
     # TODO: Extract camera settings meta data from spreadsheet
 
