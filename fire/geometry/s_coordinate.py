@@ -10,6 +10,7 @@ import logging, time
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 from fire.geometry.geometry import logger
 from fire.misc.utils import make_iterable
 from matplotlib import pyplot as plt
@@ -163,7 +164,7 @@ def order_arrays_starting_close_to_point(r, z, r_start, z_start, prepend_start_c
 
 
 def calc_s_coord_lookup_table(r, z):
-    s = calc_local_s_along_path(r, z)
+    s, ds = calc_local_s_along_path(r, z)
     s = pd.DataFrame.from_dict({'R': r, 'Z': z, 's': s})
 
     # s = pd.Series(s, index=pd.MultiIndex.from_arrays((r, z), names=['R', 'Z']), name='s')
@@ -234,9 +235,21 @@ def calc_local_s_along_path(r, z):
     ds = np.linalg.norm(points, axis=1)
     ds = np.concatenate([[0], ds])
     s = np.cumsum(ds)
-    return s
+    ds = np.concatenate([ds[1:], [ds[-1]]])  # Take last point to have spatial resolution of previous point
+    return s, ds
 
+def calc_local_s_along_path_data_array(path_data, path_name):
+    """Return path length along path specified by (R, Z) coords"""
+    path = path_name
 
+    r, z = path_data[f'R_{path}'].values, path_data[f'z_{path}'].values
+    s, ds = calc_local_s_along_path(r, z)
+
+    out = xr.Dataset()
+    out[f's_local_{path}'] = (f'i_{path}', s)
+    out[f'spatial_res_linear_{path}'] = (f'i_{path}', ds)
+
+    return out
 
 def get_s_coord_global_r(x_im, y_im, z_im=None):
     """Crude fall back method if nothing else is available"""
