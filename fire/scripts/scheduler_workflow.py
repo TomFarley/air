@@ -474,7 +474,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: get material, structure, bad pixel ids along analysis path
     analysis_path_dfn_points_all = interfaces.json_load(files['analysis_path_dfns'], key_paths_drop=('README',))
 
-    # Get names of analysis paths to use in this analysis
+    # Get names of analysis paths to use in this analysis. Multiple analysis path names in csv can be separated with ;'s
     analysis_path_names = lookup_info['analysis_paths']['analysis_path_name'].split(';')
     analysis_path_names = {f'path{i}': name.strip() for i, name in enumerate(analysis_path_names)}
     analysis_path_keys = list(analysis_path_names.keys())
@@ -551,11 +551,11 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         # s_path = get_s_coord_path(x_path, y_path, z_path, machine_plugins)
         # path_data['s_path'] = s_path
 
-        if debug.get('poloidal_cross_sec', True):
+        if debug.get('poloidal_cross_sec', False):
             fire.plotting.spatial_figures.figure_poloidal_cross_section(image_data=image_data, path_data=path_data, pulse=pulse, no_cal=True,
                                                                         show=True)
 
-        if debug.get('path_cross_sections', True):
+        if debug.get('path_cross_sections', False):
             debug_plots.debug_analysis_path_cross_sections(path_data, image_data=image_data,
                         path_names=analysis_path_key, image_data_in_cross_sections=True,
                             machine_plugins=machine_plugins, pupil_coords=calcam_calib.get_pupilpos(), show=True)
@@ -583,14 +583,6 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         path_data.coords['t'] = image_data.coords['t']
         path_data = path_data.swap_dims({'n': 't'})
 
-        if debug.get('heat_flux_vs_R_t', False):
-            # robust = True
-            robust = False
-            extend = 'min'
-            debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key,
-                                              robust=robust, extend=extend, meta=meta_data,
-                                              machine_plugins=machine_plugins)
-
         # TODO: Calculate moving time average and std heat flux profiles against which transients on different time
         # scales can be identified?
 
@@ -608,6 +600,14 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         # midplane coords, connection length, flux expansion (area ratio), target pitch angle
 
         path_data_all = xr.merge([path_data_all, path_data])  # , combine_attrs='no_conflicts')
+
+        if debug.get('heat_flux_vs_R_t', False):
+            # robust = True
+            robust = False
+            extend = None
+            debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key,
+                                              robust=robust, extend=extend, meta=meta_data, mark_peak=True,
+                                              machine_plugins=machine_plugins)
 
         if debug.get('analysis_path', False):
             # TODO: Finish  debug_analysis_path_2d
@@ -636,10 +636,11 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             heat_flux = path_data[f'heat_flux_peak_{path}'].values
             heat_flux_thresh = np.nanmin(heat_flux) + 0.03 * (np.nanmax(heat_flux) - np.nanargmin(heat_flux))
             debug_plots.debug_plot_temporal_profile_1d(path_data_all, params=('heat_flux_r_peak', 'heat_flux_peak'),
-                                                       path_names=analysis_path_keys, x_var='t',
+                                                       path_name=analysis_path_key, x_var='t',
                                                        heat_flux_thresh=heat_flux_thresh, meta_data=meta_data)
-        if output.get('strike_point_loc', True):
-            path_fn = Path(paths_output['csv_data']) / f'strike_point_loc-{machine}-{camera}-{pulse}.csv'
+        if output.get('strike_point_loc', False):
+            fn = f'strike_point_loc-{machine}-{camera}-{pulse}-{analysis_path_name}.csv'
+            path_fn = Path(paths_output['csv_data']) / fn
             interfaces.to_csv(path_fn, path_data, cols=f'heat_flux_r_peak_{path}', index='t', x_range=[0, 0.6],
                               drop_other_coords=True, verbose=True)
 
@@ -798,6 +799,7 @@ def run_mastu_rit():  # pragma: no cover
     # pulse = 43584  # NBI
     # pulse = 43591
     # pulse = 43587
+    # pulse = 43610
     # pulse = 43643
     # pulse = 43644
     # pulse = 43648
@@ -820,7 +822,7 @@ def run_mastu_rit():  # pragma: no cover
              'spatial_res': False,
              'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
              'surfaces': False, 'analysis_path': False,
-             'path_cross_sections': True,
+             'path_cross_sections': False,
              'temperature_vs_R_t': False, 'heat_flux_vs_R_t': True,
              'timings': True, 'strike_point_loc': True,
              # 'heat_flux_path_1d': True,
