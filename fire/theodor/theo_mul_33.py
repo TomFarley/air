@@ -7,7 +7,7 @@ from time import asctime
 import platform
 from pathlib import Path
 
-from numpy import sqrt,zeros,float32,arange,abs
+from numpy import sqrt,zeros,float32,arange,abs,array
 
 from .congrid import congrid2d
 from .heatpotential import heatpotential
@@ -189,7 +189,7 @@ def theo_mul_33(data, time, location, d_target, \
         # if micro_t gt 1 and j mod 50 eq 0 then stop
         for k in range(1, micro_t+1):
             # alpha top can be T dependent
-            if alpha_tmp.size==2 and alpha_slope[0]>0:
+            if alpha_tmp.size==2 and ((array(alpha_slope).ndim == 1 and alpha_slope[0]>0) or alpha_slope>0):  # TF: mod to accept scalar alpha_slope
                 alpha_top = alpha_slope*sqrt(abs(m_data[:,k-1]))+alpha_top_0
                 htstar_f = 2.0*cc*alpha_top/lam[0]*delta
             if alpha_tmp.size==3 and alpha_slope[0]!=0:
