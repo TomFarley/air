@@ -83,8 +83,12 @@ def calc_heatflux(t, temperatures, path_data, path_name, material_properties, vi
     theo_kwargs = material_properties[material_name]
 
     # TODO: Understand when two element alpha_top_org values should be used
-    if safe_len(theo_kwargs['alpha_top_org']) == 2:
-        theo_kwargs['alpha_top_org'] = theo_kwargs['alpha_top_org'][0]
+    if False:
+        if safe_len(theo_kwargs['alpha_top_org']) == 2:
+            theo_kwargs['alpha_top_org'] = theo_kwargs['alpha_top_org'][0]
+    else:
+        # theo_mul_33 expects argument to be an ndarray (checks alpha_top_org.ndim)
+        theo_kwargs['alpha_top_org'] = np.array(theo_kwargs['alpha_top_org'])
 
     if temperature_path.shape[0] != len(s_path):
         if temperature_path.shape[1] == len(s_path):
