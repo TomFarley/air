@@ -31,6 +31,7 @@
 #    ϕ vs I_(DL,excess) for different integration times.
 #
 # *MAST Methodology*
+# See: http://fusweb1.fusion.ccfe.ac.uk/fusionwiki/index.php/MWIR
 # In MAST, separate linear or quadratic fits to n_(phot,excess) vs I_(DL,excess) were performed at different integration times:
 # n_(phot,excess) = c_2 I_(DL,excess)^2 + c_1 I_(DL,excess) + c_0   (5)
 # In order to interpolate the 'c_1' and 'c_2' parameters to exposure times other than those used in the calibration process, linear
