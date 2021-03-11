@@ -29,6 +29,9 @@ def dl_to_photon_count_legacy(frame_data, calib_coefs, exposure, trans_correctio
         the exposure time to get the DL if exposure had been for a whole second.
     - Rather than multiplying the photon counts by the transmision factor, the camera counts were scaled up by
         dividing by the "trans_correction" = 1/(transmission coeff)
+
+    See: http://fusweb1.fusion.ccfe.ac.uk/fusionwiki/index.php/MWIR
+
     """
     if 'b_grad' in calib_coefs:
         # Use original IDL temperature calibration file format
