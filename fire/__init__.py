@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 import xarray as xr
+import matplotlib.pyplot as plt
 
 # TODO: Automatically pull in version number from single central location (setup.py file?)
 __version__ = "1.0.0"
@@ -56,6 +57,9 @@ pd.options.display.max_rows = 60
 pd.options.display.max_columns = 500
 
 xr.set_options(**{'cmap_sequential': 'gray'})
+
+# Use custom mpl style
+plt.style.use(f'{fire_paths["root"]}/plotting/fire.mplstyle')
 
 # Import FIRE sub-modules
 from .interfaces import interfaces
