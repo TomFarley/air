@@ -21,6 +21,7 @@ from skimage.io import imsave
 from ccfepyutils.mpl_tools import get_previous_artist_color, annotate_axis
 from ccfepyutils.image import hist_image_equalisation
 from fire.plugins.movie_plugins.uda import read_movie_data
+from fire.plugins.plugins_movie import MovieReader
 from fire.camera.image_processing import find_outlier_pixels
 
 logger = logging.getLogger(__name__)
@@ -29,8 +30,8 @@ logger = logging.getLogger(__name__)
 # def movie_intensity_variation():
 
 
-def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_start=None, n_end=None, n_images=5,
-                                 use_raw=False, path_out='.'):
+def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_start=None, n_end=None, n_nuc=(1, 1),
+                                 n_images=5, selection_stat='max', use_raw=False, path_out='.'):
     """
 
     Args:
@@ -48,7 +49,12 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
     """
     # TODO: Switch to call plugin agnostic movie reader class
     print(f'Reading movie data...')
-    frame_nos, frame_times, frame_data_raw = read_movie_data(pulse, camera, n_start=n_start, n_end=n_end)
+
+    movie_reader = MovieReader()
+    movie_data, origin = movie_reader.read_movie_data(pulse=pulse, camera=camera, machine=machine, n_start=n_start,
+                                                      n_end=n_end)
+    frame_nos, frame_times, frame_data_raw = movie_data
+    # frame_nos, frame_times, frame_data_raw = read_movie_data(pulse, camera, n_start=n_start, n_end=n_end)
     print(f'Read data for {len(frame_nos)} frames from movie {camera}, {pulse}')
     frame_shape = np.array(frame_data_raw.shape)[1:]
     frame_rate = 1/np.mean(np.diff(frame_times))
@@ -66,11 +72,16 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
                                           'n': ('t', frame_nos)},
                                   dims=['t', 'y_pix', 'x_pix'])
 
+    movie_data_nuc, origin = movie_reader.read_movie_data(pulse=pulse, camera=camera, machine=machine,
+                                                          n_start=n_nuc[0], n_end=n_nuc[1])
+    # movie_data_nuc = frame_data_raw[n_nuc[0]:n_nuc[1]]
+    frame_nuc = movie_data_nuc[2].min(axis=0)
+
     # NUC all data
-    frame_data_nuc = frame_data_raw - frame_data_raw[0]
+    frame_data_nuc = frame_data_raw - frame_nuc
     # use_raw = True
 
-    if ((n_start is None) or (n_start == 0)) and (not use_raw):
+    if (not use_raw):  # ((n_start is None) or (n_start == 0)) and
         frame_data = frame_data_nuc
         nuc_str = '_nuc'
         logger.warning(f'Applied first frame NUC to all frames')
@@ -116,13 +127,13 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
         if len(i_peaks[var]) > 0:
             d[i_peaks[var]].plot.line(ax=ax, marker='x', ls='', color=get_previous_artist_color(ax))
         pass
-    i_maxima_top = i_peaks['max'][np.argsort(data['max'].values[i_peaks['max']])[::-1][:n_images]]
+    i_maxima_top = i_peaks[selection_stat][np.argsort(data[selection_stat].values[i_peaks[selection_stat]])[::-1][:n_images]]
     selected_frames = xr.DataArray(frame_data[i_maxima_top, :, :],
                                    coords={'t': frame_times[i_maxima_top],
                                            'n': ('t', frame_nos[i_maxima_top])}, dims=['t', 'x_pix', 'y_pix'])
     print(f'selected_frames: {selected_frames.coords}')
     for n in selected_frames['n']:
-        ax.axvline(n, ls='--', color='gray')
+        ax.axvline(n, ls='--', color='gray')  # , label='selected_frames')
     if any(data['max'] >= 0.95*dl_sat):
         ax.axhline(dl_sat, ls=':', color='gray')
     plt.legend()
@@ -241,6 +252,10 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
     plt.show()
 
 if __name__ == '__main__':
+
+    machine = 'mast_u'
+    # machine = 'mast'
+
     # pulse = 30378
     # pulse = 28866  # Low power
     # pulse = 29210  # High power
@@ -248,7 +263,7 @@ if __name__ == '__main__':
 
     # Full frame air:
     # pulse = 23586  # Full frame with clear spatial calibration - ref
-    pulse = 26505  # Full frame OSP only, 1D analysis profile, HIGH current - REQUIRES NEW CALCAM CALIBRATION
+    # pulse = 26505  # Full frame OSP only, 1D analysis profile, HIGH current - REQUIRES NEW CALCAM CALIBRATION
     # pulse = 28911
     # pulse = 29936
     # pulse = 30458
@@ -258,21 +273,34 @@ if __name__ == '__main__':
     # Full frame ait:
     # pulse = 30459
     # pulse = 30458
+    # pulse = 43141
+    pulse = 43183
 
 
-    camera = 'rir'
-    # camera = 'rit'
-    n_start = None
+    # camera = 'rir'
+    camera = 'rit'
+
+    n_start = 200
+    # n_start = None
     n_end = None
     # n_start = 3200
     # n_end = 3500
-    # n_start = 0
-    # n_end = 110
-    n_images = 1
-    # n_images = 4
+    # n_start = 230
+    # n_end = 240
+    # n_images = 1
+    n_images = 4
     # n_images = 15
+
+    n_nuc = (1, 1)
+    # use_raw = False
+    use_raw = True
+
+    selection_stat = 'max'
+    # selection_stat = 'mean'
+
     # path_out = Path('./calibration_images/{camera}/{pulse}')
     path_out = Path('~/calcam2/input_images/{camera}/{pulse}').expanduser()
-    generate_calcam_calib_images(pulse=pulse, camera=camera, machine='mast', n_start=n_start, n_end=n_end,
-                                 path_out=path_out, n_images=n_images)
+    generate_calcam_calib_images(pulse=pulse, camera=camera, machine=machine, n_start=n_start, n_end=n_end,
+                                 use_raw=use_raw,
+                                 selection_stat=selection_stat, path_out=path_out, n_images=n_images, n_nuc=n_nuc)
     pass
