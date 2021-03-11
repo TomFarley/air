@@ -1,0 +1,18 @@
+
+# Fontsizes
+font.size:    10.0
+axes.titlesize : 14
+axes.labelsize : 16
+xtick.labelsize : 16
+ytick.labelsize : 16
+legend.fontsize:  12
+
+# Font properties
+font.weight : 500
+
+# Plot properties
+lines.linewidth : 2
+lines.markersize : 6
+figure.autolayout: True  # plt.tightlayout
+image.cmap:   gray
+image.interpolation:  none  # /antialiased
