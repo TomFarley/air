@@ -17,6 +17,26 @@ Gitlab pages path should be: https://mast-u_scheduler.gitpages.ccfe.ac.uk/air?
 
 For authorship information see AUTHORS.txt, and for details of how to cite the code in academic publications see CITE.txt.
 
+Installing FIRE
+---------------
+It is recommended to create a virtual environment for FIRE to isolate it's
+package dependencies from the rest of your system, while using the system
+packages as a base:
+```bash
+$ cd <path_to_user_virtualenvs>  # eg. ~/venv or ~/.venv
+$ python -m venv --system-site-packages fire  # venv named 'fire'
+$ source fire/bin/activate  # use command 'deactivate' to unset
+```
+Install fire and it's dependencies in developer mode:
+```bash
+$ cd <path_to_air_reposintory>  # location of git clone
+$ python -m pip install -r requirements.txt
+$ pip install --user -e .
+```
+Run tests to confirm installation is successful:
+```bash
+$ python setup.py test
+```
 
 Summary for running on the scheduler
 ------------------------------------
