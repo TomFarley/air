@@ -219,21 +219,23 @@ def calc_1d_profile_rolling_stats(data, stats=('mean', 'std'), path=None, width=
     param = param_path.replace(path_str, '')
     coord = data.dims[0]
 
+    width = width if (len(data) > width) else len(data)
+
     roll = data.rolling({coord: width})
 
     for stat in stats:
         if stat == 'min':
-            out[f'{param}_roll_min({coord})_{path}'] = roll.min()
+            out[f'{param}_roll-min({coord})_{path}'] = roll.min()
         elif stat == 'mean':
-            out[f'{param}_roll_mean({coord})_{path}'] = roll.mean()
+            out[f'{param}_roll-mean({coord})_{path}'] = roll.mean()
         elif stat == 'std':
-            out[f'{param}_roll_std({coord})_{path}'] = roll.std()
+            out[f'{param}_roll-std({coord})_{path}'] = roll.std()
         elif stat == 'max':
-            out[f'{param}_roll_max({coord})_{path}'] = roll.max()
+            out[f'{param}_roll-max({coord})_{path}'] = roll.max()
         elif isinstance(stat, tuple) and stat[0] == 'percentile':
             # out[f'{param}_{stat[1]}percentile({coord_keep_str})_{path}'] = xr.apply_ufunc(np.percentile, data, stat[1],
             #                                     input_core_dims=((coord_reduce,), ()), kwargs=dict(axis=axis_keep))
-            out[f'{param}_roll_{stat[1]}percentile({coord})_{path}'] = np.percentile(roll, stat[1])  # Use apply_ufunc
+            out[f'{param}_roll-{stat[1]}percentile({coord})_{path}'] = np.percentile(roll, stat[1])  # Use apply_ufunc
         else:
             raise ValueError(stat)
 
