@@ -207,12 +207,15 @@ def read_uda_signal(signal, pulse, raise_exceptions=True, log_exceptions=True, u
     return data
 
 def read_uda_signal_to_dataarray(signal, pulse, dims=None, rename_dims='default', meta_defaults='default',
-                                 normalise=False, raise_exceptions=True):
-    uda_data_obj = read_uda_signal(signal, pulse)
+                                 use_mast_client=False, normalise=False, raise_exceptions=True):
+    uda_data_obj = read_uda_signal(signal, pulse, use_mast_client=use_mast_client, raise_exceptions=raise_exceptions)
+
+    if isinstance(uda_data_obj, Exception) and (not raise_exceptions):
+        return uda_data_obj
 
     data_array = uda_signal_obj_to_dataarray(uda_data_obj, signal, pulse, dims=dims, rename_dims=rename_dims,
                                                  meta_defaults=meta_defaults, raise_exceptions=raise_exceptions)
-    if normalise is not False:
+    if (normalise is not False):
         # Normalise data by supplied normalisation factor
         if normalise is True:
             normalise = np.max(np.abs(data_array))
