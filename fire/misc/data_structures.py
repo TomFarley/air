@@ -167,6 +167,49 @@ def attach_standard_meta_attrs(data, varname='all', replace=False, key=None):
 
     return data
 
+def swap_xarray_dim(data_array, new_active_dims, old_active_dims=None, alternative_new_dims=None):
+    """Wrapper for data_array.swap_dims() used to set active coordinate(s) for dimension(s)
+    eg. switch between equivalent coordinates like time and frame number.
+
+    Advantages of wrapper:
+    - Works out what currently active coordinate to switch so only need to pass new coordinate
+    - Doesn't raise an exception if data already has corrector coordinates active
+    - Can swap multiple dimension coordinates in one call
+
+    Args:
+        data_array      (xr.DataArray) : DataArray for which to swap coordinates
+        new_active_dims (str/sequence) : Name(s) of coordinate(s) to set as active
+        old_active_dims (str/sequence) : Name(s) of current coordinate(s) to be swapped out with new coords
+        alternative_new_dims (str/sequence) : Optional fall back coordinates to switch to if new_active_dims fails
+
+    Returns (xr.DataArray): DataArray with dimension coordinates swapped
+
+    """
+    new_active_dims = make_iterable(new_active_dims)
+
+    for i, new_active_dim in enumerate(new_active_dims):
+        if new_active_dim in data_array.dims:
+            # Already active, so no change required
+            continue
+
+        if old_active_dims is None:
+            try:
+                old_active_dim = data_array.coords[new_active_dim].dims[0]
+            except Exception as e:
+                raise
+        else:
+            old_active_dim = make_iterable(old_active_dims)[i]
+
+        try:
+            data_array = data_array.swap_dims({old_active_dim: new_active_dim})
+        except Exception as e:
+            if alternative_new_dims is not None:
+                for dim in make_iterable(alternative_new_dims):
+                    data_array = swap_xarray_dim(data_array, dim)
+            else:
+                raise
+
+    return data_array
 
 def to_image_dataset(data, key='data'):
     if isinstance(data, xr.Dataset):
