@@ -19,13 +19,14 @@ from cycler import cycler
 
 from fire.plotting import image_figures, spatial_figures, path_figures, plot_tools, temporal_figures
 from fire.plotting.image_figures import (figure_xarray_imshow, figure_frame_data, plot_outlier_pixels, figure_analysis_path,
-                                         figure_spatial_res_max, figure_spatial_res_x, figure_spatial_res_y,
+                                         figure_spatial_res, figure_spatial_res_x, figure_spatial_res_y,
                                          plot_image_data_hist, plot_analysis_path, animate_image_data)
 from fire.plotting.spatial_figures import figure_poloidal_cross_section, figure_top_down
 from fire.plotting.path_figures import figure_path_1d, figure_path_2d
 from fire.plotting.plot_tools import annotate_axis, repeat_color
 from fire.camera.image_processing import find_outlier_pixels
 from fire.plugins import plugins_machine
+from fire.misc import data_structures
 from fire.misc.utils import make_iterable
 from fire.interfaces import uda_utils
 
@@ -323,7 +324,7 @@ def debug_spatial_res(data, aspect='equal'):
     ax = axes[4]
     figure_spatial_res_y(data, ax=ax, show=False, save_fn=None, aspect=aspect)
     ax = axes[5]
-    figure_spatial_res_max(data, ax=ax, show=False, save_fn=None, aspect=aspect)
+    figure_spatial_res(data, ax=ax, show=False, save_fn=None, aspect=aspect)
 
     plt.tight_layout()
     plt.show()
@@ -532,10 +533,9 @@ def debug_temperature_image(data):
     figure_xarray_imshow(data, key='temperature_im', show=True)
 
 def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', robust=True, extend=None,
-                          annotate=True, mark_peak=True, meta=None, ax=None, t_range=(0.0, 0.6), t_wins=None,
-                          machine_plugins=None,
-                          colorbar_kwargs=None, show=True,
-                          verbose=True):
+                          annotate=True, mark_peak=True, meta=None, ax=None, t_range=(0.0, 0.6),
+                          r_range=None, t_wins=None, machine_plugins=None, colorbar_kwargs=None,
+                          set_ax_lims_with_ranges=True, show=True, verbose=True):
     # TODO: Move general code to plot_tools.py func
 
     for i_path, path_name in enumerate(make_iterable(path_names)):
@@ -545,19 +545,36 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             ax_i = make_iterable(ax)[i_path]
 
         data = data_paths[f'{param}_{path_name}']
-        if 'n' in data.dims:
-            data = data.swap_dims({'n': 't'})
-        # data = data.swap_dims({f'i_{path_name}': f's_global_{path_name}'})
 
+        coord_path = f'R_{path_name}'
+        # coord_path = f's_{path_name}'
+        data = data_structures.swap_xarray_dim(data, new_active_dims=['t', coord_path])
+
+        # TODO: Generalise setting coord ranges to other 2d data
+        if t_range is not None:
+            t_range = np.array(t_range)
+            t_range[1] = np.min([t_range[1], data['t'].values.max()])
+            if set_ax_lims_with_ranges:
+                ax_i.set_ylim(t_range)
+            else:
+                data = data.sel({'t': slice(*t_range)})
+        if r_range is not None:
+            r_range = np.array(r_range)
+            r_range[0] = np.max([r_range[0], data[coord_path].values.min()])
+            r_range[1] = np.min([r_range[1], data[coord_path].values.max()])
+            if set_ax_lims_with_ranges:
+                ax_i.set_xlim(r_range)
+            else:
+                data = data.sel({coord_path: slice(*r_range)})
+
+        # Configure colorbar axis
         colorbar_kwargs = colorbar_kwargs if (colorbar_kwargs is not None) else {}
         cmap = cm.get_cmap('coolwarm')
         kws = plot_tools.setup_xarray_colorbar_ax(ax_i, data_plot=data, add_colorbar=True, robust=robust, extend=extend,
                                                   cmap=cmap, **colorbar_kwargs)
 
-        coord_path = f'R_{path_name}'
+        # Plot data
         try:
-            if f'i_{path_name}' in data.dims:
-                data = data.swap_dims({f'i_{path_name}': coord_path})
             # Remove any nans from path coord as will make 2d plot fail
             mask_coord_nan = np.isnan(data[coord_path])
             if np.any(mask_coord_nan):
@@ -567,18 +584,13 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             except ValueError as e:
                 # contourf can handle irregular x axis
                 artist = data.plot.contourf(levels=200, center=False, ax=ax_i, **kws)
-
-
         except (KeyError, ValueError) as e:
             # Value error due to: R data not monotonic or nans in coord values - switch back to index or s_path
-
-            # data = data.sortby('')
-            # data = data.swap_dims({f'R_{path_name}': f's_path_{path_name}'})
-            if f'R_{path_name}' in data.dims:
-                data = data.swap_dims({f'R_{path_name}': f'i_{path_name}'})
+            data = data_structures.swap_xarray_dim(data, f'i_{path_name}')
 
             artist = data.plot(center=False, ax=ax_i, **kws)
 
+        # Mark peak
         param_peak = f'{param}_peak_{path_name}'
         param_r_peak = f'{param}_r_peak_{path_name}'
         if mark_peak and (param_r_peak in data_paths):
@@ -599,10 +611,10 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             # annotate_axis(ax_i, label, x=0.99, y=0.99, fontsize=12, box=False, horizontalalignment='right',
             #                                                                             verticalalignment='top')
 
-        if t_range is not None:
-            t_range = np.array(t_range)
-            t_range[1] = np.min([t_range[1], data['t'].values.max()])
-            ax_i.set_ylim(t_range)
+        # if t_range is not None:
+        #     t_range = np.array(t_range)
+        #     t_range[1] = np.min([t_range[1], data['t'].values.max()])
+        #     ax_i.set_ylim(t_range)
 
         if machine_plugins is not None:
             if isinstance(machine_plugins, str):
@@ -731,7 +743,10 @@ def debug_plot_timings(data_profiles, pulse, params=('heat_flux_peak_{path}','te
         signals = make_iterable(signals)
         n_sigs = len(signals)
         for i_sig, sig in enumerate(signals):
-            data = uda_utils.read_uda_signal_to_dataarray(sig, pulse=pulse)
+            data = uda_utils.read_uda_signal_to_dataarray(sig, pulse=pulse, raise_exceptions=False)
+            if isinstance(data, Exception):
+                logger.warning(f'Failed to read uda signal {sig} for {pulse}: {data}')
+                continue
             peaks_info = find_peaks_info(data)
             t_peaks.append(peaks_info['x_peaks'].values[:n_peaks_label])  # Record time of 3 largest peaks
 
@@ -886,6 +901,7 @@ def plot_mixed_fire_uda_signals(signals, pulses=None, path_data=None, meta_data=
     if n_ax_cols == 1:
         axes = axes[..., np.newaxis]
 
+    # TODO: enable plotting same signal at different times for same pulse
     for i_pulse, pulse in enumerate(pulses):
         # First loop over pulse/ax columns
         meta_data['pulse'] = pulse
