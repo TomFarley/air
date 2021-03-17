@@ -14,14 +14,15 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from fire.misc.utils import make_iterable
-from fire.misc.data_structures import to_image_dataset
-from fire.plotting.plot_tools import get_fig_ax, legend
 from matplotlib import colors, pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from fire.camera.image_processing import find_outlier_pixels
 from fire.plotting import plot_tools
+from fire.misc import utils, data_structures
+from fire.misc.utils import make_iterable
+
+from fire.plotting.plot_tools import get_fig_ax, legend
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -48,10 +49,10 @@ def figure_xarray_imshow(data, key='data', slice_=None, ax=None,
                          scale_factor=None, clip_range=(None, None),
                          cmap=None, log_cmap=False, nan_color=('red', 0.2),
                          origin='upper', aspect='equal', axes_off=False,
-                         save_fn=None, show=False, **kwargs):
+                         save_fn=None, save_fn_image=None, show=False, **kwargs):
     # TODO: Move non-xarray specific functionality to function that can be called with numpy arrays
     fig, ax, ax_passed = get_fig_ax(ax, num=key)
-    data = to_image_dataset(data, key=key)
+    data = data_structures.to_image_dataset(data, key=key)
     data_plot = data[key]
     if (data_plot.ndim > 2) and (slice_ is None):
         slice_ = {'n': np.floor(np.median(data_plot['n']))}
@@ -128,14 +129,13 @@ def figure_xarray_imshow(data, key='data', slice_=None, ax=None,
         pass
         # plt.tight_layout()
 
-    if save_fn:
-        plt.savefig(save_fn, bbox_inches='tight', transparent=True, dpi=dpi)
-        logger.info(f'Saved {key} figure to: {save_fn}')
-    if show:
-        plt.show()
+    plot_tools.save_fig(save_fn, fig=fig, bbox_inches='tight', transparent=True, dpi=dpi, mkdir_depth=1, verbose=True)
+    plot_tools.save_image(save_fn_image, data_plot.values, mkdir_depth=1, verbose=True)  # raw image @ native resolution
+    # logger.info(f'Saved {key} figure to: {save_fn}')
+    plot_tools.show_if(show=show)
 
 def figure_frame_data(data, ax=None, n='median', key='frame_data', label_outliers=True, aspect='equal', axes_off=True,
-                      save_fn=None, show=False, **kwargs):
+                      save_fn=None, save_fn_image=None, show=False, **kwargs):
     data = xr.Dataset(data_vars=dict(key=data)) if isinstance(data, xr.DataArray) else data
     frame_data = data[key]
     if n == 'median':
@@ -145,7 +145,7 @@ def figure_frame_data(data, ax=None, n='median', key='frame_data', label_outlier
     slice = {'n': n} if (n is not None) else None
 
     figure_xarray_imshow(data, key, slice_=slice, ax=ax, axes_off=axes_off, aspect=aspect,
-                         save_fn=save_fn, show=show, **kwargs)
+                         save_fn=save_fn, save_fn_image=save_fn_image, show=show, **kwargs)
     if label_outliers:
         plot_outlier_pixels(data, key=key, ax=ax, **kwargs)
     # TODO: Move show save checks here
@@ -262,10 +262,10 @@ def plot_analysis_path(ax, xpix, ypix, xpix_out_of_frame=None, ypix_out_of_frame
         kws.update(kwargs)
         ax.plot(xpix_out_of_frame, ypix_out_of_frame, **kws)
 
-def figure_spatial_res_max(data, ax=None, clip_range=[None, 15], log_cmap=True, aspect='equal', axes_off=True,
-                           save_fn=None, show=False):
-    key = 'spatial_res_max'
-    cbar_label = 'Spatial resolution (max) [mm]'
+def figure_spatial_res(data, ax=None, res_type='max', clip_range=[None, 15], log_cmap=True,
+                       aspect='equal', axes_off=True, save_fn=None, show=False):
+    key = f'spatial_res_{res_type}'
+    cbar_label = f'Spatial resolution ({res_type}) [mm]'
     scale_factor = 1e3
     cmap = 'gray_r'
 
@@ -479,19 +479,6 @@ def animate_image_data(frames, ax=None, duration=None, interval=None, cmap='viri
 
     return fig, ax, anim
 
-
-if __name__ == '__main__':
-    nframes = 50
-    frame = np.arange(320 * 256).reshape((320, 256))
-    frames = np.zeros((nframes,) + frame.shape)
-    frame_nos = np.arange(0, nframes, dtype=int)
-    scale_factors = 1 + 0.25 * np.sin(1.5 * np.pi + 1.5 * np.pi * frame_nos / len(frame_nos))
-    frames = scale_factors[:, np.newaxis, np.newaxis] * frame
-
-    animate_image_data(frames)
-    pass
-
-
 def plot_movie_frames(data_movie, cmap_percentiles=(1, 99), frame_label=None):
     """Plot image for each frame of 3D ndarray
 
@@ -523,3 +510,15 @@ def plot_frame(data_frame, frame_label=np.nan, cmap_percentiles=(1, 99)):
     plt.colorbar()
     plt.tight_layout()
     plt.show()
+
+
+if __name__ == '__main__':
+    nframes = 50
+    frame = np.arange(320 * 256).reshape((320, 256))
+    frames = np.zeros((nframes,) + frame.shape)
+    frame_nos = np.arange(0, nframes, dtype=int)
+    scale_factors = 1 + 0.25 * np.sin(1.5 * np.pi + 1.5 * np.pi * frame_nos / len(frame_nos))
+    frames = scale_factors[:, np.newaxis, np.newaxis] * frame
+
+    animate_image_data(frames)
+    pass
