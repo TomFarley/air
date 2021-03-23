@@ -249,6 +249,7 @@ def calc_tile_tilt_area_coorection_factors(path_data, poloidal_plane_tilt, toroi
 
         tile_poloidal_plane_tilt = poloidal_plane_tilt[tile_name]
         tile_toroidal_tilt = toroidal_tilt[tile_name]
+        tile_nlouvres = nlouvres[tile_name]
 
         correction_factor[tile_mask] = 1
 
