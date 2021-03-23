@@ -277,10 +277,17 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
     r_path = path_data[f'R_{path}']
     s_path = path_data[f's_global_{path}']
     annulus_areas_horizontal = calc_horizontal_path_anulus_areas(r_path)
-    if False:
-        tile_angle_poloidal = path_data[f'tile_angle_poloidal_{path}']
-        tile_angle_toroidal = path_data[f'tile_angle_toroidal_{path}']
-        tile_tilt_area_factors = calc_tile_tilt_area_coorection_factors()
+    if True:
+        # TODO: Collect tile angles from structure definition file
+        # TODO: Move calc_tile_tilt_area_coorection_factors fucntion to mast_u machine plugins
+        # tile_angle_poloidal = path_data[f'tile_angle_poloidal_{path}']
+        # tile_angle_toroidal = path_data[f'tile_angle_toroidal_{path}']
+        poloidal_plane_tilt = dict(T2=45, T3=45, T4=0, T5=-45)
+        toroidal_tilt = dict(T2=4, T3=4, T4=4, T5=4)
+        nlouvres = dict(T2=12, T3=12, T4=12, T5=24)  # Not required
+        tile_tilt_area_factors = calc_tile_tilt_area_coorection_factors(path_data,
+                                    poloidal_plane_tilt=poloidal_plane_tilt, toroidal_tilt=toroidal_tilt,
+                                                                        nlouvres=nlouvres, path=path_name)
         annulus_areas_corrected = annulus_areas_horizontal * tile_tilt_area_factors
     else:
         logger.warning(f'Using incorrect annulus areas for integrated/total quantities')
