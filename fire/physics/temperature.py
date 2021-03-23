@@ -17,7 +17,7 @@ import scipy.interpolate
 from scipy.constants import zero_Celsius
 
 from fire.physics.black_body import calc_photons_to_temperature
-from fire.camera.field_of_view import calc_photon_flux_correction_for_focal_length_change
+from fire.camera_tools.field_of_view import calc_photon_flux_correction_for_focal_length_change
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
