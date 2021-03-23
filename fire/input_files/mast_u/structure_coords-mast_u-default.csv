@@ -1,10 +1,10 @@
 id, R1, R2, phi1, phi2, z1, z2, toroidal_periodicity, mirror_z, structure, material, color, description, comments
-1, 0.000, 0.336, 0, 360, -1.100, +1.100, 1, False, centre_column, MAST_U_CFC, blue, Whole centre column structure, Treat as one big annulus
-2, 0.332, 0.336, 0, 360, -1.100, -1.300, 1, True, C6, MAST_U_CFC, green, Nearly vertical tile at ends of centre column, Treat as one big annulus
-3, 0.332, 0.539, 0, 360, -1.300, -1.505, 1, True, T1, MAST_U_CFC, yellow, First sloping tile out from centre column, Treat all louvres as one big annulus
-4, 0.540, 0.905, 0, 360, -1.510, -1.879, 1, True, T2, MAST_U_CFC, orange, Second sloping tile out from centre column, Treat all louvres as one big annulus
-5, 0.905, 1.073, 0, 360, -1.882, -2.047, 1, True, T3, MAST_U_CFC, red, Third sloping tile out from centre column, Treat all louvres as one big annulus
-6, 1.071, 1.376, 0, 360, -2.061, -2.063, 1, True, T4, MAST_U_CFC, purple, Single horizontal tile, Treat all louvres as one big annulus
-7, 1.377, 1.745, 0, 360, -2.048, -1.680, 1, True, T5, MAST_U_CFC, blue, Single sloping outer target tile, Treat all louvres as one big annulus
-8, 0.902, 1.191, 0, 360, -1.299, -1.012, 1, True, N1, MAST_U_CFC, red, Single sloping tile on nose, Treat all louvres as one big annulus
-9, 0.821, 0.900, 0, 360, -1.301, -1.594, 1, True, N2, MAST_U_CFC, red, Curved nose tile, Treat all louvres as one big annulus
+21, 0.000, 0.336, 0, 360, -1.100, +1.100, 1, False, centre_column, MAST_U_CFC, blue, Whole centre column structure, Treat as one big annulus
+26, 0.332, 0.336, 0, 360, -1.100, -1.300, 1, True, C6, MAST_U_CFC, green, Nearly vertical tile at ends of centre column, Treat as one big annulus
+1, 0.332, 0.539, 0, 360, -1.300, -1.505, 1, True, T1, MAST_U_CFC, yellow, First sloping tile out from centre column, Treat all louvres as one big annulus
+2, 0.540, 0.905, 0, 360, -1.510, -1.879, 1, True, T2, MAST_U_CFC, orange, Second sloping tile out from centre column, Treat all louvres as one big annulus
+3, 0.905, 1.073, 0, 360, -1.882, -2.047, 1, True, T3, MAST_U_CFC, red, Third sloping tile out from centre column, Treat all louvres as one big annulus
+4, 1.071, 1.376, 0, 360, -2.061, -2.063, 1, True, T4, MAST_U_CFC, purple, Single horizontal tile, Treat all louvres as one big annulus
+5, 1.377, 1.745, 0, 360, -2.048, -1.680, 1, True, T5, MAST_U_CFC, blue, Single sloping outer target tile, Treat all louvres as one big annulus
+11, 0.902, 1.191, 0, 360, -1.299, -1.012, 1, True, N1, MAST_U_CFC, red, Single sloping tile on nose, Treat all louvres as one big annulus
+12, 0.821, 0.900, 0, 360, -1.301, -1.594, 1, True, N2, MAST_U_CFC, red, Curved nose tile, Treat all louvres as one big annulus
