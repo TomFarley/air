@@ -328,8 +328,8 @@
         },
         "variables": {
             "analysis_path": [
-                "heat_flux",
-                "temperature"
+                "heat_flux"
+
             ],
             "time": [
                 "heat_flux_total",
@@ -338,7 +338,7 @@
                 "heat_flux_r_peak"
             ],
             "image": [
-                "temperature"
+
             ]
         }
     },
