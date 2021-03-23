@@ -635,3 +635,18 @@ def get_module_from_path_fn(path_fn):
             logger.exception('Failed to load potential plugin module: {path_fn}'.format(path_fn=path_fn))
             module = None
     return module
+
+def archive_netcdf_output(path_fn_in, path_archive='~/.fire/archive_netcdf/'):
+    success = False
+
+    path_fn_in = Path(path_fn_in)
+    fn = path_fn_in.name
+
+    path_archive = Path(path_archive).expanduser()  # fire_paths[]
+    path_fn_archive = path_archive / fn
+
+    if path_fn_in.exists():
+        path_fn_archive.write_bytes(path_fn_in.read_bytes())
+        logger.info(f'Copied netcdf output file "{path_fn_archive}" from "{path_fn_in}"')
+
+    return success
