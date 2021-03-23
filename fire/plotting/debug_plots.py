@@ -10,6 +10,7 @@ Created:
 import logging
 from pathlib import Path
 from copy import copy, deepcopy
+from functools import partial
 
 import numpy as np
 
@@ -24,9 +25,9 @@ from fire.plotting.image_figures import (figure_xarray_imshow, figure_frame_data
 from fire.plotting.spatial_figures import figure_poloidal_cross_section, figure_top_down
 from fire.plotting.path_figures import figure_path_1d, figure_path_2d
 from fire.plotting.plot_tools import annotate_axis, repeat_color
-from fire.camera.image_processing import find_outlier_pixels
+from fire.camera_tools.image_processing import find_outlier_pixels
 from fire.plugins import plugins_machine
-from fire.misc import data_structures
+from fire.misc import utils, data_structures
 from fire.misc.utils import make_iterable
 from fire.interfaces import uda_utils
 
@@ -535,7 +536,7 @@ def debug_temperature_image(data):
 def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', robust=True, extend=None,
                           annotate=True, mark_peak=True, meta=None, ax=None, t_range=(0.0, 0.6),
                           r_range=None, t_wins=None, machine_plugins=None, colorbar_kwargs=None,
-                          set_ax_lims_with_ranges=True, show=True, verbose=True):
+                          set_data_coord_lims_with_ranges=True, show=True, verbose=True):
     # TODO: Move general code to plot_tools.py func
 
     for i_path, path_name in enumerate(make_iterable(path_names)):
@@ -554,24 +555,28 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
         if t_range is not None:
             t_range = np.array(t_range)
             t_range[1] = np.min([t_range[1], data['t'].values.max()])
-            if set_ax_lims_with_ranges:
-                ax_i.set_ylim(t_range)
-            else:
-                data = data.sel({'t': slice(*t_range)})
+            if set_data_coord_lims_with_ranges:
+                mask = (t_range[0] <= data['t']) & (data['t'] <= t_range[1])
+                data = data.sel({'t': mask})
+                # data = data.sel({'t': slice(*t_range)})
+            ax_i.set_ylim(*t_range)
         if r_range is not None:
             r_range = np.array(r_range)
             r_range[0] = np.max([r_range[0], data[coord_path].values.min()])
             r_range[1] = np.min([r_range[1], data[coord_path].values.max()])
-            if set_ax_lims_with_ranges:
-                ax_i.set_xlim(r_range)
-            else:
-                data = data.sel({coord_path: slice(*r_range)})
+            if set_data_coord_lims_with_ranges:  # set data ranges to get full range from colorbar
+                # TODO: Make general purpose function for slicing coords since pandas bug or update packages? https://github.com/pydata/xarray/issues/4370
+                mask = (r_range[0] <= data[coord_path]) & (data[coord_path] <= r_range[1])
+                data = data.sel({coord_path: mask})
+                # data = data.sel({coord_path: slice(*r_range)})
+            ax_i.set_xlim(*r_range)
 
         # Configure colorbar axis
         colorbar_kwargs = colorbar_kwargs if (colorbar_kwargs is not None) else {}
         cmap = cm.get_cmap('coolwarm')
-        kws = plot_tools.setup_xarray_colorbar_ax(ax_i, data_plot=data, add_colorbar=True, robust=robust, extend=extend,
-                                                  cmap=cmap, **colorbar_kwargs)
+        colorbar_kws = dict(robust=robust, extend=extend, cmap=cmap)
+        colorbar_kws.update(colorbar_kwargs)
+        kws = plot_tools.setup_xarray_colorbar_ax(ax_i, data_plot=data, add_colorbar=True, **colorbar_kws)
 
         # Plot data
         try:
@@ -720,7 +725,7 @@ def debug_plot_timings(data_profiles, pulse, params=('heat_flux_peak_{path}','te
                        comparison_signals=(('xim/da/hm10/t', 'xim/da/hm10/r'), 'xpx/clock/lwir-1'), separate_axes=True):
     from fire.interfaces import uda_utils
     from fire.physics.physics_parameters import find_peaks_info
-    # client = uda_utils.get_uda_client(use_mast_client=True, try_alternative=True)
+    # uda_module, client = uda_utils.get_uda_client(use_mast_client=True, try_alternative=True)
 
     n_peaks_label = 2
     figsize = (10, 10)
@@ -812,7 +817,7 @@ def plot_mixed_fire_uda_signal(signal, path_data=None, meta_data=None, ax=None, 
 
     meta_data.setdefault('signal', signal)  # TODO: move outside func/apply to copy?
     if label is not None:
-        label = label.format(**meta_data)
+        label = utils.format_str_partial(label, meta_data, allow_partial=True)
 
     success = False
     if path_data is not None:
@@ -854,9 +859,10 @@ def plot_mixed_fire_uda_signal(signal, path_data=None, meta_data=None, ax=None, 
     if not success:
         raise ValueError(f'Failed to plot signal "{signal}"')
 
-def plot_mixed_fire_uda_signals(signals, pulses=None, path_data=None, meta_data=None, axes=None, sharex=None,
-                                sharey='row', x_range=(-0.05, 0.6), separate_pulse_axes=True,
-                                normalise_sigs_on_same_ax=True):
+def plot_mixed_fire_uda_signals(signals, pulses=None, path_data=None, meta_data=None, axes=None,
+                                sharex=None, sharey='row', x_range=None, separate_pulse_axes=True,
+                                normalise_sigs_on_same_ax=True, recompute_pickle=False,
+                                slice_labels=True, **kwargs):
     """
     signals (n_axes,
                 (y_axis1,
@@ -886,23 +892,32 @@ def plot_mixed_fire_uda_signals(signals, pulses=None, path_data=None, meta_data=
     n_ax_rows = len(signals)
     if separate_pulse_axes:
         n_ax_cols = n_pulses
-        label = '{signal}'  # format string
+        # label = '{signal}'  # format string
         annotate_format = '{machine} {camera} {pulse} {path_label}'
     else:
         n_ax_cols = 1
-        label = '{pulse}'  # format string
+        # label = '{pulse}'  # format string
         annotate_format = '{machine} {camera}'
 
     n_ax_grid = (n_ax_rows, n_ax_cols)
+    n_ax = n_ax_rows * n_ax_cols
+    figsize = (14, 8) if (n_ax > 1) else (8, 5)
 
     fig, axes, ax_passed = plot_tools.get_fig_ax(ax=axes, ax_grid_dims=n_ax_grid, sharex=sharex, sharey=sharey,
-                                                 figsize=(14, 8))
+                                                 figsize=figsize)
     axes = np.array(make_iterable(axes))
     if n_ax_cols == 1:
         axes = axes[..., np.newaxis]
 
+    slice_ = kwargs.get('slice_')
+    slice_str = '' if ((slice_ is None) or (not slice_labels)) else (' '+' '.join(['{'+f'{key}'+'}' for key in
+                                                                                 slice_.keys()]))
+
     # TODO: enable plotting same signal at different times for same pulse
     for i_pulse, pulse in enumerate(pulses):
+        if isinstance(pulse, (tuple, list)):
+            kwargs.update(pulse[1])
+            pulse = pulse[0]
         # First loop over pulse/ax columns
         meta_data['pulse'] = pulse
         if separate_pulse_axes:
@@ -915,12 +930,15 @@ def plot_mixed_fire_uda_signals(signals, pulses=None, path_data=None, meta_data=
             try:
                 camera = meta_data['camera']
                 machine = meta_data['machine']
-                data = read_data_for_pulses_pickle(camera, pulse, machine, recompute=False)
+                data = read_data_for_pulses_pickle(camera, pulse, machine, recompute=recompute_pickle)
                 path_data = data[pulse][0]['path_data']
             except (FileNotFoundError, KeyError) as e:
                 pass
 
         for i_ax_row, signals_ax in enumerate(signals):
+            # TODO: Allow slice_ and reduce to be iterables with length of number of axes or dict keyed by
+            # signal/shot and pull them out here?
+            # TODO: OR allow signal and/or pulse list items (in list) to be dict with specific settings
             signals_ax = make_iterable(signals_ax)
             ax_left = axes[i_ax_row, i_ax_col]
             ax = ax_left
@@ -945,12 +963,12 @@ def plot_mixed_fire_uda_signals(signals, pulses=None, path_data=None, meta_data=
                     ax.tick_params(axis='y', labelcolor=color)
 
                     if separate_pulse_axes or (n_pulses == 1 and n_signals_side > 1):
-                        label = '{signal}'
+                        label = '{signal}'+slice_str
                     else:
                         if (n_pulses > 1) and (n_signals_side > 1):
-                            label = '{pulse} {signal}'
+                            label = '{pulse} {signal}'+slice_str
                         else:
-                            label = '{pulse}'
+                            label = '{pulse}'+slice_str
 
                     alpha = 1 if (len(signals_side) == 1) and (n_pulses == 1 or separate_pulse_axes) else 0.7
                     normalise_factor = False
@@ -958,10 +976,13 @@ def plot_mixed_fire_uda_signals(signals, pulses=None, path_data=None, meta_data=
                     for i, (signal, ls) in enumerate(zip(signals_side, line_styles)):
                         meta_data['signal'] = signal
 
-                        data_plot, artist = plot_mixed_fire_uda_signal(signal, path_data=path_data, meta_data=meta_data,
-                                                        ax=ax, normalise_factor=normalise_factor,
-                                                    label=label, plot_kwargs=dict(color=color, alpha=alpha, **ls),
-                                                                       legend=False)
+                        kws = dict(meta_data=meta_data, normalise_factor=normalise_factor, label=label,
+                                   plot_kwargs=dict(color=color, alpha=alpha, **ls), legend=False)
+                        kws.update(kwargs)
+
+                        # Plot signal
+                        data_plot, artist = plot_mixed_fire_uda_signal(signal, path_data=path_data, ax=ax, **kws)
+
                         normalise_factor = np.nanmax(data_plot)  # For subsequent signals on same side axis, normalise
                         # TODO: Update legend to give normalisation
                 if separate_pulse_axes:
@@ -980,22 +1001,24 @@ def plot_mixed_fire_uda_signals(signals, pulses=None, path_data=None, meta_data=
                 n_signals_side = len(signals_side)
 
                 if separate_pulse_axes or (n_pulses == 1 and n_signals_side > 1):
-                    label = '{signal}'
+                    label = '{signal}'+slice_str
                 else:
                     if (n_pulses > 1) and (n_signals_side > 1):
-                        label = '{pulse} {signal}'
+                        label = '{pulse} {signal}'+slice_str
                     else:
-                        label = '{pulse}'
+                        label = '{pulse}'+slice_str
                 alpha = 1 if (len(signals_side) == 1) and (n_pulses == 1 or separate_pulse_axes) else 0.7
                 normalise_factor = False
                 for i_left, signal in enumerate(make_iterable(signals_side)):
                     meta_data['signal'] = signal
 
+                    kws = dict(meta_data=meta_data, normalise_factor=normalise_factor, label=label,
+                                                        plot_kwargs=dict(alpha=alpha), legend=False)
+                    kws.update(kwargs)
 
-                    data_plot, artist = plot_mixed_fire_uda_signal(signal, path_data=path_data, meta_data=meta_data,
-                                                                    ax=ax_left, normalise_factor=normalise_factor,
-                                                                   label=label, plot_kwargs=dict(alpha=alpha),
-                                                                   legend=False)
+                    # Plot signal
+                    data_plot, artist = plot_mixed_fire_uda_signal(signal, path_data=path_data, ax=ax_left, **kws)
+
                     if normalise_sigs_on_same_ax and (normalise_factor is False):
                         normalise_factor = np.max(data_plot)  # For subsequent signals on same side axis, normalise
                     # TODO: Update legend to give normalisation
@@ -1019,6 +1042,8 @@ def plot_mixed_fire_uda_signals(signals, pulses=None, path_data=None, meta_data=
 
             if x_range is not None:
                 ax.set_xlim(*x_range)
+
+            ax.title.set_visible(False)
     plt.tight_layout()
 
 

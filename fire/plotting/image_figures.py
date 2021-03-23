@@ -17,7 +17,7 @@ import matplotlib as mpl
 from matplotlib import colors, pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from fire.camera.image_processing import find_outlier_pixels
+from fire.camera_tools.image_processing import find_outlier_pixels
 from fire.plotting import plot_tools
 from fire.misc import utils, data_structures
 from fire.misc.utils import make_iterable

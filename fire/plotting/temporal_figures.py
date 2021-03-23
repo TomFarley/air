@@ -78,6 +78,8 @@ def plot_movie_intensity_stats(data_movie, ax=None, bit_depth=14, meta_data=None
     plot_tools.annotate_providence(ax, meta_data=meta_data, annotate=(meta_data is not None))
     plot_tools.legend(ax)
 
+    plot_tools.add_second_x_scale(ax, x_axis_values=data_movie.coords['n'], label='$n_{frame}$', y_values=data_max)
+
     plot_tools.show_if(show=show, close_all=False, tight_layout=True)
     plot_tools.save_fig(save_fn, fig=fig, save=(save_fn is not None))
 

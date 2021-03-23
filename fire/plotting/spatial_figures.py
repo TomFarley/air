@@ -8,6 +8,7 @@ Created:
 
 import logging
 from copy import copy
+from functools import partial
 
 import fire
 import numpy as np
@@ -15,8 +16,9 @@ import xarray as xr
 from matplotlib import pyplot as plt
 from cycler import cycler
 
+import fire
 from fire.misc.utils import make_iterable
-from fire.misc import data_structures
+from fire.misc import utils, data_structures
 from fire.plotting import plot_tools
 from fire.plotting.plot_tools import get_fig_ax, color_shade
 
@@ -63,7 +65,7 @@ def figure_spatial_profile_1d(data_path, key, path_name='path0', x_coord=None, s
     fig, ax, ax_passed = plot_tools.get_fig_ax(ax, num=f'{key} temporal profile')
 
     if (slice_ is None) and (reduce is None):
-        slice_ = {'n': np.floor(np.median(data_path['n']))}
+        slice_ = {'n': int(np.floor(np.median(data_path['n'])))}
 
     kws = {'color': None}
     if isinstance(plot_kwargs, dict):
@@ -80,23 +82,28 @@ def figure_spatial_profile_1d(data_path, key, path_name='path0', x_coord=None, s
     if data_plot.ndim > 1:
         if slice_ is not None:
             # Take slice through 2D data for 1D plot
-            slice_dim = list(slice_.keys())[0]
-            if slice_dim not in data_plot.dims:
-                data_plot = data_plot.swap_dims({data_plot.dims[0]: slice_dim})
+            data_plot = data_structures.swap_xarray_dim(data_plot, slice_)
+
             method = None if np.any([isinstance(v, slice) for v in slice_.values()]) else 'nearest'
             slice_ = copy(slice_)
-            x_slice = {x_coord: slice_.pop(x_coord, slice(None, None))}
+            # x_slice = {x_coord: slice_.pop(x_coord, slice(None, None))}
+            x_slice = None
             data_plot = data_plot.sel(slice_, method=method)
 
         if reduce is not None:
             # Take average/max etc stat to reduce dimensionality
-            for coord, func, args in reduce:
+            if isinstance(reduce, (tuple, list)):  # convert to dict
+                reduce = reduce if isinstance(reduce[0], (tuple, list)) else [reduce]
+                reduce = {coord_func_args[0]: coord_func_args[1:] for coord_func_args in reduce}
+            for coord, func_args in reduce.items():  # TODO: Use dict eg {'t': ('mean', ())} instead of tuple?
                 # data_plot = xr.apply_ufunc(func, data_plot, *args,
                 #                            input_core_dims=((coord,), ()), kwargs=dict(axis=axis_keep))
+                func = func_args if utils.is_scalar(func_args) else func_args[0]
+                args = () if utils.is_scalar(func_args) else func_args[1]
                 data_plot = data_structures.reduce_2d_data_array(data_plot, func, coord, args)
 
     if x_coord is not None:
-        data_plot = data_plot.swap_dims({data_plot.dims[0]: x_coord})
+        data_plot = data_structures.swap_xarray_dim(data_plot, x_coord)
 
     if x_slice is not None:
         data_plot = data_plot.sortby(x_coord)
@@ -105,6 +112,11 @@ def figure_spatial_profile_1d(data_path, key, path_name='path0', x_coord=None, s
     if label not in (False, None):
         if label is True:
             label = data_plot.attrs.get('symbol', data_plot.name)
+        if meta is not None:
+            label = plot_tools.slice_to_label(label, meta)  # Allow partial format string subs
+        if slice_ is not None:
+            slice_labels = plot_tools.slice_to_label(slice_, reduce=reduce)
+            label = utils.format_str_partial(label, slice_labels, allow_partial=True)
         label = label.replace(f'_{path_name}', '').replace('_', ' ').replace('r peak', r'$R_{peak}$')
         kws['label'] = label
 
@@ -126,7 +138,12 @@ def figure_spatial_profile_1d(data_path, key, path_name='path0', x_coord=None, s
     data_plot.attrs.update(data_path[key].attrs)
 
     artist = data_plot.plot.line(ax=ax, **kws)
-    ax.title.set_fontsize(10)
+    # ax.title.set_fontsize(10)
+
+    if data_plot.dims[0][0] == 'R':
+        # TODO: call from machine pluggins
+        from fire.plugins.machine_plugins.mast_u import label_tiles
+        label_tiles(ax, data_plot.coords, coords_axes=data_plot.dims[0], y=data_plot.values.min())
 
     plot_tools.legend(ax, legend=legend, only_multiple_artists=True)
     plot_tools.show_if(show=show, close_all=False)

@@ -17,6 +17,7 @@ import xarray as xr
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+from fire.interfaces import io_utils
 from fire.misc import utils
 from fire.misc.utils import mkdir, make_iterable, is_scalar
 
@@ -55,6 +56,37 @@ def get_fig_ax(ax=None, num=None, ax_grid_dims=(1, 1), dimensions=2, axes_flatte
         fig = ax.figure
         ax_passed = True
     return fig, ax, ax_passed
+
+def add_second_x_scale(ax, x_axis_values, y_values=None, label=None, x_map_func=None, ax_kwargs=None):
+    """Add a second x axis at top of plot axes
+
+    Args:
+        ax: mpl axis instance to add x axis to
+        x_axis_values: New x axis values corresponding to original x axis values
+        y_values: Dummy y values
+        x_map_func:
+        ax_kwargs:
+
+    Returns:
+
+    """
+    x_axis_values = np.array(x_axis_values)
+    if x_map_func is not None:
+        x_axis_values = x_map_func(x_axis_values)
+    if y_values is None:
+        y_values = np.full_like(x_axis_values, np.nan, dtype=float)
+
+    ax2 = ax.twiny()
+    line, = ax2.plot(x_axis_values, y_values, label=None)  # Create a dummy plot
+    line.set_visible(False)
+    # ax2.cla()
+
+    ax2.set_xlabel(label)
+
+    if ax_kwargs is not None:
+        # Format axis ticks etc
+        raise NotImplementedError
+    return ax2
 
 def annotate_axis(ax, string, loc='top_right', x=0.85, y=0.955, fontsize=14, coords='axis', box=True,
                   bbox=(('facecolor', 'w'), ('ec', None), ('lw', 0), ('alpha', 0.5), ('boxstyle', 'round')),
@@ -233,7 +265,7 @@ def save_fig(path_fn, fig=None, path=None, transparent=True, bbox_inches='tight'
             path_fn = '{}.{}'.format(path_fn0, ext)
             if ((image_format_subdirs == 'all') or (image_format_subdirs is True) or
                     ((image_format_subdirs == 'subsequent') and (i > 0))):
-                path_fn = insert_subdir_in_path(path_fn, ext, -1, create_dir=True)
+                path_fn = io_utils.insert_subdir_in_path(path_fn, ext, -1, create_dir=True)
             path_fns[ext] = path_fn
     for ext, path_fn in path_fns.items():
         try:
@@ -245,6 +277,55 @@ def save_fig(path_fn, fig=None, path=None, transparent=True, bbox_inches='tight'
         logger.info('Saved {} plot to:\n{}'.format(description, path_fns))
         print('Saved {} plot to:'.format(description))
         print(path_fns)
+
+def save_image(path_fn, image_data, path=None, save=True, image_formats=None, image_format_subdirs='subsequent',
+             mkdir_depth=None, mkdir_start=None, description='', verbose=True):
+    from skimage import io, exposure, img_as_uint, img_as_float
+
+    if (not save) or (path_fn is None):
+        return False
+    if path is not None:
+        path_fn = os.path.join(path, path_fn)
+    path_fn = os.path.realpath(os.path.expanduser(path_fn))
+    # if not pos_path(path_fn, allow_relative=True):  # string path
+    #     raise IOError('Not valid save path: {}'.format(path_fn))
+
+    if (mkdir_depth is not None) or (mkdir_start is not None):
+        mkdir(os.path.dirname(path_fn), depth=mkdir_depth, start_dir=mkdir_start)
+
+    if image_formats is None:
+        _, ext = os.path.splitext(path_fn)
+        path_fns = {ext: path_fn}
+    else:
+        # Handle filesnames without extension with periods in
+        path_fn0, ext = os.path.splitext(path_fn)
+        path_fn0 = path_fn0 if len(ext) <= 4 else path_fn
+        path_fns = {}
+        for i, ext in enumerate(image_formats):
+            path_fn = '{}.{}'.format(path_fn0, ext)
+            if ((image_format_subdirs == 'all') or (image_format_subdirs is True) or
+                    ((image_format_subdirs == 'subsequent') and (i > 0))):
+                path_fn = io_utils.insert_subdir_in_path(path_fn, ext, -1, create_dir=True)
+            path_fns[ext] = path_fn
+    for ext, path_fn in path_fns.items():
+        image = np.array(image_data)
+        try:
+            io.use_plugin('freeimage')  # Enable writing out to higher bit depth (not just 8 bit, 0-255)
+            image = exposure.rescale_intensity(image, out_range='float')
+            image = img_as_uint(image)
+        except ValueError as e:
+            logger.debug('Failed use "freeimage" plugin to write high bit-depth image. Scaling to 8-bit: {}'.format(
+                path_fn))
+            image *= 255/np.max(image)
+            image = image.astype(int)
+        try:
+            io.imsave(path_fn, image)  # Data must be integer or float [-1, 1]
+        except RuntimeError as e:
+            logger.exception('Failed to save image to: {}'.format(path_fn))
+            raise e
+    if verbose:
+        logger.info('Saved {} image to:\n{}'.format(description, path_fns))
+        print('Saved {} image to: {}'.format(description, path_fns))
 
 def get_previous_artist_color(ax=None, artist_ranking=('line', 'pathcollection'), artist_ranking_str=None):
     artist_type_options = ('line', 'pathcollection')
@@ -301,7 +382,7 @@ def repeat_color(ax=None, shade_percentage=None, artist_string=None):
         c = color_shade(color, shade_percentage)
     return c
 
-def setup_xarray_colorbar_ax(ax, data_plot, robust=True, cbar_label=None, cmap=None, position='right',
+def setup_xarray_colorbar_ax(ax, data_plot=None, robust=True, cbar_label=None, cmap=None, position='right',
                              add_colorbar=True, size="5%", pad=0.05, **kwargs):
     from matplotlib import ticker
     from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -325,7 +406,7 @@ def setup_xarray_colorbar_ax(ax, data_plot, robust=True, cbar_label=None, cmap=N
         if cbar_label is not None:
             kws['cbar_kwargs']['label'] = cbar_label  # If not passed xarray auto generates from dataarray name/attrs
 
-        if np.issubdtype(data_plot.dtype, np.int64) and (np.max(data_plot.values) < 20):
+        if (data_plot is not None) and np.issubdtype(data_plot.dtype, np.int64) and (np.max(data_plot.values) < 20):
             # Integer/quantitative data
             bad_value = -1
             data_plot = xr.where(data_plot == bad_value, np.nan, data_plot)
@@ -371,7 +452,22 @@ def label_axis_windows(windows, axis='y', labels=None, ax=None, line_kwargs=None
                 label = None
             func(value, label=str(label), **line_kws)
 
+def slice_to_label(slice_, reduce=None):
+    labels = {}
+    for coord, sl in slice_.items():
+        if (reduce is not None):
+            reduce_str = reduce.get(coord)
+            reduce_str = reduce_str if is_scalar(reduce_str) else reduce_str[0]
+            reduce_str = str(reduce_str)  # TODO: map funcs to strings
+        else:
+            reduce_str = ''
 
+        if utils.is_number(sl):
+            labels[coord] = f'{coord}={sl:0.3g}'
+        else:
+            label = f'{coord}={sl}' if reduce is None else f'{reduce_str}({coord}=[{sl.start:0.3g},{sl.stop:0.3g}])'
+            labels[coord] = label
+    return labels
 
 def format_poloidal_plane_ax(ax, units='m'):
     ax.set_xlabel(f'R [{units}]')
