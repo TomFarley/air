@@ -16,6 +16,7 @@ logging.basicConfig()
 logger_fire = logging.getLogger(__name__)
 
 # Store important paths for quick reference
+# TODO: Read template json config file and in turn look up user config file if possible and use to set user fire path
 fire_paths = {'root': Path(__file__).parent}
 fire_paths['input_files'] = fire_paths['root'] / 'input_files'
 fire_paths['config'] = Path('~/.fire_config.json').expanduser()
