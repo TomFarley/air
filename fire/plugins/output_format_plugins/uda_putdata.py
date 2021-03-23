@@ -6,7 +6,7 @@
 Created: 
 """
 
-import logging
+import logging, re
 from typing import Union, Iterable, Sequence, Tuple, Optional, Any, Dict
 from pathlib import Path
 
@@ -16,6 +16,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 from fire.misc.utils import filter_kwargs
+from fire.interfaces import uda_utils
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -110,7 +111,8 @@ output_signals = {
 def write_processed_ir_to_uda_netcdf_file(path_data, image_data, path_names,
                                           variable_names_path, variable_names_time, variable_names_image,
                                           header_info, device_info, meta_data,
-                                          fn_output='{diag_tag}{shot:06d}.nc', path_output='./'):
+                                          fn_output='{diag_tag}{shot:06d}.nc', path_output='./',
+                                          use_mast_client=False):
     """
     NETCDF output code from /home/athorn/IR/Latest/sched_air_netcdf/src/netcdfout.pro:
     Returns:
@@ -125,24 +127,31 @@ module load uda/develop              #-fatclient
     """
     from fire.interfaces.uda_utils import (putdata_create, putdata_device, putdata_variables_from_datasets,
                                            putdata_close)
+    # Important to get client object here and pass to all other functions using it (client is not singleton)
+    uda_module, client = uda_utils.get_uda_client(use_mast_client=use_mast_client, try_alternative=False)
+
     # Set up output file
-    file_id, path_fn = putdata_create(fn=fn_output, path=path_output, close=False, **{**header_info, **meta_data})
+    file_id, path_fn = putdata_create(fn=fn_output, path=path_output, close=False,
+                                      client=client, use_mast_client=use_mast_client,
+                                      **{**header_info, **meta_data})
 
     # Write device information
     device_name = meta_data['diag_tag']
-    putdata_device(device_name, device_info=device_info)
+    putdata_device(device_name, device_info=device_info, client=client, use_mast_client=use_mast_client,
+                   file_id=file_id)
     pass
 
 
     variable_meta_data = meta_data.get('variables', {})
     # Write dimensions, coordinates, data and additional attributes from xarray.Dataset objects
     putdata_variables_from_datasets(path_data, image_data, path_names,
-                                    variable_names_path, variable_names_time, variable_names_image)
+                                    variable_names_path, variable_names_time, variable_names_image,
+                                    client=client, use_mast_client=use_mast_client, file_id=file_id)
 
     # TODO: Include mapping from old MAST signal names to new signal paths?
 
     # Close file
-    putdata_close(file_id=None)
+    putdata_close(file_id=file_id, client=client, use_mast_client=use_mast_client)
 
     if not path_fn.is_file():
         # raise FileNotFoundError(f'UDA output file does not exist: {path_fn}')

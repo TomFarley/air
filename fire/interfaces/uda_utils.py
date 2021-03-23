@@ -17,6 +17,8 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 # import pyuda, cpyuda
+from fire.physics import physics_parameters
+from fire.misc import utils, data_structures
 from fire.misc.utils import increment_figlabel, filter_kwargs, format_str, make_iterable
 from fire.plotting import plot_tools
 
@@ -32,8 +34,9 @@ from fire.plotting import plot_tools
 #     # TODO: Handle missing UDA client gracefully
 #     raise e
 
+logging.basicConfig()  # TODO: remove
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.DEBUG)  # TODO: remove
 
 """UDA documentation at: https://users.mastu.ukaea.uk/data-access-and-tools/pyuda
 UDA code at: https://git.ccfe.ac.uk/MAST-U/UDA
@@ -137,31 +140,33 @@ def import_pyuda():
 
 def import_mast_client():
     try:
-        from mast.mast_client import MastClient
-        client = MastClient(None)
+        from mast import mast_client
+        client = mast_client.MastClient(None)
         client.server_tmp_dir = ''
     except ImportError as e:
         logger.warning(f'Failed to import MastClient. ')
-        MastClient, client = False, False
-    return MastClient, client
+        mast_client, client = False, False
+    return mast_client, client
 
 def get_uda_client(use_mast_client=False, try_alternative=True):
     try:
         if use_mast_client:
-            MastClient, client = import_mast_client()
+            mast_client, client = import_mast_client()
+            uda_module = mast_client
         else:
             pyuda, client = import_pyuda()
+            uda_module = pyuda
             # client = pyuda.Client()
     except (ModuleNotFoundError, ImportError) as e:
         # TODO: Handle missing UDA client gracefully
         if try_alternative:
             try:
-                client = get_uda_client(use_mast_client=~use_mast_client)
+                uda_module, client = get_uda_client(use_mast_client=~use_mast_client)
             except Exception as e:
                 raise e
         else:
             raise e
-    return client
+    return uda_module, client
 
 def filter_uda_signals(signal_string, pulse=23586):
     """Return list of signal names that contain the supplied signal_string
@@ -174,7 +179,7 @@ def filter_uda_signals(signal_string, pulse=23586):
 
     """
     # r = client.list(client.ListType.SIGNALS, shot=shot, alias='air')
-    client = get_uda_client(use_mast_client=False, try_alternative=True)
+    uda_module, client = get_uda_client(use_mast_client=False, try_alternative=True)
     r = client.list_signals(shot=pulse, alias=signal_string)
     signals = [s.signal_name for s in r]
 
@@ -182,7 +187,7 @@ def filter_uda_signals(signal_string, pulse=23586):
 
 def read_uda_signal(signal, pulse, raise_exceptions=True, log_exceptions=True, use_mast_client=False,
                     try_alternative=True, **kwargs):
-    client = get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
+    uda_module, client = get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
     import cpyuda
 
     signal = signal_abbreviations.get(signal, signal)
@@ -207,7 +212,7 @@ def read_uda_signal(signal, pulse, raise_exceptions=True, log_exceptions=True, u
     return data
 
 def read_uda_signal_to_dataarray(signal, pulse, dims=None, rename_dims='default', meta_defaults='default',
-                                 use_mast_client=False, normalise=False, raise_exceptions=True):
+                                 use_mast_client=False, normalise=False, raise_exceptions=True) -> xr.DataArray:
     uda_data_obj = read_uda_signal(signal, pulse, use_mast_client=use_mast_client, raise_exceptions=raise_exceptions)
 
     if isinstance(uda_data_obj, Exception) and (not raise_exceptions):
@@ -285,6 +290,10 @@ def uda_signal_obj_to_dataarray(uda_signal_obj, signal, pulse, dims=None, rename
         coord.attrs.update(meta_dict)
 
     return data_array
+
+def list_uda_signals_for_shot(pulse, filter_string=None):
+    signals = filter_uda_signals(filter_string, pulse=pulse)
+    return signals
 
 def get_uda_meta_dict(uda_obj, key_map, defaults=module_defaults, predefined_values=module_defaults, dim_name=None):
     if dim_name is None:
@@ -497,7 +506,7 @@ def plot_uda_signal(signal, pulse, dims=None, ax=None, normalise=False, show=Tru
 
     data_array = read_uda_signal_to_dataarray(signal, pulse, dims=dims, normalise=normalise, raise_exceptions=False)
     if isinstance(data_array, Exception):
-        return data_array
+        return ax, data_array, None
 
     if verbose:
         logger.info(f'{signal}, {pulse}: min={data_array.min().values:0.4g}, mean={data_array.mean().values:0.4g}, '
@@ -559,7 +568,7 @@ def get_mastu_wall_coords():
     Returns:
 
     """
-    client = get_uda_client(use_mast_client=False, try_alternative=True)
+    uda_module, client = get_uda_client(use_mast_client=False, try_alternative=True)
     coords = client.geometry("/limiter/efit", 50000, no_cal=True)
     print(coords)
     return coords
@@ -574,7 +583,7 @@ def get_uda_scheduler_filename(fn_pattern='{diag_tag}{shot:06d}.nc', path=None, 
 def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_number=None, status=None,
                    conventions=None, data_class=None, title=None, comment=None, code=None, version=None,
                    xml=None, date=None, time=None, verbose=None,
-                   kwarg_aliases=None, close=False, use_mast_client=False, **kwargs):
+                   kwarg_aliases=None, close=False, client=None, use_mast_client=False, **kwargs):
     """
     Filename for diagnostics should be <diag_tag><shot_number>.nc
     Where shotnumber is a 6-digit number with leading zeros (eg. air040255)
@@ -599,7 +608,11 @@ def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_numb
     Returns:
 
     """
-    client = get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
+    # import pyuda
+    if client is None:
+        pyuda_module, client = get_uda_client(use_mast_client=False, try_alternative=False)
+        mast_module, client_mast = get_uda_client(use_mast_client=True, try_alternative=False)
+
     import pyuda
     # Arguments that are different every time
     requried_args = {'shot': shot, 'pass_number': pass_number}#, 'status': status}
@@ -620,6 +633,7 @@ def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_numb
                comment="Temperature, heat flux and other physics quantities derived from IR camera data",
                code="FIRE", version="0.1.0",
                status=1,
+               debug=True,  # TODO: Turn off uda debug
                verbose=True)
     create_kwargs.update(passed_kwargs)
 
@@ -641,16 +655,17 @@ def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_numb
 
     try:
         file_id = client.put(fn, step_id="create", **create_kwargs)
-    except pyuda.UDAException:
-        logger.error(f"Failed to create NetCDF file: {fn}")
-        raise
+    # except pyuda.UDAException:
+    #     logger.error(f"Failed to create NetCDF file: {fn}")
+    #     raise
     except Exception as e:
         raise
     else:
         logger.debug(f'Created uda output netcdf file handle for {path_fn}')
 
     try:
-        file_id = client.put_file_id
+        file_id = client._registered_subclients['put'].put_file_id
+        # file_id = client_mast.put_file_id
     except AttributeError as e:
         file_id = None
         logger.warning('Failed to return uda netcdf file file_id')
@@ -668,12 +683,12 @@ def putdata_update(fn, path=None):
     Returns:
 
     """
-    client = get_uda_client(use_mast_client=False, try_alternative=True)
+    uda_module, client = get_uda_client(use_mast_client=False, try_alternative=True)
     client.put(fn, step_id="update", directory=path, verbose=False)
     file_id = client.put_file_id
     return file_id
 
-def putdata_device(device_name, device_info, attributes=None):
+def putdata_device(device_name, device_info, attributes=None, client=None, use_mast_client=False, file_id=0):
     """
     Add devices (if relevant)
     Devices can be used to record information about
@@ -688,8 +703,9 @@ def putdata_device(device_name, device_info, attributes=None):
     Returns:
 
     """
-    client = get_uda_client(use_mast_client=False, try_alternative=True)
-    import pyuda
+    # import pyuda
+    if client is None:
+        uda_module, client = get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
 
     group = f'/devices/{device_name}'
     requried_args = ['id', 'camera_serial_number', 'detector_resolution', 'image_range']
@@ -707,7 +723,9 @@ def putdata_device(device_name, device_info, attributes=None):
     kwargs = {k: v for k, v in kwargs_default.items() if v is not None}
     try:
         client.put(device_name, step_id='device', **kwargs)
-    except pyuda.UDAException:
+    # except pyuda.UDAException:
+    #     raise
+    except Exception as e:
         raise
     if attributes is None:
         # Keep all remaining keys by default
@@ -718,9 +736,9 @@ def putdata_device(device_name, device_info, attributes=None):
         if name not in device_info:
             raise KeyError(f'Missing device attribute: "{name}"')
         value = device_info[name]
-        putdata_attribute(name, value, group=group)
+        putdata_attribute(name, value, client=client, group=group, file_id=file_id)
 
-def putdata_attribute(name, value, group):
+def putdata_attribute(name, value, group, client=None, use_mast_client=False, file_id=0):
     """Write an attribute (misc information) to a file group using UDA putdata interface
 
     Args:
@@ -731,8 +749,9 @@ def putdata_attribute(name, value, group):
     Returns: None
 
     """
-    client = get_uda_client(use_mast_client=False, try_alternative=True)
-    import pyuda
+    # import pyuda
+    if client is None:
+        uda_module, client = get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
 
     if isinstance(value, (dict,)):
         # NOTE: Arrays of strings or structures are not supported as single attributes.
@@ -745,15 +764,18 @@ def putdata_attribute(name, value, group):
             putdata_attribute(str(i), v, subgroup)
     else:
         try:
-            client.put(value, name=name, group=group, step_id='attribute')
-        except pyuda.UDAException as err:
+            client.put(value, name=name, file_id=file_id, group=group, step_id='attribute')
+        # except pyuda.UDAException as err:
+        #     logger.warning(f'Failed to write attribute to group "{group}": "{name}"={value}, {err}')
+        except Exception as err:
             logger.warning(f'Failed to write attribute to group "{group}": "{name}"={value}, {err}')
         else:
             logger.debug(f'Successfully wrote attribute to group "{group}": "{name}"={value}')
 
 def putdata_variables_from_datasets(path_data, image_data, path_names,
-                                    variable_names_path, variable_names_time, variable_names_image,
-                                    existing_dims=None, existing_coords=None):
+                                    variable_names_path, variable_names_time, variable_names_image, file_id=0,
+                                    existing_dims=None, existing_coords=None, client=None, use_mast_client=False):
+    # import pyuda
     if existing_dims is None:
         existing_dims = defaultdict(list)
     if existing_coords is None:
@@ -766,32 +788,38 @@ def putdata_variables_from_datasets(path_data, image_data, path_names,
     if variable_names_path is not None:
         if 'n' in path_data.dims:
             path_data = path_data.swap_dims({'n': 't'})
+
         # Variables with coordinates along an analysis path
         for path_name in make_iterable(path_names):
             # TODO: Use longname for path?
             group = f'/{path_name}'
+            path_data = data_structures.swap_xarray_dim(path_data, new_active_dims=f'R_{path_name}',
+                                                        raise_on_fail=False)
             groups[group] = path_data
             for variable_name in variable_names_path:
-                variable_name = path_data[f'{variable_name}_{path_name}']
-                group_variables[group].append(variable_name)
+                variable = path_data[f'{variable_name}_{path_name}']
+                group_variables[group].append(variable)
 
-    if variable_names_image is not None:
+    if (variable_names_image is not None) and (len(variable_names_image) > 0):
         # Variables with data across the whole image
         group = f'/images'
         groups[group] = image_data
         if 'n' in image_data.dims:
             image_data = image_data.swap_dims({'n': 't'})
+        image_data = data_structures.swap_xarray_dim(image_data, new_active_dims=f'R_{path_name}', raise_on_fail=False)
         for variable_name in variable_names_image:
             variable = image_data[f'{variable_name}_im']
             group_variables[group].append(variable)
 
-    if variable_names_time is not None:
+    if (variable_names_time is not None) and (len(variable_names_time) > 0):
         # Spatially integrated quantities (eg power to divertor) that are only a function of time
         for path_name in make_iterable(path_names):
-            group = f'/{path_name}/integrated'
+            group = f'/{path_name}/stats'
             groups[group] = path_data
             if 'n' in path_data.dims:
                 path_data = path_data.swap_dims({'n': 't'})
+            # path_data = data_structures.swap_xarray_dim(path_data, new_active_dims=f'R_{path_name}',
+            #                                              raise_on_fail=False)
             for variable_name in variable_names_time:
                 # Pass time data in separate dataset?
                 variable = path_data[f'{variable_name}_{path_name}']
@@ -799,80 +827,112 @@ def putdata_variables_from_datasets(path_data, image_data, path_names,
 
     # Write dims, coords, data and attributes for variables in each group
     for group in group_variables:
+
         for variable in group_variables[group]:
             variable_name = variable.name
+            variable = data_structures.swap_xarray_dim(variable, new_active_dims=f'R_{path_name}', raise_on_fail=False)
 
             # Write dimensions and coords to group in preparation for main variable data
             for coord_name in variable.coords:
                 coord = variable[coord_name]
 
-                dim = coord.dims[0]
-                coord_class = 'time' if dim == 't' else 'spatial'
+                # path_data = physics_parameters.attach_standard_meta_attrs(path_data, varname=coord_name, replace=True)
+
+                dim_name = coord.dims[0]
+                # TODO: switch from using coord_name to dim_name? Cannot use same dimension for multiple coordinates?
+                dim_name = coord_name
+                coord_class = 'time' if dim_name == 't' else 'spatial'
                 # NOTE: Cannot use same dimension for multiple coordinates?
-                if coord_name not in existing_dims[group]:
+                if dim_name not in existing_dims[group]:
                     kwargs = {k: coord.attrs[k] for k in optional_dim_attrs if k in coord.attrs}
                     coord_length = len(coord)
-                    putdata_dimension(coord_name, coord_length, group=group, **kwargs)
-                    existing_dims[group].append(coord_name)
+                    putdata_dimension(dim_name, coord_length, client=client, file_id=file_id, group=group, **kwargs)
+                    existing_dims[group].append(dim_name)
 
-                if coord.name not in existing_coords[group]:
-                    kwargs = filter_kwargs(coord.attrs, funcs=putdata_coordinate)
+                if coord_name not in existing_coords[group]:
+                    kwargs = filter_kwargs(coord.attrs, funcs=putdata_coordinate, include=['comment', 'coord_class'],
+                                           kwarg_aliases=dict(description='comment'), required='units')
                     values = coord.values
-                    putdata_coordinate(coord_name, values=values, coord_class=coord_class, group=group, **kwargs)
+                    putdata_coordinate(coord_name, dim=dim_name, values=values, coord_class=coord_class, client=client,
+                                       file_id=file_id, group=group, **kwargs)
                     existing_coords[group].append(coord_name)
                     # TODO: Write additional attributes for coord like axis labels?
 
             # Write main variable data to group
-            dimensions = ','.join(variable.dims)
+            dims = [remove_path_suffix(dim)[0] for dim in variable.dims]
+            dimensions = ','.join(dims)
             kwargs = {k: variable.attrs[k] for k in optional_dim_attrs if k in variable.attrs}
-            putdata_variable(variable_name, dimensions, variable.values, group=group, **kwargs)
+            putdata_variable(variable_name, dimensions, variable.values, file_id=file_id, group=group,
+                             client=client, use_mast_client=use_mast_client, **kwargs)
     logger.info(f'Wrote variables to file: \n   {variable_names_image+variable_names_path+variable_names_time}')
 
-def putdata_dimension(dimension_name, dim_length, group='/', **kwargs):
+def putdata_dimension(dimension_name, dim_length, client=None, file_id=0, group='/', **kwargs):
+    # import pyuda
     # TODO: add attributes to dim
-    client = get_uda_client(use_mast_client=False, try_alternative=True)
-    import pyuda
+    if client is None:
+        uda_module, client = get_uda_client(use_mast_client=False, try_alternative=True)
+
     group = format_netcdf_group(group)
+    dimension_name, path_string = remove_path_suffix(dimension_name)
+
+    kws = filter_kwargs(kwargs, funcs=client.put)
 
     try:
-        client.put(dim_length, step_id='dimension', name=dimension_name, group=group, **kwargs)
-    except pyuda.UDAException:
+        out = client.put(dim_length, step_id='dimension', name=dimension_name, group=group, file_id=file_id, **kws)
+    # except pyuda.UDAException:
+    #     logger.warning(f'Failed to write dimension to group "{group}": "{dimension_name}"')
+    #     raise
+    except Exception as e:
         logger.warning(f'Failed to write dimension to group "{group}": "{dimension_name}"')
         raise
     else:
         logger.debug(f'Successfully wrote dimension to group "{group}": "{dimension_name}"')
 
-def putdata_coordinate(coordinate_name, values, coord_class, group='/', units=None, label=None, comment=None):
-    client = get_uda_client(use_mast_client=False, try_alternative=True)
-    import pyuda
+def putdata_coordinate(coordinate_name, dim, values, coord_class, client=None, file_id=0, group='/', units=None,
+                       label=None, comment=None):
+    # import pyuda
+    if client is None:
+        uda_module, client = get_uda_client(use_mast_client=False, try_alternative=True)
 
     group = format_netcdf_group(group)
+    dim, path_string = remove_path_suffix(dim)
+
     units = units_to_uda_conventions(units)
-    kwargs = dict(units=units, label=label, comment=comment)
+    kwargs = dict(units=units, label=coordinate_name, comment=comment, file_id=file_id)
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
     # TODO: check inputs
     # NOTE name must be name of the associated dimension. This must have been defined in a previous API dimension step
     try:
-        client.put(values, step_id='coordinate', name=coordinate_name, group=group, coord_class=coord_class, **kwargs)
-    except pyuda.UDAException as e:
-        logger.warning(f'Failed to write coordinate to group "{group}": "{coordinate_name}"\n{e}')
+        client.put(values, step_id='coordinate', name=dim, group=group, coord_class=coord_class, **kwargs)
+    # except pyuda.UDAException as e:
+    #     logger.warning(f'Failed to write coordinate to group "{group}": "{coordinate_name}"\n{e}')
         # raise
+    except Exception as e:
+        logger.warning(f'Failed to write coordinate to group "{group}": "{coordinate_name}"\n{e}')
+        raise
     else:
         logger.debug(f'Successfully wrote coordinate to group "{group}":  "{coordinate_name}"')
 
-def putdata_variable(variable_name, dimension, values, units=None, label=None, comment=None, group='/',
-                     device=None, errors_variable=None, attributes=None, **kwargs):
-    client = get_uda_client(use_mast_client=False, try_alternative=True)
-    import pyuda
+def putdata_variable(variable_name, dimension, values, units=None, label=None, comment=None, file_id=0,  group='/',
+                     device=None, errors_variable=None, attributes=None, client=None, use_mast_client=False, **kwargs):
+    # import pyuda
+    if client is None:
+        uda_module, client = get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
 
     group = format_netcdf_group(group)
+    variable_name, path_string = remove_path_suffix(variable_name)
+
     units = units_to_uda_conventions(units)
 
-    put_kwargs = dict(units=units, label=label, comment=comment, device=device, errors_variable=errors_variable)
+    put_kwargs = dict(units=units, label=label, comment=comment, device=device, errors_variable=errors_variable,
+                      file_id=file_id)
     put_kwargs = {k: v for k, v in put_kwargs.items() if v is not None}
     try:
         client.put(values, step_id='variable', name=variable_name, dimensions=dimension, group=group, **put_kwargs)
-    except pyuda.UDAException as e:
+    # except pyuda.UDAException as e:
+    #     logger.warning(f'Failed to write data to group "{group}" for "{variable_name}"')
+    #     raise
+    except Exception as e:
         logger.warning(f'Failed to write data to group "{group}" for "{variable_name}"')
         raise
     else:
@@ -896,8 +956,10 @@ def putdata_variable(variable_name, dimension, values, units=None, label=None, c
 #                 print(f'<< ERROR >> Failed to write {name} attribute for {device_name}: {err}')
 #                 raise
 
-def putdata_close(file_id=None):
-    client = get_uda_client(use_mast_client=False, try_alternative=True)
+def putdata_close(file_id=None, client=None, use_mast_client=False):
+    # import pyuda
+    if client is None:
+        uda_module, client = get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
 
     success = False
     kwargs = {}
@@ -931,8 +993,11 @@ def check_for_required_args(kwargs, required_args, none_as_missing=True, applica
 
 def units_to_uda_conventions(units):
     # TODO: Get list of supported units from UDA
-    units_allowed = ['s', 'K', 'm', 'count', 'W', 'W/m^2', 'Celsius']
-    units_mappings = {}
+    units_allowed = ['s', 'K', 'm', 'count', 'W', 'W/m^2', 'Celsius', 'degree', 'radian']
+    units_mappings = {'MWm$^{-2}$': 'W/m^2',
+                      '$^\\circ$C': 'degree',
+                      'radians': 'radian'}
+                            #  '': 'count'}
     if units in units_allowed:
         pass
     elif units in units_mappings:
@@ -942,9 +1007,18 @@ def units_to_uda_conventions(units):
         units = None
     return units
 
+def remove_path_suffix(string, pattern='_path\d+', replacement=''):
+    sufix = re.search(pattern, string)
+    sufix = sufix.group() if (sufix is not None) else ''
+    string_out = re.sub(pattern, replacement, string)
+    return string_out, sufix
+
 def putdata_example():
-    client = get_uda_client(use_mast_client=False, try_alternative=True)
     import pyuda
+
+    use_mast_client = False
+    # use_mast_client = True
+    uda_module, client = get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
 
     diag_tag = 'xxx'
     shot = 12345
@@ -955,17 +1029,24 @@ def putdata_example():
     # Filename for diagnostics should be <diag_tag><shot_number>.nc
     # Where shotnumber is a 6-digit number with leading zeros (eg. 040255)
     filename = diag_tag + "{:06d}".format(shot) + '.nc'
+    path_fn = Path(directory) / filename
+    if path_fn.exists():
+        path_fn.unlink()
+    print(f'BEFORE: {path_fn.resolve()} exists: {path_fn.exists()}')
 
     try:
-        client.put(filename, directory=directory, step_id='create',
-                   conventions='Fusion-1.1', shot=shot,
-                   data_class='analysed data', title='Example netcdf file',
-                   comment='Example MAST-U netcdf file written with putdata in IDL',
-                   code='putdata_example.py',
-                   pass_number=pass_number, status=1,
-                   verbose=True, debug=True)
-    except pyuda.UDAException:
+        file_id = client.put(filename, directory=directory, step_id='create',
+                             conventions='Fusion-1.1', shot=shot,
+                             data_class='analysed data', title='Example netcdf file',
+                             comment='Example MAST-U netcdf file written with putdata in IDL',
+                             code='putdata_example.py',
+                             pass_number=pass_number, status=1,
+                             verbose=True, debug=True)
+    except pyuda.UDAException as e:
         print("<< ERROR >> Failed to create NetCDF file")
+    except Exception as e:
+        raise
+    print(f'After CREATE: {path_fn} exists: {path_fn.exists()}')
 
     try:
         client.put('device_name', step_id='device',
@@ -974,6 +1055,7 @@ def putdata_example():
                    range=[0, 10], channels=32)
     except pyuda.UDAException:
         print('<< ERROR >> Failed to write device to file')
+    print(f'After DEVICE: {path_fn} exists: {path_fn.exists()}')
 
     try:
         client.put(100, step_id='dimension', name='time1', group='/xxx')
@@ -1007,14 +1089,25 @@ def putdata_example():
     # Attach additional attributes to a device
     try:
         client.put('Extra information about device_name', step_id='attribute',
-        group='/devices/device_name', name='notes')
+                   group='/devices/device_name', name='notes')
     except pyuda.UDAException as err:
         print('<< ERROR >> Failed to write notes attribute {}'.format(err))
 
+    print(f'Before CLOSE: {path_fn} exists: {path_fn.exists()}')
+
     client.put(step_id='close')
 
+    print(f'After CLOSE: {path_fn} exists: {path_fn.exists()}')
+
+    print(f'use_mast_client={use_mast_client}')
+    if path_fn.exists():
+        path_fn.unlink()
+        print('SUCCESS: Deleted output file')
+    else:
+        print('FAILURE: Output file not produced')
+
 def uda_get_signal_example():
-    client = get_uda_client(use_mast_client=False, try_alternative=True)
+    uda_module, client = get_uda_client(use_mast_client=False, try_alternative=True)
 
     ip = client.get('ip', 18299)
     rir = client.get_images('rir', 29976, first_frame=400, last_frame=900)
@@ -1022,10 +1115,11 @@ def uda_get_signal_example():
     print(f'rir: {rir}')
 
 if __name__ == '__main__':
-    client = get_uda_client(use_mast_client=False, try_alternative=True)
+    uda_module, client = get_uda_client(use_mast_client=False, try_alternative=True)
 
-    uda_get_signal_example()
     putdata_example()
+    exit()
+    uda_get_signal_example()
 
     pulse = 23586
     directory = '/home/tfarley/repos/air/'
