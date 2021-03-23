@@ -806,7 +806,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names,
         groups[group] = image_data
         if 'n' in image_data.dims:
             image_data = image_data.swap_dims({'n': 't'})
-        image_data = data_structures.swap_xarray_dim(image_data, new_active_dims=f'R_{path_name}', raise_on_fail=False)
+        # image_data = data_structures.swap_xarray_dim(image_data, new_active_dims=f'R_{path_name}', raise_on_fail=False)
         for variable_name in variable_names_image:
             variable = image_data[f'{variable_name}_im']
             group_variables[group].append(variable)
@@ -814,7 +814,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names,
     if (variable_names_time is not None) and (len(variable_names_time) > 0):
         # Spatially integrated quantities (eg power to divertor) that are only a function of time
         for path_name in make_iterable(path_names):
-            group = f'/{path_name}/stats'
+            group = f'/{path_name}'  # /stats'
             groups[group] = path_data
             if 'n' in path_data.dims:
                 path_data = path_data.swap_dims({'n': 't'})
@@ -830,13 +830,14 @@ def putdata_variables_from_datasets(path_data, image_data, path_names,
 
         for variable in group_variables[group]:
             variable_name = variable.name
-            variable = data_structures.swap_xarray_dim(variable, new_active_dims=f'R_{path_name}', raise_on_fail=False)
+            # variable = data_structures.swap_xarray_dim(variable, new_active_dims=f'R_{path_name}', raise_on_fail=False)
 
             # Write dimensions and coords to group in preparation for main variable data
             for coord_name in variable.coords:
                 coord = variable[coord_name]
 
-                # path_data = physics_parameters.attach_standard_meta_attrs(path_data, varname=coord_name, replace=True)
+                # Make sure coord has required attrs like units etc
+                path_data = physics_parameters.attach_standard_meta_attrs(path_data, varname=coord_name, replace=True)
 
                 dim_name = coord.dims[0]
                 # TODO: switch from using coord_name to dim_name? Cannot use same dimension for multiple coordinates?
@@ -850,6 +851,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names,
                     existing_dims[group].append(dim_name)
 
                 if coord_name not in existing_coords[group]:
+
                     kwargs = filter_kwargs(coord.attrs, funcs=putdata_coordinate, include=['comment', 'coord_class'],
                                            kwarg_aliases=dict(description='comment'), required='units')
                     values = coord.values
