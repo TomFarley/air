@@ -85,7 +85,7 @@ def get_wall_rz_coords(no_cal=True, signal="/limiter/efit", shot=50000, ds=None,
     from fire.interfaces import uda_utils
     # TODO: Enable returning wall for MAST ie shot < 50000
     # client=pyuda.Client()
-    client = uda_utils.get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
+    uda_module, client = uda_utils.get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
     wall_data = client.geometry(signal, shot, no_cal=no_cal)
     r = wall_data.data.R
     z = wall_data.data.Z
@@ -299,18 +299,27 @@ def plot_vessel_top_down(ax=None, keys_plot=('R_T1', 'R_T2', 'R_T3', 'R_T4', 'R_
                                    keys_plot_strong=keys_plot_strong, louvres=louvres)
     return fig, ax
 
-def label_tiles(ax, coords, coords_axes=('i_path', 't'), tiles=('R_T1', 'R_T2', 'R_T3', 'R_T4', 'R_T5', 'R_T5_top'),
-                y='min', plot_kwargs=None):
+def label_tiles(ax, coords, coords_axes=('i_path{path_no}', 't'), tiles=('R_T1', 'R_T2', 'R_T3', 'R_T4', 'R_T5',
+                                                                     'R_T5_top'),
+                y='min', plot_kwargs=None, path_no=0, legend_labels=False):
+
+    if hasattr(ax, 'fire_meta'):
+        if ax.fire_meta.get('has_tile_labels'):
+            return  # These axes already have tile labels
+    else:
+        ax.fire_meta = {}
 
     plot_kws = dict(ls=':', lw=1, color='k', alpha=0.5)
     if plot_kwargs is not None:
         plot_kws.update(plot_kwargs)
 
     coords = copy(coords)
+    coords_axes = tuple((value.format(path_no=path_no) for value in make_iterable(coords_axes)))
 
     tile_labels = {'R_T1': 'T1', 'R_T2': 'T2', 'R_T3': 'T3', 'R_T4': 'T4', 'R_T5': 'T5', 'R_T5_top': ''}
 
-    coord_r = 'R_path0'
+    coord_r = f'R_path{path_no}'
+    coord_i = f'i_path{path_no}'
     r = coords[coord_r].values
     r_range = [np.min(r), np.max(r)]
     r_tiles = np.array([surface_radii[key] for key in tiles])
@@ -323,26 +332,34 @@ def label_tiles(ax, coords, coords_axes=('i_path', 't'), tiles=('R_T1', 'R_T2', 
     # TODO: generalise path no.
     if (len(coords_axes) == 2):
         coord = coords_axes[1]
-
-        if (coord == 'i_path0'):
-            mask = np.argmin(np.abs(np.tile(r, (len(tiles), 1)).T - r_tiles), axis=0)
-            x = coords[coord].sel({coord: mask}, method='nearest')
-        elif (coord == 'R_path0'):
-            coord_data = coords[coord].swap_dims({coord: 'i_path0'})
-            mask = np.argmin(np.abs(np.tile(r, (len(tiles), 1)).T - r_tiles), axis=0)
-            x = coord_data.sel({'i_path0': mask}, method='nearest')
-            # x = coords[coord].sel(**{coord: r_tiles}, method='nearest')
-
         if y == 'min':
             y = coords[coords_axes[0]].min()
-
-        for x_i, key in zip(x, tiles):
-            label = tile_labels[key]
-            ax.axvline(x_i, label=label, **plot_kws)
-            plot_tools.annotate_axis(ax, label, loc=None, x=x_i, y=y, coords='data', horizontalalignment='left',
-                                     verticalalignment='bottom', box=False)
     else:
-        raise NotImplementedError
+        coord = coords_axes[0]
+        if y == 'min':
+            y = 0
+
+    if (coord == coord_i):
+        mask = np.argmin(np.abs(np.tile(r, (len(tiles), 1)).T - r_tiles), axis=0)
+        x = coords[coord].sel({coord: mask}, method='nearest')
+    elif (coord == coord_r):
+        coord_data = coords[coord].swap_dims({coord: coord_i})  # TODO: Use func
+        mask = np.argmin(np.abs(np.tile(r, (len(tiles), 1)).T - r_tiles), axis=0)
+        x = coord_data.sel({coord_i: mask}, method='nearest')
+        # x = coords[coord].sel(**{coord: r_tiles}, method='nearest')
+
+
+
+    for x_i, key in zip(x, tiles):
+        label = tile_labels[key]
+        ax.axvline(x_i, label=label if legend_labels else None, **plot_kws)
+        plot_tools.annotate_axis(ax, label, loc=None, x=x_i, y=y, coords='data', horizontalalignment='left',
+                                 verticalalignment='bottom', box=False)
+    # else:
+    #     raise NotImplementedError
+
+    # Mark axes as being labeled so labelling isn't repeated
+    ax.fire_meta['has_tile_labels'] = True
 
     return tiles, r_tiles
 
