@@ -25,7 +25,7 @@ import fire
 from fire import fire_paths, copy_default_user_settings
 from fire.interfaces import interfaces, calcam_calibs
 from fire import plugins
-from fire.camera import field_of_view, camera_shake, nuc, image_processing
+from fire.camera_tools import field_of_view, camera_shake, nuc, image_processing, camera_checks
 from fire.geometry import geometry, s_coordinate
 from fire.physics import temperature, heat_flux, physics_parameters
 from fire.misc import data_quality, data_structures, utils
@@ -201,6 +201,15 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     logger.info("Movie time period [%g, %g]" % (np.nanmin(frame_times), np.nanmax(frame_times)))
 
+    clock_info = camera_checks.get_camera_external_clock_info(camera, pulse)
+
+    # TODO: Update t_before_pulse to be -ve and rename to 't_movie_start'? - update all meta data files...
+    if np.abs(movie_meta['fps'] - clock_info['clock_frequency']) > 1:
+        raise ValueError(f'Movie and camera clock frequencies do not match. '
+                         f'movie={movie_meta["fps"]}, clock={clock_info["clock_frequency"]}')
+    if (not np.isclose(movie_meta['t_before_pulse'], np.abs(clock_info['clock_t_window'][0]))):
+        raise ValueError(f'Movie and camera clock start times do not match. '
+                         f'movie={movie_meta["t_before_start"]}, clock={clock_info["clock_t_window"]}')
 
     # Use origin information from reading movie meta data to read frame data from same data source (speed & consistency)
     # movie_path = [movie_origin.get('path', None)]
@@ -301,6 +310,15 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     image_data['nuc_frame'] = (('y_pix', 'x_pix'), nuc_frame)
     image_data['frame_data_nuc'] = frame_data_nuc
 
+    if output.get('raw_frame_image', False):
+        # nuc_out = True
+        nuc_out = False
+        n_ref = 240
+        path_fn = paths_output['raw_images'] / f'{machine}-{camera}-{pulse}-n{n_ref}{"_nuc"*nuc_out}.png'
+        key = 'frame_data_nuc' if nuc_out else 'frame_data'
+        image_figures.figure_frame_data(image_data, n=n_ref, key=key, label_outliers=False,
+                                            axes_off=True, show=True, save_fn_image=path_fn)
+
     if debug.get('debug_detector_window', False):  # Need to plot before detector window applied to calibration
         debug_plots.debug_detector_window(detector_window=detector_window, frame_data=image_data,
                                           calcam_calib=calcam_calib, image_full_frame=calcam_calib_image_full_frame,
@@ -317,7 +335,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     if debug.get('specific_frames', False):
         n_check = 218
-        debug_plots.debug_movie_data(image_data, frame_nos=np.arange(n_check, n_check+4), key='frame_data') #
+        debug_plots.debug_movie_data(image_data, frame_nos=np.arange(n_check, n_check+4), key='frame_data')
         # frame_data_nuc
 
     if (debug.get('movie_intensity_stats', False) or
@@ -365,8 +383,13 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         debug_plots.debug_spatial_res(image_data)
 
     if figures.get('spatial_res', False):
-        fn_spatial_res = path_figures / f'spatial_res_{pulse}_{camera}.png'
-        image_figures.figure_spatial_res_max(image_data, clip_range=[None, 20], save_fn=fn_spatial_res, show=True)
+        spatial_res_type = 'max'
+        # spatial_res_type = 'y'
+        clip_range = [2.5, 20]
+        # clip_range = [1.5, 3.0]  # air
+        fn_spatial_res = path_figures / f'spatial_res_{pulse}_{camera}_{spatial_res_type}.png'
+        image_figures.figure_spatial_res(image_data, res_type=spatial_res_type, clip_range=clip_range, log_cmap=False,
+                                         save_fn=fn_spatial_res, show=True)
 
     # TODO: call plugin function to get s coordinate along tiles?
     # s_im = get_s_coord_global(x_im, y_im, z_im, machine_plugins)
@@ -535,7 +558,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         visible_surfaces_path = geometry.identify_visible_structures(path_data[f'R_{path}'],
                                     path_data[f'phi_deg_{path}'], path_data[f'z_{path}'], surface_coords,
                                                                        phi_in_deg=True)
-        surface_ids_path, material_ids_path, visible_surfaces_path, visible_materials_path = visible_surfaces
+        surface_ids_path, material_ids_path, visible_surfaces_path, visible_materials_path = visible_surfaces_path
         logger.info(f'Surfaces visible along path "{analysis_path_name}": {visible_surfaces_path}')
 
         # Add local spatial resolution along path
@@ -630,6 +653,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         #                    pupil_coords=calcam_calib.get_pupilpos())
 
         if debug.get('timings', False):
+            # TODO: Use correct clock signal for camera
             debug_plots.debug_plot_timings(path_data_all, pulse=pulse)
 
         if debug.get('strike_point_loc', False):
@@ -650,6 +674,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # zcoord and reverse the tprofile and qprofile
     # path_fn_out = files['processed_ir_netcdf']
 
+    # TODO: Identify variables/coords with empty attrs and attach standard meta data
     # TODO: Separate output data selection from ouput code - pass in single dataset, all of which should be written
     # TODO: Define standardised interface for outputs
     # TODO: Pass absolute path to output file?
@@ -660,6 +685,12 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                            variable_names_time=output_variables['time'], variable_names_image=output_variables['image'],
                            device_info=device_details, header_info=output_header_info, meta_data=meta_data)
     # write_processed_ir_to_netcdf(data, path_fn_out)
+
+    archive_netcdf_output = True
+    # archive_netcdf_output = False
+    if archive_netcdf_output:
+        path_fn_netcdf = outputs.get('uda_putdata', {}).get('path_fn')
+        interfaces.archive_netcdf_output(path_fn_netcdf, meta_data=meta_data)
 
     logger.info(f'Finished scheduler workflow')
 
@@ -754,8 +785,8 @@ def run_mast_rit():  # pragma: no cover
     return status
 
 def run_mastu_rir():  # pragma: no cover
-    # pulse = 50000  # CAD view calibrated from test installation images - no plasma
-    pulse = 50001  # Test movie consisting of black body cavity calibration images
+    pulse = 50000  # CAD view calibrated from test installation images - no plasma
+    # pulse = 50001  # Test movie consisting of black body cavity calibration images
 
     camera = 'rir'
     pass_no = 0
@@ -767,13 +798,25 @@ def run_mastu_rir():  # pragma: no cover
     # update_checkpoints = True
 
     # TODO: Remove redundant movie_data step
-    debug = {'debug_detector_window': True, 'movie_data_animation': True, 'movie_data_nuc_animation': False,
-             'spatial_coords': False, 'spatial_res': False, 'movie_data_nuc': False,
-             'temperature_im': False,'surfaces': False, 'analysis_path': True}
+    debug = {'calcam_calib_image': False, 'debug_detector_window': False, 'movie_intensity_stats': True,
+             'movie_data_animation': False, 'movie_data_nuc_animation': False,
+             'movie_temperature_animation': False,
+             'spatial_coords': False,
+             'spatial_res': False,
+             'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
+             'surfaces': False, 'analysis_path': True,
+             'path_cross_sections': False,
+             'temperature_vs_R_t': False, 'heat_flux_vs_R_t': True,
+             'timings': True, 'strike_point_loc': True,
+             # 'heat_flux_path_1d': True,
+             }
+
+    output = {'strike_point_loc': True, 'raw_frame_image': False}
+
     # debug = {k: True for k in debug}
     # debug = {k: False for k in debug}
-    figures = {'spatial_res': False}
-    logger.info(f'Running MAST-U scheduler workflow...')
+    figures = {'spatial_res': True}
+    logger.info(f'Running MAST-U rir scheduler workflow...')
     status = scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
                        equilibrium=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures)
     return status
@@ -815,7 +858,8 @@ def run_mastu_rit():  # pragma: no cover
     # update_checkpoints = True
 
     # TODO: Remove redundant movie_data step
-    debug = {'calcam_calib_image': False, 'debug_detector_window': False, 'movie_intensity_stats': True,
+    debug = {'calcam_calib_image': False, 'debug_detector_window': False,
+             'movie_intensity_stats': False,
              'movie_data_animation': False, 'movie_data_nuc_animation': False,
              'movie_temperature_animation': False,
              'spatial_coords': False,
@@ -823,17 +867,18 @@ def run_mastu_rit():  # pragma: no cover
              'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
              'surfaces': False, 'analysis_path': False,
              'path_cross_sections': False,
-             'temperature_vs_R_t': False, 'heat_flux_vs_R_t': True,
-             'timings': True, 'strike_point_loc': True,
+             'temperature_vs_R_t': False,
+             'heat_flux_vs_R_t': False,
+             'timings': False, 'strike_point_loc': False,
              # 'heat_flux_path_1d': True,
              }
 
-    output = {'strike_point_loc': True}
+    output = {'strike_point_loc': True, 'raw_frame_image': False}
 
     # debug = {k: True for k in debug}
     # debug = {k: False for k in debug}
     figures = {'spatial_res': False}
-    logger.info(f'Running MAST-U scheduler workflow...')
+    logger.info(f'Running MAST-U ait scheduler workflow...')
     status = scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
                        equilibrium=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures,
                                 output=output)
@@ -851,9 +896,12 @@ if __name__ == '__main__':
     # status = run_jet()
 
     outputs = status['outputs']
-    if ('uda_putdata' in outputs) and (outputs['uda_putdata']['success']):
-        path_fn = outputs['uda_putdata']['path_fn']
-        if path_fn.is_file():
-            path_fn.unlink()
-            logger.info(f'Deleted uda output file to avoid clutter since run from main in scheduler_workflow.py: '
-                        f'{path_fn}')
+
+    clean_netcdf = False
+    if clean_netcdf:
+        if ('uda_putdata' in outputs) and (outputs['uda_putdata']['success']):
+            path_fn = outputs['uda_putdata']['path_fn']
+            if path_fn.is_file():
+                path_fn.unlink()
+                logger.info(f'Deleted uda output file to avoid clutter since run from main in scheduler_workflow.py: '
+                            f'{path_fn}')
