@@ -13,7 +13,9 @@ from pathlib import Path
 
 import numpy as np
 import xarray as xr
+from scipy import stats
 
+from fire.misc import utils
 from fire.misc.utils import make_iterable
 
 logger = logging.getLogger(__name__)
@@ -44,12 +46,19 @@ meta_defaults_default = {
               'description': 'Camera sensor x (left to right) pixel coordinate (integer)'},
     'y_pix': {'label': 'y pixel coordinate', 'units': 'count', 'symbol': '$y_{pix}$',
               'description': 'Camera sensor y (top to bottom) pixel coordinate (integer)'},
+    'phi': {'label': 'Toroidal coordinate', 'units': '$radians$', 'symbol': '$\phi$',
+                  'description': 'Machine toroidal coordinate in radians (phi=0 along x axis)'},
     'phi_deg': {'label': 'Toroidal coordinate', 'units': '$^\circ$', 'symbol': '$\phi$',
                   'description': 'Machine toroidal coordinate in degrees (phi=0 along x axis)'},
-    's_global': {'label': 'Divertor tile S coordinate', 'units': 'm', 'symbol': '$S$',
+    'theta': {'label': 'Poloidal angle coordinate', 'units': '$radians$', 'symbol': '$\theta',
+                  'description': 'Machine poloidal coordinate in radians (theta=0 in radial direction)'},
+    's_global': {'label': 'Divertor tile S coordinate', 'units': 'm', 'symbol': '$s$',
                   'description': 'Spatial coordinate along surface of PFCs'},
-    'i_path': {'label': 'Array index along analysis path', 'units': '', 'symbol': '$i_{path}$',
-                  'description': 'Array index along analysis path (alternative to R/s_global)'},
+    's_local': {'label': 'Local divertor tile S coordinate for analysis path', 'units': 'm', 'symbol': '$s_{local}$',
+                  'description': 'Local divertor tile S coordinate for analysis path. This is zero at the start of '
+                                 'the analysis path and increases with distance along the analysis path'},
+    'i_path': {'label': 'Array index along analysis path', 'units': 'count', 'units_plot': '',
+               'symbol': '$i_{path}$', 'description': 'Array index along analysis path (alternative to R/s_global)'},
     'surface_id': {'label': 'Surface id', 'units': 'count', 'symbol': '$ID_{surface}$',
                   'description': 'Integer ID specifying what machine component/tile etc is visible at that pixel'},
     'temperature_peak': {'label': 'Peak temperature', 'units': '$^\circ$C', 'symbol': '$T_{peak}$',
@@ -69,7 +78,12 @@ param_aliases = {
     'temperature': 'T',
     's_global': 'S',
     's_local': 'S',
-    'frame_data_nuc': 'frame_data'
+    'frame_data_nuc': 'frame_data',  # NUC corrected movie data
+    'nuc_frame': 'frame_data',  # NUC frame
+    'i': 'i_path',  # When '_path\d+' has been subbed out
+    'i_path0': 'i_path',
+    'i_path1': 'i_path',
+    'i_path2': 'i_path'  # TODO: Generalise to other path numbers etc
 }
 
 for key in meta_defaults_default:
@@ -135,6 +149,17 @@ def movie_data_to_dataarray(frame_data, frame_times=None, frame_nos=None, meta_d
     return frame_data
 
 def attach_standard_meta_attrs(data, varname='all', replace=False, key=None):
+    """
+
+    Args:
+        data: Dataset or DataArray. If DataArray, varname is not required
+        varname: Name of variable in dataset to attach meta data to
+        replace: Whether to replace/overwrite existing meta data
+        key: Optional key used to look up standard meta data. This may be a generalised version of varname
+
+    Returns: Updated data with data.attrs updated with standard meta data
+
+    """
 
     if varname == 'all':
         for var in data.data_vars:
@@ -145,6 +170,20 @@ def attach_standard_meta_attrs(data, varname='all', replace=False, key=None):
 
     if key in param_aliases:
         key = param_aliases[key]
+
+    key = key[:-1] if key[:-1] in meta_defaults_default else key  # Remove training path number?
+
+    if key not in meta_defaults_default:
+        pass
+        for key_short in meta_defaults_default:
+            if key_short in key:
+                key = key_short
+                break
+        for key_short in param_aliases:
+            if key_short in key:
+                key = key_short
+                break
+        pass
 
     if (key in meta_defaults_default):
         new_attrs = copy(meta_defaults_default[key])
@@ -167,7 +206,7 @@ def attach_standard_meta_attrs(data, varname='all', replace=False, key=None):
 
     return data
 
-def swap_xarray_dim(data_array, new_active_dims, old_active_dims=None, alternative_new_dims=None):
+def swap_xarray_dim(data_array, new_active_dims, old_active_dims=None, alternative_new_dims=None, raise_on_fail=True):
     """Wrapper for data_array.swap_dims() used to set active coordinate(s) for dimension(s)
     eg. switch between equivalent coordinates like time and frame number.
 
@@ -196,7 +235,10 @@ def swap_xarray_dim(data_array, new_active_dims, old_active_dims=None, alternati
             try:
                 old_active_dim = data_array.coords[new_active_dim].dims[0]
             except Exception as e:
-                raise
+                if raise_on_fail:
+                    raise
+                else:
+                    continue  # can't switch dim
         else:
             old_active_dim = make_iterable(old_active_dims)[i]
 
@@ -207,7 +249,10 @@ def swap_xarray_dim(data_array, new_active_dims, old_active_dims=None, alternati
                 for dim in make_iterable(alternative_new_dims):
                     data_array = swap_xarray_dim(data_array, dim)
             else:
-                raise
+                if raise_on_fail:
+                    raise
+                else:
+                    pass
 
     return data_array
 
@@ -226,11 +271,13 @@ def to_image_dataset(data, key='data'):
         dataset[key] = (('y_pix', 'x_pix'), data)
         dataset['x_pix'].attrs.update({
             'long_name': '$x_{pix}$',
-            'units': '',
+            'units': 'count',
+            'units_plot': '',
             'description': 'Camera x pixel coordinate'})
         dataset['y_pix'].attrs.update({
             'long_name': '$y_{pix}$',
-            'units': '',
+            'units': 'count',
+            'units_plot': '',
             'description': 'Camera y pixel coordinate'})
         dataset = attach_standard_meta_attrs(dataset, varname=key)
         # TODO: Move to utils/data_structures?
@@ -260,7 +307,7 @@ def get_reduce_coord_axis_keep(data, coord_reduce):
     return coord_keep, axis_keep, axis_reduce
 
 
-def reduce_2d_data_array(data_array, func_reduce, coord_reduce, func_args=()):
+def reduce_2d_data_array(data_array, func_reduce, coord_reduce, func_args=(), raise_exceptions=False):
     """Apply a numpy ufunc to reduce 2D DataArray dimensionality to 1D for plotting etc
 
     Args:
@@ -272,10 +319,23 @@ def reduce_2d_data_array(data_array, func_reduce, coord_reduce, func_args=()):
     Returns: DataArray with coord_reduce compressed by func_reduce
 
     """
+    named_funcs = dict(mean=np.mean, std=np.std, percentile=np.percentile, mode=utils.mode_simple, max=np.max,
+                       min=np.min)
+    if isinstance(func_reduce, str):
+        func_reduce = named_funcs[func_reduce]
+
     func_args = make_iterable(func_args)
     coord_keep, axis_keep, axis_reduce = get_reduce_coord_axis_keep(data_array, coord_reduce)
     input_core_dims = ((coord_reduce,), ) + tuple(() for i in np.arange(len(func_args)))
 
-    data_array_reduced = xr.apply_ufunc(func_reduce, data_array, *func_args,
-                                                input_core_dims=input_core_dims, kwargs=dict(axis=axis_keep))
+    try:
+        data_array_reduced = xr.apply_ufunc(func_reduce, data_array, *func_args,
+                                                    input_core_dims=input_core_dims, kwargs=dict(axis=axis_keep))
+    except ValueError as e:
+        if raise_exceptions:
+            raise e
+        else:
+            logger.warning(f'Cannot reduce data along dim {input_core_dims}: {data_array}')
+    except Exception as e:
+        raise
     return data_array_reduced
