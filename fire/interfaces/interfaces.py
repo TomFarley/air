@@ -636,13 +636,16 @@ def get_module_from_path_fn(path_fn):
             module = None
     return module
 
-def archive_netcdf_output(path_fn_in, path_archive='~/.fire/archive_netcdf/'):
+def archive_netcdf_output(path_fn_in, path_archive='~/.fire/archive_netcdf_output/{camera}/', meta_data=None):
     success = False
+    if meta_data is not None:
+        path_archive = path_archive.format(**meta_data)
 
     path_fn_in = Path(path_fn_in)
     fn = path_fn_in.name
 
     path_archive = Path(path_archive).expanduser()  # fire_paths[]
+    mkdir(path_archive, depth=2)
     path_fn_archive = path_archive / fn
 
     if path_fn_in.exists():
