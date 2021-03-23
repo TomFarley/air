@@ -10,10 +10,11 @@ import logging, inspect, os, re, time
 from typing import Union, Iterable, Tuple, List, Optional, Any, Sequence, Callable
 from pathlib import Path
 from copy import copy
+from functools import partial
 
 import numpy as np
 import xarray as xr
-from scipy import interpolate
+from scipy import interpolate, stats
 import pandas as pd
 from matplotlib import pyplot as plt
 
@@ -713,7 +714,7 @@ def filter_kwargs(kwargs, funcs=None, include=(), exclude=(), required=None, kwa
 
     if required is not None:
         missing = []
-        for key in required:
+        for key in make_iterable(required):
             if key not in kwargs_out:
                 missing.append(key)
         if missing:
@@ -1076,6 +1077,36 @@ def args_for(func, kwargs, include=(), exclude=(), match_signature=True, named_d
         for key in kws:
             kwargs.pop(key)
     return kws
+
+def mode_simple(data):
+    mode = stats.mode(np.array(make_iterable(data))).mode
+    return mode
+
+def format_str_partial(string, format_kwargs, allow_partial=True):
+    """Format a string allowing partial substitution of keys
+
+    Args:
+        string: Input format string or existing partially formatting string object
+        format_kwargs: Dict of values to substitute into string
+        allow_partial: If false raise KeyErrors as for normal string formatting
+
+    Returns:
+
+    """
+    if isinstance(string, str):
+        try:
+            string = string.format(**format_kwargs)
+        except KeyError as e:
+            if not allow_partial:
+                raise e
+            string = partial(string.format, **format_kwargs)
+    elif isinstance(string, partial):
+        try:
+            string = string(**format_kwargs)
+        except KeyError as e:
+            string = partial(string, **format_kwargs)
+    # TODO: Find kws in string.func.__self__ not persent in string.keywords and sub with value
+    return string
 
 def in_freia_batch_mode():
     """Return True if current python interpreter is being run as a batch job (ie no display for plotting etc)"""
