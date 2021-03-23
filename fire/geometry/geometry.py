@@ -216,7 +216,7 @@ def calc_horizontal_path_anulus_areas(r_path):
     return annulus_areas
 
 
-def calc_tile_tilt_area_coorection_factors(poloidal_plane_tilt, toroidal_tilt, nlouvres):
+def calc_tile_tilt_area_coorection_factors(path_data, poloidal_plane_tilt, toroidal_tilt, nlouvres, path='path0'):
     """Return correction factors for areas returned by calc_horizontal_path_anulus_areas() accounting for tile tilts.
 
     See Matthew Dunn's MAST wetted area correction in:
@@ -241,7 +241,18 @@ def calc_tile_tilt_area_coorection_factors(poloidal_plane_tilt, toroidal_tilt, n
     Returns: Multiplicative factors for annulus areas
 
     """
-    raise NotImplementedError
+    tile_numbers = path_data[f'surface_id_in_frame_{path}']
+    correction_factor = np.full_like(tile_numbers, np.nan, dtype=float)
+    for tile_number in np.arange(1, 6):
+        tile_mask = tile_numbers == tile_number
+        tile_name = f'T{tile_number}'
+
+        tile_poloidal_plane_tilt = poloidal_plane_tilt[tile_name]
+        tile_toroidal_tilt = toroidal_tilt[tile_name]
+
+        correction_factor[tile_mask] = 1
+
+    return correction_factor
 
 
 def calc_divertor_area_integrated_param(values, annulus_areas):
