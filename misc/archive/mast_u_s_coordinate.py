@@ -90,7 +90,7 @@ def get_s_coords_tables_mastu(ds=1e-4, no_cal=True, signal="/limiter/efit", shot
     s = {'s_bottom': s_bottom, 's_top': s_top}
     # s_bottom = s_bottom.to_xarray().rename({'s': 's_bottom'})
     # s_top = s_top.to_xarray().rename({'s': 's_top'})
-    # s = xr.merge([s_bottom, s_top])
+    # s = xr.merge([s_bottom, s_top])  # , combine_attrs='no_conflicts')
     return s
 
 # def get_s_coord_table_for_point():

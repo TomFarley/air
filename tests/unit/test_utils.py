@@ -4,7 +4,8 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from fire.misc.utils import update_call_args, locate_file, make_iterable, movie_data_to_dataarray
+from fire.misc.utils import update_call_args, locate_file, make_iterable
+from fire.misc.data_structures import movie_data_to_dataarray
 
 pwd = Path(__file__).parent
 
@@ -17,11 +18,12 @@ class TestUtils(unittest.TestCase):
         frame_nos = np.arange(115, 115+n_frames)
         frame_data = np.ones((n_frames, *frame_shape))
 
+        # TODO: use meta data dict from data_structures meta_defaults_default
         meta_data = {'n': {'long_name': '$n_{frame}$',
               'units': 'count',
               'description': 'Camera frame number (integer)'},
              't': {'long_name': '$t$', 'units': 's', 'description': 'Camera frame time'},
-             'x_pix': {'long_name': '$n_{frame}$',
+             'x_pix': {'long_name': '$x_{pix}$',
               'units': 'count',
               'description': 'Camera frame number (integer)'},
              'y_pix': {'long_name': '$y_{pix}$',

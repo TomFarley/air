@@ -34,7 +34,7 @@ import skimage
 import calcam
 from fire import fire_paths
 from fire.geometry.geometry import cartesian_to_toroidal, cylindrical_to_cartesian, angles_to_convention
-from fire.camera.image_processing import find_outlier_intensity_threshold
+from fire.camera_tools.image_processing import find_outlier_intensity_threshold
 from fire.interfaces.interfaces import lookup_pulse_row_in_csv
 from fire.misc.data_quality import calc_outlier_nsigma_for_sample_size
 from fire.misc.utils import locate_file, make_iterable
@@ -516,7 +516,9 @@ def join_analysis_path_control_points(analysis_path_control_points, path_name, m
 
     # NOTE: path substitutions below are currently over generalised?
     analysis_path = xr.Dataset()
-    coords_if_key = f'i_in_frame_{path}'  # xarray index coordinate along analysis path
+    coords_i_key = f'i_{path}'  # xarray index coordinate along analysis path
+
+    coords_if_key = f'i_in_frame_{path}'  # xarray index coordinate for in frame points along analysis path
     coords = {coords_if_key: (coords_if_key, np.arange(len(xpix_path)))}
     coords_oof_key = f'i_out_of_frame_{path}'
     coords_oof = {coords_oof_key: (coords_oof_key, np.arange(len(xpix_out_of_frame)))}
@@ -524,6 +526,7 @@ def join_analysis_path_control_points(analysis_path_control_points, path_name, m
 
     analysis_path = analysis_path.assign_coords(**coords)
     # TODO: Change to correct UDA units for arb array index
+    # TODO: Use physics_parameters.attach_standard_meta_data()
     analysis_path[coords_if_key].attrs.update(dict(units='count',
                                                  label=f'Array index along analysis path "{path}" through IR image'))
     # TODO: Add labels and units to other coords and vars written to UDA
