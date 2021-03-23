@@ -324,7 +324,7 @@
         ],
         "file_header": {
             "title": "Processed infa-red camera data from IR camera {camera} on {machine}",
-            "comment": "Temperature, heat flux and other physics quantities derived from IR camera data"
+            "comment": "Heat flux, temperature and other physics quantities derived from IR camera data"
         },
         "variables": {
             "analysis_path": [
