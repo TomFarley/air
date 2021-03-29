@@ -7,6 +7,7 @@ Created: 10-10-2019
 """
 
 import logging
+import re
 from typing import Union, Iterable, Tuple, Optional
 from copy import copy
 from pathlib import Path
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # TODO: Move meta data defaults to json file
 meta_defaults_default = {
-    't': {'label': 'Time', 'units': 's', 'symbol': '$t$',
+    't': {'label': 'Time', 'units': 's', 'symbol': '$t$', 'class': 'time',
           'description': 'Camera frame time from start of discharge'},
     'S': {'label': 'Divertor tile S coordinate', 'units': 'm', 'symbol': '$S$',
           'description': 'Spatial coordinate along surface of PFCs'},
@@ -30,8 +31,8 @@ meta_defaults_default = {
           'description': 'Radial distance from centre of machine'},
     'T': {'label': 'Divertor tile temperature', 'units': '$^\circ$C', 'symbol': '$T$',
           'description': 'Divertor tile temperature surface temperature measured by IR camera'},
-    'q': {'label': 'Divertor tile incident heat flux', 'units': 'MWm$^{-2}$', 'symbol': '$q_\perp$',
-          'description': 'Divertor tile incident heat flux measured by IR camera'},
+    'q': {'label': 'Divertor tile incident perpendicular heat flux', 'units': 'MWm$^{-2}$', 'symbol': '$q_\perp$',
+          'description': 'Divertor tile incident perpendicular heat flux (q_\perp) measured by IR camera'},
     'frame_data': {'label': 'Digital level', 'units': 'counts', 'symbol': '$DL$',
               'description': 'Camera sensor pixel digital level signal, dependent on photon flux'},
     'x': {'label': 'x', 'units': 'm', 'symbol': '$x$',
@@ -46,7 +47,7 @@ meta_defaults_default = {
               'description': 'Camera sensor x (left to right) pixel coordinate (integer)'},
     'y_pix': {'label': 'y pixel coordinate', 'units': 'count', 'symbol': '$y_{pix}$',
               'description': 'Camera sensor y (top to bottom) pixel coordinate (integer)'},
-    'phi': {'label': 'Toroidal coordinate', 'units': '$radians$', 'symbol': '$\phi$',
+    'phi': {'label': 'Toroidal coordinate', 'units': 'radians', 'symbol': '$\phi$',
                   'description': 'Machine toroidal coordinate in radians (phi=0 along x axis)'},
     'phi_deg': {'label': 'Toroidal coordinate', 'units': '$^\circ$', 'symbol': '$\phi$',
                   'description': 'Machine toroidal coordinate in degrees (phi=0 along x axis)'},
@@ -65,9 +66,15 @@ meta_defaults_default = {
                   'description': 'Peak target temperature along analysis path as a function of time'},
     'heat_flux_peak': {'label': 'Peak heat flux', 'units': 'MWm$^{-2}$', 'symbol': '$q_{\perp,peak}$',
                   'description': 'Peak target heat flux along analysis path as a function of time'},
-    'heat_flux_r_peak': {'label': 'Target location', 'units': 'm', 'symbol': '$R_{target}$',
-                  'description': 'Radial location of peak target heatflux'},
-    'temperature_r_peak': {'label': 'Peak temperature location', 'units': 'm', 'symbol': '$R_{T,max}$',
+    'heat_flux_r_peak': {'label': 'Radius of target peak heat flux', 'units': 'm', 'symbol': '$R_{q,max}$',
+                  'description': 'Radial location of peak target heat flux'},
+    'heat_flux_s_peak': {'label': 's coordinate of target peak heat flux', 'units': 'm', 'symbol': '$s_{q,max}$',
+                         'description': 'Divertor surface "s" coordinate location of peak target heat flux'},
+    'heat_flux_total': {'label': 'Heat flux integrated over divertor surface area', 'units': 'MW',
+                        'symbol': '$q_{total}$',
+                        'description': 'Heat flux integrated over divertor surface area (for this divertor). Wetted '
+                                       'area correction applied.'},
+    'temperature_r_peak': {'label': 'Radius of target peak temperature', 'units': 'm', 'symbol': '$R_{T,max}$',
                       'description': 'Radial location of peak target temperature'},
     'xpx/clock/lwir-1': {'label': 'LWIR 1 trigger signal', 'units': 'V', 'symbol': '$V_{LWIR1, trig}$',  # TODO: move to uda_utils
                          'description': 'Voltage of IRCAM1 LWIR HL04 datac loop trigger signal (xpx/clock/lwir-1)'},
@@ -76,6 +83,7 @@ meta_defaults_default = {
 # TODO: Add dict of alternative names for each variable in meta_defaults_default eg 'S', 's_global'
 param_aliases = {
     'temperature': 'T',
+    'heat_flux': 'q',
     's_global': 'S',
     's_local': 'S',
     'frame_data_nuc': 'frame_data',  # NUC corrected movie data
@@ -168,20 +176,28 @@ def attach_standard_meta_attrs(data, varname='all', replace=False, key=None):
     if key is None:
         key = varname
 
+    key_in = key
+
     if key in param_aliases:
         key = param_aliases[key]
 
-    key = key[:-1] if key[:-1] in meta_defaults_default else key  # Remove training path number?
+    key_short, suffix = remove_path_suffix(key)
+
+    key = key_short if key_short in meta_defaults_default else key  # Try removing training path suffix
+
+    key = key[:-1] if key[:-1] in meta_defaults_default else key  # Try removing training path number
 
     if key not in meta_defaults_default:
         pass
-        for key_short in meta_defaults_default:
-            if key_short in key:
+        for key_short in reversed(list(meta_defaults_default.keys())):  # reverse as longer names generally come later
+        #  in dict defn
+            if (key_short in key) and (len(key_short) > 1):  # Avoid matching eg 't' if contains letter 't'
+                logger.debug(f'Using {key_short} meta data for {key}')
                 key = key_short
                 break
-        for key_short in param_aliases:
-            if key_short in key:
-                key = key_short
+        for key_short, value_short in param_aliases.items():
+            if (key_short in key) and (len(key_short) > 1):
+                key = value_short
                 break
         pass
 
@@ -339,3 +355,10 @@ def reduce_2d_data_array(data_array, func_reduce, coord_reduce, func_args=(), ra
     except Exception as e:
         raise
     return data_array_reduced
+
+
+def remove_path_suffix(string, pattern='_path\d+', replacement=''):
+    sufix = re.search(pattern, string)
+    sufix = sufix.group() if (sufix is not None) else ''
+    string_out = re.sub(pattern, replacement, string)
+    return string_out, sufix
