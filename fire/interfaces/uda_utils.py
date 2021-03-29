@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 # import pyuda, cpyuda
 from fire.physics import physics_parameters
-from fire.misc import utils, data_structures
+from fire.misc import data_structures
 from fire.misc.utils import increment_figlabel, filter_kwargs, format_str, make_iterable
 from fire.plotting import plot_tools
 
@@ -42,7 +42,7 @@ logger.setLevel(logging.DEBUG)  # TODO: remove
 UDA code at: https://git.ccfe.ac.uk/MAST-U/UDA
 """
 
-from fire.misc.data_structures import meta_defaults_default
+from fire.misc.data_structures import meta_defaults_default, remove_path_suffix
 
 # Improved names for signals (replacing uda name meta data) used for eg axis labels
 signal_aliases = {
@@ -613,7 +613,6 @@ def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_numb
         pyuda_module, client = get_uda_client(use_mast_client=False, try_alternative=False)
         mast_module, client_mast = get_uda_client(use_mast_client=True, try_alternative=False)
 
-    import pyuda
     # Arguments that are different every time
     requried_args = {'shot': shot, 'pass_number': pass_number}#, 'status': status}
 
@@ -842,7 +841,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names,
                 dim_name = coord.dims[0]
                 # TODO: switch from using coord_name to dim_name? Cannot use same dimension for multiple coordinates?
                 dim_name = coord_name
-                coord_class = 'time' if dim_name == 't' else 'spatial'
+                coord_class = 'time' if (dim_name in ('t', 'n')) else 'spatial'
                 # NOTE: Cannot use same dimension for multiple coordinates?
                 if dim_name not in existing_dims[group]:
                     kwargs = {k: coord.attrs[k] for k in optional_dim_attrs if k in coord.attrs}
@@ -899,8 +898,11 @@ def putdata_coordinate(coordinate_name, dim, values, coord_class, client=None, f
     group = format_netcdf_group(group)
     dim, path_string = remove_path_suffix(dim)
 
+    if label is None:
+        label = coordinate_name
+
     units = units_to_uda_conventions(units)
-    kwargs = dict(units=units, label=coordinate_name, comment=comment, file_id=file_id)
+    kwargs = dict(units=units, label=label, comment=comment, file_id=file_id)
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
     # TODO: check inputs
     # NOTE name must be name of the associated dimension. This must have been defined in a previous API dimension step
@@ -925,6 +927,8 @@ def putdata_variable(variable_name, dimension, values, units=None, label=None, c
     variable_name, path_string = remove_path_suffix(variable_name)
 
     units = units_to_uda_conventions(units)
+    if label is None:
+        label = variable_name
 
     put_kwargs = dict(units=units, label=label, comment=comment, device=device, errors_variable=errors_variable,
                       file_id=file_id)
@@ -995,25 +999,28 @@ def check_for_required_args(kwargs, required_args, none_as_missing=True, applica
 
 def units_to_uda_conventions(units):
     # TODO: Get list of supported units from UDA
+
     units_allowed = ['s', 'K', 'm', 'count', 'W', 'W/m^2', 'Celsius', 'degree', 'radian']
     units_mappings = {'MWm$^{-2}$': 'W/m^2',
                       '$^\\circ$C': 'degree',
                       'radians': 'radian'}
                             #  '': 'count'}
+    if units is None:
+        logger.warning(f'Units "{units}" not in FIREs list of UDA compatible units: {units_allowed}')
+        return units
+
+    units_simple = units.replace('$', '')
+
     if units in units_allowed:
         pass
     elif units in units_mappings:
         units = units_mappings[units]
+    elif units_simple in units_allowed:
+        units = units_simple
     else:
         logger.warning(f'Units "{units}" not in FIREs list of UDA compatible units: {units_allowed}')
         units = None
     return units
-
-def remove_path_suffix(string, pattern='_path\d+', replacement=''):
-    sufix = re.search(pattern, string)
-    sufix = sufix.group() if (sufix is not None) else ''
-    string_out = re.sub(pattern, replacement, string)
-    return string_out, sufix
 
 def putdata_example():
     import pyuda
