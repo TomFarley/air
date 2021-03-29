@@ -23,8 +23,8 @@ import calcam
 
 import fire
 from fire import fire_paths, copy_default_user_settings
+from fire import plugins, camera_tools
 from fire.interfaces import interfaces, calcam_calibs
-from fire import plugins
 from fire.camera_tools import field_of_view, camera_shake, nuc, image_processing, camera_checks
 from fire.geometry import geometry, s_coordinate
 from fire.physics import temperature, heat_flux, physics_parameters
@@ -203,13 +203,25 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     clock_info = camera_checks.get_camera_external_clock_info(camera, pulse)
 
+    # TODO: move time checks to separate function
     # TODO: Update t_before_pulse to be -ve and rename to 't_movie_start'? - update all meta data files...
-    if np.abs(movie_meta['fps'] - clock_info['clock_frequency']) > 1:
-        raise ValueError(f'Movie and camera clock frequencies do not match. '
-                         f'movie={movie_meta["fps"]}, clock={clock_info["clock_frequency"]}')
     if (not np.isclose(movie_meta['t_before_pulse'], np.abs(clock_info['clock_t_window'][0]))):
         raise ValueError(f'Movie and camera clock start times do not match. '
                          f'movie={movie_meta["t_before_start"]}, clock={clock_info["clock_t_window"]}')
+    if np.abs(movie_meta['fps'] - clock_info['clock_frequency']) > 1:
+        message = (f'Movie and camera clock frequencies do not match. '
+                         f'movie={movie_meta["fps"]}, clock={clock_info["clock_frequency"]}')
+        logger.warning(message)
+        pass
+        time_correction = camera_checks.get_frame_time_correction(frame_times, clock_info['clock_frame_times'],
+                                                                  clock_info=clock_info)
+        if True:
+            # frame_times *= time_correction['factor']
+            t_offset = np.abs(movie_meta['t_before_pulse'])
+            frame_times = (frame_times+t_offset)*(movie_meta['fps']/clock_info['clock_frequency'])-t_offset
+            logger.warning(f'Applied time axis scale correction')
+        # raise ValueError(message)
+
 
     # Use origin information from reading movie meta data to read frame data from same data source (speed & consistency)
     # movie_path = [movie_origin.get('path', None)]
@@ -390,6 +402,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         fn_spatial_res = path_figures / f'spatial_res_{pulse}_{camera}_{spatial_res_type}.png'
         image_figures.figure_spatial_res(image_data, res_type=spatial_res_type, clip_range=clip_range, log_cmap=False,
                                          save_fn=fn_spatial_res, show=True)
+
+    # TODO: calculate rho_psi coordinate across image
+    # TODO: Include strike point number eg snow flake SP4
 
     # TODO: call plugin function to get s coordinate along tiles?
     # s_im = get_s_coord_global(x_im, y_im, z_im, machine_plugins)
@@ -846,7 +861,17 @@ def run_mastu_rit():  # pragma: no cover
     # pulse = 43643
     # pulse = 43644
     # pulse = 43648
-    pulse = 43685
+    # pulse = 43685
+
+    # pulse = 43610
+    # pulse = 43611
+    # pulse = 43613
+    pulse = 43614
+    # pulse = 43591
+    # pulse = 43596
+    # pulse = 43415
+    # pulse = 43644
+    # pulse = 43587
 
     camera = 'rit'
     pass_no = 0
@@ -869,7 +894,8 @@ def run_mastu_rit():  # pragma: no cover
              'path_cross_sections': False,
              'temperature_vs_R_t': False,
              'heat_flux_vs_R_t': False,
-             'timings': False, 'strike_point_loc': False,
+             'timings': False,
+             'strike_point_loc': False,
              # 'heat_flux_path_1d': True,
              }
 
