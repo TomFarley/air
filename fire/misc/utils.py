@@ -1079,7 +1079,8 @@ def args_for(func, kwargs, include=(), exclude=(), match_signature=True, named_d
     return kws
 
 def mode_simple(data):
-    mode = stats.mode(np.array(make_iterable(data))).mode
+    mode = stats.mode(make_iterable(data, ndarray=True)).mode[0]
+    # mode = ndarray_0d_to_scalar(mode)
     return mode
 
 def format_str_partial(string, format_kwargs, allow_partial=True):
