@@ -349,6 +349,7 @@ def plot_image_data_temporal_stats(data, key, ax=None, stats=('max', 'mean', 'me
 
 def animate_frame_data(data, key='frame_data', ax=None, duration=10, interval=None, cmap='gray', cbar_range=None,
                        axes_off=True, fig_kwargs=None, nth_frame='dynamic', n_start=None, n_end=None, save_kwargs=None,
+                       frame_label='', cbar_label=None, label_values=None,
                        save_path_fn=None, show=True, **kwargs):
     if fig_kwargs is None:
         fig_kwargs = {'num': key}
@@ -358,12 +359,12 @@ def animate_frame_data(data, key='frame_data', ax=None, duration=10, interval=No
     #         fn = fn_pattern.format(pulse=pulse, key=key)
     frames = data[key]
 
-    if (n_start is not None) or (n_end is not None):
-        if n_start is None:
-            n_start = 0
-        if n_end is None:
-            n_end = len(frames)-1
-        frames = frames[n_start:n_end]
+    # if (n_start is not None) or (n_end is not None):
+    #     if n_start is None:
+    #         n_start = 0
+    #     if n_end is None:
+    #         n_end = len(frames)-1
+    #     frames = frames[n_start:n_end]
 
     n_frames = len(frames)
     if nth_frame == 'dynamic':
@@ -371,13 +372,18 @@ def animate_frame_data(data, key='frame_data', ax=None, duration=10, interval=No
         logger.info(f'Animation frame step={nth_frame}')
 
     fig, ax, anim = animate_image_data(frames, ax=ax, duration=duration, interval=interval, cmap=cmap,
-                                       axes_off=axes_off, fig_kwargs=fig_kwargs, nth_frame=nth_frame,
+                                       axes_off=axes_off, fig_kwargs=fig_kwargs,
+                                       n_start=n_start, n_end=n_end, nth_frame=nth_frame,
                                        cbar_range=cbar_range,
+                                       frame_label=frame_label, cbar_label=cbar_label, label_values=label_values,
                                        save_path_fn=save_path_fn, show=show, **kwargs)
     return fig, ax, anim
 
-def animate_image_data(frames, ax=None, duration=None, interval=None, cmap='viridis', axes_off=True, fig_kwargs=None,
-                       nth_frame=1, cbar_range=None, save_kwargs=None, save_path_fn=None, show=True):
+def animate_image_data(frames, ax=None, duration=None, interval=None,
+                       frame_label='', cbar_label=None, label_values=None,
+                       cmap='viridis', axes_off=True, fig_kwargs=None,
+                       n_start=None, n_end=None, nth_frame=1, cbar_range=None, save_kwargs=None, save_path_fn=None,
+                       show=True):
     # import numpy as np
     # import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation
@@ -387,9 +393,16 @@ def animate_image_data(frames, ax=None, duration=None, interval=None, cmap='viri
     if fig_kwargs is None:
         fig_kwargs = {}
 
+    if label_values is None:
+        label_values = {}
+
     nframes_total = len(frames)
-    nframes_animate = int(nframes_total / nth_frame)
-    frame_nos = np.arange(0, nframes_total, nth_frame, dtype=int)
+    if n_start is None:
+        n_start = 0
+    if n_end is None:
+        n_end = nframes_total - 1
+    nframes_animate = int((n_end - n_start) / nth_frame)
+    frame_nos = np.arange(n_start, n_end + 1, nth_frame, dtype=int)
 
     logger.info(f'Plotting matplotlib annimation ({nframes_animate} frames)')
 
@@ -420,8 +433,11 @@ def animate_image_data(frames, ax=None, duration=None, interval=None, cmap='viri
 
     div = make_axes_locatable(ax)
     ax_cbar = div.append_axes('right', '5%', '5%')
-    cbar = fig.colorbar(img, cax=ax_cbar, extend=extend)
-    tx = ax.set_title(f'Frame 0/{nframes_animate-1}')
+    cbar = fig.colorbar(img, cax=ax_cbar, extend=extend, label=cbar_label)
+    # tx = ax.set_title(f'Frame 0/{nframes_animate-1}')
+
+    frame_label_i = frame_label.format(**{k: v[n_start] for k, v in label_values.items()})
+    tx = plot_tools.annotate_axis(ax, frame_label_i, loc='top_left', box=False, color='white')
 
     if axes_off:
         ax.set_axis_off()
@@ -453,7 +469,8 @@ def animate_image_data(frames, ax=None, duration=None, interval=None, cmap='viri
         # cf = ax.contourf(frame, vmax=vmax, vmin=vmin, levels=levels)
         # ax_cbar.cla()
         # fig.colorbar(img, cax=ax_cbar)
-        tx.set_text(f'Frame {frame_no}/{nframes_animate-1}')
+        frame_label_i = frame_label.format(**{k: v[frame_no] for k, v in label_values.items()})
+        tx.set_text(frame_label_i)
         # return img, cbar, tx
         # return ln,
 
