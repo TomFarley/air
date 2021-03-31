@@ -140,7 +140,8 @@ if __name__ == '__main__':
     camera_settings = dict(camera='rit', fps=400, exposure=0.25e-3, lens=25e-3, t_before_pulse=100e-3)
     # path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210301/'
     # path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210302/'
-    path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210309/'
+    # path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210309/'
+    path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210325/'
 
     # TODO: Extract camera settings meta data from spreadsheet
 

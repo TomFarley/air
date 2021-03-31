@@ -25,6 +25,8 @@ logger.propagate = False
 
 
 def review_analysed_shot_pickle(pulse, camera='rit', machine='mast_u', debug_figures=None, recompute=False):
+    logger.info(f'Reviewing {machine}, {camera}, {pulse}')
+    print(f'Reviewing {machine}, {camera}, {pulse}')
 
     data, data_unpacked = read_data_for_pulses_pickle(camera=camera, pulses=pulse, machine=machine,
                                                       generate=True, recompute=recompute)[pulse]
@@ -42,6 +44,7 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
         debug = {}
     if output is None:
         output = {}
+
 
     meta_data = meta
 
@@ -142,10 +145,16 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
     if debug.get('movie_temperature_animation', False):
         # save_path_fn = paths_output['gifs'] / f'{machine}-{camera}-{pulse}_temperature_movie.gif'
         save_path_fn = None
-        cbar_range = [0, 99.9]  # percentage of range
+        cbar_range = [0, 99.8]  # percentile of range
+        # cbar_range = [0, 99.9]  # percentile of range
+        # cbar_range = [0, 100]  # percentile of range
         # cbar_range = None
-        image_figures.animate_frame_data(image_data, key='temperature_im', nth_frame=1, n_start=40, n_end=350,
-                                         save_path_fn=save_path_fn, cbar_range=cbar_range)
+        frame_range = [40, 250]
+        image_figures.animate_frame_data(image_data, key='temperature_im', nth_frame=1, n_start=frame_range[0],
+                                         n_end=frame_range[1], save_path_fn=save_path_fn, cbar_range=cbar_range,
+                                         frame_label=f'{camera.upper()} {pulse} $t=${{t:0.1f}} ms',
+                                         cbar_label='$T$ [$^\circ$C]',
+                                         label_values={'t': meta_data['frame_times']*1e3})
 
     for i_path, (analysis_path_key, analysis_path_name) in enumerate(zip(analysis_path_keys, analysis_path_names)):
         path = analysis_path_key
@@ -164,8 +173,12 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
 
         if debug.get('heat_flux_vs_R_t-robust', False):
             robust = True
+            # robust = (2, 100)
             # robust = False
-            debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key, extend='both',
+            extend = 'both'
+            # extend = 'min'
+            # extend = 'neither'
+            debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key, extend=extend,
                                               robust=robust, meta=meta_data, machine_plugins=machine_plugins)
 
         if debug.get('heat_flux_vs_R_t-raw', False):
@@ -208,8 +221,8 @@ if __name__ == '__main__':
     import pyuda
     client = pyuda.Client()
 
-    pulse = 43183  # Nice strike point sweep to T5, but negative heat fluxes
-    pulse = 43177
+    # pulse = 43183  # Nice strike point sweep to T5, but negative heat fluxes
+    # pulse = 43177
     # pulse = 43530
     # pulse = 43534
     # pulse = 43547
@@ -217,18 +230,25 @@ if __name__ == '__main__':
 
     # pulse = 43583  # 2xNBI
     # pulse = 43587  #
+    # pulse = 43591  #
     # pulse = 43596  #
-    pulse = 43610  #
+    # pulse = 43610  #
     # pulse = 43620  #
     # pulse = 43624  #
     # pulse = 43662  #
 
     # pulse = 43624  #
+    # pulse = 43648  #
 
-    debug = {'calcam_calib_image': False, 'debug_detector_window': False, 'movie_intensity_stats': True,
+    # pulse = 43611
+    # pulse = 43613
+    pulse = 43614
+
+    debug = {'calcam_calib_image': False, 'debug_detector_window': False,
+             'movie_intensity_stats': False,
          'movie_data_animation': False, 'movie_data_nuc_animation': False, 'movie_temperature_animation': False,
-         'spatial_coords': True,
-         'spatial_res': True,
+         'spatial_coords': False,
+         'spatial_res': False,
          'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
          'surfaces': False,
          'analysis_path': True,

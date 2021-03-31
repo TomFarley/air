@@ -30,6 +30,8 @@ def read_data_for_pulses_pickle(camera: str, pulses: dict, machine:str= 'mast_u'
     pulse_values = list(pulses.keys()) if isinstance(pulses, dict) else make_iterable(pulses)
 
     for pulse in pulse_values:
+        if isinstance(pulse, (tuple, list)):  # When pulse is passed in tuple with dict of kwargs for that pulse
+            pulse = pulse[0]
         pulse = int(pulse)
         if not recompute:
             try:

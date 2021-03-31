@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 import pyuda
 import fire
-from fire.scripts.review_analysed_shot import read_data_for_pulses_pickle
+from fire.scripts.read_pickled_ir_data import read_data_for_pulses_pickle
 from fire.plotting import plot_tools, debug_plots
 
 logger = logging.getLogger(__name__)
@@ -52,28 +52,40 @@ def compare_t2_t5_heat_flux():
     camera = 'rit'
     signal_ir = 'heat_flux_path0'
     # pulse = 43583
-    pulse = 43610
+    # pulse = 43610   # Initial KPI pulse
     # pulse = 43620
     # pulse = 43624
+    # pulse = 43644
+
+    pulse = 43587
+
 
     machine = 'mast_u'
     meta = dict(camera=camera, pulse=pulse, machine=machine, signal=signal_ir)
 
+    # plot_s_coord = True
+    plot_s_coord = False
+
     align_peaks = False
     # align_peaks = True
+
     # t_window = 10e-3
     t_window_t2 = 0.0
     t_window_t5 = 0.0
 
-    t_window_t2 = 0.005
-    # t_window_t5 = 0.004
+    t_window_t2 = 0.006
+    t_window_t5 = 0.006
+
+    # t_tile2 = 0.162   # 43610 KPI
+    # t_tile5 = 0.315   # 43610 KPI
+
+    t_tile2 = 0.140  # 43644 KPI
+    t_tile5 = 0.325  # 43644 KPI
 
     # t_tile2 = 0.12559
-    t_tile2 = 0.16
-    # t_tile2 = 0.115
-
     # t_tile5 = 0.3526
-    t_tile5 = 0.315
+
+    # t_tile2 = 0.115
     # t_tile5 = 0.25
 
     r_t2_bounds = [0.540, 0.905]
@@ -87,15 +99,18 @@ def compare_t2_t5_heat_flux():
     ax = axes
 
     r_coord = 'R_path0'
+    s_coord = 's_global_path0'
     r = path_data[r_coord]
+    s = path_data[s_coord]
     t = path_data['t']
 
     if pulse >= 43543 and pulse <= 43621:
         t_scale_factor = 0.616342 / 0.56744
     else:
         t_scale_factor = 1
-    # t = t * t_scale_factor
-    # path_data['t'] = t
+    t = t * t_scale_factor
+    path_data['t'] = t
+    t_tile2 = t_tile2 * t_scale_factor
 
 
     # r_t2[0] = r.values.min()
@@ -111,6 +126,7 @@ def compare_t2_t5_heat_flux():
     t2_mask = (r >= r_t2_bounds[0]) & (r <= r_t2_bounds[1])
     profile_t2 = profile_t2.sel(R_path0=t2_mask)
     r_t2 = profile_t2[r_coord]
+    s_t2 = profile_t2[s_coord]
 
     if not t_window_t5:
         profile_t5 = heat_flux.sel(t=t_tile5, method='nearest')
@@ -120,25 +136,34 @@ def compare_t2_t5_heat_flux():
     t5_mask = (r >= r_t5_bounds[0]) & (r <= r_t5_bounds[1])
     profile_t5 = profile_t5.sel(R_path0=t5_mask)
     r_t5 = profile_t5[r_coord]
+    s_t5 = profile_t5[s_coord]
 
     if align_peaks:
         r_t2 = r_t2 - r_t2[profile_t2.argmax(dim=r_coord)]
         r_t5 = r_t5 - r_t5[profile_t5.argmax()]
+        s_t2 = s_t2 - s_t2[profile_t2.argmax(dim=r_coord)]
+        s_t5 = s_t5 - s_t5[profile_t5.argmax()]
 
-    ax.plot(r_t2, profile_t2, label=rf'Tile 2 ($t={t_tile2:0.3f}$ s)')
-    ax.plot(r_t5, profile_t5, label=rf'Tile 5 ($t={t_tile5:0.3f}$ s)')
+    if plot_s_coord:
+        ax.plot(s_t2, profile_t2, label=rf'Tile 2 ($t={t_tile2:0.3f}$ s)')
+        ax.plot(s_t5, profile_t5, label=rf'Tile 5 ($t={t_tile5:0.3f}$ s)')
+        # ax.set_xlabel(r'$s_{global}$ [m]')
+        ax.set_xlabel(r'$s$ [m]')
+    else:
+        ax.plot(r_t2, profile_t2, label=rf'Tile 2 ($t={t_tile2:0.3f}$ s)')
+        ax.plot(r_t5, profile_t5, label=rf'Tile 5 ($t={t_tile5:0.3f}$ s)')
+        ax.set_xlabel(r'$R$ [m]')
 
-    ax.set_xlabel(f'$R$ [m]')
     ax.set_ylabel(f'{heat_flux.symbol} [{heat_flux.units}]')
     ax.title.set_visible(False)
 
-    if True:
+    if False:
         ax.set_yscale('log')
         ax.set_ylim([profile_t5.min(), None])
 
     plot_tools.legend(ax, loc='center right', box=False)
 
-    plot_tools.annotate_providence(ax, meta=meta, box=False)
+    plot_tools.annotate_providence(ax, meta_data=meta, box=False)
 
     if align_peaks:
         fn = f'{camera}_{pulse}_T2T5_aligned.png'
@@ -150,11 +175,14 @@ def compare_t2_t5_heat_flux():
 
     plot_tools.show_if(True, tight_layout=True)
 
+
+
     # 2d heaflux map
     fig, ax, ax_passed = plot_tools.get_fig_ax(ax_grid_dims=(1, 1), sharex=True, axes_flatten=True)
 
     debug_plots.debug_plot_profile_2d(data_paths=path_data, param='heat_flux', ax=ax, robust=True,
                                           machine_plugins='mast_u', show=False)
+    ax.set_ylim([0, 0.57])
     if t_window_t2:
         ax.axhline(y=t_tile2-t_window_t2, ls=':', color='tab:blue', lw=2)
         ax.axhline(y=t_tile2+t_window_t2, ls=':', color='tab:blue', lw=2)
@@ -164,7 +192,7 @@ def compare_t2_t5_heat_flux():
     else:
         ax.axhline(y=t_tile2, ls='--', color='tab:blue', lw=2)
         ax.axhline(y=t_tile5, ls='--', color='tab:orange', lw=2)
-
+    ax.set_ylabel(r'$t$ [s]')
 
     plot_tools.show_if(True, tight_layout=True)
 
