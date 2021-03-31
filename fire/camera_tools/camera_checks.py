@@ -29,10 +29,14 @@ def get_camera_external_clock_info(camera, pulse):
     info_out = {}
 
     try:
-        data = uda_utils.read_uda_signal_to_dataarray(signal_clock, pulse=pulse, raise_exceptions=False)
-    except Exception as e:
-        return info_out
-    data = data.astype(float)  # Switch from uint8
+        data = uda_utils.read_uda_signal_to_dataarray(signal_clock, pulse=pulse, raise_exceptions=True)
+    except (Exception, RuntimeError) as e:
+        logger.warning(e)
+        return None
+    else:
+        if isinstance(data, Exception):
+            return None
+        data = data.astype(float)  # Switch from uint8
 
     t = data['t']
 
