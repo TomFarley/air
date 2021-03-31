@@ -74,6 +74,9 @@ meta_defaults_default = {
                         'symbol': '$q_{total}$',
                         'description': 'Heat flux integrated over divertor surface area (for this divertor). Wetted '
                                        'area correction applied.'},
+    'heat_flux_n_peaks': {'label': 'Number of local peaks in heat flux for each time point', 'units': 'count',
+                        'symbol': '$n_{q, peaks}$',
+                        'description': 'Number of local peaks in heat flux for each time point'},
     'temperature_r_peak': {'label': 'Radius of target peak temperature', 'units': 'm', 'symbol': '$R_{T,max}$',
                       'description': 'Radial location of peak target temperature'},
     'xpx/clock/lwir-1': {'label': 'LWIR 1 trigger signal', 'units': 'V', 'symbol': '$V_{LWIR1, trig}$',  # TODO: move to uda_utils
