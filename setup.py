@@ -26,7 +26,7 @@ setup(
         ],
     python_requires='>=3',
     setup_requires=['pytest-runner'],
-    test_suite='tests.test_suite_slow',
+    test_suite='tests.test_suite_fast',  # 'tests.test_suite_slow'
     tests_require=['pytest-cov'],
     zip_safe=False,
 long_description=open('README.md').read()
