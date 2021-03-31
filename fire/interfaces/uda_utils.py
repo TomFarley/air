@@ -826,17 +826,17 @@ def putdata_variables_from_datasets(path_data, image_data, path_names,
 
     # Write dims, coords, data and attributes for variables in each group
     for group in group_variables:
-
+        group_data = groups[group]
         for variable in group_variables[group]:
             variable_name = variable.name
             # variable = data_structures.swap_xarray_dim(variable, new_active_dims=f'R_{path_name}', raise_on_fail=False)
 
             # Write dimensions and coords to group in preparation for main variable data
             for coord_name in variable.coords:
-                coord = variable[coord_name]
 
                 # Make sure coord has required attrs like units etc
-                path_data = physics_parameters.attach_standard_meta_attrs(path_data, varname=coord_name, replace=True)
+                group_data = physics_parameters.attach_standard_meta_attrs(group_data, varname=coord_name, replace=True)
+                coord = group_data[coord_name]
 
                 dim_name = coord.dims[0]
                 # TODO: switch from using coord_name to dim_name? Cannot use same dimension for multiple coordinates?
