@@ -256,7 +256,8 @@ def json_load(path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None,
         raise InputFileException(f'Invalid json formatting in input file "{path_fn}"', e)
 
     # Return indexed subset of file
-    out = filter_nested_dict_key_paths(contents, key_paths_keep=key_paths_keep, compress_key_paths=compress_key_paths)
+    out = filter_nested_dict_key_paths(contents, key_paths_keep=key_paths_keep,
+                                       compress_key_paths=compress_key_paths, path_fn=path_fn)
 
     # Drop some keys
     out = drop_nested_dict_key_paths(out, key_paths_drop=key_paths_drop)
@@ -266,13 +267,14 @@ def json_load(path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None,
 
     return out
 
-def filter_nested_dict_key_paths(dict_in, key_paths_keep, compress_key_paths=True):
+def filter_nested_dict_key_paths(dict_in, key_paths_keep, compress_key_paths=True, path_fn=None):
     """Return a subset of nested dicts for given paths
 
     Args:
         dict_in: dict of dicts
         key_paths_keep: iterable of key names navigating nested dict structure
         compress_key_paths: Only keep last key in key_path eg key_path=('mast', 29852, 'signal') -> {'signal': 'rir'}
+        path_fn:            Name/path of jason file being filtered (only used for error messages)
 
     Returns: Filtered nested dict
 
