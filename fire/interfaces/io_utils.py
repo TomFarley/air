@@ -535,7 +535,7 @@ def sub_dirs(path):
         out.pop(out.index(path))
     return out
 
-def test_pickle(obj):
+def test_pickle(obj, verbose=True):
     """Test if an object can successfully be pickled and loaded again
     Returns True if succeeds
             False if fails
@@ -548,18 +548,23 @@ def test_pickle(obj):
     try:
         with open(path, 'wb') as f:
             pickle.dump(obj, f)
-        print('Pickled object')
+        if verbose:
+            print('Pickled object')
         with open(path, 'rb') as f:
             out = pickle.load(f)
-        print('Loaded object')
+        if verbose:
+            print('Loaded object')
     except Exception as e:
-        print('{}'.format(e))
+        if verbose:
+            print('{}'.format(e))
         return False
     if os.path.isfile(path):
-        print('Pickled file size: {:g} Bytes'.format(os.path.getsize(path)))
+        if verbose:
+            print('Pickled file size: {:g} Bytes'.format(os.path.getsize(path)))
         os.remove(path)  # remove temp file
     import pdb; pdb.set_trace()
-    print('In:\n{}\nOut:\n{}'.format(out, obj))
+    if verbose:
+        print('In:\n{}\nOut:\n{}'.format(out, obj))
     if not isinstance(obj, dict):
         out = out.__dict__
         obj = obj.__dict__
@@ -568,7 +573,7 @@ def test_pickle(obj):
     else:
         return False
 
-def pickle_dump(obj, path, verbose=True, **kwargs):
+def pickle_dump(obj, path, raise_exceptions=True, verbose=True, **kwargs):
     """Wrapper for pickle.dump, accepting multiple path formats (file, string, pathlib.Path).
     - Automatically appends .p if not present.
     - Uses cpickle when possible.
@@ -585,16 +590,35 @@ def pickle_dump(obj, path, verbose=True, **kwargs):
             path += '.p'
         path = os.path.expanduser(path)
         with open(path, 'wb') as f:
-            pickle.dump(obj, f, **kwargs)
+            try:
+                pickle.dump(obj, f, **kwargs)
+            except TypeError as e:
+                message = f'Failed to write pickle file: {path}. {e}'
+                if raise_exceptions:
+                    raise ValueError(message)
+                else:
+                    logger.warning(message)
+                    success = False
+            else:
+                success = True
     else:
         try:
             pickle.dump(obj, path, **kwargs)
             path.close()
-        except:
-            raise ValueError('Unexpected path format/type: {}'.format(path))
+        except Exception as e:
+            message = 'Filed to write pickle file. Unexpected path format/type: {}. {}'.format(path, e)
+            if raise_exceptions:
+                raise ValueError(message)
+            else:
+                logger.warning(message)
+                success = False
+        else:
+            success = True
 
     if verbose:
         logger.info('Wrote pickle data to: %s' % path)
+
+    return success
 
 def pickle_load(path_fn, path=None, **kwargs):
     """Wrapper for pickle.load accepting multiple path formats (file, string, pathlib.Path).
