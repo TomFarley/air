@@ -31,7 +31,11 @@ with open(fire_paths['root'] / 'logging_config.yaml', 'r') as f:
     logging.config.dictConfig(config)
 
 # Set logging level for console output handler propagated throughout fire package
-stream_handler = logger_fire.handlers[0]
+handlers = logger_fire.handlers
+if len(handlers) > 0:
+    stream_handler = handlers[0]
+else:
+    logger_fire.warning(f'Failed to set up fire stream handler')
 logger_fire.setLevel(logging.DEBUG)
 # stream_handler.setLevel(logging.DEBUG)  # Uncomment to print debug level messages to console throughout fire
 
