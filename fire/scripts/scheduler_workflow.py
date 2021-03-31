@@ -181,7 +181,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # Load calcam spatial camera calibration
     calcam_calib = calcam.Calibration(load_filename=str(files['calcam_calib']))
     calcam_calib_image_full_frame = calcam_calib.get_image(coords=image_coords)  # Before detector_window applied
-    meta_data['calcam_pupilpos'] = calcam_calib.get_pupilpos()
+    # TODO: Handle different pupil positions for multiple subviews
+    subview = 0
+    meta_data['calcam_pupilpos'] = calcam_calib.get_pupilpos(subview=subview)
     # TODO: Check that original full frame frame shape matches calcam calibration image shape?
 
     logger.info(f'Using calcam calibration: {calcam_calib.filename}')
@@ -205,22 +207,23 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # TODO: move time checks to separate function
     # TODO: Update t_before_pulse to be -ve and rename to 't_movie_start'? - update all meta data files...
-    if (not np.isclose(movie_meta['t_before_pulse'], np.abs(clock_info['clock_t_window'][0]))):
-        raise ValueError(f'Movie and camera clock start times do not match. '
-                         f'movie={movie_meta["t_before_start"]}, clock={clock_info["clock_t_window"]}')
-    if np.abs(movie_meta['fps'] - clock_info['clock_frequency']) > 1:
-        message = (f'Movie and camera clock frequencies do not match. '
-                         f'movie={movie_meta["fps"]}, clock={clock_info["clock_frequency"]}')
-        logger.warning(message)
-        pass
-        time_correction = camera_checks.get_frame_time_correction(frame_times, clock_info['clock_frame_times'],
-                                                                  clock_info=clock_info)
-        if True:
-            # frame_times *= time_correction['factor']
-            t_offset = np.abs(movie_meta['t_before_pulse'])
-            frame_times = (frame_times+t_offset)*(movie_meta['fps']/clock_info['clock_frequency'])-t_offset
-            logger.warning(f'Applied time axis scale correction')
-        # raise ValueError(message)
+    if clock_info is not None:
+        if (not np.isclose(movie_meta['t_before_pulse'], np.abs(clock_info['clock_t_window'][0]))):
+            raise ValueError(f'Movie and camera clock start times do not match. '
+                             f'movie={movie_meta["t_before_start"]}, clock={clock_info["clock_t_window"]}')
+        if np.abs(movie_meta['fps'] - clock_info['clock_frequency']) > 1:
+            message = (f'Movie and camera clock frequencies do not match. '
+                             f'movie={movie_meta["fps"]}, clock={clock_info["clock_frequency"]}')
+            logger.warning(message)
+            pass
+            time_correction = camera_checks.get_frame_time_correction(frame_times, clock_info['clock_frame_times'],
+                                                                      clock_info=clock_info)
+            if True:
+                # frame_times *= time_correction['factor']
+                t_offset = np.abs(movie_meta['t_before_pulse'])
+                frame_times = (frame_times+t_offset)*(movie_meta['fps']/clock_info['clock_frequency'])-t_offset
+                logger.warning(f'Applied time axis scale correction')
+            # raise ValueError(message)
 
 
     # Use origin information from reading movie meta data to read frame data from same data source (speed & consistency)
@@ -923,7 +926,7 @@ if __name__ == '__main__':
 
     outputs = status['outputs']
 
-    clean_netcdf = False
+    clean_netcdf = True
     if clean_netcdf:
         if ('uda_putdata' in outputs) and (outputs['uda_putdata']['success']):
             path_fn = outputs['uda_putdata']['path_fn']
