@@ -8,12 +8,13 @@ try:
 except ImportError as e:
     print(f'Failed to import pyuda for tests')
     pyuda = None
-from fire.plugins.movie_plugins.uda import get_uda_movie_obj_legacy, read_movie_meta, read_movie_data
+from fire.plugins.movie_plugins.uda import (get_uda_movie_obj, get_uda_movie_obj_legacy, read_movie_meta,
+    read_movie_data)
 
 pwd = Path(__file__).parent
 ipx_path = (pwd / 'test_data/mast/').resolve()
 print(f'pwd: {pwd}')
-print(f'ipx test files path: {ipx_path}')
+# print(f'ipx test files path: {ipx_path}')
 
 # @pytest.fixture  # Run function once and save output to supply to multiple tests
 # def expected_ouput():
@@ -33,7 +34,8 @@ if pyuda is not None:
             pulse = 30378
             camera = 'rir'
             n_start, n_end = 100, 110
-            vid = get_uda_movie_obj_legacy(pulse, camera, n_start=n_start, n_end=n_end)
+            vid = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end)
+            # vid = get_uda_movie_obj_legacy(pulse, camera, n_start=n_start, n_end=n_end)
             self.assertEqual(type(vid), pyuda._video.Video)
             self.assertEqual(vid.camera, 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu')
             self.assertEqual(vid.lens, '50mm')
@@ -54,8 +56,8 @@ if pyuda is not None:
 
             ipx_header_expected = {
                 'board_temp': 50.5, 'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu',
-                'ccd_temp': 73.47895050048828, 'codex': 'JP1',
-                'date_time': '2013-10-23T15:22:20Z',
+                'ccd_temp': 73.47895050048828, 'codex': 'JP2',
+                'date_time': '2013-09-23T15:22:20Z',
                 'depth': 14, 'exposure': 28.0,
                 'file_format': 'IPX-1',
                 'filter': 'LP4500nm', 'gain': np.array([2., 2.]), 'hbin': 0, 'height': 8, 'is_color': 0, 'left': 1,
@@ -139,7 +141,7 @@ if pyuda is not None:
             #                        'frames': 625, 'size': 239, 'n_frames': 625}
             # TODO: Understand why datetime and preexp fields no longer read
             ipx_header_expected = {'board_temp': 0.0, 'camera': 'Thermosensorik CMT 256 SM HS', 'ccd_temp': 59.0,
-                                   'codex': 'JP1', 'date_time': '2013-10-23T15:37:29Z', 'depth': 14, 'exposure': 50.0,
+                                   'codex': 'JP2', 'date_time': '2013-09-23T15:37:29Z', 'depth': 14, 'exposure': 50.0,
                                    'file_format': 'IPX-2', 'filter': '', 'gain': np.array([0., 0.]), 'hbin': 0,
                                    'height': 32, 'is_color': 0, 'left': 0, 'lens': '', 'n_frames': 625,
                                    'offset': np.array([0., 0.]), 'orientation': 0, 'pre_exp': 0.0, 'shot': 30378,

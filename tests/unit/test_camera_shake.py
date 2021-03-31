@@ -10,12 +10,12 @@ from pathlib import Path
 
 import numpy as np
 
-from fire.camera.camera_shake import (calc_camera_shake_displacements, remove_camera_shake)
+from fire.camera_tools.camera_shake import (calc_camera_shake_displacements, remove_camera_shake)
 from fire import fire_paths
 
 pwd = Path(__file__).parent
 
-class TestInterfaces(unittest.TestCase):
+class TestCamShake(unittest.TestCase):
 
     def setUp(self):
         path_fn = fire_paths['root'] / '../tests/test_data/frames_with_shake.p'

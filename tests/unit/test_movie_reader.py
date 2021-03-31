@@ -23,9 +23,11 @@ class TestMovieReader(unittest.TestCase):
         self.maxDiff = None
 
     def test_init(self):
-        movie_reader = MovieReader(plugin_precedence=['uda', 'ipx'])
+        plugin_precedence = ['uda', 'ipx']
+        movie_reader = MovieReader(plugin_precedence=plugin_precedence)
 
-        self.assertEqual(len(movie_reader._plugins), 4)
+        self.assertTrue(np.all([list(movie_reader.plugins.keys())[i] == plugin for i, plugin in enumerate(
+            plugin_precedence)]))
 
     def test_read_movie_reader_meta_rir030378(self):
         for plugin in ['uda', 'ipx']:  # , 'npz']:
