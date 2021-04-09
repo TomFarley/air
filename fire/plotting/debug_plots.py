@@ -265,10 +265,12 @@ def debug_spatial_coords(data, path_data=None, path_name='path0', points_rzphi=N
                            ypix_out_of_frame=path_data[f'y_pix_out_of_frame_{path}'])
     # Spatial coords
     axs = axes[1:]
-    keys = ['x_im', 'y_im', 'R_im', 'phi_deg_im', 'z_im', 's_global_im', 'sector_im',
-            # 'ray_lengths_im',
-            'surface_id',
-            # 'wire_frame',
+    keys = ['x_im', 'y_im', 'R_im', 'phi_deg_im', 'z_im',
+            # 's_global_im',
+            'ray_lengths_im',
+            'sector_im',
+            # 'surface_id',
+            'wire_frame',
             ]
     for ax, key in zip(axs, keys):
         try:
@@ -674,7 +676,7 @@ def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_r_peak', 'heat
                                    x_var='t', heat_flux_thresh=-0.0, meta_data=None):
     # TODO: Move general code to plot_tools.py func
     colors = ('tab:blue', 'tab:orange', 'tab:green', 'tab:red')
-    path = path_name
+    path = path_name if isinstance(path_name, str) else path_name[0]
 
     fig, ax1, ax_passed = plot_tools.get_fig_ax(num=f'{params} temporal profile {path}')
     ax = ax1
@@ -727,7 +729,7 @@ def debug_plot_timings(data_profiles, pulse, params=('heat_flux_peak_{path}','te
     from fire.physics.physics_parameters import find_peaks_info
     # uda_module, client = uda_utils.get_uda_client(use_mast_client=True, try_alternative=True)
 
-    n_peaks_label = 2
+    n_peaks_label = 3
     figsize = (10, 10)
     ylabel_size = 12
 
