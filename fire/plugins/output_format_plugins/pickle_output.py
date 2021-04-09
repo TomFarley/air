@@ -53,8 +53,12 @@ def write_processed_ir_to_pickle_output_file(path_data, image_data, path_names,
         io_utils.mkdir(path, depth=3)
 
     if filter_output:
-        image_data_out = image_data[variable_names_image]
-        path_data_out = path_data[variable_names_path]  # TODO: variable_names_time?
+        try:
+            image_data_out = image_data[variable_names_image]
+            path_data_out = path_data[variable_names_path]  # TODO: variable_names_time?
+        except Exception as e:
+            logger.exception(e)
+            # TODO: Improve error handling for missing variable names
     else:
         image_data_out = image_data
         path_data_out = path_data
