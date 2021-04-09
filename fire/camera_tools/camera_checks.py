@@ -105,7 +105,8 @@ def get_frame_time_correction(frame_times_camera, frame_times_clock=None, clock_
         fps_clock = 1/utils.mode_simple(np.diff(frame_times_clock))
         fps_camera = 1/utils.mode_simple(np.diff(frame_times_camera))
         factor = fps_mean / fps_camera
-    time_correction = dict(factor=factor, frame_times_corrected=frame_times_corrected, fps_mean=fps_mean)
+    time_correction = dict(factor=factor, frame_times_corrected=frame_times_corrected, fps_mean=fps_mean,
+                           fps_clock=fps_clock, fps_camera=fps_camera)
     return time_correction
 
 
