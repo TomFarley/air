@@ -206,7 +206,6 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     clock_info = camera_checks.get_camera_external_clock_info(camera, pulse)
 
     # TODO: move time checks to separate function
-    # TODO: Update t_before_pulse to be -ve and rename to 't_movie_start'? - update all meta data files...
     if clock_info is not None:
         if (not np.isclose(movie_meta['t_before_pulse'], np.abs(clock_info['clock_t_window'][0]))):
             raise ValueError(f'Movie and camera clock start times do not match. '
@@ -216,13 +215,17 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                              f'movie={movie_meta["fps"]}, clock={clock_info["clock_frequency"]}')
             logger.warning(message)
             pass
-            time_correction = camera_checks.get_frame_time_correction(frame_times, clock_info['clock_frame_times'],
-                                                                      clock_info=clock_info)
+
             if True:
-                # frame_times *= time_correction['factor']
+                time_correction_info = camera_checks.get_frame_time_correction(frame_times,
+                                                                                 clock_info['clock_frame_times'],
+                                                                                 clock_info=clock_info)
+                # TODO: Update t_before_pulse to be -ve and rename to 't_movie_start'? - update all meta data files...
                 t_offset = np.abs(movie_meta['t_before_pulse'])
-                frame_times = (frame_times+t_offset)*(movie_meta['fps']/clock_info['clock_frequency'])-t_offset
-                logger.warning(f'Applied time axis scale correction')
+                time_correction_factor = (movie_meta['fps']/clock_info['clock_frequency'])
+                frame_times = (frame_times + t_offset)*time_correction_factor - t_offset
+                logger.warning(f'Applied time axis scale correction factor {time_correction_factor}: '
+                               f'{time_correction_info}')
             # raise ValueError(message)
 
 
