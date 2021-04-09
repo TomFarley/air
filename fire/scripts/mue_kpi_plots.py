@@ -52,19 +52,19 @@ def compare_t2_t5_heat_flux():
     camera = 'rit'
     signal_ir = 'heat_flux_path0'
     # pulse = 43583
-    # pulse = 43610   # Initial KPI pulse
+    pulse = 43610   # Initial KPI pulse
     # pulse = 43620
     # pulse = 43624
     # pulse = 43644
 
-    pulse = 43587
+    # pulse = 43587
 
 
     machine = 'mast_u'
     meta = dict(camera=camera, pulse=pulse, machine=machine, signal=signal_ir)
 
-    # plot_s_coord = True
-    plot_s_coord = False
+    plot_s_coord = True
+    # plot_s_coord = False
 
     align_peaks = False
     # align_peaks = True
@@ -76,17 +76,18 @@ def compare_t2_t5_heat_flux():
     t_window_t2 = 0.006
     t_window_t5 = 0.006
 
-    # t_tile2 = 0.162   # 43610 KPI
-    # t_tile5 = 0.315   # 43610 KPI
-
-    t_tile2 = 0.140  # 43644 KPI
-    t_tile5 = 0.325  # 43644 KPI
-
-    # t_tile2 = 0.12559
-    # t_tile5 = 0.3526
-
-    # t_tile2 = 0.115
-    # t_tile5 = 0.25
+    if pulse == 43610:
+        t_tile2 = 0.162   # 43610 KPI
+        t_tile5 = 0.315   # 43610 KPI
+    elif pulse == 43644:
+        t_tile2 = 0.140  # 43644 KPI
+        t_tile5 = 0.325  # 43644 KPI
+    elif False:
+        t_tile2 = 0.12559
+        t_tile5 = 0.3526
+    elif False:
+        t_tile2 = 0.115
+        t_tile5 = 0.25
 
     r_t2_bounds = [0.540, 0.905]
     r_t5_bounds = [1.395, 1.745]
@@ -157,7 +158,9 @@ def compare_t2_t5_heat_flux():
     ax.set_ylabel(f'{heat_flux.symbol} [{heat_flux.units}]')
     ax.title.set_visible(False)
 
-    if False:
+    log_y = True
+    # log_y = False
+    if log_y:
         ax.set_yscale('log')
         ax.set_ylim([profile_t5.min(), None])
 
@@ -171,8 +174,8 @@ def compare_t2_t5_heat_flux():
         fn = f'{camera}_{pulse}_T2T5_vs_R.png'
 
     path_fn = fire.fire_paths['root'] / 'figures' / fn
-    plot_tools.save_fig(path_fn, verbose=True)
 
+    # plot_tools.save_fig(path_fn, verbose=True, image_formats=['png', 'svg'])
     plot_tools.show_if(True, tight_layout=True)
 
 
@@ -183,15 +186,17 @@ def compare_t2_t5_heat_flux():
     debug_plots.debug_plot_profile_2d(data_paths=path_data, param='heat_flux', ax=ax, robust=True,
                                           machine_plugins='mast_u', show=False)
     ax.set_ylim([0, 0.57])
-    if t_window_t2:
-        ax.axhline(y=t_tile2-t_window_t2, ls=':', color='tab:blue', lw=2)
-        ax.axhline(y=t_tile2+t_window_t2, ls=':', color='tab:blue', lw=2)
+    if True:
+        if t_window_t2:
+            ax.axhline(y=t_tile2-t_window_t2, ls=':', color='tab:blue', lw=2)
+            ax.axhline(y=t_tile2+t_window_t2, ls=':', color='tab:blue', lw=2)
 
-        ax.axhline(y=t_tile5 - t_window_t5, ls='--', color='tab:orange', lw=2, alpha=0.8)
-        ax.axhline(y=t_tile5 + t_window_t5, ls='--', color='tab:orange', lw=2, alpha=0.8)
-    else:
-        ax.axhline(y=t_tile2, ls='--', color='tab:blue', lw=2)
-        ax.axhline(y=t_tile5, ls='--', color='tab:orange', lw=2)
+            ax.axhline(y=t_tile5 - t_window_t5, ls='--', color='tab:orange', lw=2, alpha=0.8)
+            ax.axhline(y=t_tile5 + t_window_t5, ls='--', color='tab:orange', lw=2, alpha=0.8)
+        else:
+            ax.axhline(y=t_tile2, ls='--', color='tab:blue', lw=2)
+            ax.axhline(y=t_tile5, ls='--', color='tab:orange', lw=2)
+
     ax.set_ylabel(r'$t$ [s]')
 
     plot_tools.show_if(True, tight_layout=True)
