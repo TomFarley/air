@@ -265,8 +265,8 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
       ;print - set flag for output to PS
     """
     if params is None:
-        # params = ['heat_flux', 'temperature', 'frame_data_nuc', 'frame_data']
-        params = ['heat_flux', 'temperature', 'frame_data_nuc']
+        params = ['heat_flux', 'temperature', 'frame_data_nuc', 'frame_data']
+        # params = ['heat_flux', 'temperature', 'frame_data_nuc']
     if meta_data is None:
         meta_data = {}
 
