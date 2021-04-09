@@ -228,9 +228,18 @@ def close_all_mpl_plots(close_all=True, verbose=True):
         if verbose:
             logger.info('Closed all mpl plot windows')
 
-def show_if(show, close_all=False, tight_layout=False):
+def show_if(show, close_all=False, tight_layout=False, save_fig_fn=None, save_image_fn=None, save_kwargs=None):
     """If show is true show plot. If clear all is true clear all plot windows before showing."""
     close_all_mpl_plots(close_all)
+
+    if save_kwargs is None:
+        save_kwargs = {}
+
+    if save_fig_fn is not None:
+        save_fig(save_fig_fn, **save_kwargs)
+
+    if save_image_fn is not None:
+        save_fig(save_image_fn, **save_kwargs)
 
     if show:
         if tight_layout:
