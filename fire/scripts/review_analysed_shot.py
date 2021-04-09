@@ -195,10 +195,11 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
                            image_data_in_cross_sections=True, machine_plugins=machine_plugins,
                            pupil_coords=meta.get('calcam_pupilpos'),
                            keys_profiles=(
-                           ('frame_data_min(i)_{path}', 'frame_data_mean(i)_{path}', 'frame_data_max(i)_{path}'),
+                           ('frame_data_min(i)_{path}', 'frame_data_mean(i)_{path}', 'frame_data_max(i)_{path}'), #  TODO uncomment when pickle fixed
                            ('temperature_min(i)_{path}', 'temperature_mean(i)_{path}', 'temperature_max(i)_{path}'),
                            ('heat_flux_min(i)_{path}', 'heat_flux_mean(i)_{path}', 'heat_flux_max(i)_{path}'),
                            ('s_global_{path}', 'R_{path}'),
+                           ('ray_lengths_{path}',),
                            ('spatial_res_x_{path}', 'spatial_res_y_{path}', 'spatial_res_linear_{path}')
                            ))
 
@@ -253,7 +254,7 @@ if __name__ == '__main__':
          'surfaces': False,
          'analysis_path': True,
          'temperature_vs_R_t': False,
-         'heat_flux_vs_R_t-robust': True, 'heat_flux_vs_R_t-raw': True,
+         'heat_flux_vs_R_t-robust': True, 'heat_flux_vs_R_t-raw': False,
          'timings': True, 'strike_point_loc': True,
          # 'heat_flux_path_1d': True,
          }
