@@ -123,8 +123,10 @@ def get_uda_movie_obj(pulse: int, camera: str, n_start: Optional[int] = None, n_
                                 # frame_number=None,
                                 header_only=False, rcc_calib_path=None)
     except AttributeError as e:
+        message = f'Failed to get uda vid object with {client} (use_mast_client={use_mast_client}): {e}'
+        logger.warning(message)
+        print(message)
         if try_alternative_client:
-            logger.warning(e)
             vid = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end, stride=stride,
                                     use_mast_client=(not use_mast_client), try_alternative_client=False)
         else:
