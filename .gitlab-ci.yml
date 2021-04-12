@@ -81,6 +81,7 @@ stages:
     - apt-get install -y cmake swig
     - apt-get install -y libboost-dev
     - apt-get install -y openssl libssl-dev
+    - apt-get install -y libxml2  # Needed for newer versions of UDA?
     - cd dependencies/
     - ./make-uda-client-only.sh
 #    - cd uda-install-2.2.6/python_installer
