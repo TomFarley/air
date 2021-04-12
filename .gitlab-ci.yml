@@ -83,11 +83,13 @@ stages:
     - apt-get install -y openssl libssl-dev
     - cd dependencies/
     - ./make-uda-client-only.sh
-    - cd uda-install-2.2.6/python_installer
+#    - cd uda-install-2.2.6/python_installer
+    - cd uda-install-2.4.0/python_installer
     - pip install --user .
     - export UDA_HOST=idam3.mast.ccfe.ac.uk
     - export UDA_PORT=56565
-    - export LD_LIBRARY_PATH=/builds/MAST-U_Scheduler/air/dependencies/uda-install-2.2.6/lib:$LD_LIBRARY_PATH
+#    - export LD_LIBRARY_PATH=/builds/MAST-U_Scheduler/air/dependencies/uda-install-2.2.6/lib:$LD_LIBRARY_PATH
+    - export LD_LIBRARY_PATH=/builds/MAST-U_Scheduler/air/dependencies/uda-install-2.4.0/lib:$LD_LIBRARY_PATH
     - export CPF_HOST=idam3.mast.ccfe.ac.uk
     - export CPF_PORT=8000
     - cd ../../..
