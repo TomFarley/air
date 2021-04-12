@@ -15,7 +15,13 @@ try:
     import pyuda
     from mast import mast_client  # Needed for client.get_images() ?
 except ImportError as e:
+    print(f'Failed to import pyuda for tests: {e}')
     pyuda = False
+
+if pyuda is False:
+    plugin_precedence = ['ipx']
+else:
+    plugin_precedence = ['uda', 'ipx']
 
 # @pytest.fixture  # Run function once and save output to supply to multiple tests
 # def expected_ouput():
@@ -35,14 +41,13 @@ class TestMovieReader(unittest.TestCase):
         self.assertTrue(path_test_data.exists(), msg=f'{path_test_data} does not exist')
 
     def test_init(self):
-        plugin_precedence = ['uda', 'ipx']
         movie_reader = MovieReader(plugin_precedence=plugin_precedence)
 
         self.assertTrue(np.all([list(movie_reader.plugins.keys())[i] == plugin for i, plugin in enumerate(
             plugin_precedence)]))
 
     def test_read_movie_reader_meta_rir030378(self):
-        for plugin in ['uda', 'ipx']:  # , 'npz']:
+        for plugin in plugin_precedence:  # , 'npz']:
             if (plugin == 'uda') and (not pyuda):
                 print('Skipping uda test as pyuda not found')
                 continue
@@ -121,7 +126,7 @@ class TestMovieReader(unittest.TestCase):
         #                         for key in ipx_header_expected]))
 
     def test_read_movie_data_ipx_uda_rir030378(self):
-        for plugin in ['ipx', 'uda']:  # , 'npz']:
+        for plugin in plugin_precedence:  # , 'npz']:
             movie_reader = MovieReader(plugin_filter=plugin)  # plugin_precedence=['uda', 'ipx'])
             # Ipx 1 file
             pulse = 30378

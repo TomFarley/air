@@ -12,8 +12,9 @@ from tests.unit import test_interfaces, test_calcam, test_utils, test_camera_sha
 try:
     import pyuda
     client = pyuda.Client()
+    from mast import mast_client
 except ImportError as e:
-    print(f'Failed to import pyuda. ')
+    print(f'Failed to import pyuda: {e}')
     pyuda = False
 
 # initialize the test suite
