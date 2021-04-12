@@ -20,6 +20,7 @@ from copy import copy
 import numpy as np
 
 from fire.plugins.movie_plugins.ipx import get_detector_window_from_ipx_header
+from fire.interfaces import uda_utils
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -97,7 +98,7 @@ def get_uda_movie_obj_legacy(pulse: int, camera: str, n_start:Optional[int]=None
 
 
 def get_uda_movie_obj(pulse: int, camera: str, n_start: Optional[int] = None, n_end: Optional[int] = None,
-                             stride: Optional[int] = 1):
+                             stride: Optional[int] = 1, use_mast_client=True, try_alternative_client=True):
     """Return UDA movie object for given pulse, camera and frame range
 
     :param pulse: MAST-U pulse number
@@ -112,9 +113,22 @@ def get_uda_movie_obj(pulse: int, camera: str, n_start: Optional[int] = None, n_
     :return: UDA movie object?
     """
     # TODO: Test other keywords and allow ipx path in place of pulse no?
-    vid = client.get_images(camera, pulse, first_frame=n_start, last_frame=n_end, stride=stride,
-                            # frame_number=None,
-                            header_only=False, rcc_calib_path=None)
+    client = uda_utils.get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
+
+    logger.debug(f'Getting images from uda using client: {client}')
+    print(f'Getting images from uda using client: {client}')  # TODO: remove
+
+    try:
+        vid = client.get_images(camera, pulse, first_frame=n_start, last_frame=n_end, stride=stride,
+                                # frame_number=None,
+                                header_only=False, rcc_calib_path=None)
+    except AttributeError as e:
+        if try_alternative_client:
+            logger.warning(e)
+            vid = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end, stride=stride,
+                                    use_mast_client=(not use_mast_client), try_alternative_client=False)
+        else:
+            raise e
     return vid
 
 def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
