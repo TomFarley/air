@@ -113,7 +113,7 @@ def get_uda_movie_obj(pulse: int, camera: str, n_start: Optional[int] = None, n_
     :return: UDA movie object?
     """
     # TODO: Test other keywords and allow ipx path in place of pulse no?
-    client = uda_utils.get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
+    uda_module, client = uda_utils.get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
 
     logger.debug(f'Getting images from uda using client: {client}')
     print(f'Getting images from uda using client: {client}')  # TODO: remove
