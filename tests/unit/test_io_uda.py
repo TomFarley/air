@@ -5,6 +5,7 @@ import numpy as np
 
 try:
     import pyuda
+    from mast import mast_client  # Needed for client.get_images() ?
 except ImportError as e:
     print(f'Failed to import pyuda for tests')
     pyuda = None

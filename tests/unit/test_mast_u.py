@@ -7,6 +7,13 @@ from fire.plugins.machine_plugins.mast_u import get_wall_rz_coords
 
 pwd = Path(__file__).parent
 
+try:
+    import pyuda
+    from mast import mast_client  # Needed for client.get_images() ?
+except ImportError as e:
+    print(f'Failed to import pyuda for tests')
+    pyuda = False
+
 class TestMastU(unittest.TestCase):
 
     def setUp(self):
@@ -56,11 +63,13 @@ def suite():
     suite = unittest.TestSuite()
     loader = unittest.TestLoader()
     # suite.addTests(loader.loadTestsFromTestCase(TestIoIpx))
-    suite.addTest(TestMastU.test_get_uda_mastu_wall_coords)
+
+    if pyuda:
+        suite.addTest(TestMastU.test_get_uda_mastu_wall_coords)
     return suite
 
 if __name__ == '__main__':
 
     runner = unittest.TextTestRunner(failfast=True)
-    unittest.main()
-    # runner.run(suite())
+    # unittest.main()
+    runner.run(suite())

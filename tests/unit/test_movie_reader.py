@@ -3,12 +3,19 @@ from pathlib import Path
 
 import numpy as np
 
+from fire import fire_paths
 from fire.plugins.plugins_movie import MovieReader, MoviePlugin
 
 pwd = Path(__file__).parent
 ipx_path = (pwd / 'test_data/mast/').resolve()
 print(f'pwd: {pwd}')
 print(f'ipx test files path: {ipx_path}')
+
+try:
+    import pyuda
+    from mast import mast_client  # Needed for client.get_images() ?
+except ImportError as e:
+    pyuda = False
 
 # @pytest.fixture  # Run function once and save output to supply to multiple tests
 # def expected_ouput():
@@ -21,6 +28,11 @@ class TestMovieReader(unittest.TestCase):
 
     def setUp(self):
         self.maxDiff = None
+        fire_path = fire_paths['root']
+        machine = 'mast'
+        fn = 'rir030378.ipx'
+        path_test_data = Path(f'{fire_path}/../tests/test_data/{machine}/{fn}').resolve()
+        self.assertTrue(path_test_data.exists(), msg=f'{path_test_data} does not exist')
 
     def test_init(self):
         plugin_precedence = ['uda', 'ipx']
@@ -31,6 +43,10 @@ class TestMovieReader(unittest.TestCase):
 
     def test_read_movie_reader_meta_rir030378(self):
         for plugin in ['uda', 'ipx']:  # , 'npz']:
+            if (plugin == 'uda') and (not pyuda):
+                print('Skipping uda test as pyuda not found')
+                continue
+
             movie_reader = MovieReader(plugin_filter=plugin)  # plugin_precedence=['uda', 'ipx'])
 
             pulse = 30378
@@ -104,8 +120,8 @@ class TestMovieReader(unittest.TestCase):
         # self.assertTrue(np.all([np.all(meta_data['ipx_header'][key] == ipx_header_expected[key])
         #                         for key in ipx_header_expected]))
 
-    def test_read_movie_data_uda_rir030378(self):
-        for plugin in ['ipx', 'uda']: # , 'npz']:
+    def test_read_movie_data_ipx_uda_rir030378(self):
+        for plugin in ['ipx', 'uda']:  # , 'npz']:
             movie_reader = MovieReader(plugin_filter=plugin)  # plugin_precedence=['uda', 'ipx'])
             # Ipx 1 file
             pulse = 30378
