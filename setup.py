@@ -1,9 +1,16 @@
 from setuptools import setup, find_packages
-import os
+import os, re, ast
+
+_version_re = re.compile(r'__version__\s+=\s+(.*)')  # pattern of version number in root fire __init__.py file
+
+# Get version number so it is only defined in one place
+with open('fire/__init__.py', 'rb') as f:
+    version = str(ast.literal_eval(_version_re.search(
+        f.read().decode('utf-8')).group(1)))
 
 setup(
     name='fire',
-    version='2.0',
+    version=version,
     description='Fusion Infra-Red Experiments analysis tool',
     url='git@git.ccfe.ac.uk/MAST-U_Scheduler/air',
     author='tfarley',

@@ -9,7 +9,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 # TODO: Automatically pull in version number from single central location (setup.py file?)
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 # Set up logger for module
 logging.basicConfig()
