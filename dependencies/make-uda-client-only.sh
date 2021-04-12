@@ -1,6 +1,7 @@
 #!/bin/bash
 
-UDA_TAG=2.2.6
+# UDA_TAG=2.2.6
+UDA_TAG=2.4.0
 UDA_RELEASE_DIR=$PWD/uda-release-2.2.6
 UDA_INSTALL_DIR=$PWD/uda-install-2.2.6
 
