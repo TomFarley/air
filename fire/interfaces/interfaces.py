@@ -4,22 +4,21 @@
 The `interfaces` module contains functions for interfacing with other codes and files.
 """
 
-import os, logging, json, warnings
+import os, logging, json
 import importlib.util
 from typing import Union, Sequence, Optional
 from pathlib import Path
-from copy import copy, deepcopy
 
 import numpy as np
 import pandas as pd
 
-from fire.misc import utils
-from fire.misc.utils import locate_file, make_iterable, convert_dataframe_values_to_python_types, logger_info, mkdir
+from fire.interfaces.basic_io import read_csv
+from fire.misc.utils import (locate_file, mkdir, filter_nested_dict_key_paths, drop_nested_dict_key_paths, cast_lists_to_arrays)
 from fire import fire_paths
 from fire.interfaces.exceptions import InputFileException
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
+# logger.propagate = False
 # logger.setLevel(logging.INFO)
 # print(logger_info(logger))
 
@@ -191,36 +190,36 @@ def generate_frame_id_strings(id_strings, frame_no, frame_time):
 def check_frame_range(meta_data, frames=None, start_frame=None, end_frame=None, nframes_user=None, frame_stride=1):
     raise NotImplementedError
 
-def json_dump(obj, path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None, indent: int=4,
-              overwrite: bool=True, raise_on_fail: bool=True):
-    """Convenience wrapper for json.dump.
-
-    Args:
-        obj             : Object to be serialised
-        path_fn         : Filename (and path) for output file
-        path            : (Optional) path to output file
-        indent          : Number of spaces for each json indentation
-        overwrite       : Overwite existing file
-        raise_on_fail   : Whether to raise exceptions or return them
-
-    Returns: Output file path if successful, else captured exception
-
-    """
-    # TODO: Convert ndarrays to lists so json serialisable
-    path_fn = Path(path_fn)
-    if path is not None:
-        path_fn = Path(path) / path_fn
-    if (not overwrite) and (path_fn.exists()):
-        raise FileExistsError(f'Requested json file already exists: {path_fn}')
-    try:
-        with open(path_fn, 'w') as f:
-            json.dump(obj, f, indent=indent)
-        out = path_fn
-    except Exception as e:
-        out = e
-        if raise_on_fail:
-            raise e
-    return out
+# def json_dump(obj, path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None, indent: int=4,
+#               overwrite: bool=True, raise_on_fail: bool=True):
+#     """Convenience wrapper for json.dump.
+#
+#     Args:
+#         obj             : Object to be serialised
+#         path_fn         : Filename (and path) for output file
+#         path            : (Optional) path to output file
+#         indent          : Number of spaces for each json indentation
+#         overwrite       : Overwite existing file
+#         raise_on_fail   : Whether to raise exceptions or return them
+#
+#     Returns: Output file path if successful, else captured exception
+#
+#     """
+#     # TODO: Convert ndarrays to lists so json serialisable
+#     path_fn = Path(path_fn)
+#     if path is not None:
+#         path_fn = Path(path) / path_fn
+#     if (not overwrite) and (path_fn.exists()):
+#         raise FileExistsError(f'Requested json file already exists: {path_fn}')
+#     try:
+#         with open(path_fn, 'w') as f:
+#             json.dump(obj, f, indent=indent)
+#         out = path_fn
+#     except Exception as e:
+#         out = e
+#         if raise_on_fail:
+#             raise e
+#     return out
 
 # def json_load(path_fn: Union[str, Path], fn: Optional(str)=None, keys: Optional[Sequence[Sequence]]=None):
 def json_load(path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None,
@@ -267,160 +266,6 @@ def json_load(path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None,
 
     return out
 
-def filter_nested_dict_key_paths(dict_in, key_paths_keep, compress_key_paths=True, path_fn=None):
-    """Return a subset of nested dicts for given paths
-
-    Args:
-        dict_in: dict of dicts
-        key_paths_keep: iterable of key names navigating nested dict structure
-        compress_key_paths: Only keep last key in key_path eg key_path=('mast', 29852, 'signal') -> {'signal': 'rir'}
-        path_fn:            Name/path of jason file being filtered (only used for error messages)
-
-    Returns: Filtered nested dict
-
-    """
-
-    if key_paths_keep is not None:
-        key_paths_keep = make_iterable(key_paths_keep)
-        dict_out = {}
-        for key_path in key_paths_keep:
-            key_path = make_iterable(key_path)
-            subset = dict_in
-            for key in key_path:
-                try:
-                    subset = subset[key]
-                except KeyError as e:
-                    raise KeyError(f'json file ({path_fn}) does not contain key "{key}" in key path "{key_path}":\n'
-                                   f'{subset}')
-            if compress_key_paths:
-                # Compress the key path into just the last key
-                dict_out[key_path[-1]] = subset
-            else:
-                for i, key in enumerate(key_path):
-                    if i == len(key_path)-1:
-                        dict_out[key] = subset
-                    else:
-                        if key not in dict_out:
-                            dict_out[key] = {}
-    else:
-        dict_out = dict_in
-
-    return dict_out
-
-def drop_nested_dict_key_paths(dict_in, key_paths_drop):
-    """Return a subset of nested dicts for given paths
-
-    Args:
-        dict_in: dict of dicts
-        key_paths_drop: iterable of key names navigating nested dict structure to drop
-
-    Returns: Filtered nested dict
-
-    """
-    dict_out = copy(dict_in)
-    if (key_paths_drop is not None):
-        for key_path in make_iterable(key_paths_drop):
-            key_path = make_iterable(key_path)
-            subset = dict_out
-            for i, key in enumerate(key_path):
-                if i == len(key_path)-1:
-                    if key in subset:
-                        subset.pop(key)
-                else:
-                    try:
-                        subset = subset[key]
-                    except KeyError as e:
-                        raise KeyError(f'json file ({path_fn}) does not contain key "{key}" in key path "{key_path}":\n'
-                                       f'{subset}')
-    return dict_out
-
-def cast_lists_in_dict_to_arrays(dict_in, raise_on_no_lists=False):
-    dict_out = deepcopy(dict_in)
-    n_lists_converted = 0
-
-    for key, value in dict_out.items():
-        if isinstance(value, (list)):
-            dict_out[key] = cast_nested_lists_to_arrays(value, raise_on_no_lists=False)
-            n_lists_converted += 1
-        elif isinstance(value, dict):
-            dict_out[key] = cast_lists_in_dict_to_arrays(value, raise_on_no_lists=False)
-        else:
-            pass
-
-    if raise_on_no_lists and (n_lists_converted==0):
-        raise TypeError(f'Input dict does not contain any lists to convert to ndarrays: {dict_in}')
-
-    return dict_out
-
-def cast_nested_lists_to_arrays(list_in, raise_on_no_lists=False):
-    list_out = deepcopy(list_in)
-    n_lists_converted = 0
-
-    if all_list_elements_same_type(list_in, invalid_types=(list, tuple)):
-        list_out = np.array(list_in)
-        n_lists_converted += 1
-    else:
-        for i, value in enumerate(list_in):
-            if isinstance(value, (list)):
-                if all_list_elements_same_type(value, invalid_types=(list, tuple)):
-                    list_out[i] = np.array(value)
-                else:
-                    list_out[i] = cast_nested_lists_to_arrays(value, raise_on_no_lists=False)
-                if isinstance(list_out[i], np.ndarray):
-                    n_lists_converted += 1
-            elif isinstance(value, dict):
-                list_out[i] = cast_lists_in_dict_to_arrays(value, raise_on_no_lists=False)
-            else:
-                pass
-
-    if raise_on_no_lists and (n_lists_converted == 0):
-        raise TypeError(f'Input list does not contain any lists to convert to ndarrays: {list_in}')
-
-    return list_out
-
-def cast_lists_to_arrays(list_or_dict):
-    if isinstance(list_or_dict, list):
-        out = cast_nested_lists_to_arrays(list_or_dict)
-    elif isinstance(list_or_dict, dict):
-        out = cast_lists_in_dict_to_arrays(list_or_dict)
-    else:
-        raise TypeError(f'Input is not list or dict: {list_or_dict}')
-
-    return out
-
-def all_list_elements_same_type(list_in, invalid_types=(list, tuple)):
-    types = [type(item) for item in list_in]
-    ref_type = types[-1]
-    all_types_same = all(t == ref_type for t in types)
-    if all_types_same and (ref_type in invalid_types):
-        all_types_same = False
-    return all_types_same
-
-def two_level_dict_to_multiindex_df(d):
-    """Convert nested dictionary to two level multiindex dataframe
-
-    Args:
-        d: Input nested dictionary
-
-    Returns: DataFrame containing contents of d
-
-    Examples:
-        d:
-        {"MAST_S1_L3_centre_radial_1":
-            {
-              "start": {"R": 0.769, "z": -1.827, "phi": 70.6},
-              "end": {"R": 1.484, "z": -1.831, "phi": 70.6}
-            }
-        }
-        df:
-                                                  R      z   phi
-            MAST_S1_L3_centre_radial_1 end    1.484 -1.831  70.6
-                                       start  0.769 -1.827  70.6
-
-    """
-    df = pd.DataFrame.from_dict({(k1, k2): v2 for k1, v1 in d.items() for k2, v2 in v1.items()}, orient='index')
-    return df
-
 
 def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, allow_overlaping_ranges: bool=False,
                             raise_: bool=True, **kwargs_csv
@@ -456,106 +301,6 @@ def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, allow_overlap
         raise pulse_info
     else:
         return pulse_info
-
-def read_csv(path_fn: Union[Path, str], clean=True, convert_to_python_types=True, header='infer', comment='#',
-             python_types_kwargs=None, raise_not_found=False, verbose=False, **kwargs):
-    """Wrapper for pandas csv reader
-
-    Other useful pandas.read_csv kwargs are:
-    - names (names to use for column headings) if no header row
-
-    Args:
-        path_fn:                    Path to csv file
-        clean:                      (bool) Remove erroneous column due to spaces at end of lines
-        convert_to_python_types:    Convert eg "None" -> None, "true" -> True, "[1,2]" -> [1,2]
-        header:                     Row number(s) to use as the column names, and the start of the data.
-        comment:                    Comment charachter
-        python_types_kwargs:        kwargs to pass to convert_dataframe_values_to_python_types:
-                                    col_subset, allow_strings, list_delimiters, strip_chars
-        raise_not_found:            Whether to raise to return exception if file not found
-        verbose:                    Whether to log reading of file
-        **kwargs: kwargs to pass to pd.read_csv, in particular:
-                    'sep' column separator
-                    'names' list of column names
-                    'index_col' column name to set as index
-
-    Returns: table pd.DataFrame of file contents
-
-    """
-
-    path_fn = Path(path_fn)
-    if 'sep' not in kwargs:
-        if path_fn.suffix == '.csv':
-            kwargs['sep'] = '\s*,\s*'
-        elif path_fn.suffix == '.tsv':
-            kwargs['sep'] = r'\s+'
-        elif path_fn.suffix == '.asc':
-            kwargs['sep'] = r'\t'
-        else:
-            kwargs['sep'] = None  # Use csv.Sniffer tool
-    try:
-        with warnings.catch_warnings(record=True) as w:
-            table = pd.read_csv(path_fn, header=header, comment=comment, **kwargs)  # index_col
-    except FileNotFoundError as e:
-        if raise_not_found:
-            raise e
-        else:
-            return FileNotFoundError(f'CSV file does not exist: {path_fn}')
-    except Exception as e:
-        logger.warning(f'Failed to read file: {path_fn}')
-        raise
-
-    if clean:
-        last_column = table.iloc[:, -1]
-        try:
-            all_nans = np.all(np.isnan(last_column))
-        except TypeError as e:
-            pass
-        else:
-            if all_nans:
-                # TODO: Add keyword to make this optional?
-                # Remove erroneous column due to spaces at end of lines
-                table = table.iloc[:, :-1]
-                logger.debug(f'Removed column of nans from csv file: {path_fn}')
-
-    if convert_to_python_types:
-        # Convert eg "None" -> None, "true" -> True, "[1,2]" -> [1,2]
-        if python_types_kwargs is None:
-            python_types_kwargs = {}
-        table = convert_dataframe_values_to_python_types(table, **python_types_kwargs)
-
-    if verbose:
-        logger.info(f'Read data from file: {path_fn}')
-
-    return table
-
-def to_csv(path_fn: Union[Path, str], data, cols=None, index=None, x_range=None, drop_other_coords=False, sep=',',
-           na_rep='nan', float_format='%0.5g', makedir=True, verbose=True,**kwargs):
-
-    if makedir:
-        mkdir(path_fn, verbose=True)
-
-    if cols is not None:
-        data = data[cols]
-
-    if (index is not None) and (index not in data.dims):
-        data = data.swap_dims({data.dims[0]: index})
-
-    if x_range is not None:
-        x = data.dims[0]
-        data = data.sel({x: slice(*x_range)})
-
-    if drop_other_coords:
-        data = data.reset_coords()[cols]
-
-    table = data.to_dataframe()
-
-    table.to_csv(path_fn, sep=sep, na_rep=na_rep, float_format=float_format, **kwargs)
-
-    if verbose:
-        logger.info(f'Wrote data to file: {path_fn}')
-
-    return table
 
 
 def lookup_pulse_info(pulse: Union[int, str], camera: str, machine: str, search_paths: PathList,
@@ -638,10 +383,13 @@ def get_module_from_path_fn(path_fn):
             module = None
     return module
 
-def archive_netcdf_output(path_fn_in, path_archive='~/.fire/archive_netcdf_output/{camera}/', meta_data=None):
+def archive_netcdf_output(path_fn_in, path_archive='~/{user_dir}/archive_netcdf_output/{camera}/', meta_data=None):
     success = False
-    if meta_data is not None:
-        path_archive = path_archive.format(**meta_data)
+    if meta_data is None:
+        meta_data = {}
+    meta_data.setdefault('user_dir', fire_paths['user'])
+
+    path_archive = path_archive.format(**meta_data)
 
     path_fn_in = Path(path_fn_in)
     fn = path_fn_in.name

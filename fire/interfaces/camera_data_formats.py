@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from fire.interfaces.interfaces import read_csv
+from fire.interfaces.basic_io import read_csv
 from fire import fire_paths
 from fire.scripts.organise_ircam_raw_files import generate_json_meta_data_file_for_ircam_raw
 

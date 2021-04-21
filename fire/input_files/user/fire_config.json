@@ -3,15 +3,18 @@
         "file_description": "This file provides the basic configuration settings for the FIRE IR analysis code. When values are given in a list, the order  often given the order of preference for those options e.g. 'movie_plugins'",
         "TODO": "Consolidate variable_meta_dat from data_structures.py"
     },
-    "user_details": {
-        "name": null,
-        "email": null
-    },
-    "default_params": {
-        "machine": "mast",
-        "pulse": 23586,
-        "camera": "rir",
-        "pass": 0
+    "user": {
+        "details": {
+            "name": null,
+            "email": null
+        },
+        "directory": "~/.fire/",
+        "default_params": {
+            "machine": "mast_u",
+            "pulse": 43183,
+            "camera": "rit",
+            "pass": 0
+        }
     },
     "machines": {
         "mast_u": {

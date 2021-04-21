@@ -1,16 +1,15 @@
 import configparser
-import itertools
-import os, time, gc, logging, pickle, re, shutil
+import os, time, gc, logging, re, shutil
 from pathlib import Path
 from datetime import datetime
 import collections
 
-from past.types import basestring
 import numpy as np
 import pandas as pd
 
-from fire.misc.utils import (make_iterable, compare_dict, is_number, is_subset, str_to_number, args_for,
-                               print_progress, argsort, get_traceback_location, ask_input_yes_no)
+from fire.interfaces.basic_io import mkdir, split_path
+from fire.misc.utils import (make_iterable, is_subset, str_to_number, args_for,
+                             print_progress, argsort, mkdir)
 
 logger = logging.getLogger(__name__)
 try:
@@ -20,28 +19,11 @@ except ImportError as e:
     logger.debug('Please install natsort for improved sorting')
 
 try:
+    from past.types import basestring
     string_types = (basestring, unicode)  # python2
 except Exception as e:
     string_types = (str,)  # python3
 
-def path_contains_fn(path_fn):
-    _, ext = os.path.splitext(path_fn)
-    if ext == '':
-        out = False
-    else:
-        out = True
-    return out
-
-def split_path(path_fn, include_fn=False):
-    if path_contains_fn(path_fn):
-        path, fn = os.path.split(path_fn)
-    else:
-        path, fn = path_fn, None
-
-    directories = list(Path(path).parts)
-    if include_fn and (fn is not None):
-        directories.append(fn)
-    return directories, fn
 
 def insert_subdir_in_path(path_fn, subdir, position=-1, keep_fn=True, create_dir=True):
     """Insert a subdirectory in a path"""
@@ -72,60 +54,6 @@ def create_config_file(fn, dic):
     with open(fn, 'w') as configfile:
         config.write(configfile)
     logging.info('Wrote config file to {}. Sections: {}'.format(fn, config.sections()))
-
-def delete_file(fn, path=None, ignore_exceptions=(), raise_on_fail=True, verbose=True):
-    """Delete file with error handelling
-    :param fn: filename
-    :param path: optional path to prepend to filename
-    :ignore_exceptions: Tuple of exceptions to pass over (but log) if raised eg (FileNotFoundError,)
-    :param raise_on_fail: Raise exception if fail to delete file
-    :param verbose   : Print log messages
-    """
-    fn = str(fn)
-    if path is not None:
-        fn_path = os.path.join(path, fn)
-    else:
-        fn_path = fn
-    success = False
-    try:
-        os.remove(fn_path)
-        success = True
-        if verbose:
-            logger.info('Deleted file: {}'.format(fn_path))
-    except ignore_exceptions as e:
-        logger.debug(e)
-    except Exception as e:
-        if raise_on_fail:
-            raise e
-        else:
-            logger.warning('Failed to delete file: {}'.format(fn_path))
-    return success
-
-def rm_files(paths, pattern, verbose=True, match=True, ignore_exceptions=()):
-    """Delete files in paths matching patterns
-
-    :param paths     : Paths in which to delete files
-    :param pattern   : Regex pattern for files to delete
-    :param verbose   : Print log messages
-    :param match     : Use re.match instead of re.search (ie requries full pattern match)
-    :param ignore_exceptions: Don't raise exceptions
-
-    :return: None
-    """
-    paths = make_iterable(paths)
-    for path in paths:
-        path = str(path)
-        if verbose:
-            logger.info('Deleting files with pattern "{}" in path: {}'.format(pattern, path))
-        for fn in os.listdir(path):
-            if match:
-                m = re.match(pattern, fn)
-            else:
-                m = re.search(pattern, fn)
-            if m:
-                delete_file(fn, path, ignore_exceptions=ignore_exceptions)
-                if verbose:
-                    logger.info('Deleted file: {}'.format(fn))
 
 
 def getUserFile(type=""):
@@ -359,30 +287,6 @@ def age_of_file(fn_path):
     t_age = t_now-os.path.getmtime(fn_path)
     return t_age
 
-def copy_file(src, dest, extensions_text=('txt', 'csv', 'tsv'), text=None, mkdir_dest=False, verbose=True,
-              raise_exceptions=True):
-    src = Path(src)
-    dest = Path(dest)
-
-    if mkdir_dest:
-        mkdir(dest, verbose=verbose)
-
-    try:
-        if text is True or src.suffix in extensions_text:
-            dest.write_text(src.read_text())  # for text files
-        else:
-            dest.write_bytes(src.read_bytes())  # for binary files
-    except Exception as e:
-        if raise_exceptions:
-            raise e
-        else:
-            if verbose:
-                logger.info(f'Failed to copy "{src}" to "{dest}": {e}')
-    else:
-        if verbose:
-            logger.info(f'Copied "{src}" to "{dest}"')
-
-
 
 def delete_files_recrusive(pattern, path=None, delete_files=True, delete_directories=False, prompt_user=True):
     from fire.misc.utils import ask_input_yes_no
@@ -422,317 +326,6 @@ def delete_files_recrusive(pattern, path=None, delete_files=True, delete_directo
         print(f'The following {n_files} files and {n_dirs} directories were deleted: \n{to_be_removed}'.format(
             to_be_removed=to_be_removed))
 
-def check_safe_path_string(path):
-    return bool(re.match('^[a-z0-9\.\/_]+$', path))
-
-def is_possible_filename(fn, ext_whitelist=('py', 'txt', 'png', 'p', 'npz', 'csv',), ext_blacklist=(),
-                         ext_max_length=3):
-    """Return True if 'fn' is a valid filename else False.
-
-    Return True if 'fn' is a valid filename (even if it and its parent directory do not exist)
-    To return True, fn must contain a file extension that satisfies:
-        - Not in blacklist of extensions
-        - May be in whitelist of extensions
-        - Else has an extension with length <= ext_max_length
-    """
-    fn = str(fn)
-    ext_whitelist = ['.' + ext for ext in ext_whitelist]
-    if os.path.isfile(fn):
-        return True
-    elif os.path.isdir(fn):
-        return False
-
-    ext = os.path.splitext(fn)[1]
-    l_ext = len(ext) - 1
-    if ext in ext_whitelist:
-        return True
-    elif ext in ext_blacklist:
-        return False
-
-    if (l_ext > 0) and (l_ext <= ext_max_length):
-        return True
-    else:
-        return False
-
-def mkdir(dirs, start_dir=None, depth=None, accept_files=True, info=None, check_characters=True, verbose=1):
-    """ Create a set of directories, provided they branch of from an existing starting directory. This helps prevent
-    erroneous directory creation. Checks if each directory exists and makes it if necessary. Alternatively, if a depth
-    is supplied only the last <depth> levels of directories will be created i.e. the path <depth> levels above must
-    pre-exist.
-    Inputs:
-        dirs 			- Directory path
-        start_dir       - Path from which all new directories must branch
-        depth           - Maximum levels of directories what will be created for each path in <dirs>
-        info            - String to write to DIR_INFO.txt file detailing purpose of directory etc
-        check_characters- Whether to check for inappropriate characters in path, eg unformatted strings "/{pulse}/"
-        verbose = 0	    - True:  print whether dir was created,
-                          False: print nothing,
-                          0:     print only if dir was created
-    """
-    from pathlib import Path
-    # raise NotImplementedError('Broken!')
-    if start_dir is not None:
-        start_dir = os.path.expanduser(str(start_dir))
-        if isinstance(start_dir, Path):
-            start_dir = str(start_dir)
-        start_dir = os.path.abspath(start_dir)
-        if not os.path.isdir(start_dir):
-            print('Directories {} were not created as start directory {} does not exist.'.format(dirs, start_dir))
-            return 1
-
-    if isinstance(dirs, Path):
-        dirs = str(dirs)
-    if isinstance(dirs, (basestring, str)):  # Nest single string in list for loop
-        dirs = [dirs]
-    # import pdb; pdb.set_trace()
-    for d in dirs:
-        if isinstance(d, Path):
-            d = str(d)
-        d = os.path.abspath(os.path.expanduser(d))
-        if is_possible_filename(d):
-            if accept_files:
-                d = os.path.dirname(d)
-            else:
-                raise ValueError('mkdir was passed a file path, not a directory: {}'.format(d))
-        if depth is not None:
-            depth = np.abs(depth)
-            d_up = d
-            for i in np.arange(depth):  # walk up directory by given depth
-                d_up = os.path.dirname(d_up)
-            if not os.path.isdir(d_up):
-                logger.info('Directory {} was not created as start directory {} (depth={}) does not exist.'.format(
-                    d, d_up, depth))
-                continue
-        if not os.path.isdir(d):  # Only create if it doesn't already exist
-            if (start_dir is not None) and (start_dir not in d):  # Check dir stems from start_dir
-                if verbose > 0:
-                    logger.info('Directory {} was not created as does not start at {} .'.format(dirs,
-                                                                                          os.path.relpath(start_dir)))
-                continue
-            if check_characters and (not check_safe_path_string(d)):
-                if not ask_input_yes_no(f'Path "{d}" contains invalid character. Do you still want to create it?'):
-                    continue
-            try:
-                os.makedirs(d)
-                if verbose > 0:
-                    logger.info('Created directory: {}   ({})'.format(d, get_traceback_location(level=2)))
-                if info:  # Write file describing purpose of directory etc
-                    with open(os.path.join(d, 'DIR_INFO.txt'), 'w') as f:
-                        f.write(info)
-            except FileExistsError as e:
-                logger.warning('Directory already created in parallel thread/process: {}'.format(e))
-        else:
-            if verbose > 1:
-                logger.info('Directory "' + d + '" already exists')
-    return 0
-
-def sub_dirs(path):
-    """Return subdirectories contained within top level directory/path"""
-    path = os.path.expanduser(path)
-    assert os.path.isdir(path)
-    out = [p[0] for p in os.walk(path)]
-    if len(out) > 0:
-        out.pop(out.index(path))
-    return out
-
-def test_pickle(obj, verbose=True):
-    """Test if an object can successfully be pickled and loaded again
-    Returns True if succeeds
-            False if fails
-    """
-    import pickle
-    # sys.setrecursionlimit(10000)
-    path = 'test_tmp.p.tmp'
-    if os.path.isfile(path):
-        os.remove(path)  # remove temp file
-    try:
-        with open(path, 'wb') as f:
-            pickle.dump(obj, f)
-        if verbose:
-            print('Pickled object')
-        with open(path, 'rb') as f:
-            out = pickle.load(f)
-        if verbose:
-            print('Loaded object')
-    except Exception as e:
-        if verbose:
-            print('{}'.format(e))
-        return False
-    if os.path.isfile(path):
-        if verbose:
-            print('Pickled file size: {:g} Bytes'.format(os.path.getsize(path)))
-        os.remove(path)  # remove temp file
-    import pdb; pdb.set_trace()
-    if verbose:
-        print('In:\n{}\nOut:\n{}'.format(out, obj))
-    if not isinstance(obj, dict):
-        out = out.__dict__
-        obj = obj.__dict__
-    if compare_dict(out, obj):
-        return True
-    else:
-        return False
-
-def pickle_dump(obj, path, raise_exceptions=True, verbose=True, **kwargs):
-    """Wrapper for pickle.dump, accepting multiple path formats (file, string, pathlib.Path).
-    - Automatically appends .p if not present.
-    - Uses cpickle when possible.
-    - Automatically closes file objects.
-
-    Consider passing latest protocol:
-    protocol=-1    OR
-    protocol=pickle.HIGHEST_PROTOCOL"""
-    if isinstance(path, Path):
-        path = str(path)
-
-    if isinstance(path, basestring):
-        if path[-2:] != '.p':
-            path += '.p'
-        path = os.path.expanduser(path)
-        with open(path, 'wb') as f:
-            try:
-                pickle.dump(obj, f, **kwargs)
-            except TypeError as e:
-                message = f'Failed to write pickle file: {path}. {e}'
-                if raise_exceptions:
-                    raise ValueError(message)
-                else:
-                    logger.warning(message)
-                    success = False
-            else:
-                success = True
-    else:
-        try:
-            pickle.dump(obj, path, **kwargs)
-            path.close()
-        except Exception as e:
-            message = 'Filed to write pickle file. Unexpected path format/type: {}. {}'.format(path, e)
-            if raise_exceptions:
-                raise ValueError(message)
-            else:
-                logger.warning(message)
-                success = False
-        else:
-            success = True
-
-    if verbose:
-        logger.info('Wrote pickle data to: %s' % path)
-
-    return success
-
-def pickle_load(path_fn, path=None, **kwargs):
-    """Wrapper for pickle.load accepting multiple path formats (file, string, pathlib.Path).
-
-    :param path_fn  : Filename or full path of pickle file
-    :param path     : path in which path_fn is located (optional)
-    :param kwargs   : keyword arguments to supply to pickle.load
-    :return: Contents of pickle file
-    """
-    if isinstance(path_fn, Path):
-        path_fn = str(path_fn)
-
-    if path is not None:
-        path_fn = os.path.join(path, path_fn)
-
-    if isinstance(path_fn, basestring):
-        if path_fn[-2:] != '.p':
-            path_fn += '.p'
-
-        try:
-            with open(path_fn, 'rb') as f:
-                out = pickle.load(f, **kwargs)
-        except EOFError as e:
-            logger.error('path "{}" is not a pickle file. {}'.format(path_fn, e))
-            raise e
-        except UnicodeDecodeError as e:
-            try:
-                kwargs.update({'encoding': 'latin1'})
-                with open(path_fn, 'rb') as f:
-                    out = pickle.load(f, **kwargs)
-                logger.info('Reading pickle file required encoding="latin": {}'.format(path_fn))
-            except Exception as e:
-                logger.error('Failed to read pickle file "{}". Wrong pickle protocol? {}'.format(path_fn, e))
-                raise e
-
-    elif isinstance(path_fn, file):
-        out = pickle.load(path_fn, **kwargs)
-        path_fn.close()
-    else:
-        raise ValueError('Unexpected path format')
-    return out
-
-def json_dump(obj, path_fn, path=None, indent=4, overwrite=True, raise_on_fail=True):
-    """Convenience wrapper for json.dump.
-
-    Args:
-        obj             : Object to be serialised
-        path_fn         : Filename (and path) for output file
-        path            : (Optional) path to output file
-        indent          : Number of spaces for each json indentation
-        overwrite       : Overwite existing file
-        raise_on_fail   : Whether to raise exceptions or return them
-
-    Returns: Output file path if successful, else captured exception
-
-    """
-    path_fn = Path(path_fn)
-    if path is not None:
-        path_fn = Path(path) / path_fn
-    if (not overwrite) and (path_fn.exists()):
-        raise FileExistsError(f'Requested json file already exists: {path_fn}')
-    try:
-        with open(path_fn, 'w') as f:
-            json.dump(obj, f, indent=indent)
-        out = path_fn
-    except Exception as e:
-        out = e
-        if raise_on_fail:
-            raise e
-    return out
-
-def json_load(path_fn, path=None, key_paths=None, lists_to_arrays=False):
-    """Read json file with optional indexing
-
-    Args:
-        path_fn         : Path to json file
-        path            : Optional path to prepend to filename
-        key_paths       : Optional keys to subsets of contents to return. Each element of keys should be an iterable
-                          specifiying a key path through the json file.
-        lists_to_arrays : Whether to cast lists in output to arrays for easier slicing etc.
-
-    Returns: Contents of json file
-
-    """
-    path_fn = Path(path_fn)
-    if path is not None:
-        path_fn = Path(path) / path_fn
-    if not path_fn.exists():
-        raise FileNotFoundError(f'Requested json file does not exist: {path_fn}')
-    try:
-        with open(str(path_fn), 'r') as f:
-            contents = json.load(f)
-    except Exception as e:
-        raise e
-    # Return indexed subset of file
-    if key_paths is not None:
-        key_paths = make_iterable(key_paths)
-        out = {}
-        for key_path in key_paths:
-            key_path = make_iterable(key_path)
-            subset = contents
-            for key in key_path:
-                try:
-                    subset = subset[key]
-                except KeyError as e:
-                    raise KeyError(f'json file ({path_fn}) does not contain key "{key}" in key path "{key_path}":\n'
-                                   f'{subset}')
-            out[key_path[-1]] = subset
-
-    else:
-        out = contents
-    if lists_to_arrays:
-        out = cast_lists_in_dict_to_arrays(out)
-    return out
 
 def arrays_to_csv(x, ys, fn, xheading=None, yheadings=None, description='data'):
     """Quickly and easily save data to csv, with one dependent variable"""
@@ -1168,4 +761,6 @@ if __name__ == '__main__':
     # file['Benchmarker']['type'] = 'ProximityBenchmarker'
     # file['Tracker']['settings'] = 'repeat'
     # # file['elzar_path']['path'] = os.path.expanduser('~/elzar/')
-    # 
+    #
+
+

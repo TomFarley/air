@@ -6,9 +6,6 @@ Primary analysis workflow for MAST-U/JET IR scheduler analysis code.
 
 Created: 10-10-2019
 """
-import fire.misc.data_structures
-import fire.plotting.spatial_figures
-
 print(f'Scheduler workflow: Importing modules')
 import logging
 from typing import Union, Optional
@@ -24,12 +21,12 @@ import calcam
 import fire
 from fire import fire_paths, copy_default_user_settings
 from fire import plugins, camera_tools
-from fire.interfaces import interfaces, calcam_calibs
+from fire.interfaces import interfaces, calcam_calibs, basic_io, io_utils
 from fire.camera_tools import field_of_view, camera_shake, nuc, image_processing, camera_checks
 from fire.geometry import geometry, s_coordinate
 from fire.physics import temperature, heat_flux, physics_parameters
 from fire.misc import data_quality, data_structures, utils
-from fire.plotting import debug_plots, image_figures, temporal_figures
+from fire.plotting import debug_plots, image_figures, temporal_figures, spatial_figures
 heat_flux_module = heat_flux  # Alias to avoid name clashes
 
 # TODO: remove after debugging core dumps etc
@@ -46,7 +43,8 @@ logger = logging.getLogger('fire.scheduler_workflow')  # TODO: Check propagation
 # print(logger_info(logger))
 
 cwd = Path(__file__).parent
-path_figures = (cwd / '../figures/').resolve()
+# path_figures = (cwd / '../figures/').resolve()
+path_figures = (fire_paths['user'] / 'figures/').resolve()
 logger.info(f'Scheduler workflow: Figures will be output to: {path_figures}')
 
 def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, machine:str='MAST', scheduler:bool=False,
@@ -92,7 +90,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     settings['config'] = config
 
     # Load user's default call arguments
-    pulse, camera, machine = utils.update_call_args(config['default_params'], pulse, camera, machine)
+    pulse, camera, machine = utils.update_call_args(config['user']['default_params'], pulse, camera, machine)
     interfaces.check_settings_complete(config, machine, camera)
 
     # Set up/extract useful meta data
@@ -251,7 +249,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # Must be applied after detector_window
     frame_data = calcam_calibs.apply_frame_display_transformations(frame_data, calcam_calib, image_coords)
 
-    frame_data = fire.misc.data_structures.movie_data_to_dataarray(frame_data, frame_times, frame_nos, meta_data=meta_data['variables'])
+    frame_data = data_structures.movie_data_to_dataarray(frame_data, frame_times, frame_nos,
+                                                         meta_data=meta_data['variables'])
 
     image_shape = np.array(frame_data.shape[1:])  # NOTE: meta_data['image_shape'] and ipx header info is without image
     # transformations
@@ -446,7 +445,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # calcam_calib.set_detector_window(window=(Left,Top,Width,Height))
 
     # Identify material surfaces in view
-    surface_coords = interfaces.read_csv(files['structure_coords'], sep=', ', index_col='structure')
+    surface_coords = basic_io.read_csv(files['structure_coords'], sep=', ', index_col='structure')
     r_im, phi_im, z_im = image_data['R_im'], image_data['phi_im'], image_data['z_im']
     visible_surfaces = geometry.identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=False)
     surface_ids, material_ids, visible_surfaces, visible_materials = visible_surfaces
@@ -473,8 +472,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         frame_data_nuc[0, :, :] = 0  # set first frame to zero for consistency with IDL code which init frame(0) to 0
         # TODO: Remove legacy temperature method with old MAST photon count lookup table
         files['black_body_curve'] = Path('/home/tfarley/repos/air/fire/input_files/mast/legacy/legacy_air/planckBB.dat')
-        bb_curve = interfaces.read_csv(files['black_body_curve'], sep=r'\s+',
-                                       names=['temperature_celcius', 'photon_flux'], index_col='temperature_celcius')
+        bb_curve = basic_io.read_csv(files['black_body_curve'], sep=r'\s+',
+                                                     names=['temperature_celcius', 'photon_flux'], index_col='temperature_celcius')
         image_data['temperature_im'] = temperature.dl_to_temerature_legacy(frame_data_nuc, calib_coefs, bb_curve,
                                                            exposure=movie_meta['exposure'],
                                                            solid_angle_pixel=meta_data['solid_angle_pixel'],
@@ -596,8 +595,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         # path_data['s_path'] = s_path
 
         if debug.get('poloidal_cross_sec', False):
-            fire.plotting.spatial_figures.figure_poloidal_cross_section(image_data=image_data, path_data=path_data, pulse=pulse, no_cal=True,
-                                                                        show=True)
+            spatial_figures.figure_poloidal_cross_section(image_data=image_data, path_data=path_data, pulse=pulse,
+                                                          no_cal=True, show=True)
 
         if debug.get('path_cross_sections', False):
             debug_plots.debug_analysis_path_cross_sections(path_data, image_data=image_data,
@@ -652,6 +651,14 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key,
                                               robust=robust, extend=extend, meta=meta_data, mark_peak=True,
                                               machine_plugins=machine_plugins)
+        if figures.get('heat_flux_vs_R_t-robust', False):
+            robust = True
+            extend = 'both'
+            fn = f'heat_flux_vs_R_t-robust-{machine}_{camera}_{pulse}.png'
+            save_path_fn = path_figures / 'heat_flux_vs_R_t-robust' / fn
+            debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key,
+                                              extend=extend, robust=robust, meta=meta_data,
+                                              machine_plugins=machine_plugins, show=False, save_path_fn=save_path_fn)
 
         if debug.get('analysis_path', False):
             # TODO: Finish  debug_analysis_path_2d
@@ -665,6 +672,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                            ('temperature_min(i)_{path}', 'temperature_mean(i)_{path}', 'temperature_max(i)_{path}'),
                            ('heat_flux_min(i)_{path}', 'heat_flux_mean(i)_{path}', 'heat_flux_max(i)_{path}'),
                            ('s_global_{path}', 'R_{path}'),
+                           ('ray_lengths_{path}',),
                            ('spatial_res_x_{path}', 'spatial_res_y_{path}', 'spatial_res_linear_{path}')
                            ))
 
@@ -686,8 +694,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         if output.get('strike_point_loc', False):
             fn = f'strike_point_loc-{machine}-{camera}-{pulse}-{analysis_path_name}.csv'
             path_fn = Path(paths_output['csv_data']) / fn
-            interfaces.to_csv(path_fn, path_data, cols=f'heat_flux_r_peak_{path}', index='t', x_range=[0, 0.6],
-                              drop_other_coords=True, verbose=True)
+            basic_io.to_csv(path_fn, path_data, cols=f'heat_flux_r_peak_{path}', index='t', x_range=[0, 0.6],
+                                            drop_other_coords=True, verbose=True)
 
     meta_data['analysis_path_labels'] = analysis_path_labels
 
@@ -822,10 +830,11 @@ def run_mastu_rir():  # pragma: no cover
     debug = {'calcam_calib_image': False, 'debug_detector_window': False, 'movie_intensity_stats': True,
              'movie_data_animation': False, 'movie_data_nuc_animation': False,
              'movie_temperature_animation': False,
-             'spatial_coords': False,
+             'spatial_coords': True,
              'spatial_res': False,
              'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
-             'surfaces': False, 'analysis_path': True,
+             'surfaces': False,
+             'analysis_path': True,
              'path_cross_sections': False,
              'temperature_vs_R_t': False, 'heat_flux_vs_R_t': True,
              'timings': True, 'strike_point_loc': True,
@@ -863,7 +872,7 @@ def run_mastu_rit():  # pragma: no cover
     # pulse = 43584  # NBI
     # pulse = 43591
     # pulse = 43587
-    # pulse = 43610
+    pulse = 43610
     # pulse = 43643
     # pulse = 43644
     # pulse = 43648
@@ -872,12 +881,22 @@ def run_mastu_rit():  # pragma: no cover
     # pulse = 43610
     # pulse = 43611
     # pulse = 43613
-    pulse = 43614
+    # pulse = 43614
     # pulse = 43591
     # pulse = 43596
     # pulse = 43415
     # pulse = 43644
     # pulse = 43587
+
+    # Peter's list of shots with a strike point sweep to T5:
+    # pulse = 43756  # LP, but NO IR data
+    # pulse = 43755  # NO LP or IR data
+    # pulse = 43529  # LP, but NO IR data
+    # pulse = 43415  # LP and IR data --
+    # pulse = 43412  # LP and IR data --
+    # pulse = 43391  # no LP or IR data
+
+    # pulse = 43753  # Lidia strike point splitting request - no data
 
     camera = 'rit'
     pass_no = 0
@@ -909,7 +928,7 @@ def run_mastu_rit():  # pragma: no cover
 
     # debug = {k: True for k in debug}
     # debug = {k: False for k in debug}
-    figures = {'spatial_res': False}
+    figures = {'spatial_res': False, 'heat_flux_vs_R_t-robust': True}
     logger.info(f'Running MAST-U ait scheduler workflow...')
     status = scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
                        equilibrium=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures,

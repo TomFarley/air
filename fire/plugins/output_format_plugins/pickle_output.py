@@ -15,6 +15,8 @@ import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
 
+import fire.interfaces.basic_io
+from fire import fire_paths
 from fire.misc.utils import filter_kwargs
 from fire.interfaces import io_utils
 
@@ -27,30 +29,34 @@ logger = logging.getLogger('fire.pickle_output')
 output_format_plugin_name = 'pickle_output'
 # Optional:
 output_filename_format = '{diag_tag}{shot:06d}.p'  # Filename of output
-output_path_format = '~/.fire/pickle_output_archive/{camera}/'  # Path to save output
+output_path_format = '~/{user_dir}/pickle_output_archive/{camera}/'  # Path to save output
 # See bottom of file for function aliases
 # ====================================================================
 
 not_set = object()
 
 def write_processed_ir_to_pickle_output_file(path_data, image_data, path_names,
-                                             variable_names_path=None, variable_names_time=None, variable_names_image=None,
-                                             header_info=None, device_info=None, meta_data=None,
-                                             fn_output='{diag_tag}{pulse:06d}.p',
-                                             path_output='~/.fire/pickle_output_archive/{camera}/',
-                                             filter_output=False):
+                                         variable_names_path=None, variable_names_time=None, variable_names_image=None,
+                                         header_info=None, device_info=None, meta_data=None,
+                                         fn_output=None, path_output=None, filter_output=False):
     """"""
-    from fire.interfaces.io_utils import pickle_dump
+    from fire.interfaces.basic_io import pickle_dump
 
     if meta_data is None:
         meta_data = {}
+    meta_data.setdefault('user_dir', fire_paths['user'])
+
+    if fn_output is None:
+        fn_output = output_filename_format
+    if path_output is None:
+        path_output = output_path_format
 
     path = Path(str(path_output).format(**meta_data)).expanduser()
     fn = str(fn_output).format(**meta_data)
     path_fn = path / fn
 
     if not path.is_dir():
-        io_utils.mkdir(path, depth=3)
+        fire.interfaces.basic_io.mkdir(path, depth=3)
 
     if filter_output:
         try:
@@ -84,12 +90,13 @@ def write_processed_ir_to_pickle_output_file(path_data, image_data, path_names,
     return dict(success=success, path_fn=path_fn)
 
 def read_processed_ir_to_pickle_output_file(camera, pulse, machine='mast_u',
-                                            path_archive='~/.fire/pickle_output_archive/{camera}/',
+                                            path_archive='~/{user_dir}/pickle_output_archive/{camera}/',
                                             fn_format='{diag_tag}{pulse:06d}.p', meta_data=None):
-    from fire.interfaces.io_utils import pickle_load
+    from fire.interfaces.basic_io import pickle_load
 
     if meta_data is None:
         meta_data = {}
+    meta_data.setdefault('user_dir', fire_paths['user'])
 
     meta_args = dict(camera=camera, pulse=pulse, shot=pulse, machine=machine, diag_tag=camera)
 

@@ -8,7 +8,15 @@ import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
 
-# TODO: Automatically pull in version number from single central location (setup.py file?)
+# Import functions useful at top level
+from .interfaces.read_user_fire_config import read_user_fire_config
+
+# from .theodor import theo_mul_33 as theodor
+
+# from .. import tests
+# from ..tests import unit
+
+# Single central version number that is pulled in by setup.py etc
 __version__ = "2.0.0"
 
 # Set up logger for module
@@ -53,6 +61,11 @@ def copy_default_user_settings(replace_existing=False):
 
 copy_default_user_settings(replace_existing=False)
 
+# Read in user config file here for access throughout
+user_config = read_user_fire_config(fire_paths['config'])
+
+fire_paths['user'] = Path(user_config['user']['directory']).expanduser()
+
 # Update pandas display settings
 # Double max width of displayed output in terminal so doesn't wrap over many lines
 pd.set_option("display.width", 160)  # TODO: Use None when in ipython terminal - auto size?
@@ -69,7 +82,3 @@ plt.style.use(f'{fire_paths["root"]}/plotting/fire.mplstyle')
 # Import FIRE sub-modules
 from .interfaces import interfaces
 from .misc import utils
-# from .theodor import theo_mul_33 as theodor
-
-# from .. import tests
-# from ..tests impoort unit

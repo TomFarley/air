@@ -12,10 +12,31 @@ import logging
 import numpy as np
 import xarray as xr
 
+import fire
+import fire.interfaces.basic_io
+import fire.interfaces.read_user_fire_config
+from fire.misc import utils
 from fire.misc.utils import ndarray_0d_to_scalar
+from fire.interfaces import interfaces, io_utils
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
+
+
+def read_structure_coords(machine='mast_u', paths=None, fns=None):
+    if (paths is None) or (fns is None):
+        config = fire.interfaces.read_user_fire_config.read_user_fire_config()
+        paths = config['paths_input']['input_files']
+        fns = config['filenames_input']['structure_coords']
+
+    kws = dict(machine=machine, fire_path=fire.fire_paths['root'])
+    path_fn = io_utils.locate_file(paths, fns=fns, path_kws=kws, fn_kws=kws)
+    print(path_fn)
+    path_fn = path_fn[0] / path_fn[1]
+    print(path_fn)
+    structure_coords = fire.interfaces.basic_io.read_csv(path_fn)
+    return structure_coords
+
 
 def identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=True, bg_value = -1):
     # Create mask with values corresponding to id of structure visible in each pixel
@@ -73,6 +94,9 @@ def identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=T
     if len(visible_structures) == 0:
         raise ValueError(f'No surfaces identified in camera view')
     return structure_ids, material_ids, visible_structures, visible_materials
+
+def identify_tiles_in_r_range(coord_r_values, tile_coords):
+    raise NotImplementedError
 
 def segment_path_by_material():  # pragma: no cover
     raise NotImplementedError
@@ -216,7 +240,7 @@ def calc_horizontal_path_anulus_areas(r_path):
     return annulus_areas
 
 
-def calc_tile_tilt_area_coorection_factors(path_data, poloidal_plane_tilt, toroidal_tilt, nlouvres, path='path0'):
+def calc_tile_tilt_area_corection_factors(path_data, poloidal_plane_tilt, toroidal_tilt, nlouvres, path='path0'):
     """Return correction factors for areas returned by calc_horizontal_path_anulus_areas() accounting for tile tilts.
 
     See Matthew Dunn's MAST wetted area correction in:
