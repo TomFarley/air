@@ -9,7 +9,7 @@ Created: 11-10-19
 import logging, inspect, os, re, time
 from typing import Union, Iterable, Tuple, List, Optional, Any, Sequence, Callable
 from pathlib import Path
-from copy import copy
+from copy import copy, deepcopy
 from functools import partial
 
 import numpy as np
@@ -1137,3 +1137,164 @@ def ask_input_yes_no(message, suffix=' ([Y]/n)? ', message_format='{message}{suf
 
 if __name__ == '__main__':
     pass
+
+
+def filter_nested_dict_key_paths(dict_in, key_paths_keep, compress_key_paths=True, path_fn=None):
+    """Return a subset of nested dicts for given paths
+
+    Args:
+        dict_in: dict of dicts
+        key_paths_keep: iterable of key names navigating nested dict structure
+        compress_key_paths: Only keep last key in key_path eg key_path=('mast', 29852, 'signal') -> {'signal': 'rir'}
+        path_fn:            Name/path of jason file being filtered (only used for error messages)
+
+    Returns: Filtered nested dict
+
+    """
+
+    if key_paths_keep is not None:
+        key_paths_keep = make_iterable(key_paths_keep)
+        dict_out = {}
+        for key_path in key_paths_keep:
+            key_path = make_iterable(key_path)
+            subset = dict_in
+            for key in key_path:
+                try:
+                    subset = subset[key]
+                except KeyError as e:
+                    raise KeyError(f'json file ({path_fn}) does not contain key "{key}" in key path "{key_path}":\n'
+                                   f'{subset}')
+            if compress_key_paths:
+                # Compress the key path into just the last key
+                dict_out[key_path[-1]] = subset
+            else:
+                for i, key in enumerate(key_path):
+                    if i == len(key_path)-1:
+                        dict_out[key] = subset
+                    else:
+                        if key not in dict_out:
+                            dict_out[key] = {}
+    else:
+        dict_out = dict_in
+
+    return dict_out
+
+
+def drop_nested_dict_key_paths(dict_in, key_paths_drop):
+    """Return a subset of nested dicts for given paths
+
+    Args:
+        dict_in: dict of dicts
+        key_paths_drop: iterable of key names navigating nested dict structure to drop
+
+    Returns: Filtered nested dict
+
+    """
+    dict_out = copy(dict_in)
+    if (key_paths_drop is not None):
+        for key_path in make_iterable(key_paths_drop):
+            key_path = make_iterable(key_path)
+            subset = dict_out
+            for i, key in enumerate(key_path):
+                if i == len(key_path)-1:
+                    if key in subset:
+                        subset.pop(key)
+                else:
+                    try:
+                        subset = subset[key]
+                    except KeyError as e:
+                        raise KeyError(f'json file ({path_fn}) does not contain key "{key}" in key path "{key_path}":\n'
+                                       f'{subset}')
+    return dict_out
+
+
+def cast_lists_in_dict_to_arrays(dict_in, raise_on_no_lists=False):
+    dict_out = deepcopy(dict_in)
+    n_lists_converted = 0
+
+    for key, value in dict_out.items():
+        if isinstance(value, (list)):
+            dict_out[key] = cast_nested_lists_to_arrays(value, raise_on_no_lists=False)
+            n_lists_converted += 1
+        elif isinstance(value, dict):
+            dict_out[key] = cast_lists_in_dict_to_arrays(value, raise_on_no_lists=False)
+        else:
+            pass
+
+    if raise_on_no_lists and (n_lists_converted==0):
+        raise TypeError(f'Input dict does not contain any lists to convert to ndarrays: {dict_in}')
+
+    return dict_out
+
+
+def cast_nested_lists_to_arrays(list_in, raise_on_no_lists=False):
+    list_out = deepcopy(list_in)
+    n_lists_converted = 0
+
+    if all_list_elements_same_type(list_in, invalid_types=(list, tuple)):
+        list_out = np.array(list_in)
+        n_lists_converted += 1
+    else:
+        for i, value in enumerate(list_in):
+            if isinstance(value, (list)):
+                if all_list_elements_same_type(value, invalid_types=(list, tuple)):
+                    list_out[i] = np.array(value)
+                else:
+                    list_out[i] = cast_nested_lists_to_arrays(value, raise_on_no_lists=False)
+                if isinstance(list_out[i], np.ndarray):
+                    n_lists_converted += 1
+            elif isinstance(value, dict):
+                list_out[i] = cast_lists_in_dict_to_arrays(value, raise_on_no_lists=False)
+            else:
+                pass
+
+    if raise_on_no_lists and (n_lists_converted == 0):
+        raise TypeError(f'Input list does not contain any lists to convert to ndarrays: {list_in}')
+
+    return list_out
+
+
+def cast_lists_to_arrays(list_or_dict):
+    if isinstance(list_or_dict, list):
+        out = cast_nested_lists_to_arrays(list_or_dict)
+    elif isinstance(list_or_dict, dict):
+        out = cast_lists_in_dict_to_arrays(list_or_dict)
+    else:
+        raise TypeError(f'Input is not list or dict: {list_or_dict}')
+
+    return out
+
+
+def all_list_elements_same_type(list_in, invalid_types=(list, tuple)):
+    types = [type(item) for item in list_in]
+    ref_type = types[-1]
+    all_types_same = all(t == ref_type for t in types)
+    if all_types_same and (ref_type in invalid_types):
+        all_types_same = False
+    return all_types_same
+
+
+def two_level_dict_to_multiindex_df(d):
+    """Convert nested dictionary to two level multiindex dataframe
+
+    Args:
+        d: Input nested dictionary
+
+    Returns: DataFrame containing contents of d
+
+    Examples:
+        d:
+        {"MAST_S1_L3_centre_radial_1":
+            {
+              "start": {"R": 0.769, "z": -1.827, "phi": 70.6},
+              "end": {"R": 1.484, "z": -1.831, "phi": 70.6}
+            }
+        }
+        df:
+                                                  R      z   phi
+            MAST_S1_L3_centre_radial_1 end    1.484 -1.831  70.6
+                                       start  0.769 -1.827  70.6
+
+    """
+    df = pd.DataFrame.from_dict({(k1, k2): v2 for k1, v1 in d.items() for k2, v2 in v1.items()}, orient='index')
+    return df
