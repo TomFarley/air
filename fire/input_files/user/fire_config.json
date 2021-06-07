@@ -285,6 +285,7 @@
     "paths_output": {
         "checkpoint_data": "~/.fire/checkpoints/",
         "csv_data": "~/.fire/csvs/",
+        "figures": "~/.fire/figures/",
         "gifs": "~/.fire/gifs/",
         "raw_images": "~/.fire/raw_images/"
     },
