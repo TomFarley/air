@@ -16,7 +16,7 @@ import xarray as xr
 from scipy import interpolate
 import matplotlib.pyplot as plt
 
-from fire.interfaces.basic_io import read_csv
+from fire.interfaces.io_basic import read_csv
 from fire.plotting.plot_tools import create_poloidal_cross_section_figure, get_fig_ax
 from fire.geometry.geometry import cartesian_to_toroidal
 

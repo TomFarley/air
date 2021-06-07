@@ -166,7 +166,7 @@ def lookup_temperature_for_photon_count(temperature_lookup_table, photon_flux):
     return temperatures
 
 def calc_bg_temperatures_for_calibration():
-    from fire.interfaces.basic_io import read_csv
+    from fire.interfaces.io_basic import read_csv
 
     temperatures = np.arange(-100, 1450, 1) + zero_Celsius
     wlr_flir = np.array([4.1e-6, 5.0e-6])
@@ -221,7 +221,7 @@ def compare_curve_to_old_lookup_file():
     - With 273C offset, 1.5e-8 wl step, get av percentage error of: -0.258% (smaller av error for 273.15: -0.118%
     """
     import matplotlib.pyplot as plt
-    from fire.interfaces.basic_io import read_csv
+    from fire.interfaces.io_basic import read_csv
     path_fn = '/home/tfarley/repos/air/fire/input_files/bb_photons-13mm-232us.tsv'
     bb_curve_legacy = read_csv(path_fn)  # , index_col='temperature_celcius')
     bb_curve_legacy['temperature'] = bb_curve_legacy['temperature_celcius'] + zero_Celsius

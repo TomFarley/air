@@ -15,7 +15,7 @@ import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
 
-import fire.interfaces.basic_io
+import fire.interfaces.io_basic
 from fire import fire_paths
 from fire.misc.utils import filter_kwargs
 from fire.interfaces import io_utils
@@ -40,7 +40,7 @@ def write_processed_ir_to_pickle_output_file(path_data, image_data, path_names,
                                          header_info=None, device_info=None, meta_data=None,
                                          fn_output=None, path_output=None, filter_output=False):
     """"""
-    from fire.interfaces.basic_io import pickle_dump
+    from fire.interfaces.io_basic import pickle_dump
 
     if meta_data is None:
         meta_data = {}
@@ -92,7 +92,7 @@ def write_processed_ir_to_pickle_output_file(path_data, image_data, path_names,
 def read_processed_ir_to_pickle_output_file(camera, pulse, machine='mast_u',
                                             path_archive='~/{user_dir}/pickle_output_archive/{camera}/',
                                             fn_format='{diag_tag}{pulse:06d}.p', meta_data=None):
-    from fire.interfaces.basic_io import pickle_load
+    from fire.interfaces.io_basic import pickle_load
 
     if meta_data is None:
         meta_data = {}

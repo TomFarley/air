@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from fire.interfaces.basic_io import read_csv
+from fire.interfaces.io_basic import read_csv
 from fire.misc.utils import (locate_file, mkdir, filter_nested_dict_key_paths, drop_nested_dict_key_paths, cast_lists_to_arrays)
 from fire import fire_paths
 from fire.interfaces.exceptions import InputFileException

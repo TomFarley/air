@@ -17,7 +17,7 @@ import xarray as xr
 from scipy import stats
 import matplotlib.pyplot as plt
 
-from fire.interfaces.interfaces import read_csv
+from fire.interfaces.io_basic import read_csv
 from fire.misc.utils import safe_len
 from fire.misc import utils
 

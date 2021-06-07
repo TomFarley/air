@@ -18,7 +18,6 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
-from past.types import basestring
 
 from fire.interfaces.exceptions import InputFileException
 from fire.misc import utils
@@ -80,7 +79,7 @@ def pickle_dump(obj, path, raise_exceptions=True, verbose=True, **kwargs):
     if isinstance(path, Path):
         path = str(path)
 
-    if isinstance(path, basestring):
+    if isinstance(path, str):
         if path[-2:] != '.p':
             path += '.p'
         path = os.path.expanduser(path)
@@ -130,7 +129,7 @@ def pickle_load(path_fn, path=None, **kwargs):
     if path is not None:
         path_fn = os.path.join(path, path_fn)
 
-    if isinstance(path_fn, basestring):
+    if isinstance(path_fn, str):
         if path_fn[-2:] != '.p':
             path_fn += '.p'
 
@@ -269,6 +268,8 @@ def read_csv(path_fn: Union[Path, str], clean=True, convert_to_python_types=True
             kwargs['sep'] = r'\s+'
         elif path_fn.suffix == '.asc':
             kwargs['sep'] = r'\t'
+        elif path_fn.suffix == '.txt':
+            kwargs['sep'] = r'\s+'
         else:
             kwargs['sep'] = None  # Use csv.Sniffer tool
     try:
@@ -365,7 +366,7 @@ def mkdir(dirs, start_dir=None, depth=None, accept_files=True, info=None, check_
 
     if isinstance(dirs, Path):
         dirs = str(dirs)
-    if isinstance(dirs, (basestring, str)):  # Nest single string in list for loop
+    if isinstance(dirs, (str)):  # Nest single string in list for loop
         dirs = [dirs]
     # import pdb; pdb.set_trace()
     for d in dirs:

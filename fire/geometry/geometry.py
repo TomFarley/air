@@ -13,7 +13,7 @@ import numpy as np
 import xarray as xr
 
 import fire
-import fire.interfaces.basic_io
+import fire.interfaces.io_basic
 import fire.interfaces.read_user_fire_config
 from fire.misc import utils
 from fire.misc.utils import ndarray_0d_to_scalar

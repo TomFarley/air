@@ -7,7 +7,7 @@ import collections
 import numpy as np
 import pandas as pd
 
-from fire.interfaces.basic_io import mkdir, split_path
+from fire.interfaces.io_basic import mkdir, split_path
 from fire.misc.utils import (make_iterable, is_subset, str_to_number, args_for,
                              print_progress, argsort, mkdir)
 
