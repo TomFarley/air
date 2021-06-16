@@ -535,23 +535,38 @@ def debug_analysis_path_cross_sections(path_data=None, image_data=None, path_nam
 def debug_temperature_image(data):
     figure_xarray_imshow(data, key='temperature_im', show=True)
 
-def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', robust=True, extend=None,
-                          annotate=True, mark_peak=True, meta=None, ax=None, t_range=(0.0, 0.6),
-                          r_range=None, t_wins=None, machine_plugins=None, colorbar_kwargs=None,
-                          set_data_coord_lims_with_ranges=True, show=True, verbose=True):
-    # TODO: Move general code to plot_tools.py func
+def debug_plot_spatial_2d_unwrapped(image_data, key='frame_data', spatial_dims=('R_im', 'phi_im'), ax=None, show=True):
 
-    for i_path, path_name in enumerate(make_iterable(path_names)):
-        if ax is None:
-            fig, ax_i = plt.subplots(1, 1, num=f'{param}_profile_2d {path_name}')
-        else:
-            ax_i = make_iterable(ax)[i_path]
+    fig, ax = plot_tools.get_fig_ax(ax=None)
+
+    data = image_data[key]
+    x = data[spatial_dims[0]]
+    y = data[spatial_dims[1]]
+
+    ax.plot(x, y, data)
+    plot_tools.show_if(show=show)
+    raise NotImplementedError
+
+
+def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', robust=True, extend=None,
+                          annotate=True, mark_peak=True, label_tiles=True, meta=None, ax=None, t_range=(0.0, 0.6),
+                          r_range=None, t_wins=None, machine_plugins=None, colorbar_kwargs=None,
+                          set_data_coord_lims_with_ranges=True, robust_percentiles=(2, 98),
+                          show=True, save_path_fn=None, image_formats=('png'), verbose=True):
+    # TODO: Move general code to plot_tools.py func
+    path_names = make_iterable(path_names)
+    ax_in = ax
+    for i_path, path_name in enumerate(path_names):
+        fig, ax, ax_passed = plot_tools.get_fig_ax(ax=ax_in, ax_grid_dims=(len(path_names), 1),
+                                        num=f'{param}_profile_2d {path_name}')
+        ax_i = make_iterable(ax)[i_path]
 
         data = data_paths[f'{param}_{path_name}']
 
         coord_path = f'R_{path_name}'
         # coord_path = f's_{path_name}'
         data = data_structures.swap_xarray_dim(data, new_active_dims=['t', coord_path])
+        data_masked = copy(data)
 
         # TODO: Generalise setting coord ranges to other 2d data
         if t_range is not None:
@@ -559,7 +574,7 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             t_range[1] = np.min([t_range[1], data['t'].values.max()])
             if set_data_coord_lims_with_ranges:
                 mask = (t_range[0] <= data['t']) & (data['t'] <= t_range[1])
-                data = data.sel({'t': mask})
+                data_masked = data.sel({'t': mask})
                 # data = data.sel({'t': slice(*t_range)})
             ax_i.set_ylim(*t_range)
         if r_range is not None:
@@ -569,14 +584,19 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             if set_data_coord_lims_with_ranges:  # set data ranges to get full range from colorbar
                 # TODO: Make general purpose function for slicing coords since pandas bug or update packages? https://github.com/pydata/xarray/issues/4370
                 mask = (r_range[0] <= data[coord_path]) & (data[coord_path] <= r_range[1])
-                data = data.sel({coord_path: mask})
+                data_masked = data.sel({coord_path: mask})
                 # data = data.sel({coord_path: slice(*r_range)})
             ax_i.set_xlim(*r_range)
 
         # Configure colorbar axis
+        if robust:
+            vmin, vmax = (np.percentile(data_masked, robust_percentiles[0]),
+                          np.percentile(data_masked, robust_percentiles[1]))
+        else:
+            vmin, vmax = np.min(data_masked), np.max(data_masked)
         colorbar_kwargs = colorbar_kwargs if (colorbar_kwargs is not None) else {}
         cmap = cm.get_cmap('coolwarm')
-        colorbar_kws = dict(robust=robust, extend=extend, cmap=cmap)
+        colorbar_kws = dict(robust=robust, extend=extend, cmap=cmap, vmin=vmin, vmax=vmax)
         colorbar_kws.update(colorbar_kwargs)
         kws = plot_tools.setup_xarray_colorbar_ax(ax_i, data_plot=data, add_colorbar=True, **colorbar_kws)
 
@@ -587,6 +607,8 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             if np.any(mask_coord_nan):
                 data = data.sel({coord_path: ~mask_coord_nan})
             try:
+                r_dim = data.dims[1]
+                data = data.sortby(r_dim, ascending=True)
                 artist = data.plot(center=False, ax=ax_i, **kws)  # pcolormesh
             except ValueError as e:
                 # contourf can handle irregular x axis
@@ -606,8 +628,8 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             data_r_peak = data_paths[param_r_peak]
             mask_low = data_peak < (np.nanmin(data_peak) + 0.01 * (np.nanmax(data_peak)-np.nanmin(data_peak)))
             data_r_peak.loc[mask_low] = np.nan
-            ax_i.plot(data_r_peak.values, data_r_peak[data.dims[0]], ls='', marker='.', ms=1.5, color='k',  # 'g'
-                      lw=2.5, alpha=0.4, label='peak')
+            ax_i.plot(data_r_peak.values, data_r_peak[data.dims[0]], ls='', marker='.', ms=2, color='c',  # 'g'
+                      lw=2.5, alpha=0.4, label='peak')  # ms=1.5
 
         if annotate and (meta is not None):
             # TODO: Make figure pulse label func
@@ -624,12 +646,14 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
         #     ax_i.set_ylim(t_range)
 
         if machine_plugins is not None:
-            if isinstance(machine_plugins, str):
-                machine_plugins = plugins_machine.get_machine_plugins(machine=machine_plugins)
-            try:
-                machine_plugins['label_tiles'](ax_i, data.coords, coords_axes=data.dims, y=t_range[0])
-            except Exception as e:
-                logger.warning(f'Failed to call machine plugin to label tiles: {e}')
+            if label_tiles:
+                if isinstance(machine_plugins, str):
+                    machine_plugins = plugins_machine.get_machine_plugins(machine=machine_plugins)
+                label_tiles_func = machine_plugins.get('label_tiles')
+                try:
+                    label_tiles_func(ax_i, data.coords, coords_axes=data.dims, coord_2_pos=0.01)
+                except Exception as e:
+                    logger.warning(f'Failed to call machine plugin to label tiles: {e}')
 
         if t_wins is not None:  # Add horizontal lines labeling times
             plot_tools.label_axis_windows(windows=t_wins, labels=t_wins, ax=ax_i, axis='y', line_kwargs=None)
@@ -644,6 +668,8 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
                         f'99%={np.percentile(data.values,99):0.4g}, max={data.max().values:0.4g}')
 
         plot_tools.show_if(show=show, tight_layout=True)
+        plot_tools.save_fig(save_path_fn, image_formats=image_formats, mkdir_depth=2)
+
     return ax, data, artist
 
 def debug_plot_spatial_profile_1d(data_paths, param='temperature', path_names='path0', t=None):
@@ -673,7 +699,7 @@ def debug_plot_spatial_profile_1d(data_paths, param='temperature', path_names='p
         plt.show()
 
 def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_r_peak', 'heat_flux_peak'), path_name='path0',
-                                   x_var='t', heat_flux_thresh=-0.0, meta_data=None):
+                                   x_var='t', heat_flux_thresh=-0.0, meta_data=None, machine_plugins=None):
     # TODO: Move general code to plot_tools.py func
     colors = ('tab:blue', 'tab:orange', 'tab:green', 'tab:red')
     path = path_name if isinstance(path_name, str) else path_name[0]
@@ -695,6 +721,7 @@ def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_r_peak', 'heat
         data = data_paths[key]
         if x_var not in data.dims:
             data = data.swap_dims({data.dims[0]: x_var})
+        y_var = data.name
 
         data_pos_q = deepcopy(data)
         data_pos_q[~mask_pos_heat_flux] = np.nan
@@ -712,6 +739,10 @@ def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_r_peak', 'heat
             data.plot(robust=True, center=False, cmap='coolwarm')
         else:
             plot_tools.legend(ax=ax)
+        if ('r_peak' in y_var) and (machine_plugins is not None):
+            label_tiles = machine_plugins.get('label_tiles')
+            if label_tiles is not None:
+                label_tiles(ax, coords=data, coords_axes=(data.dims[0],))
     if heat_flux_thresh not in (None, False):
         ax.axhline(heat_flux_thresh, ls='--', color='k')
         ax.set_xlim([peak_heat_flux_pos['t'].min(), peak_heat_flux_pos['t'].max()])
@@ -754,7 +785,7 @@ def debug_plot_timings(data_profiles, pulse, params=('heat_flux_peak_{path}','te
             if isinstance(data, Exception):
                 logger.warning(f'Failed to read uda signal {sig} for {pulse}: {data}')
                 continue
-            peaks_info = find_peaks_info(data)
+            peaks_info = find_peaks_info(data, peak_kwargs=('width', 5))
             t_peaks.append(peaks_info['x_peaks'].values[:n_peaks_label])  # Record time of 3 largest peaks
 
             normalise = False
@@ -936,6 +967,8 @@ def plot_mixed_fire_uda_signals(signals, pulses=None, path_data=None, meta_data=
                 path_data = data[pulse][0]['path_data']
             except (FileNotFoundError, KeyError) as e:
                 pass
+
+        # TODO: Make separate functions for setting up axes, labels, formatting etc based on input
 
         for i_ax_row, signals_ax in enumerate(signals):
             # TODO: Allow slice_ and reduce to be iterables with length of number of axes or dict keyed by
