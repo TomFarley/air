@@ -10,15 +10,18 @@ Created:
 import logging, time
 from typing import Union, Iterable, Tuple, Optional
 from pathlib import Path
+from copy import copy
 
 import numpy as np
 import xarray as xr
 from scipy import stats
 
+from fire.misc import data_structures
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def identify_bad_frames(frame_data, bit_depth=None, tol_discontinuities=0.01,
+def identify_bad_frames(frame_data, bit_depth=None, n_discontinuities_expected=0.01,
                         raise_on_saturated=False, raise_on_uniform=False, raise_on_sudden_intensity_changes=False):
     t0 = time.time()
 
@@ -30,8 +33,8 @@ def identify_bad_frames(frame_data, bit_depth=None, tol_discontinuities=0.01,
     uniform_frames = identify_uniform_frames(frame_data, raise_on_uniform=raise_on_uniform)
     bad_frame_info['uniform'] = uniform_frames
 
-    discontinuous_frames = identify_sudden_intensity_changes(frame_data, tol=tol_discontinuities,
-                                                raise_on_sudden_intensity_changes=raise_on_sudden_intensity_changes)
+    discontinuous_frames = identify_sudden_intensity_changes(frame_data, n_outliers_expected=n_discontinuities_expected,
+                                                             raise_on_sudden_intensity_changes=raise_on_sudden_intensity_changes)
     bad_frame_info['discontinuous'] = discontinuous_frames
 
     if bit_depth is not None:
@@ -111,26 +114,60 @@ def identify_saturated_frames(frame_data: xr.DataArray, bit_depth, raise_on_satu
 
     return out
 
-def identify_sudden_intensity_changes(frame_data: xr.DataArray, tol: float=0.01,
+def identify_sudden_intensity_changes(frame_data: xr.DataArray, n_outliers_expected: float=1,
                                       raise_on_sudden_intensity_changes: bool=True):
     """Useful for identifying dropped for faulty frames"""
 
     frame_intensities = frame_data.sum(dim=['x_pix', 'y_pix'])
     diffs = np.abs(frame_intensities.diff(dim='n'))
+    # diffs['n'] -= 1
+    # diffs['t'] -= (diffs['t'][1] - diffs['t'][0])
     # discontinuous_frames = diffs.where(diffs > (diffs.mean() * tol), drop=True).coords
     # TODO: Use more robust method of identifying outliers?
-    nsigma = calc_outlier_nsigma_for_sample_size(len(frame_data), tol=tol)
+    nsigma = calc_outlier_nsigma_for_sample_size(len(frame_data), n_outliers_expected=n_outliers_expected)
     discontinuous_mask = diffs > (diffs.mean() + diffs.std() * nsigma)
 
-    n_with_start = discontinuous_mask['n'].values
-    if (n_with_start[0] == 1) and discontinuous_mask.sel(n=1):
-        # Generally want to identify a frame if it is a sudden change from the previous frame, but in case of first
-        # frame want to identify first frame as discontinuous if it differs a lot from following frame
-        n_with_start = np.concatenate(([0], n_with_start[1:]))
-        t_with_start = np.concatenate(([frame_data['t'].values[0]], discontinuous_mask['t'].values[1:]))
-        discontinuous_mask = discontinuous_mask.assign_coords(n=n_with_start)
-        diffs = diffs.assign_coords(n=n_with_start)
-        logger.info(f'First frame has discontinuous intensity. Reordered xarray coord accordingly.')
+    # Generally want to identify a frame if it is a sudden change from the previous frame, but in case of first
+    # frame want to identify first frame as discontinuous if it differs a lot from following frame
+    # Diff are indexed starting at 1 whereas we want to get a full length mask starting at 0
+    n_discontinuous_start = 0
+    while discontinuous_mask[n_discontinuous_start]:
+        n_discontinuous_start += 1
+    # n = discontinuous_mask['n'].values
+    # t = discontinuous_mask['t'].values
+    # mask_values = discontinuous_mask.values
+    dt = float(diffs['t'][1] - diffs['t'][0])
+
+    discontinuous_mask = data_structures.swap_xarray_dim(discontinuous_mask, 'n')
+    diffs = data_structures.swap_xarray_dim(diffs, 'n')
+    n_modified = copy(discontinuous_mask['n'].values)
+    n_modified[:n_discontinuous_start] -= 1
+    discontinuous_mask['n'] = n_modified
+    diffs['n'] = n_modified
+
+    discontinuous_mask = data_structures.swap_xarray_dim(discontinuous_mask, 't')
+    diffs = data_structures.swap_xarray_dim(diffs, 't')
+    t_modified = copy(discontinuous_mask['t'].values)
+    t_modified[:n_discontinuous_start] -= dt
+    discontinuous_mask['t'] = t_modified
+    diffs['t'] = t_modified
+
+    discontinuous_mask = data_structures.swap_xarray_dim(discontinuous_mask, 'n')
+    diffs = data_structures.swap_xarray_dim(diffs, 'n')
+
+    coords = {'n': [n_discontinuous_start], 't': ('n', [discontinuous_mask['t'][n_discontinuous_start - 1] + dt])}
+
+    gap_value = xr.DataArray([False], dims=['n'], coords=coords)
+    discontinuous_mask = xr.concat([discontinuous_mask, gap_value], dim='n').sortby('n')
+
+    gap_value = xr.DataArray([0], dims=['n'], coords=coords)
+    diffs = xr.concat([diffs, gap_value], dim='n').sortby('n')
+
+        # n_discontinuous = np.concatenate(([0], n_discontinuous[:-1]))
+        # t_with_start = np.concatenate(([frame_data['t'].values[0]], discontinuous_mask['t'].values[1:]))
+        # discontinuous_mask = discontinuous_mask.assign_coords(n=n_discontinuous)
+        # diffs = diffs.assign_coords(n=n_discontinuous)
+        # logger.info(f'First frame has discontinuous intensity. Reordered xarray coord accordingly.')
         # discontinuous_mask = discontinuous_mask.assign_coords(t=t_with_start)
 
     discontinuous_frames = diffs.where(discontinuous_mask, drop=True).coords
@@ -146,11 +183,11 @@ def identify_sudden_intensity_changes(frame_data: xr.DataArray, tol: float=0.01,
         else:
             logger.warning(message)
 
-    out = dict(frames=discontinuous_frames, n_bad_frames=n_bad, nsigma=tol)
+    out = dict(frames=discontinuous_frames, n_bad_frames=n_bad, nsigma=nsigma, n_outliers_expected=n_outliers_expected)
 
     return out
 
-def calc_outlier_nsigma_for_sample_size(n_data, tol=0.01):
+def calc_outlier_nsigma_for_sample_size(n_data, n_outliers_expected=1):
     """Return number of standard deviations that has a (1-tol) probability of containing all values (assuming a
     normal distribution). Useful for identifying thresholds used to identify outliers.
 
@@ -164,19 +201,22 @@ def calc_outlier_nsigma_for_sample_size(n_data, tol=0.01):
     ie the normal rule of thumb of ~5% of values falling outside 2 sigma, ~0.3% of values outside 3 sigma
 
     Args:
-        n_data: Sample size
-        tol: Number of points you want to (on average) fall outside the returned nsigna
+        n_data:              Sample size
+        n_outliers_expected: Number of points you want to (on average) fall outside the returned nsigna
 
-    Returns: number of standard deviations
+    Returns: number of standard deviations to have n_outliers_expected number of outlier points outside nsigma
 
     """
+    outlier_fraction = n_outliers_expected / n_data
     # Note: factor of 2 is to account for positive and negative tails of distribution
-    nsigma = -stats.norm.ppf(tol/(2*n_data))
+    qualtile_two_tails = outlier_fraction / 2
+
+    nsigma = -stats.norm.ppf(qualtile_two_tails)
+
     return nsigma
 
 def remove_bad_opening_and_closing_frames(frame_data, bad_frames):
     info = {'start': 0, 'end': 0, 'n_removed': []}
-
 
     n = len(frame_data)-1
     i = 0
@@ -185,13 +225,13 @@ def remove_bad_opening_and_closing_frames(frame_data, bad_frames):
         frame_data = frame_data[1:]
         info['start'] += 1
         info["n_removed"].append(i)
-        i -= 1
+        i += 1
 
     while n in bad_frames:
         frame_data = frame_data[:-1]
-        n -= 1
         info['end'] += 1
         info["n_removed"].append(n)
+        n -= 1
 
     if info['start'] > 0:
         logger.warning(f'Removed {info["start"]} bad frames from start of movie: {info["n_removed"]}')
