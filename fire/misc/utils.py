@@ -60,7 +60,8 @@ def make_iterable(obj: Any, ndarray: bool=False,
                   cast_to: Optional[type]=None,
                   cast_dict: Optional=None,
                   # cast_dict: Optional[dict[type,type]]=None,
-                  nest_types: Optional=None) -> Iterable:
+                  nest_types: Optional=None,
+                  ignore_types: Optional=()) -> Iterable:
                   # nest_types: Optional[Sequence[type]]=None) -> Iterable:
     """Return itterable, wrapping scalars and strings when requried.
 
@@ -73,10 +74,17 @@ def make_iterable(obj: Any, ndarray: bool=False,
         cast_to     : Output will be cast to this type
         cast_dict   : dict linking input types to the types they should be cast to
         nest_types  : Sequence of types that should still be nested (eg dict)
+        ignore_types: Types to not nest (eg if don't want to nest None)
 
     Returns:
 
     """
+    if not isinstance(ignore_types, (tuple, list)):
+        ignore_types = make_iterable(ignore_types, ndarray=False, ignore_types=())
+    if (obj in ignore_types) or (type(obj) in ignore_types):
+        # Don't nest this type of input
+        return obj
+
     if not hasattr(obj, '__iter__') or isinstance(obj, str):
         obj = [obj]
     if (nest_types is not None) and isinstance(obj, nest_types):
