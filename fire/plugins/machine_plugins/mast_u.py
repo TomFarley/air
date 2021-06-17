@@ -15,12 +15,14 @@ import logging
 from copy import copy
 
 import numpy as np
+import xarray as xr
 from fire.plotting.plot_tools import format_poloidal_plane_ax
 from fire.geometry.s_coordinate import interpolate_rz_coords, separate_rz_points_top_bottom, calc_s_coord_lookup_table, \
     get_nearest_s_coordinates, get_nearest_rz_coordinates, get_nearest_boundary_coordinates
 
 from fire.geometry.geometry import cartesian_to_toroidal
 from fire.misc.utils import make_iterable
+from fire.misc import data_structures
 from fire.plotting import plot_tools
 
 logger = logging.getLogger(__name__)
@@ -299,27 +301,47 @@ def plot_vessel_top_down(ax=None, keys_plot=('R_T1', 'R_T2', 'R_T3', 'R_T4', 'R_
                                    keys_plot_strong=keys_plot_strong, louvres=louvres)
     return fig, ax
 
-def label_tiles(ax, coords, coords_axes=('i_path{path_no}', 't'), tiles=('R_T1', 'R_T2', 'R_T3', 'R_T4', 'R_T5',
-                                                                     'R_T5_top'),
-                y='min', plot_kwargs=None, path_no=0, legend_labels=False):
-
+def label_tiles(ax, coords, coords_axes=('i_path{path_no}', 't'),
+                tiles=('R_T1', 'R_T2', 'R_T3', 'R_T4', 'R_T5', 'R_T5_top'),
+                coord_2_pos=0.01, plot_kwargs=None, path_no=0, legend_labels=False):
+    # TODO: Make general machine agnostic wrapper function
+    # TODO: Split into functions to identify visible tiles given r coordinate and labelling function
     if hasattr(ax, 'fire_meta'):
         if ax.fire_meta.get('has_tile_labels'):
             return  # These axes already have tile labels
     else:
         ax.fire_meta = {}
 
-    plot_kws = dict(ls=':', lw=1, color='k', alpha=0.5)
+    plot_kws = dict(ls=':', lw=1.5, color='k', alpha=0.5)
     if plot_kwargs is not None:
         plot_kws.update(plot_kwargs)
 
     coords = copy(coords)
-    coords_axes = tuple((value.format(path_no=path_no) for value in make_iterable(coords_axes)))
-
+    coords_axes = make_iterable(coords_axes)
+    coords_axes = tuple((value.format(path_no=path_no) for value in coords_axes))
     tile_labels = {'R_T1': 'T1', 'R_T2': 'T2', 'R_T3': 'T3', 'R_T4': 'T4', 'R_T5': 'T5', 'R_T5_top': ''}
 
-    coord_r = f'R_path{path_no}'
-    coord_i = f'i_path{path_no}'
+    # if isinstance(coords, xr.core.coordinates.DataArrayCoordinates):
+
+    # TODO: generalise path no.
+    if (len(coords_axes) == 2):
+        coord_2 = coords_axes[1]  # y axis variable, eg 'R_path0' for heat flux map plot
+        coord_r = f'R_path{path_no}'
+        coord_mono = f'i_path{path_no}'
+        # Switch to monotonic coordinate compatible with sel 'nearest' eg i_path
+        coord_2_data = data_structures.swap_xarray_dim(coords[coord_2],
+                                                       new_active_dims=coord_mono, old_active_dims=coord_2)
+        if coord_2_pos == 'min':
+            coord_2_pos = coords[coords_axes[0]].min()
+    else:
+        coord_2 = coords.name  # variable is on y axis eg r_peak
+        coord_r = coords_axes[0]
+        coord_mono = coords.dims[0]
+        # Switch to monotonic coordinate compatible with sel 'nearest' eg i_path
+        coord_2_data = data_structures.swap_xarray_dim(coords[coord_r], new_active_dims=coord_mono, old_active_dims=coord_2)
+        if coord_2_pos == 'min':
+            coord_2_pos = coords.min()
+
     r = coords[coord_r].values
     r_range = [np.min(r), np.max(r)]
     r_tiles = np.array([surface_radii[key] for key in tiles])
@@ -329,32 +351,28 @@ def label_tiles(ax, coords, coords_axes=('i_path{path_no}', 't'), tiles=('R_T1',
     tiles = np.array(tiles)[tiles_visible]
     r_tiles = r_tiles[tiles_visible]
 
-    # TODO: generalise path no.
-    if (len(coords_axes) == 2):
-        coord = coords_axes[1]
-        if y == 'min':
-            y = coords[coords_axes[0]].min()
-    else:
-        coord = coords_axes[0]
-        if y == 'min':
-            y = 0
-
-    if (coord == coord_i):
+    if (coord_2 == coord_mono):
         mask = np.argmin(np.abs(np.tile(r, (len(tiles), 1)).T - r_tiles), axis=0)
-        x = coords[coord].sel({coord: mask}, method='nearest')
-    elif (coord == coord_r):
-        coord_data = coords[coord].swap_dims({coord: coord_i})  # TODO: Use func
+        tile_coord_values = coord_2_data.sel({coord_2: mask}, method='nearest')
+    else:  #  (coord == coord_r):
         mask = np.argmin(np.abs(np.tile(r, (len(tiles), 1)).T - r_tiles), axis=0)
-        x = coord_data.sel({coord_i: mask}, method='nearest')
+        tile_coord_values = coord_2_data.sel({coord_mono: mask}, method='nearest')
         # x = coords[coord].sel(**{coord: r_tiles}, method='nearest')
 
 
 
-    for x_i, key in zip(x, tiles):
+    for tile_coord_i, key in zip(tile_coord_values, tiles):
         label = tile_labels[key]
-        ax.axvline(x_i, label=label if legend_labels else None, **plot_kws)
-        plot_tools.annotate_axis(ax, label, loc=None, x=x_i, y=y, coords='data', horizontalalignment='left',
-                                 verticalalignment='bottom', box=False)
+        if len(coords_axes) == 2 and (coord_r == coords_axes[1]):
+            # label x axis
+            ax.axvline(tile_coord_i, label=label if legend_labels else None, **plot_kws)
+            plot_tools.annotate_axis(ax, label, loc=None, x=tile_coord_i, y=coord_2_pos, coords=('data', 'axes'),
+                                     horizontalalignment='left', verticalalignment='bottom', box=False, clip_on=True)
+        else:
+            # label y axis
+            ax.axhline(tile_coord_i, label=label if legend_labels else None, **plot_kws)
+            plot_tools.annotate_axis(ax, label, loc=None, x=coord_2_pos, y=tile_coord_i, coords=('axes', 'data'),
+                                     horizontalalignment='left', verticalalignment='bottom', box=False, clip_on=True)
     # else:
     #     raise NotImplementedError
 
