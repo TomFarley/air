@@ -21,7 +21,7 @@ import calcam
 import fire
 from fire import fire_paths, copy_default_user_settings
 from fire import plugins, camera_tools
-from fire.interfaces import interfaces, calcam_calibs, basic_io, io_utils
+from fire.interfaces import interfaces, calcam_calibs, io_basic, io_utils
 from fire.camera_tools import field_of_view, camera_shake, nuc, image_processing, camera_checks
 from fire.geometry import geometry, s_coordinate
 from fire.physics import temperature, heat_flux, physics_parameters
@@ -261,12 +261,17 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # Detect saturated pixels, uniform frames etc
     bad_frames_info = data_quality.identify_bad_frames(frame_data, bit_depth=movie_meta['bit_depth'],
-                                                       tol_discontinuities=0.01, raise_on_saturated=False)
+                                                       n_discontinuities_expected=1, raise_on_saturated=False)
     frames_nos_discontinuous = bad_frames_info['discontinuous']['frames']['n']
-    frame_data, removed_frames = data_quality.remove_bad_opening_and_closing_frames(frame_data,
+    frame_data_clipped, removed_frames = data_quality.remove_bad_opening_and_closing_frames(frame_data,
                                                                                     frames_nos_discontinuous)
     # Now frame_data is in its final form (bad frames removed) merge it into image_data
-    image_data = xr.merge([image_data, frame_data])  # , combine_attrs='no_conflicts')
+    image_data = xr.merge([image_data, frame_data_clipped])  # , combine_attrs='no_conflicts')
+
+    if (debug.get('movie_intensity_stats', False) or
+            ((not scheduler) and (bad_frames_info['saturated']['n_bad_frames']))):
+        # Force plot if there are any saturated frames
+        temporal_figures.plot_movie_intensity_stats(frame_data, meta_data=meta_data, removed_frames=removed_frames)
 
     # TODO: Add coordinates for pre-transformation frame data
     # image_data_ref = xr.Dataset(coords=image_data.coords)
@@ -355,11 +360,6 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         debug_plots.debug_movie_data(image_data, frame_nos=np.arange(n_check, n_check+4), key='frame_data')
         # frame_data_nuc
 
-    if (debug.get('movie_intensity_stats', False) or
-            ((not scheduler) and (bad_frames_info['saturated']['n_bad_frames']))):
-        # Force plot if there are any saturated frames
-        temporal_figures.plot_movie_intensity_stats(frame_data, meta_data=meta_data)
-
     # Get calcam raycast
     raycast_checkpoint_path_fn = files['raycast_checkpoint']
     if raycast_checkpoint_path_fn.exists() and (not update_checkpoints):
@@ -379,6 +379,12 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         # TODO: Make CAD model pulse range dependent
         cad_model_args = config['machines'][machine]['cad_models'][0]
         cad_model = calcam_calibs.get_calcam_cad_obj(**cad_model_args)
+
+
+        # TODO: remove tmp
+        from fire.interfaces import calcam_cad
+        cell_locator = calcam_cad.get_cell_locator(cad_model)
+
 
         # TODO: Add CAD model to separate meta_objects dict to make meta_data easily serialisable
         meta_data['calcam_CAD'] = cad_model
@@ -445,7 +451,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # calcam_calib.set_detector_window(window=(Left,Top,Width,Height))
 
     # Identify material surfaces in view
-    surface_coords = basic_io.read_csv(files['structure_coords'], sep=', ', index_col='structure')
+    surface_coords = io_basic.read_csv(files['structure_coords'], sep=', ', index_col='structure')
     r_im, phi_im, z_im = image_data['R_im'], image_data['phi_im'], image_data['z_im']
     visible_surfaces = geometry.identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=False)
     surface_ids, material_ids, visible_surfaces, visible_materials = visible_surfaces
@@ -472,8 +478,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         frame_data_nuc[0, :, :] = 0  # set first frame to zero for consistency with IDL code which init frame(0) to 0
         # TODO: Remove legacy temperature method with old MAST photon count lookup table
         files['black_body_curve'] = Path('/home/tfarley/repos/air/fire/input_files/mast/legacy/legacy_air/planckBB.dat')
-        bb_curve = basic_io.read_csv(files['black_body_curve'], sep=r'\s+',
-                                                     names=['temperature_celcius', 'photon_flux'], index_col='temperature_celcius')
+        bb_curve = io_basic.read_csv(files['black_body_curve'], sep=r'\s+',
+                                     names=['temperature_celcius', 'photon_flux'], index_col='temperature_celcius')
         image_data['temperature_im'] = temperature.dl_to_temerature_legacy(frame_data_nuc, calib_coefs, bb_curve,
                                                            exposure=movie_meta['exposure'],
                                                            solid_angle_pixel=meta_data['solid_angle_pixel'],
@@ -563,6 +569,11 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         path_data_extracted = image_processing.extract_path_data_from_images(image_data, path_data,
                                                                              path_name=analysis_path_key)
         path_data = xr.merge([path_data, path_data_extracted])  # , combine_attrs='no_conflicts')
+
+        # Sort analysis path in order of increasing R to avoid reversing sections of profiles!
+        path_data = path_data.sortby('R_in_frame_path0', ascending=True)  # TODO: Detect non-mono and tidy into func?
+        # path_data = path_data.sortby('s_global_in_frame_path0', ascending=True)  # TODO: Detect non-mono and tidy into
+        # func?
 
         # TODO: itteratively remove negative and zero increments in R along path. Enables use of dataarray.sel(
         # method='nearest')
@@ -694,8 +705,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         if output.get('strike_point_loc', False):
             fn = f'strike_point_loc-{machine}-{camera}-{pulse}-{analysis_path_name}.csv'
             path_fn = Path(paths_output['csv_data']) / fn
-            basic_io.to_csv(path_fn, path_data, cols=f'heat_flux_r_peak_{path}', index='t', x_range=[0, 0.6],
-                                            drop_other_coords=True, verbose=True)
+            io_basic.to_csv(path_fn, path_data, cols=f'heat_flux_r_peak_{path}', index='t', x_range=[0, 0.6],
+                            drop_other_coords=True, verbose=True)
 
     meta_data['analysis_path_labels'] = analysis_path_labels
 
@@ -712,7 +723,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                                                    image_data=image_data,
                            path_names=analysis_path_keys, variable_names_path=output_variables['analysis_path'],
                            variable_names_time=output_variables['time'], variable_names_image=output_variables['image'],
-                           device_info=device_details, header_info=output_header_info, meta_data=meta_data)
+                           device_info=device_details, header_info=output_header_info, meta_data=meta_data,
+                                                                   raise_on_fail=True)
     # write_processed_ir_to_netcdf(data, path_fn_out)
 
     archive_netcdf_output = True
@@ -872,13 +884,13 @@ def run_mastu_rit():  # pragma: no cover
     # pulse = 43584  # NBI
     # pulse = 43591
     # pulse = 43587
-    pulse = 43610
+    # pulse = 43610
     # pulse = 43643
     # pulse = 43644
     # pulse = 43648
     # pulse = 43685
 
-    # pulse = 43610
+    # pulse = 43610  # MU KPI
     # pulse = 43611
     # pulse = 43613
     # pulse = 43614
@@ -897,6 +909,21 @@ def run_mastu_rit():  # pragma: no cover
     # pulse = 43391  # no LP or IR data
 
     # pulse = 43753  # Lidia strike point splitting request - no data
+
+    # pulse = 43805  # Strike point sweep to T5 - good data for IR and LP
+
+    # pulse = 43823
+    pulse = 43835  # Lidia strike point splitting request - good data
+    # pulse = 44004  # LM
+    # pulse = 43835
+    # pulse = 43852
+    # pulse = 43836
+
+    # pulse = 43839
+    # pulse = 43996
+
+    # pulse = 43998  # Super-X
+
 
     camera = 'rit'
     pass_no = 0
@@ -949,10 +976,21 @@ if __name__ == '__main__':
     outputs = status['outputs']
 
     clean_netcdf = True
+    copy_to_uda_scrach = True
+
+    path_fn_netcdf = outputs.get('uda_putdata', {}).get('path_fn')
+
+    if copy_to_uda_scrach:
+        path_fn_scratch = Path('/common/uda-scratch/IR') / path_fn_netcdf.name
+        path_fn_scratch.write_bytes(path_fn_netcdf.read_bytes())
+        logger.info(f'Copied uda output file to uda scratch: {str(path_fn_scratch)}')
+
     if clean_netcdf:
         if ('uda_putdata' in outputs) and (outputs['uda_putdata']['success']):
-            path_fn = outputs['uda_putdata']['path_fn']
-            if path_fn.is_file():
-                path_fn.unlink()
+
+            if path_fn_netcdf.is_file():
+                io_basic.copy_file(path_fn_netcdf, path_fn_scratch)
+
+                path_fn_netcdf.unlink()
                 logger.info(f'Deleted uda output file to avoid clutter since run from main in scheduler_workflow.py: '
-                            f'{path_fn}')
+                            f'{path_fn_netcdf}')

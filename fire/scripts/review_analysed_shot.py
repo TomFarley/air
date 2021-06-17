@@ -156,10 +156,12 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
         # cbar_range = [0, 99.95]  # percentile of range
         # cbar_range = [0, 100]  # percentile of range
         # cbar_range = None
-        frame_range = [40, 270]
+        # frame_range = [40, 270]
+        frame_range = [40, 410]
         # frame_range = [40, 470]
-        image_figures.animate_frame_data(image_data, key='temperature_im', nth_frame=1, n_start=frame_range[0],
-                                         n_end=frame_range[1], save_path_fn=save_path_fn, cbar_range=cbar_range,
+        image_figures.animate_frame_data(image_data, key='temperature_im', nth_frame=1, duration=15,
+                                         n_start=frame_range[0], n_end=frame_range[1], save_path_fn=save_path_fn,
+                                         cbar_range=cbar_range,
                                          frame_label=f'{camera.upper()} {pulse} $t=${{t:0.1f}} ms',
                                          cbar_label='$T$ [$^\circ$C]',
                                          label_values={'t': meta_data['frame_times']*1e3}, show=show)
@@ -193,9 +195,9 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
             # robust = False
             # robust_percentiles = (30, 90)
             # robust_percentiles = (30, 98)
-            # robust_percentiles = (35, 99.5)
+            robust_percentiles = (35, 99.5)
             # robust_percentiles = (45, 99.7)
-            robust_percentiles = (50, 99.8)
+            # robust_percentiles = (50, 99.8)
             # robust_percentiles = (2, 98)
             # robust_percentiles = (2, 99)
             # robust_percentiles = (2, 99.5)
@@ -265,7 +267,7 @@ def review_shot():
     # pulse = 43547
     # pulse = 43415  # Peter Ryan's strike point sweep for LP checks
 
-    # pulse = 43583  # 2xNBI
+    pulse = 43583  # 2xNBI - Kevin choice
     # pulse = 43587  #
     # pulse = 43591  #
     # pulse = 43596  #
@@ -308,9 +310,10 @@ def review_shot():
     # pulse = 43996  # Super-X
     # pulse = 43998  # Super-X
     # pulse = 43999  # Super-X
-    pulse = 44000  # Super-X, detached
+    # pulse = 44000  # Super-X, detached
     # pulse = 44003  # LM
     # pulse = 44004  # LM
+    # pulse = 43835  # Lidia strike point splitting request - good data
 
     # pulse = 44006  # beams
 
@@ -321,14 +324,18 @@ def review_shot():
     # pulse = 44025  # LM
 
     # pulse = 43992  # virtual circuit keep SP on T2
-    # pulse = 43400  # virtual ciruit keep SP on T5
+    # pulse = 43998  # Super-X
+    # pulse = 43400  # virtual circuit keep SP on T5
+
+    # pulse = 44158  # virtual circuit keep SP on T5
+    # pulse = 44092  # virtual circuit keep SP on T5
 
 
     debug = {'calcam_calib_image': False, 'debug_detector_window': False,
              'movie_intensity_stats': False,
          'movie_data_animation': False, 'movie_data_nuc_animation': False,
-             'movie_temperature_animation': False,
-             'movie_temperature_animation_gif': False,
+             'movie_temperature_animation': True,
+             'movie_temperature_animation_gif': True,
          'spatial_coords': False,
          'spatial_res': False,
          'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
@@ -356,7 +363,8 @@ def review_shot_list():
     # shots = np.arange(44016, 44073)
 
     shot_start = latest_uda_shot_number()
-    n_shots = 10
+    # n_shots = 100
+    n_shots = 5
     shots = np.arange(shot_start, shot_start-n_shots, -1)  # [::-1]
 
     debug = {'calcam_calib_image': False, 'debug_detector_window': False,
@@ -377,7 +385,7 @@ def review_shot_list():
 
     logger.info(f'Reviewing shots: {shots}')
 
-    copy_raw_files_from_tdrive(today=True, n_files=n_shots)
+    copy_raw_files_from_tdrive(today=True, n_files=np.min([n_shots, 4]))
 
     logger.setLevel(logging.WARNING)
     status = {'success': [], 'fail': []}

@@ -163,6 +163,8 @@ if __name__ == '__main__':
     # pulses = [43665, 43666 ]
     # pulses = [43611, 43613, 43614]  # KPI fueling, flux expansion scan
     # pulses = [43591]  # Potential clip T2 in superx
+
+
     pulses = [
         # (43591, dict(slice_=dict(t=slice(0.195, 0.20)))),
         # (43596, dict(slice_=dict(t=slice(0.195, 0.20)))),
@@ -173,9 +175,14 @@ if __name__ == '__main__':
         # (43613, t_slice),
         # (43614, t_slice),
 
-        (43644, dict(slice_=dict(t=slice(0.20, 0.202)))), #R_path0=slice(*r_t2_bounds)))),
-        (43644, dict(slice_=dict(t=slice(0.24, 0.245)))), #R_path0=slice(*r_t2_bounds)))),
-        (43644, dict(slice_=dict(t=slice(0.325, 0.330)))), #R_path0=slice(*r_t5_bounds)))),
+        # (43644, dict(slice_=dict(t=slice(0.20, 0.202)))), #R_path0=slice(*r_t2_bounds)))),
+        # (43644, dict(slice_=dict(t=slice(0.24, 0.245)))), #R_path0=slice(*r_t2_bounds)))),
+        # (43644, dict(slice_=dict(t=slice(0.325, 0.330)))), #R_path0=slice(*r_t5_bounds)))),
+
+        # (43835, dict(slice_=dict(t=slice(0.606, 0.609)))), #R_path0=slice(*r_t5_bounds)))),
+        # (43835, dict(slice_=dict(t=slice(0.69, 0.7)))), #R_path0=slice(*r_t5_bounds)))),
+        # (43835, dict(slice_=dict(t=slice(0.744, 0.746)))), #R_path0=slice(*r_t5_bounds)))),
+        # (43835, dict(slice_=dict(t=slice(0.82, 0.825)))), #R_path0=slice(*r_t5_bounds)))),
 
         # 43587,
         # (43587, dict(slice_=dict(t=0.070))),
@@ -191,6 +198,21 @@ if __name__ == '__main__':
     #     (43596, dict(slice_=dict(t=slice(0.335, 0.345)))),
     #     (43596, dict(slice_=dict(t=slice(0.365, 0.375)))),
     # ]
+
+    # pulse = 43835
+    # times = np.arange(0.4, 0.9, 0.05)  # 43835
+    # times = [0.499, 0.550, 0.607, 0.648, 0.698, 0.700]  # 43835
+    # pulse = 43852
+    # times = np.arange(0.118, 0.200, 0.015)  # 43852
+    # times = [0.165, 0.550, 0.607, 0.648, 0.698, 0.700]  # 43852
+    # pulse = 43916
+    # times = np.arange(0.1, 0.35, 0.025)  # 43916
+    pulse = 43917
+    times = np.arange(0.45, 0.65, 0.025)  # 43917
+    dt_av = 0.0025
+    # pulses = [(pulse, dict(slice_=dict(t=slice(t, t+dt_av)))) for t in times]
+    pulses = [(p, {}) for p in np.arange(44021, 44026)]
+
 
     # signals_mixed = [['heat_flux_path1'],]
     signals_mixed = [['heat_flux_path0'],]
@@ -265,13 +287,13 @@ if __name__ == '__main__':
 
         compare_shots_1d('rit', signals=signals, pulses=pulses_dict, show=False)
 
-    # signals = {'heat_flux': dict()}
-    signals = {'temperature': dict()}
+    signals = {'heat_flux': dict()}
+    # signals = {'temperature': dict()}
     robust = True
     # robust = False
-    # t_win = None  # Don't label time window
+    t_win = None  # Don't label time window
     # t_range = [0, 0.35]
-    t_range = [0, 0.6]
+    t_range = [0, 0.7]
     # t_range = None
 
     # r_range=r_t5_bounds
@@ -281,7 +303,8 @@ if __name__ == '__main__':
     # colorbar_kwargs = dict(vmin=-0.011, vmax=0.020, extend='neither')  # , extend='neither', 'both', 'max'
     compare_shots_2d(camera, signals=signals, pulses=pulses, machine=machine, machine_plugins=machine_plugins,
                      t_range=t_range, r_range=r_range, t_wins=t_win, robust=robust,
-                     set_ax_lims_with_ranges=True, show=False, colorbar_kwargs=colorbar_kwargs)
+                     set_ax_lims_with_ranges=True, show=False, colorbar_kwargs=colorbar_kwargs,
+                     robust_percentiles=(50, 99.5))
 
     plot_tools.show_if(True, tight_layout=True)
 
