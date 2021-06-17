@@ -152,8 +152,11 @@ def ats_to_dict(path,fileats,digital_level_bytes=4,header_marker = '4949'):
 
 if __name__ == '__main__':
 	import matplotlib.pyplot as plt
-	path = '/home/ffederic/work/irvb/vacuum_chamber_testing/Aug23_2018'
-	file_ats = 'irvb_sample-000001.ats'
+	# path = '/home/ffederic/work/irvb/vacuum_chamber_testing/Aug23_2018'
+	# file_ats = 'irvb_sample-000001.ats'
+
+	path = '/home/tfarley/data/movies/mast_u/FLIR_data-tfarley/'
+	file_ats = 'flir_air_sequence_16-04-2021.ats'
 
 	print(f'Reading FLIR ats movie (may be slow): {path}/{file_ats}')
 	movie_data = ats_to_dict(path, file_ats)
