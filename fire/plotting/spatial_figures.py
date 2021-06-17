@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 def figure_spatial_profile_1d(data_path, key, path_name='path0', x_coord=None, slice_=None, reduce=None,
                               offset_x_peak=False, offset_x_param=None, normalise_factor=False, ax=None,
-                              plot_kwargs=None,
+                              plot_kwargs=None, machine_plugins=None,
                               label=True, legend=True, meta=None, show=True, save_fn=None):
     """Plot profile of variable given by key along analysis path
 
@@ -141,9 +141,10 @@ def figure_spatial_profile_1d(data_path, key, path_name='path0', x_coord=None, s
     # ax.title.set_fontsize(10)
 
     if data_plot.dims[0][0] == 'R':
-        # TODO: call from machine pluggins
-        from fire.plugins.machine_plugins.mast_u import label_tiles
-        label_tiles(ax, data_plot.coords, coords_axes=data_plot.dims[0], y=data_plot.values.min())
+        if machine_plugins is not None:
+            label_tiles = machine_plugins.get('label_tiles')
+            if label_tiles is not None:
+                label_tiles(ax, data_plot.coords, coords_axes=data_plot.dims[0], coord_2_pos=0.01)
 
     plot_tools.legend(ax, legend=legend, only_multiple_artists=True)
     plot_tools.show_if(show=show, close_all=False)

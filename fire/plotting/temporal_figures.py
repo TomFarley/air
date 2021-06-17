@@ -45,7 +45,8 @@ def plot_temporal_profile(profile_data, param, path_name=None, ax=None, mask=Non
 
     return fig, ax
 
-def plot_movie_intensity_stats(data_movie, ax=None, bit_depth=14, meta_data=None, show=True, save_fn=None):
+def plot_movie_intensity_stats(data_movie, ax=None, bit_depth=14, meta_data=None, removed_frames=None,
+                               show=True, save_fn=None):
 
     fig, ax, ax_passed = plot_tools.get_fig_ax(ax, num=f'Movie average intensity')
 
@@ -78,7 +79,13 @@ def plot_movie_intensity_stats(data_movie, ax=None, bit_depth=14, meta_data=None
     plot_tools.annotate_providence(ax, meta_data=meta_data, annotate=(meta_data is not None))
     plot_tools.legend(ax)
 
-    plot_tools.add_second_x_scale(ax, x_axis_values=data_movie.coords['n'], label='$n_{frame}$', y_values=data_max)
+    ax_n = plot_tools.add_second_x_scale(ax, x_axis_values=data_movie.coords['n'],
+                                         label='$n_{frame}$', y_values=data_max)
+
+    if removed_frames:
+        # Label ends of movie that are discarded due discontinuous intensities etc
+        ax_n.axvline(x=removed_frames['start'], ls=':', color='k', label='clipped bad frames from start')
+        ax_n.axvline(x=len(data_movie)-1-removed_frames['end'], ls=':', color='k', label='clipped bad frames from end')
 
     plot_tools.show_if(show=show, close_all=False, tight_layout=True)
     plot_tools.save_fig(save_fn, fig=fig, save=(save_fn is not None))

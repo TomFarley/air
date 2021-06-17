@@ -70,9 +70,9 @@ def plot_bb_curves(show=True, equations=True):
                             r'\lambda^4} \frac{1}{e^{ℎ𝑐/\lambda k T}−1} d\lambda$'
                            '\n' + r'$[s^{-1} \cdot m^{-2}]$'),
                       0.98, 0.5, color='k', coords='axis', fontsize=20, horizontalalignment='right')
-        annotate_axis(ax1, 'LWIR\n(IRCAM)', np.mean(wlr_ait)*1e6, 5.5e28, color='orange', coords='data',
+        annotate_axis(ax1, 'LWIR\n(IRCAM)', np.mean(wlr_ait) * 1e6, 5.5e28, color='orange', coords='data',
                       horizontalalignment='center', bbox=dict(alpha=0.8))
-        annotate_axis(ax1, 'MWIR\n(FLIR)', np.mean(wlr_air)*1e6, 5.5e28, color='blue', coords='data',
+        annotate_axis(ax1, 'MWIR\n(FLIR)', np.mean(wlr_air) * 1e6, 5.5e28, color='blue', coords='data',
                       horizontalalignment='center', bbox=dict(alpha=0.8))
 
     ax0.set_xlabel('$\lambda$ [$\mu$m]')

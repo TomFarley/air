@@ -16,6 +16,7 @@ import pandas as pd
 import xarray as xr
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.transforms as transforms
 
 from fire.interfaces import io_utils
 from fire.misc import utils
@@ -91,7 +92,29 @@ def add_second_x_scale(ax, x_axis_values, y_values=None, label=None, x_map_func=
 def annotate_axis(ax, string, loc='top_right', x=0.85, y=0.955, fontsize=14, coords='axis', box=True,
                   bbox=(('facecolor', 'w'), ('ec', None), ('lw', 0), ('alpha', 0.5), ('boxstyle', 'round')),
                   horizontalalignment='center', verticalalignment='center', multialignment='center',
-                  sub_underscores=True, margin=0.03, **kwargs):
+                  sub_underscores=True, margin=0.03, clip_on=True, **kwargs):
+    """
+
+    Args:
+        ax:
+        string:
+        loc:
+        x:
+        y:
+        fontsize:
+        coords: Coordinate system of supplied location
+        box:
+        bbox:
+        horizontalalignment:
+        verticalalignment:
+        multialignment:
+        sub_underscores:
+        margin:
+        **kwargs:
+
+    Returns:
+
+    """
     if isinstance(bbox, (tuple, list)):
         bbox = dict(bbox)
     elif isinstance(bbox, dict):
@@ -119,14 +142,17 @@ def annotate_axis(ax, string, loc='top_right', x=0.85, y=0.955, fontsize=14, coo
     else:
         raise NotImplementedError(f'Annotate location: "{loc}"')
 
-    if coords == 'axis':
-        transform = ax.transAxes
-    elif coords == 'data':
-        transform = ax.transData
+    trans_dict = dict(axis=ax.transAxes, axes=ax.transAxes, data=ax.transData)
+    if isinstance(coords, str):
+        transform = trans_dict[coords]
+    elif isinstance(coords, (tuple, list)):
+        transform = [trans_dict[coord] if isinstance(coord, str) else coord for coord in coords]
+        transform = transforms.blended_transform_factory(*transform)
+
     if not box:
         bbox = None
 
-    artist = ax.text(x, y, string, fontsize=fontsize, bbox=bbox, transform=transform,
+    artist = ax.text(x, y, string, fontsize=fontsize, bbox=bbox, transform=transform, clip_on=clip_on,
             horizontalalignment=horizontalalignment, verticalalignment=verticalalignment, multialignment=multialignment,
             **kwargs)
     return artist
@@ -203,9 +229,14 @@ def legend(ax, handles=None, labels=None, legend=True, only_multiple_artists=Tru
         leg = None
         try:
             handles_current, labels_current = ax.get_legend_handles_labels()
+            modify_elements = (handles is not None) or (labels is not None)
+
+            handles = handles_current if (handles is None) else handles
+            labels = labels_current if (labels is None) else labels
+
             # Only produce legend if more than one  artist has a label
-            if (not only_multiple_artists) or (len(handles_current) > 1) or (handles is not None):
-                args = () if handles is None else (handles, labels)
+            if ((not only_multiple_artists) or (len(handles_current) > 1) or modify_elements):
+                args = () if (not modify_elements) else (handles, labels)
                 kws.update(kwargs)
                 leg = ax.legend(*args, **kws)
                 leg.set_draggable(True)
@@ -251,6 +282,8 @@ def save_fig(path_fn, fig=None, path=None, transparent=True, bbox_inches='tight'
              mkdir_depth=None, mkdir_start=None, description='', verbose=True):
     if (not save) or (path_fn is None):
         return False
+    image_formats = make_iterable(image_formats, ignore_types=(None,))
+
     if fig is None:
         fig = plt.gcf()
     if path is not None:
