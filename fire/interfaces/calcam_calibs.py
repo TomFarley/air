@@ -340,6 +340,7 @@ def standardise_analysis_path_definition(analysis_path_dfn, calcam_calib, path_n
     elif ('pixels' in analysis_path_dfn):
         # TODO: Convert pixels dict to data array
         raise NotImplementedError
+        pass
 
     return points_coords_pixels, analysis_path_dfn
 
