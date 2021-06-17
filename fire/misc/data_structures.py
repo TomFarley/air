@@ -59,7 +59,8 @@ meta_defaults_default = {
                   'description': 'Local divertor tile S coordinate for analysis path. This is zero at the start of '
                                  'the analysis path and increases with distance along the analysis path'},
     'i_path': {'label': 'Array index along analysis path', 'units': 'count', 'units_plot': '',
-               'symbol': '$i_{path}$', 'description': 'Array index along analysis path (alternative to R/s_global)'},
+               'symbol': '$i_{path}$',
+               'description': 'Integer array index along analysis path (alternative to R/s_global)'},
     'surface_id': {'label': 'Surface id', 'units': 'count', 'symbol': '$ID_{surface}$',
                   'description': 'Integer ID specifying what machine component/tile etc is visible at that pixel'},
     'temperature_peak': {'label': 'Peak temperature', 'units': '$^\circ$C', 'symbol': '$T_{peak}$',
@@ -159,7 +160,7 @@ def movie_data_to_dataarray(frame_data, frame_times=None, frame_nos=None, meta_d
 
     return frame_data
 
-def attach_standard_meta_attrs(data, varname='all', replace=False, key=None):
+def attach_standard_meta_attrs(data, varname='all', replace=False, key=None, substitutions=None):
     """
 
     Args:
@@ -190,14 +191,21 @@ def attach_standard_meta_attrs(data, varname='all', replace=False, key=None):
 
     key = key[:-1] if key[:-1] in meta_defaults_default else key  # Try removing training path number
 
+    if (key not in meta_defaults_default) and (substitutions is not None):
+        key_short = key
+        for substitution in substitutions:
+            key_short.replace(substitution[0], substitution[1])
+        if key_short in meta_defaults_default:
+            key = key_short
+
     if key not in meta_defaults_default:
-        pass
         for key_short in reversed(list(meta_defaults_default.keys())):  # reverse as longer names generally come later
         #  in dict defn
             if (key_short in key) and (len(key_short) > 1):  # Avoid matching eg 't' if contains letter 't'
                 logger.debug(f'Using {key_short} meta data for {key}')
                 key = key_short
                 break
+    if key not in meta_defaults_default:
         for key_short, value_short in param_aliases.items():
             if (key_short in key) and (len(key_short) > 1):
                 key = value_short
