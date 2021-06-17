@@ -17,7 +17,7 @@ handlers:
     mode: w
     level: DEBUG
     formatter: dated
-    filename: fire.log
+    filename: "{fire}/../tmp/logs/fire.log"
   file_timed:
     class : logging.handlers.TimedRotatingFileHandler
     when: m
