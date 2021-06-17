@@ -15,10 +15,10 @@ from collections import namedtuple
 import numpy as np
 import xarray as xr
 
-from pyIpx.movieReader import ipxReader
-
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
+
+MovieData = namedtuple('movie_plugin_frame_data', ['frame_numbers', 'frame_times', 'frame_data'])
 
 movie_plugin_name = 'ipx'
 plugin_info = {'description': 'This plugin reads IPX1/2 format MAST movie files'}
@@ -45,6 +45,8 @@ def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> 
     :return: Dictionary of ipx file information
     :type: dict
     """
+    from pyIpx.movieReader import ipxReader
+
     if not Path(path_fn).is_file():
         raise FileNotFoundError(f'IPX file does not exist: {path_fn}')
     # Read file header and first frame
@@ -88,14 +90,15 @@ def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> 
 
 def get_detector_window_from_ipx_header(ipx_header, plugin=None, fn=None):
     # TODO: Move to generic movie plugin functions module
-    detector_window = np.array([ipx_header[key] if key in ipx_header else np.nan for key in
-                                ('left', 'top', 'width', 'height')])
-    if None in detector_window:
+
+    left, top, width, height, right, bottom = np.array([ipx_header[key] if key in ipx_header else np.nan for key in
+                                                         ('left', 'top', 'width', 'height', 'right', 'bottom')])
+    detector_window = np.array([left, top, width, height])
+
+    if np.any(np.isnan(detector_window)):
         logger.warning(f'IPX file missing meta data for detector sub-window: {detector_window} ({plugin}, {fn})')
 
     try:
-        right = ipx_header['right']
-        left = ipx_header['left']
         width_calc = right - left
         width = ipx_header['width']
     except KeyError as e:
@@ -106,8 +109,6 @@ def get_detector_window_from_ipx_header(ipx_header, plugin=None, fn=None):
                            f'!= {width} = width')
 
     try:
-        top = ipx_header['top']
-        bottom = ipx_header['bottom']
         height_calc = top - bottom
         height = ipx_header['height']
     except KeyError as e:
@@ -175,7 +176,7 @@ def convert_ipx_header_to_uda_conventions(header: dict) -> dict:
 def read_movie_data(path_fn: Union[str, Path],
                     n_start:Optional[int]=None, n_end:Optional[int]=None, stride:Optional[int]=1,
                     frame_numbers: Optional[Union[Iterable, int]]=None,
-                    transforms: Optional[Iterable[str]]=()) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                    transforms: Optional[Iterable[str]]=()) -> MovieData:
     """Read frame data from MAST IPX movie file format.
 
     :param path_fn: Path to IPX movie file
@@ -188,6 +189,8 @@ def read_movie_data(path_fn: Union[str, Path],
     :return: frame_nos, times, data_frames,
     :type: (np.array, np.array ,np.ndarray)
     """
+    from pyIpx.movieReader import ipxReader
+
     path_fn = Path(path_fn)
     if not path_fn.exists():
         raise FileNotFoundError(f'Ipx file not found: {path_fn}')
@@ -243,13 +246,205 @@ def read_movie_data(path_fn: Union[str, Path],
         n += 1
     vid.release()
 
+    return MovieData(frame_numbers, frame_times, frame_data)
+
+def read_movie_meta_mastmovie(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
+    """Read frame data from MAST IPX movie file format.
+
+    :param path_fn: Path to IPX movie file
+    :type path_fn: str, Path
+    :param transforms: List of of strings describing transformations to apply to frame data. Options are:
+                        'reverse_x', 'reverse_y', 'transpose'
+    :type transforms: list
+    :return: Dictionary of ipx file information
+    :type: dict
+    """
+    from mastvideo import load_ipx_file, VideoDecoder
+
+    if not Path(path_fn).is_file():
+        raise FileNotFoundError(f'IPX file does not exist: {path_fn}')
+
+    # open the file
+    ipx = load_ipx_file(open(path_fn, mode='rb'))
+    ipx.header.validate()
+
+    # display information about the file
+    # print(ipx.header)
+    print(ipx.sensor)
+
+    movie_meta = dict(movie_format='.ipx')
+
+    header_fields = {'num_frames': 'n_frames',
+                     'exposure': 'exposure',
+                     'depth': 'bit_depth',
+                     'lens': 'lens',
+                     'board_temperature': 'board_temperature',
+                     'bytes_per_decoded_frame': 'bytes_per_decoded_frame',
+                     'camera': 'camera',
+                     'count': 'count',
+                     'date_time': 'date_time',
+                     'filter': 'filter',
+                     'frame_height': 'height',
+                     'frame_width': 'width',
+                     'index': 'index',
+                     'orientation': 'orientation',
+                     'pil_image_mode': 'pil_image_mode',
+                     'pixels_per_frame': 'pixels_per_frame',
+                     'pre_exposure': 'pre_exposure',
+                     'sensor_temperature': 'sensor_temperature',
+                     'shot': 'shot',
+                     'strobe': 'strobe',
+                     'trigger': 'trigger',
+                     'view': 'view',
+    }
+
+    movie_meta.update({name: getattr(ipx.header, key) for key, name in header_fields.items()})
+
+    sensor_fields = {
+                     'binning_h': 'binning_h',
+                     'binning_v': 'binning_v',
+                     'count': 'count',
+                     'gain': 'sensor_gain',
+                     'index': 'index',
+                     'offset': 'offset',
+                     'taps': 'taps',
+                     'type': 'sensor_type',
+                     'window_bottom': 'bottom',
+                     'window_left': 'left',
+                     'window_right': 'right',
+                     'window_top': 'top'
+                      }
+    # TODO: Rename meta data window fields to window_<> for all plugins/pass through reformat function
+    movie_meta.update({name: getattr(ipx.sensor, key) for key, name in sensor_fields.items()})
+
+
+    movie_meta['frame_range'] = np.array([0, movie_meta['n_frames']])
+    movie_meta['t_range'] = np.array([ipx.frames[0].time, ipx.frames[-1].time])  # TODO: Refine
+    movie_meta['image_shape'] = np.array([movie_meta['height'], movie_meta['width']])
+    movie_meta['fps'] = movie_meta['n_frames'] / (movie_meta['t_range'][1] - movie_meta['t_range'][0])
+    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta, plugin='ipx', fn=path_fn)
+
+    frame_times = np.array([frame.time for frame in ipx.frames])
+    movie_meta['fps'] = 1 / np.median(np.diff(frame_times))
+
+    # raise NotImplementedError
+    return movie_meta
+
+
+def read_movie_data_mastmovie(path_fn: Union[str, Path],
+                        n_start: Optional[int] = None, n_end: Optional[int] = None, stride: Optional[int] = 1,
+                        frame_numbers: Optional[Union[Iterable, int]] = None,
+                        transforms: Optional[Iterable[str]] = (), verbose: bool = True) -> Tuple[np.ndarray, np.ndarray,
+                                                                                                np.ndarray]:
+    from mastvideo import load_ipx_file, VideoDecoder
+
+    if not Path(path_fn).is_file():
+        raise FileNotFoundError(f'IPX file does not exist: {path_fn}')
+
+
+    # open the file
+    ipx = load_ipx_file(open(path_fn, mode='rb'))
+
+    # video = VideoDecoder(ipx)  # convert to 8bit (interpolate to RGB, if valid for sensor) for conversion to mpeg video
+    # frames = list(video.frames())
+
+    n_frames = ipx.header.num_frames
+
+    frame_data = np.zeros((n_frames, ipx.header.frame_height, ipx.header.frame_width))
+
+    n_start = 0 if (n_start is None) else n_start
+    n_end = n_frames-1 if (n_end is None) else n_end
+    frame_numbers = np.arange(n_start, n_end+1, stride)
+
+    frame_times = np.array([frame.time for frame in ipx.frames])
+
+    # TODO: Deal with non n=0 first frame?
+    # iterate over frames converting to numpy array
+    i = 0
+    for n, frame in enumerate(ipx.frames):
+        if n in frame_numbers:
+            image = ipx.decode_frame(frame.data)  # 'I;16'
+            frame_data[i] = np.array(image)
+            i += 1
+    assert i == n_frames, f"i != n_frames: {i} != {n_frames}"
+
+    message = f'Read ipx file with mastmovie: "{path_fn}"'
+    logger.debug(message)
+    if verbose:
+        print(message)
+
     return frame_numbers, frame_times, frame_data
 
+def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarray, header_dict: dict, verbose: bool=True):
+    from PIL import Image
+    from mastvideo import write_ipx_file, IpxHeader, IpxSensor, SensorType, ImageEncoding
+    from fire.scripts.organise_ircam_raw_files import complete_meta_data_dict
+
+    n_frames, height, width = tuple(movie_data.shape)
+    image_shape = (height, width)
+
+    pulse = header_dict['shot']
+    camera = header_dict['camera']
+
+    header_dict = complete_meta_data_dict(header_dict, n_frames=n_frames, image_shape=image_shape)
+
+    times = header_dict['frame_times']
+    frames = [Image.fromarray(frame, mode='I;16') for frame in movie_data]  # PIL images from np.ndarray
+
+    # exec(f'import pyuda; client = pyuda.Client(); date_time = client.get_shot_date_time({pulse})')
+
+    # fill in some dummy fields
+    header = IpxHeader(
+        shot=pulse,
+        date_time='<placeholder>',
+
+        camera='IRCAM_Velox81kL_0102',
+        view='HL04_A-tangential',
+        lens='25 mm',
+        trigger=-np.abs(header_dict['t_before_pulse']),
+        exposure=int(header_dict['exposure'] * 1e6),
+
+        num_frames=n_frames,
+        frame_width=width,
+        frame_height=height,
+        depth=14,
+    )
+
+    sensor = IpxSensor(
+        type=SensorType.MONO,
+    )
+
+    path_fn_ipx = Path(str(path_fn_ipx).format(**header_dict)).expanduser()
+
+    with write_ipx_file(
+            path_fn_ipx, header, sensor, version=1,
+            encoding=ImageEncoding.JPEG2K,
+    ) as ipx:
+        # write out the frames
+        for time, frame in zip(times, frames):
+            ipx.write_frame(time, frame)
+
+    message = f'Wrote ipx file: "{path_fn_ipx}"'
+    logger.debug(message)
+    if verbose:
+        print(message)
 
 if __name__ == '__main__':
-    ipx_path = Path('../../tests/test_data/mast/').resolve()
-    ipx_fn = 'rir030378.ipx'
-    ipx_path_fn = ipx_path / ipx_fn
-    meta_data = read_movie_meta(ipx_path_fn)
-    frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn)
+    import matplotlib.pyplot as plt
+    # ipx_path = Path('../../../tests/test_data/mast/').resolve()
+    # ipx_fn = 'rir030378.ipx'
+    ipx_path = Path('/home/tfarley/data/movies/mast_u/43651/rit/')
+    ipx_fn = 'rit043651.ipx'
+
+    # meta_data = read_movie_meta_mastmovie(ipx_path / ipx_fn)
+    # print(meta_data)
+    # frame_nos, frame_times, frame_data = read_movie_data_mastmovie(ipx_path / ipx_fn)
+    # print(frame_times)
+
+    meta_data = read_movie_meta(ipx_path / ipx_fn)
+    frame_nos, frame_times, frame_data = read_movie_data(ipx_path / ipx_fn)
     print(meta_data)
+
+    plt.imshow(frame_data[200])
+    plt.show()
+    pass

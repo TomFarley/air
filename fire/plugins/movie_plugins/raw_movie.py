@@ -2,7 +2,7 @@
 #!/usr/bin/env python
 
 """
-This module defines functions for interfacing with MAST (2000-2013) data archives and systems.
+This module defines functions for interfacing raw movie files exported from the IRCAM Works software.
 """
 
 import logging
@@ -30,14 +30,11 @@ plugin_info = {'description': "This plugin reads raw movie files output by the I
 
 
 def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True) -> dict:
-    """Read frame data from imstack image directory ('png','jpg','bmp','tif')
+    """Read meta data for raw movie file (eg exported from the IRCAM Works software) from accompanying json file.
 
-    :param path_fn: Path to imstack image directory
+    :param path_fn: Path to raw movie file or json file
     :type path_fn: str, Path
-    :param transforms: List of of strings describing transformations to apply to frame data. Options are:
-                        'reverse_x', 'reverse_y', 'transpose'
-    :type transforms: list
-    :return: Dictionary of ipx file information
+    :return: Dictionary of meta data from accompanying json meta data file information
     :type: dict
     """
     movie_meta = {}
@@ -72,9 +69,11 @@ def read_movie_data(path_fn: Union[str, Path],
                     frame_numbers: Optional[Union[Iterable, int]]=None,
                     transforms: Optional[Iterable[str]]=(), grayscale: bool=True) -> Tuple[np.ndarray, np.ndarray,
                                                                                      np.ndarray]:
-    """Read frame data from imstack image directory ('png','jpg','bmp','tif').
+    """Read frame data for raw movie file (eg exported from the IRCAM Works software).
 
-    :param path_fn: Path to imstack directory
+    Raw binary of 16 bit integer DL values with no meta data/header
+
+    :param path_fn: Path to raw file
     :type path_fn: str, Path
     :param frame_numbers: Frame numbers to read (should be monotonically increasing)
     :type frame_numbers: Iterable[int]

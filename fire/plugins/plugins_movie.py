@@ -91,6 +91,7 @@ class MovieReader:
     def read_movie_meta_data(self, pulse: Union[int, str], camera: str, machine: str,
                          check_output: bool=True, substitute_unknown_values: bool=False) -> Tuple[Dict[str, Any],
                                                                                                Dict[str, str]]:
+        plugin_names = list(self.plugins.keys())
         exceptions = []
         for name, plugin in self.plugins.items():
             # TODO: Fix hanging on some UDA calls for inexistent pulse numbers
@@ -117,8 +118,9 @@ class MovieReader:
                     self._active_plugin = name
                     break
         else:
-            raise IOError(f'Failed to read movie for {machine}, {camera}, {pulse} with plugins {self.plugins.keys()}.\n'
-                          f'Exceptions: \n{exceptions}')
+            exceptions_str = "\n\n".join([str(e) for e in exceptions])
+            raise IOError(f'Failed to read movie for {machine}, {camera}, {pulse} with plugins {plugin_names}.\n'
+                          f'Exceptions: \n{exceptions_str}')
         return meta_data, origin
 
     def read_movie_data(self, pulse: Union[int, str], camera: str, machine: str,
