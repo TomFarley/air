@@ -4,6 +4,7 @@ fire.egg-info/
 **/__pycache__
 **/.directory
 tmp/*.*
+*.*/tmp/*.*
 !tmp/logs/
 
 figures/*

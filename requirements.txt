@@ -9,10 +9,11 @@ netCDF4==1.4.2
 matplotlib==3.0.2
 natsort==5.5.0
 PyQt5==5.12
+future-fstrings<=1.2.0
+yaml
 pytest
 pytest-arraydiff==0.3
 pytest-cov==2.8.1
 pytest-doctestplus==0.2.0
 Sphinx==1.8.2
 sphinx-rtd-theme==0.4.2
-future-fstrings<=1.2.0

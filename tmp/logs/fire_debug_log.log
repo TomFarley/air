@@ -1,90 +1,84 @@
-2021-03-23 16:04:43,453 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "ray_lengths_in_frame_path0" (replace=True)
-2021-03-23 16:04:45,337 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:204:
-   No standard meta data for "subview_mask_in_frame_path0" ("i"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'temperature_r_peak', 'xpx/clock/lwir-1']
-2021-03-23 16:04:48,045 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:204:
-   No standard meta data for "bad_cad_coords_in_frame_path0" ("bad_cad_coords"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'temperature_r_peak', 'xpx/clock/lwir-1']
-2021-03-23 16:04:49,894 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "spatial_res_x_in_frame_path0" (replace=True)
-2021-03-23 16:04:51,786 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "spatial_res_y_in_frame_path0" (replace=True)
-2021-03-23 16:04:53,727 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "spatial_res_mean_in_frame_path0" (replace=True)
-2021-03-23 16:04:56,088 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "spatial_res_max_in_frame_path0" (replace=True)
-2021-03-23 16:04:58,080 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:204:
-   No standard meta data for "wire_frame_in_frame_path0" ("i"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'temperature_r_peak', 'xpx/clock/lwir-1']
-2021-03-23 16:04:59,987 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "sector_in_frame_path0" (replace=True)
-2021-03-23 16:05:03,137 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:19,789 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "bad_cad_coords_in_frame_path0" ("bad_cad_coords"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:22,152 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "spatial_res_x_in_frame_path0" ("spatial_res_x"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:24,368 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "spatial_res_y_in_frame_path0" ("spatial_res_y"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:26,451 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "spatial_res_mean_in_frame_path0" ("spatial_res_mean"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:28,576 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "spatial_res_max_in_frame_path0" ("spatial_res_max"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:30,691 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "wire_frame_gray_in_frame_path0" ("wire_frame_gray"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:32,883 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "sector_in_frame_path0" ("sector"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:35,146 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "s_global_in_frame_path0" (replace=True)
-2021-03-23 16:05:03,145 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:35,155 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "surface_id_in_frame_path0" (replace=True)
-2021-03-23 16:05:03,153 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "material_id_in_frame_path0" (replace=True)
-2021-03-23 16:05:03,204 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:35,164 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "material_id_in_frame_path0" ("material_id"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:35,222 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "temperature_in_frame_path0" (replace=True)
-2021-03-23 16:05:03,237 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,039 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "i_path0" (replace=False)
-2021-03-23 16:05:03,250 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,057 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "R_path0" (replace=False)
-2021-03-23 16:05:03,261 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,073 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "phi_path0" (replace=False)
-2021-03-23 16:05:03,273 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,088 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "s_global_path0" (replace=False)
-2021-03-23 16:05:03,286 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "segment_path0" (replace=False)
-2021-03-23 16:05:03,296 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,103 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "segment_path0" ("segment_path0"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:41,113 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "y_pix_path0" (replace=False)
-2021-03-23 16:05:03,305 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,123 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "x_pix_path0" (replace=False)
-2021-03-23 16:05:03,315 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,134 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "frame_data_path0" (replace=False)
-2021-03-23 16:05:03,322 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,144 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "nuc_frame_path0" (replace=False)
-2021-03-23 16:05:03,331 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,153 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:205:
+   Using frame_data meta data for frame_data_nuc_path0
+2021-06-17 11:09:41,154 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "frame_data_nuc_path0" (replace=False)
-2021-03-23 16:05:03,339 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,164 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "x_path0" (replace=False)
-2021-03-23 16:05:03,347 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,173 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "y_path0" (replace=False)
-2021-03-23 16:05:03,354 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,183 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "z_path0" (replace=False)
-2021-03-23 16:05:03,362 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,192 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "phi_deg_path0" (replace=False)
-2021-03-23 16:05:03,369 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,202 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "theta_path0" (replace=False)
-2021-03-23 16:05:03,378 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "ray_lengths_path0" (replace=False)
-2021-03-23 16:05:03,385 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "subview_mask_path0" (replace=False)
-2021-03-23 16:05:03,393 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "bad_cad_coords_path0" (replace=False)
-2021-03-23 16:05:03,401 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "spatial_res_x_path0" (replace=False)
-2021-03-23 16:05:03,410 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "spatial_res_y_path0" (replace=False)
-2021-03-23 16:05:03,418 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "spatial_res_mean_path0" (replace=False)
-2021-03-23 16:05:03,426 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "spatial_res_max_path0" (replace=False)
-2021-03-23 16:05:03,434 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "wire_frame_path0" (replace=False)
-2021-03-23 16:05:03,443 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "sector_path0" (replace=False)
-2021-03-23 16:05:03,451 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,211 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "ray_lengths_path0" ("ray_lengths_path0"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:41,221 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "subview_mask_path0" ("subview_mask_path0"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:41,231 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "bad_cad_coords_path0" ("bad_cad_coords_path0"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:41,241 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "spatial_res_x_path0" ("spatial_res_x_path0"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:41,251 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "spatial_res_y_path0" ("spatial_res_y_path0"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:41,260 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "spatial_res_mean_path0" ("spatial_res_mean_path0"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:41,270 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "spatial_res_max_path0" ("spatial_res_max_path0"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:41,280 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "wire_frame_gray_path0" ("wire_frame_gray_path0"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:41,291 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "sector_path0" ("sector_path0"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:41,301 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "surface_id_path0" (replace=False)
-2021-03-23 16:05:03,460 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "material_id_path0" (replace=False)
-2021-03-23 16:05:03,469 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
+2021-06-17 11:09:41,311 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "material_id_path0" ("material_id_path0"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:41,324 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:229:
    Added standard meta data for "temperature_path0" (replace=False)
-2021-03-23 16:05:03,478 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "mask_known_material_path0" (replace=False)
-2021-03-23 16:05:03,617 - INFO - fire.scheduler_workflow - scheduler_workflow:562:
+2021-06-17 11:09:41,334 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:231:
+   No standard meta data for "mask_known_material_path0" ("mask_known_material_path0"). Defaults for: ['t', 'S', 'R', 'T', 'q', 'frame_data', 'x', 'y', 'z', 'n', 'x_pix', 'y_pix', 'phi', 'phi_deg', 'theta', 's_global', 's_local', 'i_path', 'surface_id', 'temperature_peak', 'heat_flux_peak', 'heat_flux_r_peak', 'heat_flux_s_peak', 'heat_flux_total', 'heat_flux_n_peaks', 'temperature_r_peak', 'xpx/clock/lwir-1']
+2021-06-17 11:09:41,512 - INFO - fire.scheduler_workflow - scheduler_workflow:593:
    Surfaces visible along path "MASTU_lower_T2T3T4T5_radial_3": {2: 'T2', 3: 'T3', 4: 'T4', 5: 'T5'}
-2021-03-23 16:05:06,159 - WARNING - fire.physics.heat_flux - calc_heatflux:76:
+2021-06-17 11:09:41,569 - WARNING - fire.physics.heat_flux - calc_heatflux:76:
    s_global coordinate contains nans. Replacing with R
-2021-03-23 16:05:06,162 - WARNING - fire.physics.heat_flux - calc_heatflux:96:
-   Transposed THEODOR temperature input data to start with spatial dimension (t,s) -> (s,t)
-2021-03-23 16:05:06,433 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:202:
-   Added standard meta data for "heat_flux_path0" (replace=False)
