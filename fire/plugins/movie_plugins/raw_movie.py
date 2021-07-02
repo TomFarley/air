@@ -15,7 +15,6 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 
-from pyIpx.movieReader import imstackReader
 from fire.interfaces.interfaces import json_load
 from fire.plugins.movie_plugins.ipx import get_detector_window_from_ipx_header
 from fire.interfaces.camera_data_formats import read_ircam_raw_int16_sequence_file
