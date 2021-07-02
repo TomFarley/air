@@ -29,7 +29,7 @@ _fire_user_dir = _os.environ.get(_fire_user_dir_env_var, None)
 if _fire_user_dir is None:
     _fire_user_dir = "~/.fire/"
     print(f'- Environment variable "{_fire_user_dir_env_var}" has not been set. Using default path '
-          f'"{user_files_path}" for configuration file and user outputs.\n'
+          f'"{_fire_user_dir}" for configuration file and user outputs.\n'
           f'- To set your "{_fire_user_dir_env_var}" environment variable (on linux) do:\n'
           f'- $ export {_fire_user_dir_env_var}="<my_path>"  # It is recommended to add this to your .bashrc')
     _os.environ[_fire_user_dir_env_var] = str(_fire_user_dir)  # visible in this process + all children
