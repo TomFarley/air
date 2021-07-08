@@ -239,20 +239,20 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
             debug_plots.debug_plot_timings(path_data, pulse=pulse)
 
         if debug.get('strike_point_loc', False):
-            heat_flux = path_data[f'heat_flux_peak_{path}'].values
+            heat_flux = path_data[f'heat_flux_amplitude_peak_global_{path}'].values
             heat_flux_thresh = np.nanmin(heat_flux) + 0.03 * (np.nanmax(heat_flux)-np.nanargmin(heat_flux))
-            debug_plots.debug_plot_temporal_profile_1d(path_data, params=('heat_flux_r_peak',),
+            debug_plots.debug_plot_temporal_profile_1d(path_data, params=('heat_flux_R_peak',),
                                                        path_name=analysis_path_keys, x_var='t',
                                                        heat_flux_thresh=heat_flux_thresh, meta_data=meta_data,
                                                        machine_plugins=machine_plugins)
-            debug_plots.debug_plot_temporal_profile_1d(path_data, params=('heat_flux_r_peak', 'heat_flux_peak'),
+            debug_plots.debug_plot_temporal_profile_1d(path_data, params=('heat_flux_R_peak', 'heat_flux_amplitude_peak_global'),
                                                        path_name=analysis_path_keys, x_var='t',
                                                        heat_flux_thresh=heat_flux_thresh, meta_data=meta_data,
                                                        machine_plugins=machine_plugins)
         if output.get('strike_point_loc', False):
             path_fn = Path(paths_output['csv_data']) / f'strike_point_loc-{machine}-{camera}-{pulse}.csv'
-            fire.interfaces.io_utils.to_csv(path_fn, path_data, cols=f'heat_flux_r_peak_{path}', index='t', x_range=[0, 0.6],
-                                            drop_other_coords=True, verbose=True)
+            fire.interfaces.io_utils.to_csv(path_fn, path_data, cols=f'heat_flux_R_peak_{path}', index='t',
+                                            x_range=[0, 0.6], drop_other_coords=True, verbose=True)
 
 
 
@@ -363,8 +363,8 @@ def review_shot_list():
     # shots = np.arange(44016, 44073)
 
     shot_start = latest_uda_shot_number()
-    # n_shots = 100
-    n_shots = 5
+    n_shots = 100
+    # n_shots = 5
     shots = np.arange(shot_start, shot_start-n_shots, -1)  # [::-1]
 
     debug = {'calcam_calib_image': False, 'debug_detector_window': False,

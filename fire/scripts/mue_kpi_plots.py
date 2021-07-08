@@ -32,11 +32,11 @@ def check_time_axis_rescale():
     # plt.contourf(path_data['heat_flux_path0'])
 
     plt.figure()
-    plt.plot(path_data['heat_flux_peak_path0'].t,path_data['heat_flux_peak_path0'].values, label='raw', ls=':')
+    plt.plot(path_data['heat_flux_amplitude_peak_global_path0'].t,path_data['heat_flux_amplitude_peak_global_path0'].values, label='raw', ls=':')
 
     if pulse >= 43543 and pulse <= 43621:
         t_scale_factor = 0.616342 / 0.56744
-        plt.plot(path_data['heat_flux_peak_path0'].t*t_scale_factor,path_data['heat_flux_peak_path0'].values,
+        plt.plot(path_data['heat_flux_amplitude_peak_global_path0'].t*t_scale_factor,path_data['heat_flux_amplitude_peak_global_path0'].values,
                  label='scaled', alpha=0.7)
 
 

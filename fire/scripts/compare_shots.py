@@ -141,7 +141,7 @@ if __name__ == '__main__':
     fire.active_machine_plugin = (machine_plugins, machine_plugins_info)
 
     # signals = {'heat_flux_path0': dict(x_coord='s_global_path0', reduce=[('t', np.mean, ())], offset_x_peak=True)}
-    signals = {'heat_flux_peak_path0': dict()}
+    signals = {'heat_flux_amplitude_peak_global_path0': dict()}
     # pulses = {43163: {}, 43183: {}}
     # pulses = {43413: {}, 43415: {}}
     # pulses = {43583 : {}}
@@ -234,8 +234,8 @@ if __name__ == '__main__':
     plot_tools.show_if(True, tight_layout=True)
 
     if False:
-        signals_mixed = [['heat_flux_peak_path0'],
-                     ['heat_flux_r_peak_path0'],
+        signals_mixed = [['heat_flux_amplitude_peak_global_path0'],
+                     ['heat_flux_R_peak_path0'],
                      # ['/ane/density'],
                      # [('xim/da/hm10/t', 'xim/da/hm10/r')],
                      # [['xpx/clock/lwir-1'], ['/AMC/ROGEXT/TF']],
@@ -247,8 +247,8 @@ if __name__ == '__main__':
         # plot_tools.show_if(True, tight_layout=True)
 
     if False:
-        signals_mixed = [[['heat_flux_peak_path0'], ['temperature_peak_path0']],
-                         ['heat_flux_r_peak_path0', 'temperature_r_peak_path0'],
+        signals_mixed = [[['heat_flux_amplitude_peak_global_path0'], ['temperature_amplitude_peak_global_path0']],
+                         ['heat_flux_R_peak_path0', 'temperature_R_peak_path0'],
                          [('xim/da/hm10/t', 'xim/da/hm10/r')],
                          # [['xpx/clock/lwir-1'], ['/AMC/ROGEXT/TF']],
                          ]

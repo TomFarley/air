@@ -620,8 +620,8 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             artist = data.plot(center=False, ax=ax_i, **kws)
 
         # Mark peak
-        param_peak = f'{param}_peak_{path_name}'
-        param_r_peak = f'{param}_r_peak_{path_name}'
+        param_peak = f'{param}_amplitude_peak_global_{path_name}'
+        param_r_peak = f'{param}_R_peak_{path_name}'
         if mark_peak and (param_r_peak in data_paths):
             # TODO: filter instead with moving window stdev of r pos?
             data_peak = data_paths[param_peak].values
@@ -698,7 +698,7 @@ def debug_plot_spatial_profile_1d(data_paths, param='temperature', path_names='p
         plt.tight_layout()
         plt.show()
 
-def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_r_peak', 'heat_flux_peak'), path_name='path0',
+def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_R_peak', 'heat_flux_amplitude_peak_global'), path_name='path0',
                                    x_var='t', heat_flux_thresh=-0.0, meta_data=None, machine_plugins=None):
     # TODO: Move general code to plot_tools.py func
     colors = ('tab:blue', 'tab:orange', 'tab:green', 'tab:red')
@@ -709,7 +709,7 @@ def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_r_peak', 'heat
     ax.tick_params(axis='y', labelcolor=colors[0])
 
     if heat_flux_thresh not in (None, False):
-        peak_heat_flux = data_paths[f'heat_flux_peak_{path}']
+        peak_heat_flux = data_paths[f'heat_flux_amplitude_peak_global_{path}']
         mask_pos_heat_flux = peak_heat_flux > heat_flux_thresh
         peak_heat_flux_pos = peak_heat_flux[mask_pos_heat_flux]
 
@@ -753,9 +753,10 @@ def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_r_peak', 'heat
 
     return fig, ax
 
-def debug_plot_timings(data_profiles, pulse, params=('heat_flux_peak_{path}','temperature_peak_{path}',),
-                       path_name='path0',
-                       comparison_signals=(('xim/da/hm10/t', 'xim/da/hm10/r'), 'xpx/clock/lwir-1'), separate_axes=True):
+def debug_plot_timings(data_profiles, pulse, params=('heat_flux_amplitude_peak_global_{path}',
+                                                     'temperature_amplitude_peak_global_{path}',),
+                       path_name='path0', comparison_signals=(('xim/da/hm10/t', 'xim/da/hm10/r'),
+                                                               'xpx/clock/lwir-1'), separate_axes=True):
     from fire.interfaces import uda_utils
     from fire.physics.physics_parameters import find_peaks_info
     # uda_module, client = uda_utils.get_uda_client(use_mast_client=True, try_alternative=True)

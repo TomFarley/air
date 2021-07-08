@@ -337,9 +337,9 @@
             ],
             "time": [
                 "heat_flux_total",
-                "heat_flux_peak",
-                "heat_flux_s_peak",
-                "heat_flux_r_peak"
+                "heat_flux_amplitude_peak_global",
+                "heat_flux_s_global_peak",
+                "heat_flux_R_peak"
             ],
             "image": [
 
@@ -403,7 +403,7 @@
             "units": "m",
             "description": "Divertor surface 's' coordinate of peak in heat flux along the IR analysis path"
         },
-        "heat_flux_r_peak": {
+        "heat_flux_R_peak": {
             "long_name": "$r_{q,peak}$",
             "units": "m",
             "description": "Radial coordinate of peak in heat flux along the IR analysis path"
