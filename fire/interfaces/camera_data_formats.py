@@ -121,7 +121,7 @@ def read_ircam_raw_int16_sequence_file(path_fn, flip_y=True, transpose=False, n_
 
     frame_numbers = np.arange(n_start, n_end+1)
     n_frames = len(frame_numbers)
-    data_movie = np.zeros((n_frames, height, width))
+    data_movie = np.zeros((n_frames, height, width), dtype=np.uint16)
 
     # TODO: Speed up by having single vectorised function to convert data? raw_frame_stack_to_images
     logger.info(f'Reading {n_frames} frames from IRCAM raw file ({n_bytes_file} bytes, {n_frames_movie} frames): '
