@@ -61,6 +61,7 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
 
     # Optional data
     frame_data = image_data.get('frame_data')
+    frame_times = image_data.get('t')
 
     calcam_calib = calcam.Calibration(load_filename=str(files['calcam_calib']))
 
@@ -164,7 +165,7 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
                                          cbar_range=cbar_range,
                                          frame_label=f'{camera.upper()} {pulse} $t=${{t:0.1f}} ms',
                                          cbar_label='$T$ [$^\circ$C]',
-                                         label_values={'t': meta_data['frame_times']*1e3}, show=show)
+                                         label_values={'t': frame_times.values*1e3}, show=show)
         if (debug.get('movie_temperature_animation_gif', False) and
                 (not debug.get('movie_temperature_animation', False))):
             plot_tools.close_all_mpl_plots(close_all=True, verbose=True)
@@ -267,7 +268,7 @@ def review_shot():
     # pulse = 43547
     # pulse = 43415  # Peter Ryan's strike point sweep for LP checks
 
-    pulse = 43583  # 2xNBI - Kevin choice
+    # pulse = 43583  # 2xNBI - Kevin choice
     # pulse = 43587  #
     # pulse = 43591  #
     # pulse = 43596  #
@@ -286,7 +287,7 @@ def review_shot():
     # pulse = 43415  # LP and IR data --
     # pulse = 43412  # LP and IR data --
 
-    # pulse = 43805  # Strike point sweep to T5 - good data for IR and LP
+    pulse = 43805  # Strike point sweep to T5 - good data for IR and LP
     # pulse = 43823  # Strike point very split on T2 at t=0.4-0.5 s
     # pulse = 43835  # Strike point split
     # pulse = 43852
@@ -335,7 +336,7 @@ def review_shot():
              'movie_intensity_stats': False,
          'movie_data_animation': False, 'movie_data_nuc_animation': False,
              'movie_temperature_animation': True,
-             'movie_temperature_animation_gif': True,
+             'movie_temperature_animation_gif': False,
          'spatial_coords': False,
          'spatial_res': False,
          'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
@@ -402,5 +403,5 @@ def review_shot_list():
     print(f'Finished review of shots {shots}: \n{status}')
 
 if __name__ == '__main__':
-    # review_shot()
-    review_shot_list()
+    review_shot()
+    # review_shot_list()
