@@ -96,37 +96,65 @@ def write_ipx_example(verbose=True):
     if verbose:
         print(message)
 
-def download_ipx_via_http_request(camera, pulse, path_out='~/data/movies/{machine}/{pulse}/',
-                                  fn_out='{camera}0{pulse}.ipx', verbose=True):
-    import requests
-    from fire.interfaces.io_basic import mkdir
 
-    machine = 'mast_u' if (pulse > 40000) else 'mast'
+def rewrite_ipx_file_with_mastvideo(pulse, camera='rir'):
+    from fire.plugins.movie_plugins.ipx import (read_movie_data_with_mastmovie, read_movie_data_with_mastmovie,
+        read_movie_data, read_movie_meta, write_ipx_with_mastmovie)
 
-    path_out = Path(path_out.format(camera=camera, pulse=pulse, machine=machine)).expanduser()
-    fn_out = fn_out.format(camera=camera, pulse=pulse, machine=machine)
-    path_fn = path_out / fn_out
-    mkdir(path_out, depth=2)
+    n = 350
 
-    url = f'http://video-replay-dev.mastu.apps.l/0{pulse}/{camera}/raw'
-    r = requests.get(url, allow_redirects=True)
+    fn_ipx_in = Path(f'/net/fuslsc.mast.l/data/MAST_IMAGES/0{str(pulse)[:2]}/{pulse}/{camera}0{pulse}.ipx')
+    fn_ipx_out = f'{camera}0{pulse}_test.ipx'
 
-    if b'404 Not Found' in r.content:
-        message = f'Failed to write ipx file to "{path_fn}" from {url}. URL not found.'
-        logger.warning(message)
-    else:
-        open(path_fn, 'wb').write(r.content)
-        message = f'Wrote ipx file to "{path_fn}" from {url}'
+    frame_numbers, frame_times, data_original = read_movie_data(fn_ipx_in)
+    meta_original = read_movie_meta(fn_ipx_in)
+    meta_original['frame_times'] = frame_times
+    meta_original['shot'] = pulse
 
-    logger.debug(message)
-    if verbose:
-        print(message)
+    pil_frames = write_ipx_with_mastmovie(fn_ipx_out, data_original, header_dict=meta_original, apply_nuc=False)
 
-    return fn_out
+    frame_numbers, frame_times, data_new = read_movie_data(fn_ipx_out)
+    meta_new = read_movie_meta(fn_ipx_out)
+
+    data_diff = data_new - data_original
+    data_diff_max_frames = np.max(data_diff, axis=(1,2))
+    n_worst = np.argmax(data_diff_max_frames)
+
+    frame_original = data_original[n_worst]
+    frame_new = data_new[n_worst]
+
+    print(meta_original)
+    print(meta_new)
+    print('Original:')
+    print(frame_original[200:250, 200:250])
+    print('New:')
+    print(frame_new[200:250, 200:250])
+    print(data_diff_max_frames)
+    print(np.sort(data_diff_max_frames)[-10:])
+    print(f'Max movie diff = {np.max(data_diff)}')
+    print(f'n_worst = {n_worst}')
+
+    # plt.ion()
+    fig, (ax0, ax1) = plt.subplots(1, 2, sharex=True, sharey=True)
+    fig.suptitle(f'{pulse}, n={n_worst}')
+    ax0.imshow(frame_original, interpolation='none', origin='upper', cmap='gray', vmin=frame_original.min(),
+               vmax=2**14-1)
+    ax0.set_title(f'Original')
+    im2 = ax1.imshow(frame_new, interpolation='none', origin='upper', cmap='gray', vmin=frame_new.min(), vmax=2**14-1)
+    ax1.set_title(f'Mastvideo output')
+    plt.colorbar(im2)
+    plt.tight_layout()
+    plt.draw()
+    plt.show()
+
+    pil_frames[n].show(title='PIL native show')
+    pass
 
 if __name__ == '__main__':
-    # pulse = 27880
-    pulse = 43651
+
+    # pulse = 14997
+    pulse = 27880
+    # pulse = 43651
     # pulse = 30378
     # pulse = 28000
 
@@ -136,8 +164,10 @@ if __name__ == '__main__':
 
     machine = 'mast_u'
 
+    rewrite_ipx_file_with_mastvideo(pulse, camera)
+
     # download_ipx_via_http_request(camera, pulse)
     # read_ipx_example('rgb', 30378)
-    read_ipx_example(camera, pulse, machine=machine)
-    write_ipx_example()
+    # read_ipx_example(camera, pulse, machine=machine)
+    # write_ipx_example()
     pass

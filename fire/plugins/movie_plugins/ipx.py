@@ -74,6 +74,7 @@ def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> 
     movie_meta['n_frames'] = ipx_header['n_frames']
     movie_meta['frame_range'] = np.array([0, last_frame])
     movie_meta['t_range'] = np.array([float(frame_header0['time_stamp']), float(frame_header_end['time_stamp'])])
+    movie_meta['t_before_pulse'] = np.abs(ipx_header.get('trigger', movie_meta['t_range'][0]))
     movie_meta['image_shape'] = np.array(frame0.shape)
     movie_meta['fps'] = (last_frame) / np.ptp(movie_meta['t_range'])
     movie_meta['exposure'] = ipx_header['exposure']
@@ -215,7 +216,7 @@ def read_movie_data(path_fn: Union[str, Path],
     if any(np.fmod(frame_numbers, 1) > 1e-5):
         raise ValueError(f'Fractional frame numbers requested from ipx file: {frame_numbers}')
     # Allocate memory for frames
-    frame_data = np.zeros((len(frame_numbers), ipx_header['height'], ipx_header['width']))
+    frame_data = np.zeros((len(frame_numbers), ipx_header['height'], ipx_header['width']), dtype=np.uint16)
     frame_times = np.zeros_like(frame_numbers, dtype=float)
 
     # To efficiently read the video the frames should be loaded in monotonically increasing order
@@ -246,9 +247,11 @@ def read_movie_data(path_fn: Union[str, Path],
         n += 1
     vid.release()
 
+    frame_data = frame_data.astype(np.uint16)
+
     return MovieData(frame_numbers, frame_times, frame_data)
 
-def read_movie_meta_mastmovie(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
+def read_movie_meta_with_mastmovie(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
     """Read frame data from MAST IPX movie file format.
 
     :param path_fn: Path to IPX movie file
@@ -331,11 +334,12 @@ def read_movie_meta_mastmovie(path_fn: Union[str, Path], transforms: Iterable[st
     return movie_meta
 
 
-def read_movie_data_mastmovie(path_fn: Union[str, Path],
-                        n_start: Optional[int] = None, n_end: Optional[int] = None, stride: Optional[int] = 1,
-                        frame_numbers: Optional[Union[Iterable, int]] = None,
-                        transforms: Optional[Iterable[str]] = (), verbose: bool = True) -> Tuple[np.ndarray, np.ndarray,
-                                                                                                np.ndarray]:
+def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
+                                   n_start: Optional[int] = None, n_end: Optional[int] = None,
+                                   stride: Optional[int] = 1,
+                                   frame_numbers: Optional[Union[Iterable, int]] = None,
+                                   transforms: Optional[Iterable[str]] = (),
+                                   verbose: bool = True) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     from mastvideo import load_ipx_file, VideoDecoder
 
     if not Path(path_fn).is_file():
@@ -375,40 +379,68 @@ def read_movie_data_mastmovie(path_fn: Union[str, Path],
 
     return frame_numbers, frame_times, frame_data
 
-def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarray, header_dict: dict, verbose: bool=True):
+def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarray, header_dict: dict,
+                             apply_nuc=False, verbose: bool=True):
     from PIL import Image
     from mastvideo import write_ipx_file, IpxHeader, IpxSensor, SensorType, ImageEncoding
+    from matplotlib import cm
     from fire.scripts.organise_ircam_raw_files import complete_meta_data_dict
+    from fire.misc.utils import filter_kwargs
+
+    movie_data = movie_data.astype(np.uint16)
 
     n_frames, height, width = tuple(movie_data.shape)
     image_shape = (height, width)
 
-    pulse = header_dict['shot']
-    camera = header_dict['camera']
-
-    header_dict = complete_meta_data_dict(header_dict, n_frames=n_frames, image_shape=image_shape)
-
+    pulse = header_dict.get('shot', header_dict.get('pulse'))
+    camera = header_dict.get('camera', 'IRCAM_Velox81kL_0102')
     times = header_dict['frame_times']
-    frames = [Image.fromarray(frame, mode='I;16') for frame in movie_data]  # PIL images from np.ndarray
 
-    # exec(f'import pyuda; client = pyuda.Client(); date_time = client.get_shot_date_time({pulse})')
+    trigger = header_dict.get('t_before_pulse', header_dict.get('trigger',
+                                                                header_dict.get('ipx_header', {}).get('trigger')))
+
+    # TODO: Use pycpf when it working to get datetime eg '2013-06-11T14:27:21'
+    header_dict_subset = dict(shot=pulse, date_time='<placeholder>', camera=camera,
+                               view='HL04_A-tangential', lens='25 mm', trigger=-np.abs(trigger),
+                               exposure=int(header_dict['exposure'] * 1e6), num_frames=n_frames, frame_width=width,
+                               frame_height=height, depth=14,
+                               # codec='jp2',
+                              # file_format='IPX 01',
+                               # offset=0.0, ccdtemp=-1, numFrames, filter, codex='JP2', ID='IPX 01'
+        )
+    if image_shape == (256, 320):
+        # header_dict_subset['top'] = 0
+        # header_dict_subset['bottom'] = 0
+        pass
+    else:
+        # raise NotImplementedError(f'Detector subwindowed: {image_shape}')
+        print(f'Detector subwindowed? image_shape={image_shape}')
+
+    # header_dict = complete_meta_data_dict(header_dict, n_frames=n_frames, image_shape=image_shape)
+    # header_dict = {**header_dict_default, **header_dict}
+    #
+    # times = header_dict['frame_times']
+    # frames = [Image.fromarray(frame, mode='I;16') for frame in movie_data]  # PIL images from np.ndarray
+    #
+    # # exec(f'import pyuda; client = pyuda.Client(); date_time = client.get_shot_date_time({pulse})')
+    # # TODO: Remap header field names
+    # # header_dict_subset = {key: value for key, value in header_dict.items()
+    # #                       if key not in ('t_before_pulse', 'frame_times', 'n_frames', 'image_shape', 'detector_window')}
+    # name_conventions = dict(pulse='shot', t_before_pulse='trigger',)
+
+    # header_dict_subset = filter_kwargs(header_dict, funcs=(IpxHeader,), kwarg_aliases=name_conventions)
+
+    nuc_frame = copy(movie_data[1])
+    if not apply_nuc:
+        nuc_frame *= 0
+    frames_ndarray = [frame - nuc_frame for frame in movie_data]  # for plotting with matplotlib
+    frames = [Image.fromarray(frame-nuc_frame, mode='I;16') for frame in frames_ndarray]  #
+    # frames = [Image.fromarray(np.uint8(cm.Greys(frame-nuc_frame))*255, mode='I;16') for frame in movie_data]  #
+    # PIL images
+    # frames = [frame.convert('I;16') for frame in frames]
 
     # fill in some dummy fields
-    header = IpxHeader(
-        shot=pulse,
-        date_time='<placeholder>',
-
-        camera='IRCAM_Velox81kL_0102',
-        view='HL04_A-tangential',
-        lens='25 mm',
-        trigger=-np.abs(header_dict['t_before_pulse']),
-        exposure=int(header_dict['exposure'] * 1e6),
-
-        num_frames=n_frames,
-        frame_width=width,
-        frame_height=height,
-        depth=14,
-    )
+    header = IpxHeader(**header_dict_subset)
 
     sensor = IpxSensor(
         type=SensorType.MONO,
@@ -428,6 +460,36 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
     logger.debug(message)
     if verbose:
         print(message)
+
+    return frames
+
+def download_ipx_via_http_request(camera, pulse, path_out='~/data/movies/{machine}/{pulse}/',
+                                  fn_out='{camera}0{pulse}.ipx', verbose=True):
+    import requests
+    from fire.interfaces.io_basic import mkdir
+
+    machine = 'mast_u' if (pulse > 40000) else 'mast'
+
+    path_out = Path(path_out.format(camera=camera, pulse=pulse, machine=machine)).expanduser()
+    fn_out = fn_out.format(camera=camera, pulse=pulse, machine=machine)
+    path_fn = path_out / fn_out
+    mkdir(path_out, depth=2)
+
+    url = f'http://video-replay-dev.mastu.apps.l/0{pulse}/{camera}/raw'
+    r = requests.get(url, allow_redirects=True)
+
+    if b'404 Not Found' in r.content:
+        message = f'Failed to write ipx file to "{path_fn}" from {url}. URL not found.'
+        logger.warning(message)
+    else:
+        open(path_fn, 'wb').write(r.content)
+        message = f'Wrote ipx file to "{path_fn}" from {url}'
+
+    logger.debug(message)
+    if verbose:
+        print(message)
+
+    return fn_out
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt

@@ -57,69 +57,84 @@ def complete_meta_data_dict(meta_data_dict, n_frames=None, image_shape=None, rep
         dict_out.update(meta_data_dict)
     return dict_out
 
-def generate_ipx_file_from_ircam_raw(path_fn_raw, path_fn_ipx, meta_data_dict, verbose=True):
-    from mastvideo import write_ipx_file, IpxHeader, IpxSensor, SensorType, ImageEncoding
-    from fire.interfaces.camera_data_formats import read_ircam_raw_int16_sequence_file
+def generate_ipx_file_from_ircam_raw(path_fn_raw, path_fn_ipx, pulse, verbose=True, plot_check=True):
+    # from fire.interfaces.camera_data_formats import read_ircam_raw_int16_sequence_file
+    from fire.plugins.movie_plugins.raw_movie import read_movie_data, read_movie_meta
+    from fire.plugins.movie_plugins.ipx import write_ipx_with_mastmovie
+    from fire.plugins.movie_plugins.ipx import read_movie_data as read_movie_data_ipx
+    from fire.plugins.movie_plugins.ipx import read_movie_meta as read_movie_meta_ipx
     from PIL import Image
     # from ccfepyutils.mast_data.get_data import get_session_log_data
     # import pyuda
     # client = pyuda.Client()
 
-    frame_numbers, data_movie = read_ircam_raw_int16_sequence_file(path_fn_raw, flip_y=True, transpose=False)
+    frame_numbers, frame_times, frame_data = read_movie_data(path_fn_raw)
+    meta_data_dict = read_movie_meta(path_fn_raw)
     print(f'Read IRCAM raw file {path_fn_raw}')
 
-    n_frames, height, width = tuple(data_movie.shape)
-    image_shape = (height, width)
+    # frame_data = frame_data - frame_data[1]  # tmp
 
-    pulse = meta_data_dict['shot']
-    camera = meta_data_dict['camera']
+    meta_data_dict['shot'] = int(pulse)
+    if meta_data_dict['fps'] != 400:  # When fps was set to 430 is was actually still aprox 400
+        meta_data_dict['fps'] = 400
+        meta_data_dict = complete_meta_data_dict(meta_data_dict, replace=True)  # Update frame times
+        # TODO: Get frame times from trigger signal?
 
-    meta_data_dict = complete_meta_data_dict(meta_data_dict, n_frames=n_frames, image_shape=image_shape)
+    meta_data_dict['frame_times'] = frame_times
+    # n_frames, height, width = tuple(frame_data.shape)
+    # image_shape = (height, width)
+    #
+    # pulse = meta_data_dict['shot']
+    # # camera = meta_data_dict['camera']
+    #
+    # meta_data_dict = complete_meta_data_dict(meta_data_dict, n_frames=n_frames, image_shape=image_shape)
+    #
 
-    times = meta_data_dict['frame_times']
-    nuc_frame = data_movie[1]
-    frames_ndarray = [frame - nuc_frame for frame in data_movie]
-    frames = [Image.fromarray(frame-nuc_frame, mode='I;16') for frame in data_movie]  # PIL images
-    # frames = [frame.convert('I;16') for frame in frames]
 
     # exec(f'import pyuda; client = pyuda.Client(); date_time = client.get_shot_date_time({pulse})')
 
     # fill in some dummy fields
-    header = IpxHeader(
-        shot=pulse,
-        date_time='<placeholder>',
+    # header = dict(
+    #     shot=pulse,
+    #     date_time='<placeholder>',
+    #     camera='IRCAM_Velox81kL_0102',
+    #     view='HL04_A-tangential',
+    #     lens='25 mm',
+    #     trigger=-np.abs(meta_data_dict['t_before_pulse']),
+    #     exposure=int(meta_data_dict['exposure']*1e6),
+    #     num_frames=n_frames,
+    #     frame_width=width,
+    #     frame_height=height,
+    #     depth=14,
+    # )
+    pil_frames = write_ipx_with_mastmovie(path_fn_ipx, frame_data, header_dict=meta_data_dict, verbose=True)
+    
+    if plot_check:
+        n = 250
+        frame_numbers_out, frame_times_out, data_out = read_movie_data_ipx(path_fn_ipx)
+        meta_new = read_movie_meta_ipx(path_fn_ipx)
+        frame_new = data_out[n]
+        frame_original = frame_data[n]
 
-        camera='IRCAM_Velox81kL_0102',
-        view='HL04_A-tangential',
-        lens='25 mm',
-        trigger=-np.abs(meta_data_dict['t_before_pulse']),
-        exposure=int(meta_data_dict['exposure']*1e6),
+        meta_data_dict.pop('frame_times'); meta_data_dict.pop('shot');
 
-        num_frames=n_frames,
-        frame_width=width,
-        frame_height=height,
-        depth=14,
-    )
+        print(meta_data_dict)
+        print(meta_new)
 
-    sensor = IpxSensor(
-        type=SensorType.MONO,
-    )
+        plt.ion()
+        fig, (ax0, ax1) = plt.subplots(1, 2, sharex=True, sharey=True)
+        fig.suptitle(f'{pulse}, n={n}')
+        im0 = ax0.imshow(frame_original, interpolation='none', origin='upper', cmap='gray')  # , vmin=0, vmax=2**14-1)
+        # plt.colorbar(im0)
+        ax0.set_title(f'Original raw')
+        im1 = ax1.imshow(frame_new, interpolation='none', origin='upper', cmap='gray')  # , vmin=0, vmax=2**14-1)
+        # plt.colorbar(im1)
+        ax1.set_title(f'Mastvideo output')
+        plt.tight_layout()
+        plt.show()
 
-    path_fn_ipx = Path(str(path_fn_ipx).format(**meta_data_dict)).expanduser()
-
-    with write_ipx_file(
-            path_fn_ipx, header, sensor, version=1,
-            encoding=ImageEncoding.JPEG2K,
-    ) as ipx:
-        # write out the frames
-        for time, frame in zip(times, frames):
-            ipx.write_frame(time, frame)
-
-    message = f'Wrote ipx file: "{path_fn_ipx}"'
-    logger.debug(message)
-    if verbose:
-        print(message)
-
+        pil_frames[n].show(title=f'PIL native show {pulse}, {n}')
+        pass
 
 def generate_json_meta_data_file_for_ircam_raw(path, fn, n_frames, image_shape, meta_data_dict):
     """
@@ -274,7 +289,14 @@ def copy_raw_files_from_tdrive(today=False, n_files=None):
     # path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-04/'
     # path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-15/'
     # path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-16/'
-    path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-17/'
+    # path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-17/'
+    # path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-18/'
+    # path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-22/'
+    # path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-23/'
+    # path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-24/'
+    # path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-25/'
+
+    path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-30/'
 
     if today:
         path_in = f'/home/tfarley/ccfepc/T/tfarley/RIT/{datetime.now().strftime("%Y-%m-%d")}/'
@@ -293,7 +315,9 @@ def copy_raw_files_from_tdrive(today=False, n_files=None):
 
 def convert_raw_files_archive_to_ipx():
     path_root = Path('~/data/movies/mast_u/').expanduser()
-    pulses = [p.name for p in path_root.glob('*')]
+    pulses = list(sorted([p.name for p in path_root.glob('[!.]*')]))
+    pulses = pulses[:1]  # tmp
+    pulses = [43805]
     print(pulses)
     for pulse in pulses:
         path = path_root / f'{pulse}/rit/'
@@ -302,15 +326,16 @@ def convert_raw_files_archive_to_ipx():
         fn_meta = f'rit_{pulse}_meta.json'
         fn_ipx = f'rit0{pulse}.ipx'
 
-        meta_data_dict = dict(io_basic.json_load(fn_meta, path=path))
-        meta_data_dict['shot'] = int(pulse)
-        if meta_data_dict['fps'] != 400:  # When fps was set to 430 is was actually still aprox 400
-            meta_data_dict['fps'] = 400
-            meta_data_dict = complete_meta_data_dict(meta_data_dict, replace=True)  # Update frame times
-            # TODO: Get frame times from trigger signal?
+        if not (path/fn_raw).is_file():
+            logger.warning(f'Raw file does not exist for pulse {pulse}: {fn_raw}')
+            continue
 
-        generate_ipx_file_from_ircam_raw(path/fn_raw, path/fn_ipx, meta_data_dict=meta_data_dict)
+        generate_ipx_file_from_ircam_raw(path / fn_raw, path / fn_ipx, pulse=pulse)
+
+
+
+
 
 if __name__ == '__main__':
-    copy_raw_files_from_tdrive()
-    # convert_raw_files_archive_to_ipx()
+    # copy_raw_files_from_tdrive()
+    convert_raw_files_archive_to_ipx()
