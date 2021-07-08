@@ -786,7 +786,7 @@ def debug_plot_timings(data_profiles, pulse, params=('heat_flux_amplitude_peak_g
             if isinstance(data, Exception):
                 logger.warning(f'Failed to read uda signal {sig} for {pulse}: {data}')
                 continue
-            peaks_info = find_peaks_info(data, peak_kwargs=('width', 5))
+            peaks_info = find_peaks_info(data, peak_kwargs=(('width', 5),))
             t_peaks.append(peaks_info['x_peaks'].values[:n_peaks_label])  # Record time of 3 largest peaks
 
             normalise = False
