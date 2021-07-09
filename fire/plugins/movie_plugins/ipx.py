@@ -31,7 +31,9 @@ def get_freia_ipx_path(pulse, camera):
     :return: Path to ipx files
     """
     pulse = str(pulse)
-    ipx_path_fn = f"/net/fuslsa/data/MAST_IMAGES/0{pulse[0:2]}/{pulse}/{camera}0{pulse}.ipx"
+    # MAST_IMAGES = '/net/fuslsa/data/MAST_IMAGES/'
+    MAST_IMAGES = '/net/fuslsc.mast.l/data/MAST_IMAGES/'
+    ipx_path_fn = MAST_IMAGES + f"0{pulse[0:2]}/{pulse}/{camera}0{pulse}.ipx"
     return ipx_path_fn
 
 def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
@@ -495,18 +497,22 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     # ipx_path = Path('../../../tests/test_data/mast/').resolve()
     # ipx_fn = 'rir030378.ipx'
-    ipx_path = Path('/home/tfarley/data/movies/mast_u/43651/rit/')
-    ipx_fn = 'rit043651.ipx'
+    # ipx_path = Path('/home/tfarley/data/movies/mast_u/43651/rit/')
+    # ipx_fn = 'rit043651.ipx'
+    #
+    # ipx_path_fn = ipx_path / ipx_fn
+
+    ipx_path_fn = get_freia_ipx_path(29125, 'rit')
 
     # meta_data = read_movie_meta_mastmovie(ipx_path / ipx_fn)
     # print(meta_data)
     # frame_nos, frame_times, frame_data = read_movie_data_mastmovie(ipx_path / ipx_fn)
     # print(frame_times)
 
-    meta_data = read_movie_meta(ipx_path / ipx_fn)
-    frame_nos, frame_times, frame_data = read_movie_data(ipx_path / ipx_fn)
+    meta_data = read_movie_meta(ipx_path_fn)
+    frame_nos, frame_times, frame_data = read_movie_data(ipx_path_fn)
     print(meta_data)
 
-    plt.imshow(frame_data[200])
+    plt.imshow(frame_data[100], cmap='gray', interpolation='none')
     plt.show()
     pass
