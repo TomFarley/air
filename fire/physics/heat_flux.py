@@ -49,7 +49,7 @@ def calc_heatflux(t, temperatures, path_data, path_name, material_properties, vi
     # Check theodor time axis is uniform
     dt = np.diff(t)
     dt_mode = stats.mode(dt).mode
-    mask_const_dt = np.isclose(dt, dt_mode, atol=9e-7, rtol=5e-4)
+    mask_const_dt = np.isclose(dt, dt_mode, atol=9e-7, rtol=5e-3)
     if not np.all(mask_const_dt):
         raise ValueError(f'Time axis of data supplied to THEODOR is not uniform. mode={dt_mode}. dt other: '
                          f'{dt[~mask_const_dt]}')
