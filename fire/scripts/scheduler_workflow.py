@@ -506,13 +506,18 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         debug_plots.debug_temperature_image(image_data)
         
     if debug.get('movie_temperature_animation', False):
-        save_path_fn = paths_output['gifs'] / f'{machine}-{camera}-{pulse}_temperature_movie.gif'
-        # path_fn = path_figures / f'rit_{pulse}_temperature_movie.gif'
-        # path_fn = None
+        # save_path_fn = paths_output['gifs'] / f'{machine}-{camera}-{pulse}_temperature_movie.gif'
+        # save_path_fn = path_figures / f'rit_{pulse}_temperature_movie.gif'
+        save_path_fn = None
+        frame_range = [40, 410]
         cbar_range = [0, 99.9]  # percentage of range
         # cbar_range = None
-        image_figures.animate_frame_data(image_data, key='temperature_im', nth_frame=1, n_start=40, n_end=350,
-                                         save_path_fn=save_path_fn, cbar_range=cbar_range)
+        image_figures.animate_frame_data(image_data, key='temperature_im', nth_frame=1, duration=15,
+                                         n_start=frame_range[0], n_end=frame_range[1], save_path_fn=save_path_fn,
+                                         cbar_range=cbar_range,
+                                         frame_label=f'{camera.upper()} {pulse} $t=${{t:0.1f}} ms',
+                                         cbar_label='$T$ [$^\circ$C]',
+                                         label_values={'t': meta_data['frame_times'] * 1e3}, show=True)
 
     # TODO: Calculate toroidally averaged radial profiles taking into account viewing geometry
     # - may be more complicated than effectively rotating image slightly as in MAST (see data in Thornton2015)
@@ -697,15 +702,15 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             debug_plots.debug_plot_timings(path_data_all, pulse=pulse)
 
         if debug.get('strike_point_loc', False):
-            heat_flux = path_data[f'heat_flux_peak_{path}'].values
+            heat_flux = path_data[f'heat_flux_amplitude_peak_global_{path}'].values
             heat_flux_thresh = np.nanmin(heat_flux) + 0.03 * (np.nanmax(heat_flux) - np.nanargmin(heat_flux))
-            debug_plots.debug_plot_temporal_profile_1d(path_data_all, params=('heat_flux_r_peak', 'heat_flux_peak'),
+            debug_plots.debug_plot_temporal_profile_1d(path_data_all, params=('heat_flux_R_peak', 'heat_flux_amplitude_peak_global'),
                                                        path_name=analysis_path_key, x_var='t',
                                                        heat_flux_thresh=heat_flux_thresh, meta_data=meta_data)
         if output.get('strike_point_loc', False):
             fn = f'strike_point_loc-{machine}-{camera}-{pulse}-{analysis_path_name}.csv'
             path_fn = Path(paths_output['csv_data']) / fn
-            io_basic.to_csv(path_fn, path_data, cols=f'heat_flux_r_peak_{path}', index='t', x_range=[0, 0.6],
+            io_basic.to_csv(path_fn, path_data, cols=f'heat_flux_R_peak_{path}', index='t', x_range=[0, 0.6],
                             drop_other_coords=True, verbose=True)
 
     meta_data['analysis_path_labels'] = analysis_path_labels
@@ -910,10 +915,10 @@ def run_mastu_rit():  # pragma: no cover
 
     # pulse = 43753  # Lidia strike point splitting request - no data
 
-    # pulse = 43805  # Strike point sweep to T5 - good data for IR and LP
+    pulse = 43805  # Strike point sweep to T5 - good data for IR and LP
 
     # pulse = 43823
-    pulse = 43835  # Lidia strike point splitting request - good data
+    # pulse = 43835  # Lidia strike point splitting request - good data
     # pulse = 44004  # LM
     # pulse = 43835
     # pulse = 43852
@@ -936,16 +941,16 @@ def run_mastu_rit():  # pragma: no cover
 
     # TODO: Remove redundant movie_data step
     debug = {'calcam_calib_image': False, 'debug_detector_window': False,
-             'movie_intensity_stats': False,
+             'movie_intensity_stats': True,
              'movie_data_animation': False, 'movie_data_nuc_animation': False,
-             'movie_temperature_animation': False,
+             'movie_temperature_animation': True,
              'spatial_coords': False,
              'spatial_res': False,
              'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
              'surfaces': False, 'analysis_path': False,
              'path_cross_sections': False,
              'temperature_vs_R_t': False,
-             'heat_flux_vs_R_t': False,
+             'heat_flux_vs_R_t': True,
              'timings': False,
              'strike_point_loc': False,
              # 'heat_flux_path_1d': True,
@@ -954,7 +959,7 @@ def run_mastu_rit():  # pragma: no cover
     output = {'strike_point_loc': True, 'raw_frame_image': False}
 
     # debug = {k: True for k in debug}
-    # debug = {k: False for k in debug}
+    debug = {k: False for k in debug}
     figures = {'spatial_res': False, 'heat_flux_vs_R_t-robust': True}
     logger.info(f'Running MAST-U ait scheduler workflow...')
     status = scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
