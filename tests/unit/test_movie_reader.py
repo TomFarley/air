@@ -19,9 +19,11 @@ except ImportError as e:
     pyuda = False
 
 if pyuda is False:
-    plugin_precedence = ['ipx']
+    plugin_precedence_mast = ['ipx']
+    plugin_precedence_ircam = ['uda', 'ipx']
 else:
-    plugin_precedence = ['uda', 'ipx']
+    plugin_precedence_mast = ['uda', 'ipx']
+    plugin_precedence_ircam = ['uda', 'ipx']  # TODO: Add UDA when data archived
 
 # @pytest.fixture  # Run function once and save output to supply to multiple tests
 # def expected_ouput():
@@ -41,13 +43,13 @@ class TestMovieReader(unittest.TestCase):
         self.assertTrue(path_test_data.exists(), msg=f'{path_test_data} does not exist')
 
     def test_init(self):
-        movie_reader = MovieReader(plugin_precedence=plugin_precedence)
+        movie_reader = MovieReader(plugin_precedence=plugin_precedence_mast)
 
         self.assertTrue(np.all([list(movie_reader.plugins.keys())[i] == plugin for i, plugin in enumerate(
-            plugin_precedence)]))
+            plugin_precedence_mast)]))
 
     def test_read_movie_reader_meta_rir030378(self):
-        for plugin in plugin_precedence:  # , 'npz']:
+        for plugin in plugin_precedence_mast:  # , 'npz']:
             if (plugin == 'uda') and (not pyuda):
                 print('Skipping uda test as pyuda not found')
                 continue
@@ -72,7 +74,7 @@ class TestMovieReader(unittest.TestCase):
             self.assertEqual(origin, origin_expected)
 
             self.assertTrue(isinstance(meta_data, dict))
-            self.assertEqual(len(meta_data), 13)
+            self.assertEqual(len(meta_data), 14, msg=f'plugin="{plugin}" from {plugin_precedence_mast}')
 
             self.assertTrue(np.all(meta_data['frame_range'] == np.array([0, 3749])))
             self.assertTrue(np.all(meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
@@ -126,7 +128,7 @@ class TestMovieReader(unittest.TestCase):
         #                         for key in ipx_header_expected]))
 
     def test_read_movie_data_ipx_uda_rir030378(self):
-        for plugin in plugin_precedence:  # , 'npz']:
+        for plugin in plugin_precedence_mast:  # , 'npz']:
             movie_reader = MovieReader(plugin_filter=plugin)  # plugin_precedence=['uda', 'ipx'])
             # Ipx 1 file
             pulse = 30378

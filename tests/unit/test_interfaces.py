@@ -49,20 +49,21 @@ class TestInterfaces(unittest.TestCase):
         path_fn = fire_paths['root'] / 'input_files/user/fire_config.json'
 
         config = json_load(path_fn)
+        default_params = config['user']['default_params']
         self.assertTrue(isinstance(config, dict))
         self.assertTrue(len(config), 6)
-        self.assertEqual(config['default_params']['pass'], 0)
+        self.assertEqual(default_params['pass'], 0)
         config = None
 
         config = json_load(str(path_fn.name), path=path_fn.parent)
         self.assertTrue(len(config), 6)
-        self.assertEqual(config['default_params']['pass'], 0)
+        self.assertEqual(config['user']['default_params']['pass'], 0)
 
-        out = json_load(path_fn, key_paths_keep=[('default_params', 'pass')])
+        out = json_load(path_fn, key_paths_keep=[('user', 'default_params', 'pass')])
         self.assertEqual(out, {'pass': 0})
 
         with self.assertRaises(KeyError):
-            out = json_load(path_fn, key_paths_keep=[('default_params', 'my_made_up_key')])
+            out = json_load(path_fn, key_paths_keep=[('user', 'default_params', 'my_made_up_key')])
 
         with self.assertRaises(FileNotFoundError):
             out = json_load('my_path')

@@ -23,7 +23,7 @@ class TestIoIpxFast(unittest.TestCase):
         pulse = 30378
         camera = 'rir'
         path = get_freia_ipx_path(pulse, camera)
-        path_expected = '/net/fuslsa/data/MAST_IMAGES/030/30378/rir030378.ipx'
+        path_expected = '/net/fuslsc.mast.l/data/MAST_IMAGES/030/30378/rir030378.ipx'
         self.assertEqual(path, path_expected)
 
     def test_get_ipx_meta_data_rir030378(self):
@@ -32,7 +32,7 @@ class TestIoIpxFast(unittest.TestCase):
         ipx_meta_data = read_movie_meta(ipx_path_fn)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
-        self.assertEqual(len(ipx_meta_data), 11)
+        self.assertEqual(len(ipx_meta_data), 12)
 
         self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 3749])))
         self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
@@ -55,7 +55,7 @@ class TestIoIpxFast(unittest.TestCase):
         ipx_meta_data = read_movie_meta(ipx_path_fn)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
-        self.assertEqual(len(ipx_meta_data), 11)
+        self.assertEqual(len(ipx_meta_data), 12)
 
         self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 623])))
         self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.048749,  0.69885 ])))

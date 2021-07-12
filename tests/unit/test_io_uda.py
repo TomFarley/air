@@ -48,7 +48,7 @@ class TestIoUdaFast(unittest.TestCase):
         meta_data = read_movie_meta(pulse, camera)
 
         self.assertTrue(isinstance(meta_data, dict))
-        self.assertEqual(len(meta_data), 11)
+        self.assertEqual(len(meta_data), 12)
 
         self.assertTrue(np.all(meta_data['frame_range'] == np.array([0, 3749])))
         self.assertTrue(np.all(meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
@@ -82,7 +82,7 @@ class TestIoUdaFast(unittest.TestCase):
         meta_data = read_movie_meta(pulse, camera, n_start, n_end)
 
         self.assertTrue(isinstance(meta_data, dict))
-        self.assertEqual(len(meta_data), 11)
+        self.assertEqual(len(meta_data), 12)
 
         self.assertTrue(np.all(meta_data['frame_range'] == np.array([n_start, n_end])))
         np.testing.assert_almost_equal(meta_data['t_range'], np.array([-0.029971, -0.027971]))
@@ -128,7 +128,7 @@ class TestIoUdaFast(unittest.TestCase):
         ipx_meta_data = read_movie_meta(pulse, camera)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
-        self.assertEqual(len(ipx_meta_data), 11)
+        self.assertEqual(len(ipx_meta_data), 12)
 
         self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 624])))
         self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.049949,  0.69885])))
