@@ -3,9 +3,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from fire.interfaces.interfaces import (json_dump, json_load, lookup_pulse_row_in_csv, lookup_pulse_info,
+from fire.interfaces.interfaces import (lookup_pulse_row_in_csv, lookup_pulse_info,
                                         generate_pulse_id_strings, generate_camera_id_strings,
                                         generate_frame_id_strings, get_module_from_path_fn)
+from fire.interfaces.io_basic import json_dump, json_load
 from fire import fire_paths
 
 pwd = Path(__file__).parent
