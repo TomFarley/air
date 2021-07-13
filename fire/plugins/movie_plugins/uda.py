@@ -175,6 +175,7 @@ def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:O
     movie_meta['n_frames'] = ipx_header['n_frames']
     movie_meta['frame_range'] = np.array([n_start, n_end])
     movie_meta['t_range'] = np.array([times[n_start], times[n_end]])
+    movie_meta['t_before_pulse'] = np.abs(movie_meta['t_range'][0])
     movie_meta['image_shape'] = np.array((video.height, video.width))
     movie_meta['fps'] = (video.n_frames - 1) / np.ptp(times)
     movie_meta['lens'] = ipx_header['lens'] if 'lens' in ipx_header else 'Unknown'
