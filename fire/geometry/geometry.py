@@ -20,6 +20,10 @@ import fire.interfaces.io_basic
 import fire.interfaces.read_user_fire_config
 from fire.misc import utils
 from fire.misc.utils import ndarray_0d_to_scalar
+from pyEquilibrium.equilibrium import equilibrium
+import pyuda
+client = pyuda.Client()
+import time as clock
 from fire.interfaces import interfaces, io_utils
 
 logger = logging.getLogger(__name__)
@@ -274,43 +278,123 @@ def calc_horizontal_path_anulus_areas(r_path):
     return annulus_areas
 
 
-def calc_tile_tilt_area_corection_factors(path_data, poloidal_plane_tilt, toroidal_tilt, nlouvres, path='path0'):
+def calc_tile_tilt_area_coorection_factors(path_data, poloidal_plane_tilt, nlouvres, step_size, path='path0'):
     """Return correction factors for areas returned by calc_horizontal_path_anulus_areas() accounting for tile tilts.
 
     See Matthew Dunn's MAST wetted area correction in:
     fire/misc/wetted_area_mdunn.py
 
     NOTES:
-        - Wetted area fraction correction is independent of tile width - only depends on tile shadowing tilt and B
-            field angle
-        - Don't think tilt of tiles in poloidal plane will affect wetted area
-        - In MAST typical wetted fraction was ~0.62
+        - On MAST Wetted area fraction correction was independent of tile width - only depended on tile shadowing tilt
+            and B field angle
+        - On MAST-U angle is not constant and calculation requires tile width
+        - Tilt of tiles in poloidal plane will affect wetted area
+        - In MAST typical wetted fraction was ~0.7
+        - In MAST-U early results suggest ~0.9
         - In MAST-U greater radial movement/width of leg will presumably make theta (B-field angle) radially dependent
 
     Wetted w_frac  = sin(θ)/sin(θ+α)
     sin(θ) =−B_z/√(B_tor^2+B_R^2+B_z^2 )
+    tan(α) = (s*n)/(2*pi*R)
 
     Args:
         poloidal_plane_tilt: Angles of tile tilts in degrees relative to horizontal in poloidal plane
-        toroidal_tilt: Toroidal inclination of tile surfaces in degrees relative to horizontal
         nlouvres: Number of separate inclined tiles toroidally around the machine - requried to account for inter-tile
                     shadowing
+        step_size: perpendicular step between adjacent tiles
 
     Returns: Multiplicative factors for annulus areas
 
     """
     tile_numbers = path_data[f'surface_id_in_frame_{path}']
-    correction_factor = np.full_like(tile_numbers, np.nan, dtype=float)
-    for tile_number in np.arange(1, 6):
-        tile_mask = tile_numbers == tile_number
-        tile_name = f'T{tile_number}'
+    #correction_factor = np.full_like(tile_numbers, np.nan, dtype=float)
+    n_pixels = path_data[f'i_{path}']
+    #correction_factor = np.full_like(n_pixels, np.nan, dtype=float)
+    correction_factor = np.full_like(path_data.heat_flux_path0.data, np.nan, dtype=float)
+    factor_this_time = np.full_like(n_pixels, 1, dtype=float)
+    shot = path_data.attrs['meta']['shot']
+    #print('shot', shot)
 
-        tile_poloidal_plane_tilt = poloidal_plane_tilt[tile_name]
-        tile_toroidal_tilt = toroidal_tilt[tile_name]
-        tile_nlouvres = nlouvres[tile_name]
+    # Choose time point when most energy is deposited
+    # The wetted fraction actually varies with time, which is especially important if there is a disruption
+    #TODO implement time resolution to match EFIT
+    #time = np.argmax(np.mean(path_data[f'heat_flux_{path}'], axis=1))
+    #time = time.data.tolist()
+    #print('time frame', time)
+    #time = path_data.t[time]
+    #time = time.data.tolist()
+    #print('time value', time)
 
-        correction_factor[tile_mask] = 1
+    # See which times EFIT converged for
+    shotFile = f'/common/uda-scratch/lkogan/efitpp_eshed/epm0{shot}.nc'
+    all_times = client.get('/epm/time', shotFile).data
+    converged_status = client.get('/epm/equilibriumStatusInteger', shotFile)
+    ind_converged = np.where(converged_status.data == 1)
+    converged_times = all_times[ind_converged]
 
+    #try:
+    endtime = 1
+    for i, time in enumerate(path_data.t.data):
+        #print(f'time {time:.5f}')
+        # Some if the times in the data have a rounding error, so are not quite equal to the EFIT times unless rounded
+        if np.any(converged_times==float(f'{time:.5f}')):
+            print(f'converged time {time:.5f}')
+
+
+            #start = clock.time()
+            # Call magnetic data from pyEquilibrium
+            # If using the scheduler equilibrium for this shot
+            #eqData = equilibrium('MAST', shot, time)
+            # Or if using your own EFIT equilibrium
+            #eqData = equilibrium(gfile=f'/home/mdunn/Documents/efit/{shot}/g_p{shot}_t{time:.5f}')
+            # Or if using Lucy Kogan's epm files
+            eqData = equilibrium(shot=shotFile, device='MASTU', time=time)
+            B_Z = eqData.BZ
+            B_T = eqData.Bt
+            B_R = eqData.BR
+
+            for pixel in path_data[f'i_{path}']:
+                # Differentiate between tiles
+                #tile_mask = tile_numbers == tile_number
+                tile_number = tile_numbers.data[pixel]
+                if tile_number > 0:
+                    tile_name = f'T{tile_number}'
+
+                    tile_step_size = step_size[tile_name]
+                    tile_poloidal_plane_tilt = poloidal_plane_tilt[tile_name]  # In degrees
+                    tile_nlouvres = nlouvres[tile_name]
+
+                    # Mean spatial Coordinate of visible portion of this tile
+                    # Consider increasing spatial resolution or implementing strike point tracking in future
+                    radius = path_data[f'R_{path}'].data[pixel]
+                    zCoord = path_data[f'z_{path}'].data[pixel]
+
+                    # Magnetic field data at this point in space
+                    bz = B_Z(radius, zCoord)[0][0]
+                    bt = B_T(radius, zCoord)[0][0]
+                    br = B_R(radius, zCoord)[0][0]
+
+                    # Determine field angle
+                    B_perp = bz*np.cos(tile_poloidal_plane_tilt*2*np.pi/360) + br*np.sin(tile_poloidal_plane_tilt*2*np.pi/360)
+                    beta = np.arcsin(-B_perp/np.sqrt(bz**2 + bt**2 + br**2))
+                    alpha = np.arctan(tile_step_size*tile_nlouvres/(2*np.pi*radius))  # In radians
+
+                    # Set to 1 (one) to ignore
+                    #correction_factor[tile_mask] = 1
+                    #print(tile_name, 'f_wet')
+                    #print(np.sin(beta)/np.sin(beta + alpha))
+                    factor_this_time[pixel] = np.sin(beta)/np.sin(beta + alpha)
+                    #print(correction_factor[tile_mask])
+        correction_factor[i] = factor_this_time
+        #end = clock.time()
+        #print('time taken [s]:', end - start)
+
+        # If this shot is not in the scheduler
+        #except cpyuda.ServerException:
+        #    print(f'Warning: there is no scheduler equilibrium for shot {shot}, setting tile tilt correction factor to 1')
+        #    correction_factor[:] = 1
+
+    #print(correction_factor)
     return correction_factor
 
 
