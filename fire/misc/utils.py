@@ -1143,8 +1143,40 @@ def ask_input_yes_no(message, suffix=' ([Y]/n)? ', message_format='{message}{suf
         out = False
     return out
 
-if __name__ == '__main__':
-    pass
+def filter_non_builtins(obj, parent=None, ind=None, additional_types=(np.ndarray, xr.DataArray, xr.Dataset, Path),
+                        copy_=False):
+    import builtins
+    builtin_types = tuple((t for t in builtins.__dict__.values()))
+
+    if copy_:
+        try:
+            obj = deepcopy(obj)
+        except AttributeError as e:
+            try:
+                obj = copy(obj)
+            except AttributeError as e:
+                logger.warning('Failed to deepcopy obj before filtering non-builtins')
+
+    accepted_types = builtin_types + additional_types
+    if safe_len(obj, scalar=0) > 0:
+        if isinstance(obj, dict):
+            for key, item in obj.items():
+                obj, parent = filter_non_builtins(item, parent=obj, ind=key)
+        else:
+            for i, item in enumerate(obj):
+                obj, parent = filter_non_builtins(item, parent=obj, ind=i)
+    else:
+        if type(obj) not in accepted_types:
+            logger.info(f'{type(obj)} not in accepted types. Obj: {obj}')
+            if isinstance(parent, (dict, list)):
+                parent.pop(ind)
+            if isinstance(parent, (tuple, set)):
+                parent = type(parent)((item for item in parent if item is not obj))
+            elif parent is None:
+                raise TypeError('Whole object is non-builtin')
+            else:
+                raise NotImplementedError(f'Unexpected type {type(obj)} not in accepted types. Obj: {obj}')
+    return obj, parent
 
 
 def filter_nested_dict_key_paths(dict_in, key_paths_keep, compress_key_paths=True, path_fn=None):

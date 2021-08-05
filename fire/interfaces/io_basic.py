@@ -13,6 +13,7 @@ import re
 import warnings
 from typing import Union, Iterable, Sequence, Tuple, Optional, Any, Dict
 from pathlib import Path
+from copy import copy, deepcopy
 
 import numpy as np
 import pandas as pd
@@ -67,7 +68,7 @@ def test_pickle(obj, verbose=True):
         return False
 
 
-def pickle_dump(obj, path, raise_exceptions=True, verbose=True, **kwargs):
+def pickle_dump(obj, path, remove_custom_classes=False, raise_exceptions=True, verbose=True, **kwargs):
     """Wrapper for pickle.dump, accepting multiple path formats (file, string, pathlib.Path).
     - Automatically appends .p if not present.
     - Uses cpickle when possible.
@@ -78,6 +79,10 @@ def pickle_dump(obj, path, raise_exceptions=True, verbose=True, **kwargs):
     protocol=pickle.HIGHEST_PROTOCOL"""
     if isinstance(path, Path):
         path = str(path)
+
+    if remove_custom_classes:
+        obj = utils.filter_non_builtins(obj, copy_=True)
+        raise NotImplementedError
 
     if isinstance(path, str):
         if path[-2:] != '.p':
