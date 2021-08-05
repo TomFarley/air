@@ -53,7 +53,8 @@ def get_camera_external_clock_info(camera, pulse):
     data = data.interp(t=np.arange(t.min(), t.max(), dt_signal))
 
     # dt_signal = stats.mode(data['t'].diff(dim='t')).mode
-    t_high = data.sel(t=data > data.mean())['t']
+    # t_high = data.sel(t=(data > data.mean()).values)['t']
+    t_high = data['t'][(data > data.mean()).values]
 
     power = np.fft.fft(data)
     freq = np.fft.fftfreq(data.shape[-1], d=dt_signal)

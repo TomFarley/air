@@ -172,7 +172,7 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
             # TODO: Handle 't' as active dim name
             coords = ('n',)
             coords = tuple((coord for coord in coords if coord in data.dims)) + (coord_path,)
-            data_path_extracted[new_key] = (coords, data.sel(x_pix=x_pix_path, y_pix=y_pix_path))
+            data_path_extracted[new_key] = (coords, np.array(data.sel(x_pix=x_pix_path, y_pix=y_pix_path)))
             data_path_extracted[new_key].attrs.update(data.attrs)  # Unnecessary?
             data_path_extracted = data_structures.attach_standard_meta_attrs(data_path_extracted, varname=new_key,
                                                                              replace=True, key=key_var)
@@ -248,7 +248,7 @@ def filter_unknown_materials_from_analysis_path(path_data, path_name, missing_ma
         coord_key = 'i_path'
         data_known_mat = path_data[coord].sel({coord_i_path: mask_known_material})
         attrs = path_data[coord].attrs
-        path_data[coord_name_known_mat] = (coords_i_path_known_mat, data_known_mat)
+        path_data[coord_name_known_mat] = (coords_i_path_known_mat, np.array(data_known_mat))
         path_data = path_data.assign_coords(**{coord_name_known_mat:
                                                    (coords_i_path_known_mat, path_data[coord_name_known_mat].values)})
         path_data[coord_name_known_mat].attrs.update(attrs)
@@ -268,7 +268,7 @@ def filter_unknown_materials_from_analysis_path(path_data, path_name, missing_ma
         attrs = path_data[var_name].attrs
         coords = [coord if coord != coord_i_path else coords_i_path_known_mat
                     for coord in path_data[var_name].dims]
-        path_data[var_name_known_mat] = (coords, data_known_mat)
+        path_data[var_name_known_mat] = (coords, np.array(data_known_mat))
         path_data[var_name_known_mat].attrs.update(attrs)
         path_data = data_structures.attach_standard_meta_attrs(path_data, varname=var_name_known_mat, replace=False)
 
