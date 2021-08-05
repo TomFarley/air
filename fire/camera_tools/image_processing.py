@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import xarray as xr
+from scipy import interpolate
 
 from fire.misc import data_quality
 from fire.misc import data_structures
@@ -175,6 +176,33 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
             data_path_extracted[new_key].attrs.update(data.attrs)  # Unnecessary?
             data_path_extracted = data_structures.attach_standard_meta_attrs(data_path_extracted, varname=new_key,
                                                                              replace=True, key=key_var)
+            if new_key == f's_global{in_frame_str}_{path}':
+                # nans in s_global coord cause problems so interpolate/extrapolate them out
+                s_values = data.sel(x_pix=x_pix_path, y_pix=y_pix_path)
+                r_values = image_data[f'R_im'].sel(x_pix=x_pix_path, y_pix=y_pix_path)
+                # Spline fit requires strictly increasing x
+                i_r_order = np.argsort(r_values).values
+                # Filter out constant values
+                mask_unique_r = np.concatenate([[True], np.diff(r_values[i_r_order]) > 0])
+                i_r_order_unique = i_r_order[mask_unique_r]
+                mask_s_ordered_unique_nan = np.isnan(s_values[i_r_order_unique]).values
+                i_ordered_unique_nan = i_r_order_unique[mask_s_ordered_unique_nan]
+                i_ordered_unique_nonan = i_r_order_unique[~mask_s_ordered_unique_nan]
+                if np.any(mask_s_ordered_unique_nan):
+                    logger.debug(
+                        'ds values contain nans - interpolating and extrapolating to fill nan values based on dR')
+                    if np.sum(~mask_s_ordered_unique_nan) >= 2:
+                        f = interpolate.InterpolatedUnivariateSpline(r_values[i_ordered_unique_nonan],
+                                                                     s_values[i_ordered_unique_nonan],
+                                                                     k=1, ext=0)
+                        s_values[i_ordered_unique_nan] = f(r_values[i_ordered_unique_nan])
+                        # Where there are repeated s values fill in with the preceding value to catch remaining nans
+                        for i_duplicate in i_r_order[~mask_unique_r]:
+                            # Need to loop to prevent nans being passed along adjacent duplicates
+                            s_values[i_duplicate] = s_values[i_duplicate-1]
+                        new_key_with_nans = f'{key_var}{in_frame_str}_with_nans_{path}'
+                        data_path_extracted[new_key_with_nans] = data_path_extracted[new_key]
+                        data_path_extracted[new_key][:] = s_values
 
     # Set alternative coordinates to index path data (other than path index)
     alternative_path_coords = ('R', 's', 's_global', 'phi')  # , 'x', 'y', 'z')
