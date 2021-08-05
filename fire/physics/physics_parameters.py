@@ -7,11 +7,12 @@ Created:
 """
 
 import logging, itertools
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 import numpy as np
 import pandas as pd
 import xarray as xr
+from scipy import interpolate
 
 import matplotlib.pyplot as plt
 
@@ -72,7 +73,7 @@ def find_peaks_info(profile, x=None, peak_kwargs=(('width', 3),), add_boundary_l
     ind_peaks, properties_peaks = signal.find_peaks(profile, **peak_kwargs)
     n_peaks = len(ind_peaks)
 
-    ind_rel_max = signal.argrelmax(profile, order=peak_kwargs['width'])
+    ind_rel_max = signal.argrelmax(np.array(profile), order=peak_kwargs['width'])
 
     i_max = np.argmax(profile)
     if i_max in (0, len(profile)):
@@ -139,14 +140,27 @@ def find_peaks_info(profile, x=None, peak_kwargs=(('width', 3),), add_boundary_l
     return peak_info
 
 
-def calc_strike_point_continutity_rating(peaks_info, strike_points, strike_point_index,
+def calc_strike_point_continutity_rating(peaks_info, strike_points, strike_point_index, t,
                                          strike_point_assumptions='continuous',
                                          history_weights=(0.5, 0.2, 0.1, 0.05, 0.05),
-                                         weightings=(('small_displacement', 1.0), ('similar intensity', 0.5),),
-                                         penalties=(('decreasing_R', -0.1), ('non_monotonic', -0.1),),
-                                         limits=(('max_movement', (-0.1, 0.5)),)):
+                                         scalings=(('displacement', 1.0), ('amplitude', 1.0)),
+                                         weightings=(('small_displacement', 1.0), ('similar_amplitude', 0.5),
+                                                     ('high_amplitude', 0.3)),
+                                         penalties=(('decreasing_R', 0.1), ('non_monotonic', 0.1),
+                                                    ('incomplete_history', 0.1)),
+                                         limits=(('max_movement', (-0.1, 0.5)), ('s_fluctuations', 0.005)),
+                                         fom_threshold=1e3):
+    FomComponents = namedtuple('FomComponents', ['high_amplitude', 'small_displacement', 'similar_amplitude',
+                                                 'decreasing_R', 'non_monotonic'])
+
+    scalings = dict(scalings)
+    weightings = dict(weightings)
+    penalties = dict(penalties)
+    limits = dict(limits)
+
     n_strike_points = len(strike_points.columns.levels[0])
     n_points_history = len(history_weights)
+    history_weights = np.array(history_weights)
 
     i_peak_global = peaks_info[f'ind_global_peak']
     amplitude_peak_global = peaks_info['amplitude_peak_global']
@@ -158,153 +172,261 @@ def calc_strike_point_continutity_rating(peaks_info, strike_points, strike_point
     n_peaks = peaks_info['n_peaks']
     properties_peaks = peaks_info['peak_properties']
 
-    s_peaks = peaks_info['s_global_peaks']  # s coords of peaks
-    r_peaks = peaks_info['R_peaks']  # s coords of peaks
+    s_peaks = np.array(peaks_info['s_global_peaks'])  # s coords of peaks
+    r_peaks = np.array(peaks_info['R_peaks'])  # s coords of peaks
     ind_peaks_sorted = ind_peaks[peak_order]
 
-    peak_inds_assigned = []
-
     # TODO: move to function
-    for strike_point_index in np.arange(n_strike_points):
-        # Select data for this strike point index
-        strike_point_df_i = strike_points[strike_point_index]
+    # Select data for this strike point index
+    strike_point_df_i = strike_points[strike_point_index]
 
-        # Select only non nan values - ie where strike point location found
-        mask_not_nan = ~strike_point_df_i['ind'].isnull()
-        t_not_nan = strike_point_df_i.index[mask_not_nan]
-        strike_point_not_nan = strike_point_df_i.loc[t_not_nan]
+    # Select only non nan values - ie where strike point location found
+    mask_not_nan = ~strike_point_df_i['ind'].isnull()
+    t_not_nan = np.array(strike_point_df_i.index)[mask_not_nan]
+    strike_point_not_nan = strike_point_df_i.loc[t_not_nan]
 
-        n_previous_locations = np.sum(mask_not_nan)
+    n_previous_locations = np.sum(mask_not_nan)
 
-        history = {}
-        t_history = t_not_nan[-n_points_history:]
-        history['t'] = t_history
-        history['peaks_inds'] = strike_point_not_nan.loc[t_history, 'ind'].values
-        history['peaks_s'] = strike_point_not_nan.loc[t_history, 's_global'].values
-        history['peaks_intensity'] = strike_point_not_nan.loc[t_history, 'intensity'].values
+    history = {}
+    t_history = t_not_nan[-n_points_history:]
+    t_history_plus1 = t_not_nan[-(n_points_history+1):]  # used for diffs
+    history['t'] = t_history
+    history['inds'] = strike_point_not_nan.loc[t_history, 'ind'].values
+    history['R'] = strike_point_not_nan.loc[t_history, 'R'].values
+    history['s'] = strike_point_not_nan.loc[t_history, 's_global'].values
+    # history['ds'] = np.concatenate([[0]*(n_previous_locations > 0), np.diff(history['s'])])
+    history['ds'] = np.concatenate([[0]*(n_previous_locations < (n_points_history+1)),
+                                    np.diff(strike_point_not_nan.loc[t_history_plus1, 's_global'].values)])
+    history['dR'] = np.concatenate([[0]*(n_previous_locations < (n_points_history+1)),
+                                    np.diff(strike_point_not_nan.loc[t_history_plus1, 'R'].values)])
+    history['amplitude'] = strike_point_not_nan.loc[t_history, 'amplitude'].values
+    history['fom'] = strike_point_not_nan.loc[t_history, 'fom'].values
 
-        # ind_peak_prev = strike_points.loc[coord_last_non_nan, (strike_point_index, 'ind')]
-        # s_peak_prev = strike_points.loc[coord_last_non_nan, (strike_point_index, 's_global')]
-        # intensity_peak_prev = strike_points.loc[coord_last_non_nan, (strike_point_index, 'intensity')]
-
-
-        # If there are fewer previous points than there are required history, pad values with nans
-        n_missing_hsitory = n_points_history - n_previous_locations
-        if n_missing_hsitory > 0:
-            # Pad with nans if not enough points in history for weighted means
-            for key in ('peaks_inds', 'peaks_s', 'peaks_intensity'):
-                history[key] = np.insert(history[key], 0, np.repeat(np.nan, n_missing_hsitory))
-
-        t_last_non_nan = strike_points.index[i_last_non_nan]
-        n_frames_since_non_nan =
+    # ind_peak_prev = strike_points.loc[coord_last_non_nan, (strike_point_index, 'ind')]
+    # s_peak_prev = strike_points.loc[coord_last_non_nan, (strike_point_index, 's_global')]
+    # amplitude_peak_prev = strike_points.loc[coord_last_non_nan, (strike_point_index, 'amplitude')]
 
 
+    # If there are fewer previous points than there are required history, pad values with nans
+    n_missing_hsitory = np.max([n_points_history - n_previous_locations, 0])
+    if n_missing_hsitory > 0:
+        # Pad with nans if not enough points in history for weighted means
+        for key in ('t', 'inds', 's', 'R', 'ds', 'dR', 'amplitude', 'fom'):
+            history[key] = np.insert(history[key], 0, np.repeat(np.nan, n_missing_hsitory))
 
+    partial_hist_pen = n_missing_hsitory * penalties['incomplete_history']  # Penalise fom using partial hist
 
+    if n_previous_locations > 0:
+        # Take weighted average of previous values to inform next selection
+        history_nan_mask = ~np.isnan(history['t'])
+        # TODO: Look at fom history - use as weighting?
+        weights = history_weights[history_nan_mask]  # * history_weights['fom']
+        for key in ('t', 'inds', 's', 'R', 'ds', 'dR', 'amplitude'):
+            history[f'{key}_av'] = np.average(history[key][history_nan_mask], weights=weights)
+            history[f'{key}_std'] = np.std(history[key][history_nan_mask])
 
+        # nans in ds mess things up!
+        mask_s_peaks_nan = np.isnan(s_peaks)
+        if np.any(mask_s_peaks_nan):
+            logger.debug('ds values contain nans - interpolating and extrapolating to fill nan values based on dR')
+            print(t)
+            if np.sum(~mask_s_peaks_nan) >= 2:
+                f = interpolate.InterpolatedUnivariateSpline(r_peaks[~mask_s_peaks_nan], s_peaks[~mask_s_peaks_nan],
+                                                             k=1, ext=0)
+                s_peaks[mask_s_peaks_nan] = f(r_peaks[mask_s_peaks_nan])
+                peaks_info['s_global_peaks'][:] = s_peaks  # Need to update s values outside func
+            else:
+                pass
 
-        if n_previous_locations == 0:
-            # No points yet assigned for this strike point
-            # Assign first strike point location from which others should follow
-            # Just use first nth highest local maximum
+        # Displacement from last location to current peak options
+        diffs_r = r_peaks - history['R_av']
+        diffs_s = s_peaks - history['s_av']
+        diffs_amp = amplitude_peaks - history['amplitude_av']
+        ds = s_peaks - history['s'][-1]  # Displacement from last location to current peak options
+        dr = r_peaks - history['R'][-1]
 
+        # Check if current step is in same direction as prev trend (accepting some noise around 0)
+        monotonic = (np.sum(history['ds']) >= -limits['s_fluctuations']) & (ds >= 0)
 
-            strike_points.loc[coord, (strike_point_index, 'ind')] = ind_peak_i
-            strike_points.loc[coord, (strike_point_index, 'intensity')] = intensity_peak_i
-            strike_points.loc[coord, (strike_point_index, 's_global')] = s_peak_i
+        weight_small_dist = weightings['small_displacement'] + partial_hist_pen
+        weight_similar_amp = weightings['similar_amplitude'] + partial_hist_pen
 
+        fom_components = FomComponents(
+                # High amplitude: Always favor high absolute amplitudes (independent of history)
+                # Clip amplitudes at 0 to avoid -ve square roots
+                (scalings['amplitude']/np.clip(amplitude_peaks, 1e-3, None)) ** weightings['high_amplitude'],
+                # Small displacement: Favor small displacement from last position (less weight with limited history)
+                (np.abs(diffs_s)/scalings['displacement']) ** weight_small_dist,
+                # Similar_amplitude: Favor similar amplitude to last value (less weight when have limited history)
+                (np.abs(diffs_amp) / scalings['amplitude']) ** weight_similar_amp,
+                # Apply penalty for strike point moving to lower R (against trend from solenoid sweep)
+                (diffs_s < -limits['s_fluctuations']) * penalties['decreasing_R'],
+                # Non-monotonic: Apply penalty when strike point movement is reversing direction
+                ((~monotonic) * penalties['non_monotonic'])
+                )
+        foms = np.sum(fom_components, axis=0)
+        # Established set limits on maximum movement between frames
+        outside_limits = (((ds < limits['max_movement'][0]) | (ds > limits['max_movement'][1])))
+        # Only apply limits once we have a full history
+        foms[outside_limits & (n_missing_hsitory == 0)] += fom_threshold
 
-        if n_peaks > strike_point_index:
-            # Pick out nth local peak at this time slice
-            ind_peaks_array = peak_order[strike_point_index]  # index of nth highest intensity peak in peaks array
-            ind_peak_i = ind_peaks[ind_peaks_array]  # Index of peak in full radial profile
-            s_peak_i = s_peaks[ind_peaks_array]
-            intensity_peak_i = amplitude_peaks[ind_peaks_array]
+    else:
+        # No points yet assigned for this strike point so can't compare to history
+        # Therefore just use amplitude to inform fom
+        # Important this is sensible as following points will be weighted to follow this selection
+        if n_peaks > 0:
+            # TODO: Improve use of partial_hist_pen
+            foms = (((scalings['amplitude']/np.clip(amplitude_peaks, 1e-3, None)) ** weightings['high_amplitude']) +
+                    partial_hist_pen)
         else:
-            # No nth local peak at this time slice
+            foms = []
+
+    foms = xr.DataArray(foms, coords=peaks_info['R_peaks'].coords, name='foms')
+
+    return foms
+
+def select_next_strike_point_peak(peaks_info, strike_points, strike_point_index, foms, t, fom_threshold=1e5):
+    n_strike_points = len(strike_points.columns.levels[0])
+
+    if t in strike_points.index:
+        peak_inds_assigned = [strike_points.loc[t, (i, 'ind')] for i in np.arange(n_strike_points)]
+        peak_inds_assigned = np.array(peak_inds_assigned)[~np.isnan(peak_inds_assigned)]
+    else:
+        peak_inds_assigned = []
+    fom_order = np.argsort(foms)
+
+    if (len(foms) == 0) or (np.all(foms > fom_threshold)) or (len(peak_inds_assigned) == len(foms)):
+        ind = np.nan
+        amplitude = np.nan
+        s = np.nan
+        r = np.nan
+        fom = np.nan
+    else:
+        for peak_ind in np.array(fom_order):
+            ind = peaks_info['ind_peaks'][peak_ind]
+            if ind not in peak_inds_assigned:
+                break  # Proceed with this ind_peak
+            else:
+                # TODO: If previously assigned peak is a MUCH better match, reassign
+                continue  # Check next peak
+        else:
+            # All peaks assigned to previous strike points
+            print(peak_inds_assigned, foms)
+            raise NotImplementedError
+
+        ind = peaks_info['ind_peaks'][peak_ind]
+        amplitude = peaks_info['amplitude_peaks'][peak_ind]
+        s = peaks_info['s_global_peaks'][peak_ind]  # TODO: Handle missing s_global?
+        r = peaks_info['R_peaks'][peak_ind]
+        fom = foms[peak_ind]
+
+        # raise NotImplementedError
+
+    # TODO: Remove ealier values that are inconsistent with current tren
+
+    strike_points.loc[t, (strike_point_index, 'ind')] = ind
+    strike_points.loc[t, (strike_point_index, 'amplitude')] = amplitude
+    strike_points.loc[t, (strike_point_index, 's_global')] = s
+    strike_points.loc[t, (strike_point_index, 'R')] = r
+    strike_points.loc[t, (strike_point_index, 'fom')] = fom
+
+    return strike_points
+
+
+def sp_select_old():
+
+
+    if n_peaks > strike_point_index:
+        # Pick out nth local peak at this time slice
+        ind_peaks_array = peak_order[strike_point_index]  # index of nth highest amplitude peak in peaks array
+        ind_peak_i = ind_peaks[ind_peaks_array]  # Index of peak in full radial profile
+        s_peak_i = s_peaks[ind_peaks_array]
+        amplitude_peak_i = amplitude_peaks[ind_peaks_array]
+    else:
+        # No nth local peak at this time slice
+        ind_peak_i = np.nan
+        s_peak_i = np.nan
+        amplitude_peak_i = np.nan
+    if np.sum(~np.isnan(strike_points.loc[:, (strike_point_index, 'ind')])) == 0:
+        # Assign first strike point location from which others should follow
+        # Just use first nth highest local maximum
+        strike_points.loc[coord, (strike_point_index, 'ind')] = ind_peak_i
+        strike_points.loc[coord, (strike_point_index, 'amplitude')] = amplitude_peak_i
+        strike_points.loc[coord, (strike_point_index, 's_global')] = s_peak_i
+    else:
+        if n_peaks > strike_point_index:
+            if strike_point_assumptions == 'continuous':
+                # Follow path of strike point by ensuring next point is close to previous location
+                i_last_non_nan = int(np.max(np.nonzero(np.array(
+                    ~strike_points.loc[:, (strike_point_index, 'ind')].isnull()))[0]))
+                t_last_non_nan = strike_points.index[i_last_non_nan]
+
+                ind_peak_prev = strike_points.loc[t_last_non_nan, (strike_point_index, 'ind')]
+                s_peak_prev = strike_points.loc[t_last_non_nan, (strike_point_index, 's_global')]
+                amplitude_peak_prev = strike_points.loc[t_last_non_nan, (strike_point_index, 'amplitude')]
+
+                # Working with speak in space order - not sorted amplitude order
+                amplitude_diffs = (amplitude_peaks - amplitude_peak_prev) / amplitude_peak_prev + 0.1
+                s_diff_scale_factor = s_coord.max() - s_coord.min()  # TODO: move
+                i_diffs = (ind_peak_i - ind_peak_prev)
+                if np.any(np.abs(i_diffs) > 5):
+                    pass
+                s_diffs = (s_peaks - s_peak_prev) / s_diff_scale_factor + 0.01
+                s_diffs[s_diffs < 0] += 0.1
+                # TODO: Deal with perfect fom of 0 for # same s coord
+                foms = (np.abs(amplitude_diffs) * np.abs(s_diffs)).values  # want low figure of merit
+                i_foms = np.argsort(foms)
+
+                for j in np.arange(len(i_foms)):
+                    ind_peaks_array = int(i_foms[j])  # index of peak in peaks array with lowest fom
+                    if ind_peaks_array not in peak_inds_assigned:
+                        # Make sure best match for this strike point hasn't already been assigned to higher
+                        # priority strike point
+                        peak_inds_assigned.append(ind_peaks_array)
+                        break
+                else:
+                    raise ValueError('Shouldnt get here..')
+            else:
+                raise NotImplementedError(f'strike_point_assumptions = {strike_point_assumptions}')
+
+            # ind_peaks_array = ind_peaks[i_sp]
+            ind_peak_i = ind_peaks_sorted[ind_peaks_array]
+            s_peak_i = s_peaks[ind_peaks_array]
+            r_peak_i = r_peaks[ind_peaks_array]
+            amplitude_peak_i = amplitude_peaks[ind_peaks_array]
+            fom = float(foms[ind_peaks_array])
+
+            pass
+        else:
+            logger.debug(
+                f'Time {coord} after initial strike point identification has {n_peaks}<{strike_point_index} local maxima')
+
             ind_peak_i = np.nan
             s_peak_i = np.nan
-            intensity_peak_i = np.nan
-        if np.sum(~np.isnan(strike_points.loc[:, (strike_point_index, 'ind')])) == 0:
-            # Assign first strike point location from which others should follow
-            # Just use first nth highest local maximum
-            strike_points.loc[coord, (strike_point_index, 'ind')] = ind_peak_i
-            strike_points.loc[coord, (strike_point_index, 'intensity')] = intensity_peak_i
-            strike_points.loc[coord, (strike_point_index, 's_global')] = s_peak_i
-        else:
-            if n_peaks > strike_point_index:
-                if strike_point_assumptions == 'continuous':
-                    # Follow path of strike point by ensuring next point is close to previous location
-                    i_last_non_nan = int(np.max(np.nonzero(np.array(
-                        ~strike_points.loc[:, (strike_point_index, 'ind')].isnull()))[0]))
-                    t_last_non_nan = strike_points.index[i_last_non_nan]
+            r_peak_i = np.nan
+            amplitude_peak_i = np.nan
+            fom = np.nan
 
-                    ind_peak_prev = strike_points.loc[t_last_non_nan, (strike_point_index, 'ind')]
-                    s_peak_prev = strike_points.loc[t_last_non_nan, (strike_point_index, 's_global')]
-                    intensity_peak_prev = strike_points.loc[t_last_non_nan, (strike_point_index, 'intensity')]
+        strike_points.loc[coord, (strike_point_index, 'ind')] = ind_peak_i
+        strike_points.loc[coord, (strike_point_index, 'amplitude')] = amplitude_peak_i
+        strike_points.loc[coord, (strike_point_index, 's_global')] = s_peak_i
+        strike_points.loc[coord, (strike_point_index, 'R')] = r_peak_i
+        strike_points.loc[coord, (strike_point_index, 'fom')] = fom
 
-                    # Working with speak in space order - not sorted intensity order
-                    intensity_diffs = (amplitude_peaks - intensity_peak_prev) / intensity_peak_prev + 0.1
-                    s_diff_scale_factor = s_coord.max() - s_coord.min()  # TODO: move
-                    i_diffs = (ind_peak_i - ind_peak_prev)
-                    if np.any(np.abs(i_diffs) > 5):
-                        pass
-                    s_diffs = (s_peaks - s_peak_prev) / s_diff_scale_factor + 0.01
-                    s_diffs[s_diffs < 0] += 0.1
-                    # TODO: Deal with perfect fom of 0 for # same s coord
-                    foms = (np.abs(intensity_diffs) * np.abs(s_diffs)).values  # want low figure of merit
-                    i_foms = np.argsort(foms)
-
-                    for j in np.arange(len(i_foms)):
-                        ind_peaks_array = int(i_foms[j])  # index of peak in peaks array with lowest fom
-                        if ind_peaks_array not in peak_inds_assigned:
-                            # Make sure best match for this strike point hasn't already been assigned to higher
-                            # priority strike point
-                            peak_inds_assigned.append(ind_peaks_array)
-                            break
-                    else:
-                        raise ValueError('Shouldnt get here..')
-                else:
-                    raise NotImplementedError(f'strike_point_assumptions = {strike_point_assumptions}')
-
-                # ind_peaks_array = ind_peaks[i_sp]
-                ind_peak_i = ind_peaks_sorted[ind_peaks_array]
-                s_peak_i = s_peaks[ind_peaks_array]
-                r_peak_i = r_peaks[ind_peaks_array]
-                intensity_peak_i = intensity_peaks[ind_peaks_array]
-                fom = float(foms[ind_peaks_array])
-
-                pass
-            else:
-                logger.debug(
-                    f'Time {coord} after initial strike point identification has {n_peaks}<{strike_point_index} local maxima')
-
-                ind_peak_i = np.nan
-                s_peak_i = np.nan
-                r_peak_i = np.nan
-                intensity_peak_i = np.nan
-                fom = np.nan
-
-            strike_points.loc[coord, (strike_point_index, 'ind')] = ind_peak_i
-            strike_points.loc[coord, (strike_point_index, 'intensity')] = intensity_peak_i
-            strike_points.loc[coord, (strike_point_index, 's_global')] = s_peak_i
-            strike_points.loc[coord, (strike_point_index, 'R')] = r_peak_i
-            strike_points.loc[coord, (strike_point_index, 'fom')] = fom
-
-        strike_points.loc[coord, ('summary', 'n_peaks')] = n_peaks
+    strike_points.loc[coord, ('summary', 'n_peaks')] = n_peaks
     coord_previous = coord
 
     peaks_info['strike_points'] = strike_points
 
-    peaks_info[f'peak'].append(amplitude_peak_global)
-    peaks_info[f'ind_global_peak'].append(peaks_info[f'ind_global_peak'])
-    peaks_info[f'n_peaks'].append(peaks_info[f'n_peaks'])
-    peaks_info[f'ind_peaks'].append(peaks_info[f'ind_peaks'])
-    peaks_info[f'peak_properties'][coord] = peaks_info[f'properties']
-    if coords is not None:
-        for key, values in coords.items():
-            peak = np.array(values)[i_peak_global] if n_peaks > 0 else np.nan
-            peaks_info[f'{key}_peak'].append(peak)
+    # peaks_info[f'peak'].append(amplitude_peak_global)
+    # peaks_info[f'ind_global_peak'].append(peaks_info[f'ind_global_peak'])
+    # peaks_info[f'n_peaks'].append(peaks_info[f'n_peaks'])
+    # peaks_info[f'ind_peaks'].append(peaks_info[f'ind_peaks'])
+    # peaks_info[f'peak_properties'][coord] = peaks_info[f'properties']
+    # if coords is not None:
+    #     for key, values in coords.items():
+    #         peak = np.array(values)[i_peak_global] if n_peaks > 0 else np.nan
+    #         peaks_info[f'{key}_peak'].append(peak)
 
 def locate_strike_points(param_values, dim='t', coords=None, peak_kwargs=(('width', 3),),
                          strike_point_assumptions='continuous'):
@@ -318,6 +440,7 @@ def locate_strike_points(param_values, dim='t', coords=None, peak_kwargs=(('widt
     Returns: Dict of peak info
 
     """
+    logger.info('Calculating strike point locations')
     if isinstance(peak_kwargs, tuple):
         peak_kwargs = dict(peak_kwargs)
     if 'n' in param_values.dims:
@@ -338,25 +461,48 @@ def locate_strike_points(param_values, dim='t', coords=None, peak_kwargs=(('widt
     # strike_point_value = defaultdict(list)
     # cols = list(itertools.chain(*[[f'strike_point_{i}_ind', f'strike_point_{i}_peak']
     #                               for i in np.arange(n_strike_points)]))
-    cols = [np.arange(n_strike_points), ['ind', 'R', 's_global', 'intensity', 'fom']]
+    cols = [np.arange(n_strike_points), ['ind', 'R', 's_global', 'amplitude', 'fom']]
     cols = pd.MultiIndex.from_product(cols, names=['strike_point', 'param'])
     strike_points = pd.DataFrame(columns=cols, dtype=float)
+    strike_points.index.name = 't'
 
     roll = param_values.rolling({dim: 1})  # Roll over single time slices
     for i_coord, (coord, profile) in enumerate(roll):
         profile = profile.sel({dim: coord}).values  # Make 1D
         coord = float(coord.values)
 
-        peaks_info_i = find_peaks_info(profile, peak_kwargs=peak_kwargs, add_boundary_local_maxima=True, coords=coords)
+        peaks_info_i = find_peaks_info(profile, peak_kwargs=peak_kwargs, add_boundary_local_maxima=False, coords=coords)
 
+        fom_threshold = 1e5
         for strike_point_index in np.arange(n_strike_points):
-            fom = calc_strike_point_continutity_rating(peaks_info_i, strike_points, strike_point_index)
+            foms = calc_strike_point_continutity_rating(peaks_info_i, strike_points, strike_point_index, t=coord,
 
+                                                        fom_threshold=fom_threshold)
+            strike_points = select_next_strike_point_peak(peaks_info_i, strike_points, strike_point_index, foms,
+                                                          t=coord, fom_threshold=fom_threshold)
+            pass
 
+        i_peak = peaks_info_i[f'ind_peak_global']
+        n_peaks = peaks_info_i[f'n_peaks']
+
+        peak_info[f'amplitude_peak_global'].append(peaks_info_i[f'amplitude_peak_global'])
+        peak_info[f'ind_peak_global'].append(peaks_info_i[f'ind_peak_global'])
+        peak_info[f'n_peaks'].append(peaks_info_i[f'n_peaks'])
+        peak_info[f'ind_peaks'].append(peaks_info_i[f'ind_peaks'])
+        peak_info[f'amplitude_peaks'].append(peaks_info_i[f'amplitude_peaks'])
+        peak_info[f'peak_properties'][coord] = peaks_info_i[f'properties']
+        peak_info[f'strike_points'] = strike_points
+        if coords is not None:
+            for key, values in coords.items():
+                if n_peaks > 0:
+                    peak = np.array(values)[i_peak]
+                else:
+                    peak = np.nan
+                peak_info[f'{key}_peak'].append(peak)
 
     # func = np.vectorize(find_peaks)
     # ind_peaks = func(param_values.values)
-    keys_1d = ([f'peak', f'ind_global_peak', f'n_peaks'] +
+    keys_1d = ([f'amplitude_peak_global', f'ind_peak_global', f'n_peaks'] +
                list(f'{key}_peak' for key in coords.keys()))
     for key in keys_1d:
         peak_info[key] = np.array(peak_info[key])
@@ -497,32 +643,39 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
     annulus_areas_corrected = data_out[f'annulus_areas_{path}']
 
     for param in params:
-        info_numeric = ['peak', 'n_peaks', 's_peak', 'r_peak']
+        info_numeric = ['amplitude_peak_global', 'n_peaks', 's_global_peak', 'R_peak']
         try:
             param_values = path_data[f'{param}_{path}']
             param_total = calc_divertor_area_integrated_param(param_values, annulus_areas_corrected)
-            peak_kwargs = dict(width=1, height=0, prominence=0.015)
+            peak_kwargs = dict(width=1, height=np.mean(param_values.values), prominence=0.015)
             # print(f'Using peak detection window settings: {peak_kwargs}')
-            peak_info = locate_strike_points(param_values, dim='t', coords=dict(s_global=s_path, R=r_path),
-                                             peak_kwargs=peak_kwargs)
             param_stats = calc_2d_profile_param_stats(param_values, path=path)
 
-            debug = True
-            if debug and (param == 'heat_flux'):
-                ax, data, artist = debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', t_range=None,
-                                                                     show=False, robust_percentiles=(40, 99.8))
-                r = path_data['R_path0']
-                t = path_data['t']
-                i_global = peak_info['ind_global_peak']
-                nan_mask = ~np.isnan(i_global)
-                strike_points = peak_info['strike_points']
-                colors = ('g', 'b', 'orange', 'k')
-                for i, color in zip(np.arange(4), colors):
-                    ax.plot(strike_points.loc[:, (i, 'R')], t, color=color, lw=1, marker='o', markersize=2)
-                # for t, i_peaks_t in zip(path_data['t'], peak_info['ind_peaks']):
-                #     ax.plot(r[i_peaks_t], np.repeat(t.item(), len(i_peaks_t)), 'gx', ms=2, alpha=0.4)
-                # ax.plot(r[i_global[nan_mask].astype(int)], path_data['t'][nan_mask], 'kx', ms=2, alpha=0.4)
-                plt.show()
+            if param == 'heat_flux':
+                peak_info = locate_strike_points(param_values, dim='t', coords=dict(s_global=s_path, R=r_path),
+                                                 peak_kwargs=peak_kwargs)
+                # TODO: Use new strike point info in output
+                debug = True
+                # debug = False
+                if debug and (param == 'heat_flux'):
+                    ax, data, artist = debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', t_range=None,
+                                                                         show=False, robust_percentiles=(40, 99.8))
+                    r = path_data['R_path0']
+                    t = path_data['t']
+                    i_global = peak_info['ind_global_peak']
+                    nan_mask = ~np.isnan(i_global)
+                    strike_points = peak_info['strike_points']
+
+                    colors = ('k', 'b', 'orange', 'g')
+                    lw = 2.5
+                    for i, color in zip(np.arange(4), colors):
+                        ax.plot(strike_points.loc[:, (i, 'R')], t, color=color, lw=lw, marker='o', markersize=2, alpha=0.6)
+                        lw *= 0.5
+
+                    # for t, i_peaks_t in zip(path_data['t'], peak_info['ind_peaks']):
+                    #     ax.plot(r[i_peaks_t], np.repeat(t.item(), len(i_peaks_t)), 'gx', ms=2, alpha=0.4)
+                    # ax.plot(r[i_global[nan_mask].astype(int)], path_data['t'][nan_mask], 'kx', ms=2, alpha=0.4)
+                    plt.show()
 
         except Exception as e:
             logger.warning(f'Failed to calculate physics summary for param "{param}":\n{e}')
@@ -531,7 +684,7 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
             data_out = data_out.merge(param_stats)
 
             key = f'{param}_total_{path}'
-            data_out[key] = (('t',), param_total)
+            data_out[key] = (('t',), np.array(param_total))
             data_out[key].attrs.update(meta_data.get(f'{param}_total', {}))
             if 'description' in data_out[key].attrs:
                 data_out[key].attrs['label'] = data_out[key].attrs['description']
@@ -549,7 +702,7 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
 
         # Calculate rolling std and mean of peak positions
         try:
-            key = f'{param}_r_peak_{path}'
+            key = f'{param}_R_peak_{path}'
             param_r_peak_values = data_out[key]
             param_stats = calc_1d_profile_rolling_stats(param_r_peak_values, stats=['mean', 'std'], path=path)
         except Exception as e:
