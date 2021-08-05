@@ -8,8 +8,11 @@ Created:
 """
 
 import logging
+from pathlib import Path
+from collections import namedtuple
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 
 import fire
@@ -22,8 +25,7 @@ from fire.interfaces import interfaces, io_utils
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
-
-def read_structure_coords(machine='mast_u', paths=None, fns=None):
+def locate_structure_coords_file(machine='mast_u', paths=None, fns=None):
     if (paths is None) or (fns is None):
         config = fire.interfaces.read_user_fire_config.read_user_fire_config()
         paths = config['paths_input']['input_files']
@@ -31,12 +33,37 @@ def read_structure_coords(machine='mast_u', paths=None, fns=None):
 
     kws = dict(machine=machine, fire_path=fire.fire_paths['root'])
     path_fn = io_utils.locate_file(paths, fns=fns, path_kws=kws, fn_kws=kws)
-    print(path_fn)
+    # print(path_fn)
     path_fn = path_fn[0] / path_fn[1]
-    print(path_fn)
-    structure_coords = fire.interfaces.basic_io.read_csv(path_fn)
-    return structure_coords
+    # print(path_fn, path_fn.suffix)
+    return path_fn
 
+def read_structure_coords(path_fn=None, machine='mast_u'):
+    if path_fn is None:
+        path_fn = locate_structure_coords_file(machine=machine)
+    path_fn = Path(path_fn)
+    if path_fn.suffix == '.json':
+        structure_coords = fire.interfaces.io_basic.json_load(path_fn)
+    elif path_fn.suffix == '.csv':
+        structure_coords = fire.interfaces.io_basic.read_csv(path_fn, sep=', ', index_col='structure')
+    return path_fn, structure_coords
+
+def structure_coords_dict_to_df(structure_coords):
+    from fire.misc.utils import is_scalar, is_number
+    StructureCoordsTuple = namedtuple('StructureCoordsTuple', ('structure_coords_df', 'structure_coords_info'))
+    if isinstance(structure_coords, pd.DataFrame):
+        return StructureCoordsTuple(structure_coords, {})
+
+    df = pd.DataFrame()
+    for id, values in structure_coords.items():
+        for col, value in values.items():
+            if is_scalar(value):
+                df.loc[id, col] = value
+            elif isinstance(value, dict):
+                for i, val in enumerate(value):
+                    df.loc[id, f'{col}{i+1}'] = val
+        # raise NotImplementedError
+    return StructureCoordsTuple(df, structure_coords)
 
 def identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=True, bg_value = -1):
     # Create mask with values corresponding to id of structure visible in each pixel
@@ -49,6 +76,11 @@ def identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=T
     material_ids = np.full_like(r_im, bg_value, dtype=type(bg_value))
     visible_structures = {}
     visible_materials = {}
+
+    # TODO: Switch to using json structure coords file
+    # from fire.geometry.geometry import structure_coords_dict_to_df
+    # surface_coords = structure_coords_dict_to_df(surface_coords)
+
     for surface_name, row in surface_coords.iterrows():
         surface_id = row['id']
         material_name = row['material']
@@ -93,7 +125,9 @@ def identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=T
             visible_materials[material_id] = material_name
     if len(visible_structures) == 0:
         raise ValueError(f'No surfaces identified in camera view')
-    return structure_ids, material_ids, visible_structures, visible_materials
+    VisibleStructuresTuple = namedtuple('VisibleStructuresTuple',
+                                        ('structure_ids', 'material_ids', 'visible_structures', 'visible_materials'))
+    return VisibleStructuresTuple(structure_ids, material_ids, visible_structures, visible_materials)
 
 def identify_tiles_in_r_range(coord_r_values, tile_coords):
     raise NotImplementedError
