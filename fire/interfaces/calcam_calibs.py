@@ -19,7 +19,7 @@ running from top to bottom.
 Created: 11-10-19
 """
 
-import logging, time
+import logging, time, warnings
 from typing import Union, Sequence, Optional
 from pathlib import Path
 from collections import OrderedDict, defaultdict
@@ -272,7 +272,6 @@ def get_surface_coords(calcam_calib, cad_model, image_coords='Original', phi_pos
     data_out['spatial_res_max'].attrs['standard_name'] = 'Spatial resolution'
     data_out['spatial_res_max'].attrs['units'] = 'm'
     # Just take red channel of wireframe image
-    # TODO: Fix wireframe image being returned black
     data_out['wire_frame'] = (('y_pix', 'x_pix', 'coord_color_alpha'), wire_frame)  # wire_frame[:, :, 0])
     data_out['wire_frame_gray'] = (('y_pix', 'x_pix'), wire_frame_gray)  # wire_frame[:, :, 0])
 
@@ -315,8 +314,10 @@ def calc_spatial_res(x_im, y_im, z_im, res_min=1e-4, res_max=None):
 
     spatial_res['spatial_res_x'] = spatial_res_x
     spatial_res['spatial_res_y'] = spatial_res_y
-    spatial_res['spatial_res_mean'] = np.nanmean([spatial_res_x, spatial_res_y], axis=0)
-    spatial_res['spatial_res_max'] = np.nanmax([spatial_res_x, spatial_res_y], axis=0)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        spatial_res['spatial_res_mean'] = np.nanmean([spatial_res_x, spatial_res_y], axis=0)
+        spatial_res['spatial_res_max'] = np.nanmax([spatial_res_x, spatial_res_y], axis=0)
 
     return spatial_res
 
