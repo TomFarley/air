@@ -279,7 +279,8 @@
             "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
             "{fire_path}/../tests/test_data/{machine}/",
             "/scratch/ir_movies_mastu/{machine}/{pulse}/{camera}/",
-            "/home/tfarley/data/movies/{machine}/{pulse}/{camera}/"
+            "/home/tfarley/data/movies/{machine}/{pulse}/{camera}/",
+            "~/data/movies/mast_u/rit_ipx_files/"
         ]
     },
     "paths_output": {
