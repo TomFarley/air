@@ -278,7 +278,7 @@ def calc_horizontal_path_anulus_areas(r_path):
     return annulus_areas
 
 
-def calc_tile_tilt_area_coorection_factors(path_data, poloidal_plane_tilt, nlouvres, step_size, path='path0'):
+def calc_tile_tilt_area_correction_factors(path_data, poloidal_plane_tilt, nlouvres, step_size, path='path0'):
     """Return correction factors for areas returned by calc_horizontal_path_anulus_areas() accounting for tile tilts.
 
     See Matthew Dunn's MAST wetted area correction in:
@@ -411,7 +411,7 @@ def calc_divertor_area_integrated_param(values, annulus_areas):
     # TODO: Check for 1/2D input
     if (isinstance(values, xr.DataArray) and isinstance(annulus_areas, xr.DataArray)):
         # Integrate along labeled axis
-        spatial_dim = annulus_areas.dims[0]
+        spatial_dim = annulus_areas.dims[-1]
         value_times_area = values * annulus_areas
         total = value_times_area.sum(spatial_dim)
     else:
