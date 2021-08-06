@@ -16,8 +16,8 @@ from scipy import interpolate
 
 import matplotlib.pyplot as plt
 
-from fire.geometry.geometry import calc_horizontal_path_anulus_areas, calc_tile_tilt_area_corection_factors, \
-    calc_divertor_area_integrated_param
+from fire.geometry.geometry import (calc_horizontal_path_anulus_areas, calc_tile_tilt_area_correction_factors,
+    calc_divertor_area_integrated_param)
 from fire.misc.data_structures import attach_standard_meta_attrs, get_reduce_coord_axis_keep, reduce_2d_data_array
 from fire.misc.utils import make_iterable
 from fire.plotting import debug_plots
@@ -144,8 +144,8 @@ def calc_strike_point_continutity_rating(peaks_info, strike_points, strike_point
                                          strike_point_assumptions='continuous',
                                          history_weights=(0.5, 0.2, 0.1, 0.05, 0.05),
                                          scalings=(('displacement', 1.0), ('amplitude', 1.0)),
-                                         weightings=(('small_displacement', 1.0), ('similar_amplitude', 0.5),
-                                                     ('high_amplitude', 0.3)),
+                                         weightings=(('small_displacement', 1.0), ('similar_amplitude', 0.3),
+                                                     ('high_amplitude', 0.2)),
                                          penalties=(('decreasing_R', 0.1), ('non_monotonic', 0.1),
                                                     ('incomplete_history', 0.1)),
                                          limits=(('max_movement', (-0.1, 0.5)), ('s_fluctuations', 0.005)),
@@ -629,17 +629,24 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
         # tile_angle_poloidal = path_data[f'tile_angle_poloidal_{path}']
         # tile_angle_toroidal = path_data[f'tile_angle_toroidal_{path}']
         poloidal_plane_tilt = dict(T1=45, T2=45, T3=45, T4=0, T5=-45)
-        toroidal_tilt = dict(T1=4, T2=4, T3=4, T4=4, T5=4)
-        nlouvres = dict(T1=12, T2=12, T3=12, T4=12, T5=24)  # Not required
-        tile_tilt_area_factors = calc_tile_tilt_area_corection_factors(path_data,
-                                                                       poloidal_plane_tilt=poloidal_plane_tilt, toroidal_tilt=toroidal_tilt,
-                                                                       nlouvres=nlouvres, path=path_name)
+        # toroidal_tilt = dict(T1=4, T2=4, T3=4, T4=4, T5=4)
+        step_size = dict(T1=0.003, T2=0.003, T3=0.003, T4=0.003, T5=0.0014)  # Tile edge step in metres
+        nlouvres = dict(T1=12, T2=12, T3=12, T4=12, T5=24)
+        tile_tilt_area_factors = calc_tile_tilt_area_correction_factors(path_data,
+                                    poloidal_plane_tilt=poloidal_plane_tilt, nlouvres=nlouvres, step_size=step_size,
+                                    path=path_name)
+
+        # TODO: Fix erroneous negative and large correction factors eg +277.4440
+        tile_tilt_area_factors[:, :] = 1
+
+
         annulus_areas_corrected = annulus_areas_horizontal * tile_tilt_area_factors
     else:
         logger.warning(f'Using incorrect annulus areas for integrated/total quantities')
         annulus_areas_corrected = annulus_areas_horizontal
 
-    data_out[f'annulus_areas_{path}'] = ((f'i_{path}',), annulus_areas_corrected)
+    data_out[f'tile_tilt_area_factors_{path}'] = (('t', f'i_{path}',), tile_tilt_area_factors)
+    data_out[f'annulus_areas_{path}'] = (('t', f'i_{path}',), annulus_areas_corrected)
     annulus_areas_corrected = data_out[f'annulus_areas_{path}']
 
     for param in params:
