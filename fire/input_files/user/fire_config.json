@@ -22,9 +22,10 @@
                 "rir": {
                     "movie_plugins": [
                         "ipx",
+                        "ats_movie",
+                        "uda",
                         "npz",
-                        "imstack",
-                        "uda"
+                        "imstack"
                     ],
                     "device_details": {
                         "id": "FLIR SC7500 MWIR Camera 1",
@@ -48,11 +49,11 @@
                 },
                 "rit": {
                     "movie_plugins": [
+                        "uda",
                         "ipx",
                         "raw_movie",
                         "npz",
-                        "imstack",
-                        "uda"
+                        "imstack"
                     ],
                     "device_details": {
                         "id": "IRcam Velox 81k Camera 1",
@@ -222,9 +223,12 @@
                     "s_global": "get_s_coord_global",
                     "s_path": "get_s_coord_path",
                     "get_wall_rz_coords": "get_wall_rz_coords",
+                    "get_camera_external_clock_info": "get_camera_external_clock_info",
+                    "get_frame_time_correction": "get_frame_time_correction",
                     "plot_vessel_outline": "plot_vessel_outline",
                     "plot_vessel_top_down": "plot_vessel_top_down",
                     "label_tiles": "label_tiles",
+                    "pulse_meta_data": "pulse_meta_data",
                     "info": "plugin_info"
                 }
             }
@@ -280,7 +284,8 @@
             "{fire_path}/../tests/test_data/{machine}/",
             "/scratch/ir_movies_mastu/{machine}/{pulse}/{camera}/",
             "/home/tfarley/data/movies/{machine}/{pulse}/{camera}/",
-            "~/data/movies/mast_u/rit_ipx_files/"
+            "~/data/movies/mast_u/rit_ipx_files/",
+            "~/data/movies/mast_u/rir_ats_files/test/"
         ]
     },
     "paths_output": {
@@ -294,7 +299,8 @@
         "movie_files": [
             "{camera}0{pulse}.ipx",
             "{camera}_{pulse}.npz",
-            "{camera}_{pulse}.raw"
+            "{camera}_{pulse}.raw",
+            "0{pulse}.ats"
         ],
         "camera_settings": [
             "camera_settings-{machine}-{camera}.csv"
