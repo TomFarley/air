@@ -148,7 +148,7 @@ def import_mast_client():
         mast_client, client = False, False
     return mast_client, client
 
-def get_uda_client(use_mast_client=False, try_alternative=True):
+def get_uda_client(use_mast_client=False, try_alternative=True, server="uda2.hpc.l", port=56565):
     try:
         if use_mast_client:
             mast_client, client = import_mast_client()
@@ -156,6 +156,10 @@ def get_uda_client(use_mast_client=False, try_alternative=True):
         else:
             pyuda, client = import_pyuda()
             uda_module = pyuda
+            # UDA2 (new office network server). UDA3 = remote access server
+            # See other servers at https://users.mastu.ukaea.uk/sites/default/files/uploads/UDA_data_access.pdf
+            pyuda.Client.server = server
+            pyuda.Client.port = port
             # client = pyuda.Client()
     except (ModuleNotFoundError, ImportError) as e:
         # TODO: Handle missing UDA client gracefully
