@@ -16,13 +16,15 @@ from copy import copy
 
 import numpy as np
 import xarray as xr
+from fire.camera_tools.camera_checks import logger
+from fire.interfaces import uda_utils
 from fire.plotting.plot_tools import format_poloidal_plane_ax
 from fire.geometry.s_coordinate import interpolate_rz_coords, separate_rz_points_top_bottom, calc_s_coord_lookup_table, \
     get_nearest_s_coordinates, get_nearest_rz_coordinates, get_nearest_boundary_coordinates
 
 from fire.geometry.geometry import cartesian_to_toroidal
 from fire.misc.utils import make_iterable
-from fire.misc import data_structures
+from fire.misc import data_structures, utils
 from fire.plotting import plot_tools
 
 logger = logging.getLogger(__name__)
@@ -151,7 +153,8 @@ def get_s_coords_tables_mastu(ds=1e-4, no_cal=True, signal="/limiter/efit", shot
 
 # TODO: Import from mastcodes/uda/python/mast/geom/geomTileSurfaceUtils.py ? - from mast.geom.geomTileSurfaceUtils
 
-def get_nearest_s_coordinates_mastu(r, z, tol=25e-3, ds=1e-3, no_cal=True, signal="/limiter/efit", shot=50000):
+def get_nearest_s_coordinates_mastu(r, z, tol=4e-3, ds=1e-3, no_cal=True, signal="/limiter/efit", shot=50000,
+                                    tol_t5_ripple=25e-3, t5_edge_r_range=(1.388, 1.395), path_fn_geometry=None):
     """Return closest tile surface 's' coordinates for supplied (R, Z) coordinates
 
     Args:
@@ -159,11 +162,12 @@ def get_nearest_s_coordinates_mastu(r, z, tol=25e-3, ds=1e-3, no_cal=True, signa
         z: Array of vertical Z coordinates
         tol: Tolerance distance for points from wall - return nans if further away than tolerance.
              5mm is appropriate for most surfaces, but should be increased to 25mm+ for T5 to account for ripple shaping
-             A larger theshold will mean more erroneous points (eg tile edges) will be assigned s coords
+             A larger threshold will mean more erroneous points (eg tile edges) will be assigned s coords
         ds: Resolution to interpolate wall coordinate spacing to in meters
         no_cal: Whether to use idealised CAD coordinates without spatial calibration corrections
         signal: UDA signal for wall coords
         shot: Shot number to get wall definition for
+        path_fn_geometry: Path to file defining coordinates of different in-vessel structures
 
     Returns: Dict of s coordinates for top/bottom, (Array of 1/-1s for top/bottom of machine, Dict keying 1/-1 to s
              keys)
@@ -175,13 +179,31 @@ def get_nearest_s_coordinates_mastu(r, z, tol=25e-3, ds=1e-3, no_cal=True, signa
     s = np.full_like(r, np.nan, dtype=float)
     position = np.full_like(r, np.nan, dtype=float)
     table_key = {-1: 's_bottom', 1: 's_top'}
-    for mask, key, pos in zip([z_mask, ~z_mask], ['s_bottom', 's_top'], [-1, 1]):
+    for mask_half, key, pos in zip([z_mask, ~z_mask], ['s_bottom', 's_top'], [-1, 1]):
         lookup_table = s_lookup[key]
-        if np.any(mask) and (not np.all(np.isnan(r[mask]))):
-            r_masked, z_masked = r[mask], z[mask]
+        if np.any(mask_half) and (not np.all(np.isnan(r[mask_half]))):
+            r_masked, z_masked = r[mask_half], z[mask_half]
             r_wall, z_wall, s_wall = lookup_table['R'], lookup_table['Z'], lookup_table['s']
-            s[mask] = get_nearest_s_coordinates(r_masked, z_masked, r_wall, z_wall, s_wall, tol=tol)
-            position[mask] = pos
+            s[mask_half] = get_nearest_s_coordinates(r_masked, z_masked, r_wall, z_wall, s_wall, tol=tol)
+
+            # At the lower edge of T5 the ripple correction shaping of T5 requires an extra high tolerance that is not
+            # desirable elsewhere where tiles are smooth
+            # t5_edge_mask = (r_masked > t5_edge_r_range[0]) & (r_masked < t5_edge_r_range[1])
+
+            from fire.geometry import geometry
+            path_fn, surface_coords = geometry.read_structure_coords(path_fn=path_fn_geometry, machine='mast_u')
+            structure_coords_df, structure_coords_info = geometry.structure_coords_dict_to_df(surface_coords)
+            visible_structures_tuple = geometry.identify_visible_structures(r_masked, np.zeros_like(r_masked),
+                                                                            z_masked, structure_coords_df)
+            visible_structures = visible_structures_tuple[0]
+            t5_edge_ind = np.nonzero(mask_half)[0][visible_structures == 5]
+            t5_edge_mask = np.zeros_like(r, dtype=bool)
+            t5_edge_mask[t5_edge_ind] = True  # mask_im = t5_edge_mask.reshape((320, 256))
+            if np.any(t5_edge_mask):
+                s[t5_edge_mask] = get_nearest_s_coordinates(r[t5_edge_mask], z[t5_edge_mask], r_wall, z_wall, s_wall,
+                                                            tol=tol_t5_ripple)
+
+            position[mask_half] = pos
     return s, (position, table_key)
 
 # def create_poloidal_cross_section_figure(nrow=1, ncol=1, cross_sec_axes=((0, 0),)):
@@ -381,6 +403,29 @@ def label_tiles(ax, coords, coords_axes=('i_path{path_no}', 't'),
 
     return tiles, r_tiles
 
+def pulse_meta_data(shot, keys=
+                    # ('exp_date', 'exp_time', 'preshot', 'postshot', 'creation', 'abort', 'useful', 'sl',
+                    #            'term_code', 'tstart', 'tend','program', 'reference')
+                    #     ('tstart', 'tend', 'ip_max', 'tftstart', 'tftend', 'bt_max', 'bt_ipmax', 'pohm_max',
+                    #      'tstart_nbi', 'tend_nbi', 'pnbi_max', 'rmag_efit', 'te0_max', 'ngreenwald_ipmax',
+                    #      'ngreenwaldratio_ipmax', 'q95_ipmax', 'zeff_max', 'zeff_ipmax', 'betmhd_ipmax', 'zmag_efit',
+                    #      'rinner_efit', 'router_efit')
+('tstart', 'tend', 'ip_max', 'tftstart', 'tftend', )
+                    ):
+    try:
+        from pycpf import pycpf
+    except ImportError as e:
+        return e
+
+    out = dict()
+    for key in keys:
+        try:
+            out[key] = pycpf.query([key], filters=['exp_number = {}'.format(shot)])[key]   # [0]
+            out['erc'] = 0
+        except Exception as e:
+            logger.warning(f'Failed to perform CPF query for {shot}, {key}')
+    return out
+
     # from matplotlib import patches
     # from fire.plotting.plot_tools import get_fig_ax
     # from fire.geometry.geometry import cylindrical_to_cartesian
@@ -431,6 +476,100 @@ def label_tiles(ax, coords, coords_axes=('i_path{path_no}', 't'),
     #     ax.set_xlabel(r'x [m]')
     #     ax.set_ylabel(r'y [m]')
     #     # plt.tight_layout()
+
+def get_camera_external_clock_info(camera, pulse):
+    if camera.lower() in ['rit', 'ait']:
+        signal_clock = 'xpx/clock/lwir-1'
+    elif camera.lower() in ['rir', 'air']:
+        signal_clock = 'xpx/clock/mwir-1'
+    else:
+        raise ValueError(f'Camera name "{camera}" not supported')
+
+    info_out = {}
+
+    try:
+        data = uda_utils.read_uda_signal_to_dataarray(signal_clock, pulse=pulse, raise_exceptions=True)
+    except (Exception, RuntimeError) as e:
+        logger.warning(e)
+        return None
+    else:
+        if isinstance(data, Exception):
+            return None
+        data = data.astype(float)  # Switch from uint8
+
+    t = data['t']
+
+    signal_dv = np.concatenate([[0], np.diff(data)])
+
+    frame_times = t[signal_dv > 1e-5]  # rising edges
+
+    dt_frame = utils.mode_simple(np.diff(frame_times))  # time between frame aquisitions
+    clock_freq = 1/dt_frame
+
+    clock_peak_width = np.diff(t[np.abs(signal_dv) > 1e-5][:2])[0]  # Width of first square wave
+
+    dt_signal = 1e-4
+    data = data.interp(t=np.arange(t.min(), t.max(), dt_signal))
+
+    # dt_signal = stats.mode(data['t'].diff(dim='t')).mode
+    # t_high = data.sel(t=(data > data.mean()).values)['t']
+    t_high = data['t'][(data > data.mean()).values]
+
+    power = np.fft.fft(data)
+    freq = np.fft.fftfreq(data.shape[-1], d=dt_signal)
+
+    mask_pos = freq > 0
+    power = power[mask_pos]
+    freq = freq[mask_pos]
+
+    power_abs = np.absolute(power)
+    # plt.plot(freq, power.real, freq, power.imag)
+
+    clock_freq_fft = freq[np.argmax(power_abs)]  # TODO: Convert freq to int?
+
+    info_out['clock_frame_times'] = frame_times  # rising edges
+    info_out['clock_t_window'] = np.array([frame_times[0], frame_times[-1]])
+    info_out['clock_nframes'] = len(frame_times)
+    info_out['clock_frequency'] = clock_freq
+    info_out['clock_inter_frame'] = dt_frame
+    info_out['clock_square_wave_width'] = clock_peak_width
+    info_out['clock_frequency_fft'] = clock_freq_fft
+
+    return info_out
+
+
+def get_frame_time_correction(frame_times_camera, frame_times_clock=None, clock_info=None,
+                              singals_da=('xim/da/hm10/t', 'xim/da/hm10/r')):
+    """Work out corrected frame times/frame rate
+
+    Problem can occur when manually recording camera data, that the camera internal frame rate is configured
+    differently to the externally supplied clock rate. In this situation the frame times drift out of sequence with
+    the clock. Presumably the frames are aquired on the first internal clock cycle occuring after an trigger signal?
+    Alternatively could look into only internal clock times that occur during clock high values (+5V top of square wave)
+
+    Args:
+        frame_times_camera:
+        frame_times_clock:
+        clock_info:
+        singals_da:
+
+    Returns:
+
+    """
+    time_correction = {}
+    if frame_times_clock is not None:
+        frame_times_corrected = np.full_like(frame_times_clock, np.nan)
+        for i, t_clock in enumerate(np.array(frame_times_clock)):
+            frame_times_corrected[i] = frame_times_camera[frame_times_camera >= t_clock][0]
+        dt_mean = utils.mode_simple(np.diff(frame_times_corrected))
+        fps_mean = 1/dt_mean
+        fps_clock = 1/utils.mode_simple(np.diff(frame_times_clock))
+        fps_camera = 1/utils.mode_simple(np.diff(frame_times_camera))
+        factor = fps_mean / fps_camera
+    time_correction = dict(factor=factor, frame_times_corrected=frame_times_corrected, fps_mean=fps_mean,
+                           fps_clock=fps_clock, fps_camera=fps_camera)
+    return time_correction
+
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
