@@ -161,6 +161,19 @@ def get_compatible_plugins(plugin_paths: PathList,
         info = OrderedDict([(key, info[key]) for key in plugin_filter if key in info.keys()])
     return plugins, info
 
+def call_plugin_func(pluggins, name, args, kwargs=(), dummy_ouput=None, verbose_dummy_func=True):
+    args = make_iterable(args)
+    kwargs = dict(kwargs)
+    func = pluggins.get(name, dummy_function(name, dummy_ouput, verbose=verbose_dummy_func))
+    out = func(*args, **kwargs)
+    return out
+
+def dummy_function(name, dummy_ouput, verbose=True):
+    def _dummy_func(*args, **kwargs):
+        if verbose:
+            logger.warning(f'Failed to call plugin function "{name}" with {args}, {kwargs}')
+        return dummy_ouput
+    return _dummy_func
 
 if __name__ == '__main__':
     pass
