@@ -18,7 +18,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 from fire.interfaces import io_utils, io_basic
-from fire.misc.utils import make_iterable
+from fire.misc.utils import make_iterable, safe_arange
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -47,9 +47,12 @@ def complete_meta_data_dict(meta_data_dict, n_frames=None, image_shape=None, rep
 
     t_range = [min(frame_times), max(frame_times)]
     frame_range = [min(frame_numbers), max(frame_numbers)]
+    width = image_shape[1]
+    height = image_shape[0]
 
     dict_out = copy(meta_data_dict)
     dict_out.update(dict(n_frames=n_frames, image_shape=image_shape, detector_window=detector_window,
+                         width=width, height=height, top=0, left=0, right=width, bottom=height,
                         frame_period=period, lens=25e-3, bit_depth=14, t_range=t_range, frame_range=frame_range,
                                     exposure=0.25e-3,  frame_numbers=frame_numbers, frame_times=frame_times,
                                     t_before_pulse=t_before_pulse))
@@ -162,8 +165,8 @@ def generate_json_meta_data_file_for_ircam_raw(path, fn, n_frames, image_shape, 
     frame_numbers = np.arange(n_frames).tolist()
 
     # Make sure frame frame times are centred around frame at t=0
-    frame_times = list(np.arange(0, -t_before_pulse, -period)[::-1])
-    frame_times = frame_times + list(np.arange(period, (n_frames-len(frame_times)+1)*period, period))
+    frame_times = list(safe_arange(0, -t_before_pulse, -period)[::-1])
+    frame_times = frame_times + list(safe_arange(period, (n_frames-len(frame_times))*period, period))
 
     t_range = [min(frame_times), max(frame_times)]
     frame_range = [min(frame_numbers), max(frame_numbers)]
@@ -175,17 +178,22 @@ def generate_json_meta_data_file_for_ircam_raw(path, fn, n_frames, image_shape, 
 
     list_out = list(dict_out.items())
 
+    assert len(frame_times) == n_frames
+
     json_dump(list_out, fn, path, overwrite=True)
     logger.info(f'Wrote meta data file to: {path}/{fn}')
 
-def organise_ircam_raw_files(path_in='/home/tfarley/ccfepc/T/tfarley/Ops_20210130/',
-                             fn_in='MASTU_LWIR_HL04A-(\d+).RAW', fn_in_group_keys=('pulse',),
-                             path_out='~/data/movies/mast_u/{pulse}/{camera}/', fn_out='{camera}_{pulse}.raw',
-                             fn_meta='{camera}_{pulse}_meta.json',
+def organise_ircam_raw_files(path_in='/home/tfarley/data/movies/diagnostic_pc_transfer/{today}/',
+                             fn_in='(\d+).RAW', fn_in_group_keys=('pulse',),
+                             path_out='~/data/movies/mast_u/{pulse}/{camera}/', fn_raw_out='{camera}_{pulse}.raw',
+                             fn_meta='{camera}_{pulse}_meta.json', fn_ipx_format='rit0{pulse}.ipx',
                              pulse_whitelist=None, pulse_blacklist=None,
-                             meta=None, camera_settings=None, n_files=None):
+                             meta=None, camera_settings=None, n_files=None, write_ipx=True):
     from fire.interfaces.io_utils import filter_files_in_dir
     from fire.interfaces.camera_data_formats import read_ircam_raw_int16_sequence_file, get_ircam_raw_int_nframes_and_shape
+
+    str_today = datetime.now().strftime('%Y-%m-%d')
+    path_in = Path(str(path_in).format(today=str_today))
 
     if meta is None:
         meta = {}
@@ -213,26 +221,30 @@ def organise_ircam_raw_files(path_in='/home/tfarley/ccfepc/T/tfarley/Ops_2021013
         kws = dict(zip(make_iterable(fn_in_group_keys), make_iterable(keys)))
         meta.update(kws)
 
-        src = (Path(path_in) / fn0).expanduser()
-        dest = (Path(path_out.format(**meta)) / fn_out.format(**meta)).expanduser()
+        fn_raw_src = (Path(path_in) / fn0).expanduser()
+        fn_raw_dest = (Path(path_out.format(**meta)) / fn_raw_out.format(**meta)).expanduser()
 
         # Copy file from T drive to local archive
-        io_basic.copy_file(src, dest, mkdir_dest=True)
+        io_basic.copy_file(fn_raw_src, fn_raw_dest, mkdir_dest=True)
 
-        nframes, shape = get_ircam_raw_int_nframes_and_shape(src)
+        nframes, shape = get_ircam_raw_int_nframes_and_shape(fn_raw_src)
 
         fn_meta_out = fn_meta.format(**meta)
-        generate_json_meta_data_file_for_ircam_raw(dest.parent, fn_meta_out, nframes, image_shape=shape,
+        generate_json_meta_data_file_for_ircam_raw(fn_raw_dest.parent, fn_meta_out, nframes, image_shape=shape,
                                                    meta_data_dict=camera_settings)
+        if write_ipx:
+            # Create ipx file in same directory
+            fn_ipx = fn_raw_dest.with_name(fn_ipx_format.format(pulse=keys))
+            generate_ipx_file_from_ircam_raw(fn_raw_dest, fn_ipx, pulse=keys, plot_check=False)
+            # generate_ipx_file_from_ircam_raw(dest, meta_data_dict=camera_settings)
 
-        # generate_ipx_file_from_ircam_raw(dest, meta_data_dict=camera_settings)
         if len(files_filtered) == n_files:
             logger.info(f'Stopped copying after {n_files} files')
             break
     logger.info(f'Copied raw movie files and generated json meta data for {len(files_filtered)} pulses: '
                 f'{list(files_filtered.keys())}')
 
-def copy_raw_files_from_tdrive(today=False, n_files=None):
+def copy_raw_files_from_staging_area(today=False, n_files=None, write_ipx=True):
     pulse_whitelist = None
     camera_settings = dict(camera='rit', fps=400, exposure=0.25e-3, lens=25e-3, t_before_pulse=100e-3)
     # fn_in = 'MASTU_LWIR_HL04A-(\d+).RAW'
@@ -259,7 +271,7 @@ def copy_raw_files_from_tdrive(today=False, n_files=None):
     # path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210227/'
     # path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210228/'
 
-    camera_settings = dict(camera='rit', fps=400, exposure=0.25e-3, lens=25e-3, t_before_pulse=100e-3)
+    # camera_settings = dict(camera='rit', fps=400, exposure=0.25e-3, lens=25e-3, t_before_pulse=100e-3)
     # path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210301/'
     # path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210302/'
     # path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210309/'
@@ -296,7 +308,31 @@ def copy_raw_files_from_tdrive(today=False, n_files=None):
     # path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-24/'
     # path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-25/'
 
-    path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-30/'
+    # path_in = '/home/tfarley/ccfepc/T/tfarley/RIT/2021-06-30/'
+
+    camera_settings = dict(camera='rit', fps=400, exposure=0.25e-3, lens=25e-3, t_before_pulse=1e-1)
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-06-29/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-06-30/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-07-01/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-07-05/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-07-06/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-07-07/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-07-08/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-07-09/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-07-13/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-07-27/'
+    path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-07-28/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-07-29/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-08-03/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-08-04/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-08-11/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-08-12/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-08-13/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-08-18/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-08-19/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-08-20/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-08-24/'
+
 
     if today:
         path_in = f'/home/tfarley/ccfepc/T/tfarley/RIT/{datetime.now().strftime("%Y-%m-%d")}/'
@@ -308,17 +344,23 @@ def copy_raw_files_from_tdrive(today=False, n_files=None):
 
     try:
         organise_ircam_raw_files(path_in=path_in, fn_in=fn_in, path_out=path_out, camera_settings=camera_settings,
-                                 pulse_whitelist=pulse_whitelist, n_files=n_files)
+                                 pulse_whitelist=pulse_whitelist, n_files=n_files, write_ipx=True)
     except OSError as e:
         logger.exception(f'Failed to copy raw IRCAM files from: {path_in}')
     pass
 
-def convert_raw_files_archive_to_ipx():
+def convert_raw_files_archive_to_ipx(pulses=None, path=None):
     path_root = Path('~/data/movies/mast_u/').expanduser()
-    pulses = list(sorted([p.name for p in path_root.glob('[!.]*')]))
-    pulses = pulses[:1]  # tmp
-    pulses = [43805]
+    if pulses is None:
+        pulses = pulses[:1]  # tmp
+        pulses = list(sorted([p.name for p in path_root.glob('[!.]*')]))
+        pulses = [44677, 44683]
+        pulses = [44613]
+    if path is not None:
+        path = Path(path)
+
     print(pulses)
+
     for pulse in pulses:
         path = path_root / f'{pulse}/rit/'
 
@@ -337,5 +379,5 @@ def convert_raw_files_archive_to_ipx():
 
 
 if __name__ == '__main__':
-    # copy_raw_files_from_tdrive()
-    convert_raw_files_archive_to_ipx()
+    copy_raw_files_from_staging_area(write_ipx=True)
+    # convert_raw_files_archive_to_ipx(path=Path('~/data/movies/mast_u/44777/rit/').expanduser())
