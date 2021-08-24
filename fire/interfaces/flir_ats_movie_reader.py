@@ -69,8 +69,19 @@ def raw_to_image(raw_digital_level,width,height,digital_level_bytes):
 		counts_digital_level.append(hex4_to_int(raw_digital_level[i*digital_level_bytes:(i+1)*digital_level_bytes]))
 	return np.flip(np.array(counts_digital_level).reshape((height,width)),axis=0)
 
+def read_ats_file_header(path, fileats, digital_level_bytes=4, header_marker='4949'):
+	data = open(os.path.join(path, fileats), 'rb').read()
+	hexdata = data.hex()
+	# raw_for_digitizer = b'\x18K\x00\x00zD\x00\x00 A\x00\x00\x00'
+	# header_marker = '4949'
+	length_header_marker = len(header_marker)
+	header_length = 142
+	# raw_pointer_after_string = 11 + len(hex_for_digitizer)
+	hex_pointer_after_string = 15 + length_header_marker
+	header = FLIR_record_header_decomposition(hexdata)
+	return header
 
-def ats_to_dict(path,fileats,digital_level_bytes=4,header_marker = '4949'):
+def ats_to_dict(path, fileats, digital_level_bytes=4, header_marker='4949', n_frames=None):
 	"""Read an ats movie file produced by FLIR IR cameras.
 
 	Digitiser_ID: Which of two digitisers is used to read off each frame aquisition. Each digitiser has slightly
@@ -94,9 +105,11 @@ def ats_to_dict(path,fileats,digital_level_bytes=4,header_marker = '4949'):
 	# raw_pointer_after_string = 11 + len(hex_for_digitizer)
 	hex_pointer_after_string = 15 + length_header_marker
 	header = FLIR_record_header_decomposition(hexdata)
+	camera = header['camera_type']
+	camera_SN = header['camera_SN']
+	lens = header['lens']
 	width = header['width']
 	height = header['height']
-	camera_SN = header['camera_SN']
 	# digital_level_bytes = 4
 	data_length = width*height*digital_level_bytes
 	digitizer_ID = []
@@ -109,6 +122,7 @@ def ats_to_dict(path,fileats,digital_level_bytes=4,header_marker = '4949'):
 	import time as tm
 	# value = data.find(string_for_digitizer)
 	value = hexdata.find(header_marker)
+	i = 0
 	# last+=value+len(hex_for_digitizer)	# the first one is part of the neader of the whole file
 	# value = hexdata[last:].find(hex_for_digitizer)
 	while len(hexdata)-last>header_length:
@@ -123,18 +137,22 @@ def ats_to_dict(path,fileats,digital_level_bytes=4,header_marker = '4949'):
 		SensorTemp_0.append(header('SensorTemp_0'))
 		# time_lapsed = tm.time()-start_time
 		# print(time_lapsed)
-		raw_digital_level = hexdata[last+value-data_length:last+value]
-		# time_lapsed = tm.time()-start_time-time_lapsed
-		# print(time_lapsed)
-		data.append(raw_to_image(raw_digital_level,width,height,digital_level_bytes))
-		# time_lapsed = tm.time()-start_time-time_lapsed
-		# print(time_lapsed)
+		if (n_frames is None) or (i+1 <= n_frames):
+			# To quickly retreive meta data, skip reading frame data
+			raw_digital_level = hexdata[last+value-data_length:last+value]
+			# time_lapsed = tm.time()-start_time-time_lapsed
+			# print(time_lapsed)
+			data.append(raw_to_image(raw_digital_level,width,height,digital_level_bytes))
+			# time_lapsed = tm.time()-start_time-time_lapsed
+			# print(time_lapsed)
 		last+=value+header_length+data_length
 		if len(time_of_measurement)<=1:	# the spacing between separators seems constant, and take very long, so I do it once
 			value = hexdata[last:].find(header_marker)
 			IntegrationTime = header('IntegrationTime')
 			FrameRate = header('FrameRate')
 			ExternalTrigger = header('ExternalTrigger')
+		i += 1
+
 		# print(value)
 	data = np.array(data)
 	digitizer_ID = np.array(digitizer_ID)
@@ -147,7 +165,7 @@ def ats_to_dict(path,fileats,digital_level_bytes=4,header_marker = '4949'):
 	movie_data = dict([('data',data),('digitizer_ID',digitizer_ID),('time_of_measurement',time_of_measurement),
 				  ('IntegrationTime',IntegrationTime),('FrameRate',FrameRate),('ExternalTrigger',ExternalTrigger),
 				('SensorTemp_0',SensorTemp_0),('DetectorTemp',DetectorTemp),('width',width),('height',height),
-					   ('camera_SN',camera_SN),('frame_counter',frame_counter)])
+					   ('camera', camera), ('camera_SN',camera_SN), ('lens', lens), ('frame_counter',frame_counter)])
 	return movie_data
 
 if __name__ == '__main__':
