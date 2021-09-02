@@ -33,6 +33,10 @@ def calc_field_of_view(focal_length, pixel_pitch=30e-6, image_shape=(320, 256)):
     """
     image_shape = np.array(image_shape)
 
+    if focal_length == "":
+        logger.warning('Empty string for lens focal length. Assuming default value of 25 mm')
+        focal_length = 25e-3
+
     fov_pixel = np.arctan2(pixel_pitch, focal_length)  # Angular field of view of (square) pixel in radians
     solid_angle_pixel = 4*np.arcsin(np.sin(fov_pixel/2)**2)  # Solid angle viewed by a single pixel
     frac_2pi_pixel = solid_angle_pixel/(2*np.pi)
