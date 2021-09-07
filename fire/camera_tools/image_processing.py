@@ -131,7 +131,7 @@ def find_outlier_intensity_threshold(data, nsigma='auto', sample_size_factor=5):
         # Look for peaks in tail of histogram
         n = 3
         # Generate list of percentiles weighted towards high values
-        x = np.power(np.linspace(20, 100**n, len(data)/sample_size_factor), 1/n)
+        x = np.power(np.linspace(20, 100**n, int(len(data)/sample_size_factor)), 1/n)
         y = np.nanpercentile(data, x)
         d = np.concatenate([[0], np.diff(y)])
         # d2 = np.concatenate([[0], np.diff(d)])
@@ -238,7 +238,7 @@ def filter_unknown_materials_from_analysis_path(path_data, path_name, missing_ma
     coords_i_path_known_mat = f'i_{path}'
 
 
-    path_data[f'mask_known_material{in_frame_str}_{path}'] = (coord_i_path, mask_known_material)
+    path_data[f'mask_known_material{in_frame_str}_{path}'] = (coord_i_path, np.array(mask_known_material))
 
     for coord in path_data.coords:
         if coord_i_path not in path_data[coord].dims:
