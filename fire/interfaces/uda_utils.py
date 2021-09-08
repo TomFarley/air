@@ -158,9 +158,10 @@ def get_uda_client(use_mast_client=False, try_alternative=True, server="uda2.hpc
             uda_module = pyuda
             # UDA2 (new office network server). UDA3 = remote access server
             # See other servers at https://users.mastu.ukaea.uk/sites/default/files/uploads/UDA_data_access.pdf
-            pyuda.Client.server = server
-            pyuda.Client.port = port
-            # client = pyuda.Client()
+
+            # pyuda.Client.server = server
+            # pyuda.Client.port = port
+
     except (ModuleNotFoundError, ImportError) as e:
         # TODO: Handle missing UDA client gracefully
         if try_alternative:
@@ -170,6 +171,7 @@ def get_uda_client(use_mast_client=False, try_alternative=True, server="uda2.hpc
                 raise e
         else:
             raise e
+    client.set_property('get_meta', True)
     return uda_module, client
 
 def filter_uda_signals(signal_string, pulse=23586):
@@ -579,10 +581,18 @@ def get_mastu_wall_coords():
 
 def get_uda_scheduler_filename(fn_pattern='{diag_tag}{shot:06d}.nc', path=None, kwarg_aliases=None, **kwargs):
     fn = format_str(fn_pattern, kwargs, kwarg_aliases)
-    fn = re.sub("^r", 'a', fn)  # Change diagnostic tag from raw to analysed
+    fn = get_analysed_diagnostic_tag(fn)  # Change diagnostic tag from raw to analysed
     if path is not None:
         fn = Path(path) / fn
     return fn
+
+def get_analysed_diagnostic_tag(diag_tag):
+    analysed_tag = re.sub("^r", 'a', diag_tag)  # Change diagnostic tag from raw to analysed
+    return analysed_tag
+
+def get_raw_diagnostic_tag(diag_tag):
+    raw_tag = re.sub("^a", 'r', diag_tag)  # Change diagnostic tag from raw to analysed
+    return raw_tag
 
 def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_number=None, status=None,
                    conventions=None, data_class=None, title=None, comment=None, code=None, version=None,
@@ -775,7 +785,7 @@ def putdata_attribute(name, value, group, client=None, use_mast_client=False, fi
         else:
             logger.debug(f'Successfully wrote attribute to group "{group}": "{name}"={value}')
 
-def putdata_variables_from_datasets(path_data, image_data, path_names,
+def putdata_variables_from_datasets(path_data, image_data, path_names, diag_tag,
                                     variable_names_path, variable_names_time, variable_names_image, file_id=0,
                                     existing_dims=None, existing_coords=None, client=None, use_mast_client=False):
     # import pyuda
@@ -795,7 +805,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names,
         # Variables with coordinates along an analysis path
         for path_name in make_iterable(path_names):
             # TODO: Use longname for path?
-            group = f'/{path_name}'
+            group = f'/{diag_tag}/{path_name}'
             path_data = data_structures.swap_xarray_dim(path_data, new_active_dims=f'R_{path_name}',
                                                         raise_on_fail=False)
             groups[group] = path_data
