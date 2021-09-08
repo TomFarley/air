@@ -572,7 +572,7 @@ def calc_2d_profile_param_stats(data, stats=('min', ('percentile', 1), 'mean', '
             key = f'{param}{roll_str}_{stat[1]}percentile({coord_keep_str}){path_str}'
             # out[f'{param}_{stat[1]}percentile({coord_keep_str}){path_str}'] = reduce_2d_data_array(data, np.nanpercentile,
             #                                                                                     coords_reduce, stat[1])
-            out[key] = data.quantile(stat[1]/100, dim=coords_reduce)
+            out[key] = data.quantile(stat[1]/100, dim=coords_reduce).drop_vars('quantile')
             labels[f'{stat[1]:0.1f}%'] = key
         else:
             raise ValueError(stat)
