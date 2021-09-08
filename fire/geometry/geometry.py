@@ -121,7 +121,7 @@ def identify_visible_structures(r_im, phi_im, z_im, surface_coords, phi_in_deg=T
             logger.warning(f'Surface coordinates overlap for surface "{surface_name}" ({surface_id}) and surface(s): '
                            f'{", ".join(overlapping_structures)}. '
                            f'Giving precedence to previously assigned structures: {overlapping_structures}.')
-            mask.values[overlapping_ids_mask] = False
+            mask = mask.where(~overlapping_ids_mask, False)
         if np.any(mask) > 0:
             structure_ids[mask] = surface_id
             material_ids[mask] = material_id
