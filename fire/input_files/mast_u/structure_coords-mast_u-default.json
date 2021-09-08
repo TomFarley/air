@@ -1,5 +1,5 @@
 {
-  "_README": "The locations of tiles etc are defined by boxes in (R, phi, z) containing the structures. They are defined at one toroidal location and can then be coppied around the machine using a given toroidal periodicity. The order the boxes are read can be important when complex geometries (eg MAST-U nose) cause boxes to overlap.",
+  "_README": "The locations of tiles etc are defined by boxes in (R, phi, z) containing the structures. They are defined at one toroidal location and can then be copied around the machine using a given toroidal periodicity. The order the boxes are read can be important when complex geometries (eg MAST-U nose) cause boxes to overlap.",
   "conventions": {
     "location_start_phi": 90,
     "number_clockwise_from_above": true,
@@ -33,7 +33,7 @@
     "material": "MAST_U_CFC",
     "display_color": "blue",
     "description": "Whole centre column",
-    "comments": "Calling all of centre colum C1 for simplictity - not dividing into C1-C5"
+    "comments": "Calling all of centre column C1 for simplicity - not dividing into C1-C5"
   },
   "2": {
     "name_short": "C6 tile",
