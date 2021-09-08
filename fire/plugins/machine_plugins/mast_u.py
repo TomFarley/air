@@ -424,6 +424,12 @@ def pulse_meta_data(shot, keys=
             out['erc'] = 0
         except Exception as e:
             logger.warning(f'Failed to perform CPF query for {shot}, {key}')
+            if key in ('exp_date', 'exp_time'):
+                try:
+                    client = uda_utils.get_uda_client()
+                    out['exp_date'], out['exp_time'] = client.get_shot_date_time(shot=shot)
+                except Exception as e:
+                    logger.warning('Also failed to retrieve date and time from UDA')
     return out
 
     # from matplotlib import patches
@@ -544,7 +550,7 @@ def get_frame_time_correction(frame_times_camera, frame_times_clock=None, clock_
 
     Problem can occur when manually recording camera data, that the camera internal frame rate is configured
     differently to the externally supplied clock rate. In this situation the frame times drift out of sequence with
-    the clock. Presumably the frames are aquired on the first internal clock cycle occuring after an trigger signal?
+    the clock. Presumably the frames are aquired on the first internal clock cycle occurring after a trigger signal?
     Alternatively could look into only internal clock times that occur during clock high values (+5V top of square wave)
 
     Args:
@@ -562,11 +568,11 @@ def get_frame_time_correction(frame_times_camera, frame_times_clock=None, clock_
         for i, t_clock in enumerate(np.array(frame_times_clock)):
             frame_times_corrected[i] = frame_times_camera[frame_times_camera >= t_clock][0]
         dt_mean = utils.mode_simple(np.diff(frame_times_corrected))
-        fps_mean = 1/dt_mean
+        fps_dt_mean = 1/dt_mean
         fps_clock = 1/utils.mode_simple(np.diff(frame_times_clock))
         fps_camera = 1/utils.mode_simple(np.diff(frame_times_camera))
-        factor = fps_mean / fps_camera
-    time_correction = dict(factor=factor, frame_times_corrected=frame_times_corrected, fps_mean=fps_mean,
+        factor = fps_dt_mean / fps_camera
+    time_correction = dict(factor=factor, frame_times_corrected=frame_times_corrected, fps_dt_mean=fps_dt_mean,
                            fps_clock=fps_clock, fps_camera=fps_camera)
     return time_correction
 

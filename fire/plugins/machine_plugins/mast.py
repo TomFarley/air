@@ -11,6 +11,7 @@ Author: Tom Farley (tom.farley@ukaea.uk)
 Created: 08-2019
 """
 import logging
+import warnings
 from collections import Iterable
 
 import numpy as np
@@ -93,7 +94,10 @@ def get_machine_sector(x, y, z=None, n_sectors=n_sectors, first_sector_start_ang
     # sector = (3 - np.floor(phi / sector_width_angle)) % n_sectors
     sector = (first_sector_start_angle/sector_width_angle) + ((-1)**clockwise) * np.floor(phi / sector_width_angle)
 
-    sector = sector % n_sectors
+    with warnings.catch_warnings():  # Suppress "invalid value encountered in remainder"
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        sector = sector % n_sectors
+
     sector = sector.astype(int)
     # No sector zero
     sector = np.where((sector == 0), n_sectors, sector)
