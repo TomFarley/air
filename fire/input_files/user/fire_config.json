@@ -285,7 +285,8 @@
             "/scratch/ir_movies_mastu/{machine}/{pulse}/{camera}/",
             "/home/tfarley/data/movies/{machine}/{pulse}/{camera}/",
             "~/data/movies/mast_u/rit_ipx_files/",
-            "~/data/movies/mast_u/rir_ats_files/test/"
+            "~/data/movies/mast_u/rir_ats_files/test/",
+            "~/data/movies/mast_u/rir_ats_files/.*/"
         ]
     },
     "paths_output": {
@@ -300,7 +301,8 @@
             "{camera}0{pulse}.ipx",
             "{camera}_{pulse}.npz",
             "{camera}_{pulse}.raw",
-            "0{pulse}.ats"
+            "0{pulse}.ats",
+            "rir-0{pulse}.ats"
         ],
         "camera_settings": [
             "camera_settings-{machine}-{camera}.csv"
