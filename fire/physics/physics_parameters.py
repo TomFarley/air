@@ -75,7 +75,7 @@ def find_peaks_info(profile, x=None, peak_kwargs=(('width', 3),), add_boundary_l
 
     ind_rel_max = signal.argrelmax(np.array(profile), order=peak_kwargs['width'])
 
-    i_max = np.argmax(profile)
+    i_max = np.argmax(np.array(profile))
     if i_max in (0, len(profile)):
         # Peak value is at boundaries of data that will not be picked up by scipy's find_peaks
         pass
@@ -146,12 +146,13 @@ def calc_strike_point_continutity_rating(peaks_info, strike_points, strike_point
                                          scalings=(('displacement', 1.0), ('amplitude', 1.0)),
                                          weightings=(('small_displacement', 1.0), ('similar_amplitude', 0.3),
                                                      ('high_amplitude', 0.2)),
-                                         penalties=(('decreasing_R', 0.1), ('non_monotonic', 0.1),
+                                         penalties=(('decreasing_R', 0.1), ('stationary', 0.05),
+                                                    ('non_monotonic', 0.1),
                                                     ('incomplete_history', 0.1)),
                                          limits=(('max_movement', (-0.1, 0.5)), ('s_fluctuations', 0.005)),
                                          fom_threshold=1e3):
     FomComponents = namedtuple('FomComponents', ['high_amplitude', 'small_displacement', 'similar_amplitude',
-                                                 'decreasing_R', 'non_monotonic'])
+                                                 'decreasing_R', 'stationary', 'non_monotonic'])
 
     scalings = dict(scalings)
     weightings = dict(weightings)
@@ -247,6 +248,7 @@ def calc_strike_point_continutity_rating(peaks_info, strike_points, strike_point
 
         # Check if current step is in same direction as prev trend (accepting some noise around 0)
         monotonic = (np.sum(history['ds']) >= -limits['s_fluctuations']) & (ds >= 0)
+        stationary = (ds == 0)
 
         weight_small_dist = weightings['small_displacement'] + partial_hist_pen
         weight_similar_amp = weightings['similar_amplitude'] + partial_hist_pen
@@ -261,6 +263,8 @@ def calc_strike_point_continutity_rating(peaks_info, strike_points, strike_point
                 (np.abs(diffs_amp) / scalings['amplitude']) ** weight_similar_amp,
                 # Apply penalty for strike point moving to lower R (against trend from solenoid sweep)
                 (diffs_s < -limits['s_fluctuations']) * penalties['decreasing_R'],
+                # Apply penalty for strike point sitting on exactly same spot (avoid getting stuck at tile boundary etc)
+                stationary * penalties['stationary'],
                 # Non-monotonic: Apply penalty when strike point movement is reversing direction
                 ((~monotonic) * penalties['non_monotonic'])
                 )
@@ -453,7 +457,8 @@ def locate_strike_points(param_values, dim='t', coords=None, peak_kwargs=(('widt
     #     for key in coords.keys():
     #         peak_info[f'{key}_peaks'] = []
 
-    n_strike_points = 4
+    # n_strike_points = 4
+    n_strike_points = 0
 
 
 
@@ -475,8 +480,8 @@ def locate_strike_points(param_values, dim='t', coords=None, peak_kwargs=(('widt
 
         fom_threshold = 1e5
         for strike_point_index in np.arange(n_strike_points):
+            # TODO: Pass in weightings from input file
             foms = calc_strike_point_continutity_rating(peaks_info_i, strike_points, strike_point_index, t=coord,
-
                                                         fom_threshold=fom_threshold)
             strike_points = select_next_strike_point_peak(peaks_info_i, strike_points, strike_point_index, foms,
                                                           t=coord, fom_threshold=fom_threshold)
@@ -511,49 +516,68 @@ def locate_strike_points(param_values, dim='t', coords=None, peak_kwargs=(('widt
 
 
 def calc_2d_profile_param_stats(data, stats=('min', ('percentile', 1), 'mean', 'std', ('percentile', 99), 'max'),
-                                coord_reduce='t', path=None):
-
+                                coords_reduce='t', path=None, roll_width=None, roll_center=True,
+                                roll_reduce_func='mean'):
+    stats = make_iterable(stats)
+    logger.info(f'Calculating temporal stats (roll={roll_width}): {stats}')
     out = xr.Dataset({})
+    labels = {}
 
     # Move path string to end of var name ie append stat info to param name
     path_str = f'_{path}' if path else ''
     param_path = data.name
     param = param_path.replace(path_str, '')
 
-    # # Get preserved dimension used for xr.apply_ufunc
-    # if data.values.ndim == 2:
-    #     coord_keep = list(data.dims)
-    #     coord_keep.pop(data.dims.index(coord_reduce))
-    #     coord_keep = coord_keep[0]
-    #     axis_keep = list(data.dims).index(coord_keep)
-    #     coord_keep_str = coord_keep.replace(path_str, '')
-    # else:
-    #     coord_keep = None
-    #     axis_keep = None
-    #     coord_keep_str = ''
-    coord_keep, axis_keep, axis_reduce = get_reduce_coord_axis_keep(data, coord_reduce)
+    coord_keep, axis_keep, axis_reduce = get_reduce_coord_axis_keep(data, coords_reduce)
     coord_keep_str = coord_keep.replace(path_str, '')
 
+    if roll_width is not None:
+        data_in = data
+        len_axis_keep = len(data[axis_keep])
+        roll_width = roll_width if (len_axis_keep > roll_width) else len_axis_keep
+        roll = data.rolling({coord_keep: roll_width}, center=True)
+        coord_roll = coord_keep+'_win'
+        data = roll.construct(coord_roll)
+        # coords_reduce_rolled = (coord_keep, coord_roll)
+        roll_str = f'_roll{roll_width:d}'
+        # This opperation can be slow!
+        data = getattr(data, roll_reduce_func)(dim=coord_roll)
+    else:
+        roll_str = ''
+        data_rolled = data
+        coords_reduce_rolled = coord_keep
+
     for stat in stats:
+        if '%' in stat:
+            n_percent = float(stat.replace('%', ''))
+            stat = ('percentile', n_percent)
+
         if stat == 'min':
-            out[f'{param}_min({coord_keep_str})_{path}'] = data.min(dim=coord_reduce)
+            key = f'{param}{roll_str}_min({coord_keep_str}){path_str}'
+            out[key] = data.min(dim=coords_reduce)
+            labels['min'] = key
         elif stat == 'mean':
-            out[f'{param}_mean({coord_keep_str})_{path}'] = data.mean(dim=coord_reduce)
+            key = f'{param}{roll_str}_mean({coord_keep_str}){path_str}'
+            out[key] = data.mean(dim=coords_reduce)
+            labels['mean'] = key
         elif stat == 'std':
-            out[f'{param}_std({coord_keep_str})_{path}'] = data.std(dim=coord_reduce)
+            key = f'{param}{roll_str}_std({coord_keep_str}){path_str}'
+            out[key] = data.std(dim=coords_reduce)
+            labels['std'] = key
         elif stat == 'max':
-            out[f'{param}_max({coord_keep_str})_{path}'] = data.max(dim=coord_reduce)
-        elif stat == 'mean':
-            out[f'{param}_mean({coord_keep_str})_{path}'] = data.mean(dim=coord_reduce)
+            key = f'{param}{roll_str}_max({coord_keep_str}){path_str}'
+            out[key] = data.max(dim=coords_reduce)
+            labels['max'] = key
         elif isinstance(stat, tuple) and stat[0] == 'percentile':
-            # out[f'{param}_{stat[1]}percentile({coord_keep_str})_{path}'] = xr.apply_ufunc(np.percentile, data, stat[1],
-            #                                     input_core_dims=((coord_reduce,), ()), kwargs=dict(axis=axis_keep))
-            out[f'{param}_{stat[1]}percentile({coord_keep_str})_{path}'] = reduce_2d_data_array(data, np.percentile,
-                                                                                                coord_reduce, stat[1])
+            key = f'{param}{roll_str}_{stat[1]}percentile({coord_keep_str}){path_str}'
+            # out[f'{param}_{stat[1]}percentile({coord_keep_str}){path_str}'] = reduce_2d_data_array(data, np.nanpercentile,
+            #                                                                                     coords_reduce, stat[1])
+            out[key] = data.quantile(stat[1]/100, dim=coords_reduce)
+            labels[f'{stat[1]:0.1f}%'] = key
         else:
             raise ValueError(stat)
 
-    return out
+    return out, labels
 
 def calc_1d_profile_rolling_stats(data, stats=('mean', 'std'), path=None, width=11):
 
@@ -623,7 +647,7 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
     r_path = path_data[f'R_{path}']
     s_path = path_data[f's_global_{path}']
     annulus_areas_horizontal = calc_horizontal_path_anulus_areas(r_path)
-    if True:
+    if False:
         # TODO: Collect tile angles from structure definition file
         # TODO: Move calc_tile_tilt_area_coorection_factors fucntion to mast_u machine plugins
         # tile_angle_poloidal = path_data[f'tile_angle_poloidal_{path}']
@@ -632,9 +656,13 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
         # toroidal_tilt = dict(T1=4, T2=4, T3=4, T4=4, T5=4)
         step_size = dict(T1=0.003, T2=0.003, T3=0.003, T4=0.003, T5=0.0014)  # Tile edge step in metres
         nlouvres = dict(T1=12, T2=12, T3=12, T4=12, T5=24)
-        tile_tilt_area_factors = calc_tile_tilt_area_correction_factors(path_data,
-                                    poloidal_plane_tilt=poloidal_plane_tilt, nlouvres=nlouvres, step_size=step_size,
-                                    path=path_name)
+        try:
+            tile_tilt_area_factors = calc_tile_tilt_area_correction_factors(path_data,
+                                        poloidal_plane_tilt=poloidal_plane_tilt, nlouvres=nlouvres, step_size=step_size,
+                                        path=path_name)
+        except Exception as e:
+            logger.warning(f'Failed to calculate calc_tile_tilt_area_correction_factors. Setting to 1.')
+            tile_tilt_area_factors = np.ones_like(path_data[f'heat_flux_{path}'])
 
         # TODO: Fix erroneous negative and large correction factors eg +277.4440
         tile_tilt_area_factors[:, :] = 1
@@ -643,7 +671,9 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
         annulus_areas_corrected = annulus_areas_horizontal * tile_tilt_area_factors
     else:
         logger.warning(f'Using incorrect annulus areas for integrated/total quantities')
-        annulus_areas_corrected = annulus_areas_horizontal
+        annulus_areas_corrected = np.tile(annulus_areas_horizontal, (len(data_out['t']), 1))
+        # tile_tilt_area_factors = np.ones((len(data_out['t']), len(annulus_areas_horizontal)))
+        tile_tilt_area_factors = np.ones_like(annulus_areas_corrected)
 
     data_out[f'tile_tilt_area_factors_{path}'] = (('t', f'i_{path}',), tile_tilt_area_factors)
     data_out[f'annulus_areas_{path}'] = (('t', f'i_{path}',), annulus_areas_corrected)
@@ -654,16 +684,18 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
         try:
             param_values = path_data[f'{param}_{path}']
             param_total = calc_divertor_area_integrated_param(param_values, annulus_areas_corrected)
-            peak_kwargs = dict(width=1, height=np.mean(param_values.values), prominence=0.015)
+            prominence = (np.percentile(np.array(param_values), 99.9) - np.percentile(np.array(param_values), 2)) / 2e3
+            # prominence = np.ptp(np.array(param_values)) / 2e2
+            peak_kwargs = dict(width=1, height=np.mean(param_values.values), prominence=prominence)
             # print(f'Using peak detection window settings: {peak_kwargs}')
-            param_stats = calc_2d_profile_param_stats(param_values, path=path)
+            param_stats, labels = calc_2d_profile_param_stats(param_values, path=path)
 
             if param == 'heat_flux':
                 peak_info = locate_strike_points(param_values, dim='t', coords=dict(s_global=s_path, R=r_path),
                                                  peak_kwargs=peak_kwargs)
                 # TODO: Use new strike point info in output
-                debug = True
-                # debug = False
+                # debug = True
+                debug = False
                 if debug and (param == 'heat_flux'):
                     ax, data, artist = debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', t_range=None,
                                                                          show=False, robust_percentiles=(40, 99.8))
@@ -676,7 +708,8 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
                     colors = ('k', 'b', 'orange', 'g')
                     lw = 2.5
                     for i, color in zip(np.arange(4), colors):
-                        ax.plot(strike_points.loc[:, (i, 'R')], t, color=color, lw=lw, marker='o', markersize=2, alpha=0.6)
+                        ax.plot(strike_points.loc[:, (i, 'R')], t, color=color, lw=lw, marker='o', markersize=2,
+                                alpha=0.4)
                         lw *= 0.5
 
                     # for t, i_peaks_t in zip(path_data['t'], peak_info['ind_peaks']):
