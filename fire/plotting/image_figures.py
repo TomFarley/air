@@ -54,10 +54,21 @@ def figure_xarray_imshow(data, key='data', slice_=None, ax=None,
     fig, ax, ax_passed = get_fig_ax(ax, num=key)
     data = data_structures.to_image_dataset(data, key=key)
     data_plot = data[key]
+    kws = {}
     if (data_plot.ndim > 2) and (slice_ is None):
-        slice_ = {'n': np.floor(np.median(data_plot['n']))}
+        try:
+            slice_ = {'n': np.floor(np.median(data_plot['n']))}
+        except KeyError as e:
+            pass
+
     if slice_ is not None:
         data_plot = data_plot.sel(slice_)
+
+    if (data_plot.ndim == 3) and (data_plot.shape[2] == 4):
+        # RGBA image
+        cmap = None
+        add_colorbar = False
+        kws['cbar_kwargs'] = None
 
     if cbar_label is None:
         cbar_label = cbar_label_defaults.get(key, key)
@@ -77,7 +88,6 @@ def figure_xarray_imshow(data, key='data', slice_=None, ax=None,
         if clip_range[1] is not None:
             data_plot = data_plot.where(data_plot <= clip_range[1], np.nan)
 
-    kws = {}
     if add_colorbar:
         # Force xarray generated colorbar to only be hieght of image axes and thinner
         divider = make_axes_locatable(ax)
@@ -108,6 +118,13 @@ def figure_xarray_imshow(data, key='data', slice_=None, ax=None,
     if nan_color is not None:
         nan_color = make_iterable(nan_color, cast_to=iter)
         cmap.set_bad(color=next(nan_color), alpha=next(nan_color, 0.5))
+
+    if (data_plot.ndim == 3) and (data_plot.shape[2] == 4):
+        # RGBA image. TODO: Remove repeat here - keep above?
+        cmap = None
+        add_colorbar = False
+        kws['cbar_kwargs'] = None
+        kws['robust'] = False
 
     try:
         data_plot.plot.imshow(ax=ax,
