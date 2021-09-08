@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 # import pyuda, cpyuda
 from fire.physics import physics_parameters
 from fire.misc import data_structures
-from fire.misc.utils import increment_figlabel, filter_kwargs, format_str, make_iterable
+from fire.misc.utils import increment_figlabel, filter_kwargs, format_str, make_iterable, safe_len
 from fire.plotting import plot_tools
 
 # use_mast_client = True
@@ -676,7 +676,7 @@ def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_numb
     #     logger.error(f"Failed to create NetCDF file: {fn}")
     #     raise
     except Exception as e:
-        raise
+        raise e
     else:
         logger.debug(f'Created uda output netcdf file handle for {path_fn}')
 
@@ -863,7 +863,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names, diag_tag,
                 # NOTE: Cannot use same dimension for multiple coordinates?
                 if dim_name not in existing_dims[group]:
                     kwargs = {k: coord.attrs[k] for k in optional_dim_attrs if k in coord.attrs}
-                    coord_length = len(coord)
+                    coord_length = safe_len(coord)
                     putdata_dimension(dim_name, coord_length, client=client, file_id=file_id, group=group, **kwargs)
                     existing_dims[group].append(dim_name)
 
