@@ -171,7 +171,7 @@ def get_uda_client(use_mast_client=False, try_alternative=True, server="uda2.hpc
                 raise e
         else:
             raise e
-    client.set_property('get_meta', True)
+    # client.set_property('get_meta', True)
     return uda_module, client
 
 def filter_uda_signals(signal_string, pulse=23586):
@@ -625,7 +625,7 @@ def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_numb
     # import pyuda
     if client is None:
         pyuda_module, client = get_uda_client(use_mast_client=False, try_alternative=False)
-        mast_module, client_mast = get_uda_client(use_mast_client=True, try_alternative=False)
+        # mast_module, client_mast = get_uda_client(use_mast_client=True, try_alternative=False)
 
     # Arguments that are different every time
     requried_args = {'shot': shot, 'pass_number': pass_number}#, 'status': status}
@@ -668,7 +668,11 @@ def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_numb
 
     try:
         file_id = client.put(fn, step_id="create", **create_kwargs)
-    # except pyuda.UDAException:
+
+        # client.put('ait044852.nc', directory='/home/tfarley/repos/air', step_id='create', title='Test #21',
+        #            data_class='analysed data', pass_number=0, status=1, conventions='Fusion - 1.0', debug=True, verbose=True, shot=12345)
+
+        # except pyuda.UDAException:
     #     logger.error(f"Failed to create NetCDF file: {fn}")
     #     raise
     except Exception as e:
@@ -852,7 +856,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names, diag_tag,
                 group_data = physics_parameters.attach_standard_meta_attrs(group_data, varname=coord_name, replace=True)
                 coord = group_data[coord_name]
 
-                dim_name = coord.dims[0]
+                # dim_name = coord.dims[0]
                 # TODO: switch from using coord_name to dim_name? Cannot use same dimension for multiple coordinates?
                 dim_name = coord_name
                 coord_class = 'time' if (dim_name in ('t', 'n')) else 'spatial'
