@@ -191,8 +191,9 @@ def apply_frame_display_transformations(frame_data, calcam_calib, image_coords):
 #         raise ValueError(f'Calcam calib lookup file does not contain column "calcam_calibration_file": {path_fn}')
 #     return calcam_calib
 
-def get_surface_coords(calcam_calib, cad_model, image_coords='Original', phi_positive=True, intersecting_only=True,
-                       exclusion_radius=0.10, remove_long_rays=True, outside_vesel_ray_length=10):
+def get_surface_coords(calcam_calib, cad_model, image_coords='Original', phi_positive=True, intersecting_only=False,
+                       exclusion_radius=0.10, remove_long_rays=True, outside_vesel_ray_length=10,
+                       outside_view_raylengths=None):
     if image_coords.lower() == 'display':
         image_shape = calcam_calib.geometry.get_display_shape()
     else:
@@ -219,13 +220,14 @@ def get_surface_coords(calcam_calib, cad_model, image_coords='Original', phi_pos
     cad_model.set_wireframe(True)
     # cad_model.set_linewidth(3)
     color = cad_model.get_colour()
-    # cad_model.set_colour((1, 0, 0))
+    cad_model.set_colour((1, 0, 0))
+    print(f'Wireframe original color {color} changed to {cad_model.get_colour()}')
     wire_frame = calcam.render_cam_view(cad_model, calcam_calib, coords=image_coords, transparency=True, verbose=False)
     wire_frame_gray = np.max(wire_frame, axis=2)
 
     logger.debug(f'Getting surface coords...'); t0 = time.time()
 
-    ray_data = calcam.raycast_sightlines(calcam_calib, cad_model, coords=image_coords,
+    ray_data = calcam.raycast_sightlines(calcam_calib, cad_model, coords=image_coords, force_subview=None,
                                          exclusion_radius=exclusion_radius, intersecting_only=intersecting_only)
     # TODO: Set sensor subwindow if using full sensor calcam calibration for windowed view
     # ray_data.set_detector_window(window=(Left,Top,Width,Height))
@@ -237,10 +239,15 @@ def get_surface_coords(calcam_calib, cad_model, image_coords='Original', phi_pos
     # the keyword intersecting_only=True
     mask_bad_data = ray_lengths > outside_vesel_ray_length
     if remove_long_rays and (not intersecting_only):
-        nsigma = calc_outlier_nsigma_for_sample_size(ray_lengths.size)
+        nsigma = calc_outlier_nsigma_for_sample_size(ray_lengths.size, n_outliers_expected=1)
         thresh_long_rays = find_outlier_intensity_threshold(ray_lengths, nsigma=nsigma)
         mask_long_rays = ray_lengths > thresh_long_rays
         mask_bad_data += mask_long_rays
+    if outside_view_raylengths is not None:
+        # Eg MAST-U RIR view of T2 sees a small range of depths - any longer rays are due to holes in CAD
+        mask_long_rays = ray_lengths > outside_view_raylengths
+        mask_bad_data += mask_long_rays
+
     ind_bad_data = np.where(mask_bad_data)
     surface_coords[ind_bad_data[0], ind_bad_data[1], :] = np.nan
     ray_lengths[mask_bad_data] = np.nan
