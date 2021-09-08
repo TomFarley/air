@@ -18,6 +18,7 @@ from fire import fire_paths
 from fire.interfaces.interfaces import PathList
 from fire.misc.utils import dirs_exist, locate_files
 from fire.plugins import plugins
+from fire.interfaces.read_user_fire_config import read_user_fire_config
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -26,24 +27,31 @@ class MovieReader:
     # TODO: Read plugin module attributes definition from file?
     # movie_plugin_definition_file = 'movie_plugin_definition.json'
     _plugin_paths = ["{fire_path}/plugins/movie_plugins/"]
-    plugin_attributes = {
-        "required": {
-            "plugin_name": "movie_plugin_name",
-            "meta": "read_movie_meta",
-            "data": "read_movie_data",
-            "info": "plugin_info"
-        },
-        "optional": {
+
+    try:
+        config = read_user_fire_config()
+        plugin_attributes = config['plugins']['movie']['module_attributes']
+        movie_paths = config['paths_input']['movie_files']
+        movie_fns = config['filenames_input']['movie_files']
+    except Exception as e:
+        plugin_attributes = {
+            "required": {
+                "plugin_name": "movie_plugin_name",
+                "meta": "read_movie_meta",
+                "data": "read_movie_data",
+                "info": "plugin_info"
+            },
+            "optional": {
+            }
         }
-    }
-    movie_paths = ["/net/fuslsc/data/MAST_Data/{pulse}/LATEST/",  # Directory path used by UDA
-                    "~/data/movies/{machine}/{pulse}/{camera}/",
-                    "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
-                    "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
-                    "{fire_path}/../tests/test_data/{machine}/"]
-    movie_fns = ["{camera}0{pulse}.ipx",
-                 "{camera}_{pulse}.npz",
-                 "{camera}_{pulse}.raw"]
+        movie_paths = ["/net/fuslsc/data/MAST_Data/{pulse}/LATEST/",  # Directory path used by UDA
+                        "~/data/movies/{machine}/{pulse}/{camera}/",
+                        "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
+                        "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
+                        "{fire_path}/../tests/test_data/{machine}/"]
+        movie_fns = ["{camera}0{pulse}.ipx",
+                     "{camera}_{pulse}.npz",
+                     "{camera}_{pulse}.raw"]
 
     def __init__(self, movie_plugin_paths: Optional[PathList]=None, plugin_filter: Optional[Sequence[str]]=None,
                  plugin_precedence: Optional[Sequence[str]]=None,
@@ -312,11 +320,14 @@ def read_movie_data(pulse: Union[int, str], camera: str, machine: str, movie_plu
                                                  frame_numbers=frame_numbers,
                                                  movie_paths=movie_paths, movie_fns=movie_fns,
                                                  transforms=transforms)
-
+    frame_numbers, frame_times, frame_data = movie_data
     # Convert tuples to named tuples
     movie_data_tup = namedtuple('movie_data', ('frame_nos', 'frame_times', 'frame_data'))
     movie_data_and_origin_tup = namedtuple('movie_data_and_origin', ('movie_data', 'origin'))
     movie_data_and_origin = movie_data_and_origin_tup(movie_data_tup(*movie_data), origin)
+
+    if (len(frame_numbers) != len(frame_times)) or (len(frame_numbers) != len(frame_data)):
+        raise ValueError(f'Inconsistent lengths of frame data and frame numbers/times')
 
     if verbose:
         logger.info(f'Read {len(movie_data[0])} frames for camera "{camera}", pulse "{pulse}" from {str(origin)[1:-1]}')
