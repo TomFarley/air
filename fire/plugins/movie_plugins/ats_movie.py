@@ -31,7 +31,7 @@ MovieData = namedtuple('movie_plugin_frame_data', ['frame_numbers', 'frame_times
 movie_plugin_name = 'ats_movie'
 plugin_info = {'description': "This plugin reads ats movie files output by the FLIR ResearchIR software"}
 
-def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True) -> dict:
+def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbose=True) -> dict:
     """Read meta data for ats movie file (eg exported from the FLIR ResearchIR software).
 
     :param path_fn: Path to ats movie file
@@ -42,7 +42,9 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True) -> di
     from fire.interfaces.flir_ats_movie_reader import ats_to_dict, read_ats_file_header
     from fire.plugins.movie_plugins.ipx import get_detector_window_from_ipx_header
 
-    print(f'{datetime.now()}: Reading ats meta data')
+    if verbose:
+        print(f'{datetime.now()}: Reading ats meta data: {path_fn}')
+
     path_fn = Path(path_fn)
     # TODO: Make more efficient by not reading in frame data here
     # movie_dict = read_ats_file_header(path_fn.parent, path_fn.name)
@@ -89,7 +91,9 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True) -> di
     movie_meta.update({name: movie_dict[key] for key, name in header_fields.items()})
 
     if len(set(np.diff(movie_dict['frame_counter']))) > 1:
-        logger.warning(f'Frame counter misses frames: {set(np.diff(movie_dict["frame_counter"]))}')
+        # TODO: Remove end frames with frame count jumps?
+        if verbose:
+            logger.warning(f'Frame counter misses frames: {set(np.diff(movie_dict["frame_counter"]))}')
     movie_meta['n_frames'] = len(movie_dict['frame_counter'])
 
     movie_meta['frame_range'] = np.array([0, movie_meta['n_frames']-1])
@@ -110,14 +114,18 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True) -> di
 
     movie_meta['t_range'] = np.array([np.min(movie_meta['frame_times']), np.max(movie_meta['frame_times'])])
 
-    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta, plugin='ats', fn=path_fn)
+    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta, plugin='ats', fn=path_fn,
+                                                                        verbose=verbose)
+
     # TODO: Rename meta data fields to standard
-    print(f'{datetime.now()}: Finished reading ats meta data')
+
+    if verbose:
+        print(f'{datetime.now()}: Finished reading ats meta data')
 
     return movie_meta
 
 
-def read_movie_data(path_fn: Union[str, Path], raise_on_missing_meta=True) -> MovieData:
+def read_movie_data(path_fn: Union[str, Path], write_ipx=False, raise_on_missing_meta=True) -> MovieData:
     """Read frame data for ats movie file (eg exported from the FLIR ResearchIR software).
 
     :param path_fn: Path to ats movie file
@@ -127,9 +135,10 @@ def read_movie_data(path_fn: Union[str, Path], raise_on_missing_meta=True) -> Mo
     """
     from fire.interfaces.flir_ats_movie_reader import ats_to_dict
 
-    print(f'{datetime.now()}: Reading ats movie data')
+    t0 = datetime.now()
+    print(f'{t0}: Reading ats movie data: {path_fn}')
 
-    movie_meta = read_movie_meta(path_fn=path_fn, raise_on_missing_meta=raise_on_missing_meta)
+    movie_meta = read_movie_meta(path_fn=path_fn, raise_on_missing_meta=raise_on_missing_meta, verbose=False)
 
     path_fn = Path(path_fn)
     movie_dict = ats_to_dict(path_fn.parent, path_fn.name)
@@ -139,9 +148,31 @@ def read_movie_data(path_fn: Union[str, Path], raise_on_missing_meta=True) -> Mo
     # frame_numbers = movie_dict['frame_counter']
     frame_numbers = movie_meta['frame_numbers']
 
-    print(f'{datetime.now()}: Finished reading ats movie data')
+    t1 = datetime.now()
+    print(f'{t1}: Finished reading ats movie data ({(t1-t0).total_seconds()} s)')
+
+    if write_ipx:
+        convert_aps_data_to_ipx(movie_dict, movie_meta, overwrite=True)
 
     return MovieData(frame_numbers, frame_times, frame_data)
+
+def convert_aps_data_to_ipx(movie_dict, movie_meta, path_ipx_archive='~/data/movies/mast_u/', overwrite=True):
+    # from fire.scripts.organise_ircam_raw_files import generate_ipx_file_from_flir_ats_movie
+    from fire.plugins.movie_plugins.ipx import write_ipx_with_mastmovie
+    path_ipx_archive = Path(path_ipx_archive).expanduser()
+
+    pulse = int(movie_meta["pulse"])
+    camera = movie_meta["camera"]
+    path_fn_ipx = path_ipx_archive / f'{pulse}/{camera}/{camera}0{pulse}.ipx'
+
+    frame_data = movie_dict['data']
+    frame_times = movie_meta['frame_times']
+    movie_meta['frame_times'] = frame_times
+    movie_meta['ID'] = 'IPX 02'
+
+    if overwrite or (not path_fn_ipx.is_file()):
+        pil_frames = write_ipx_with_mastmovie(path_fn_ipx, frame_data, header_dict=movie_meta,
+                                              apply_nuc=False, create_path=True, verbose=True)
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
