@@ -385,6 +385,9 @@ def get_module_from_path_fn(path_fn):
 
 def archive_netcdf_output(path_fn_in, path_archive='~/{user_dir}/archive_netcdf_output/{camera}/', meta_data=None):
     success = False
+    if path_fn_in is None:
+        return success
+
     if meta_data is None:
         meta_data = {}
     meta_data.setdefault('user_dir', fire_paths['user'])
