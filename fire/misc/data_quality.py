@@ -118,14 +118,15 @@ def identify_sudden_intensity_changes(frame_data: xr.DataArray, n_outliers_expec
                                       raise_on_sudden_intensity_changes: bool=True):
     """Useful for identifying dropped for faulty frames"""
 
-    frame_intensities = frame_data.sum(dim=['x_pix', 'y_pix'])
+    frame_intensities = frame_data.astype(np.int64).sum(dim=['x_pix', 'y_pix'])
     diffs = np.abs(frame_intensities.diff(dim='n'))
     # diffs['n'] -= 1
     # diffs['t'] -= (diffs['t'][1] - diffs['t'][0])
     # discontinuous_frames = diffs.where(diffs > (diffs.mean() * tol), drop=True).coords
     # TODO: Use more robust method of identifying outliers?
     nsigma = calc_outlier_nsigma_for_sample_size(len(frame_data), n_outliers_expected=n_outliers_expected)
-    discontinuous_mask = diffs > (diffs.mean() + diffs.std() * nsigma)
+    diff_threshold = (diffs.mean() + diffs.std() * nsigma)
+    discontinuous_mask = diffs > diff_threshold
 
     # Generally want to identify a frame if it is a sudden change from the previous frame, but in case of first
     # frame want to identify first frame as discontinuous if it differs a lot from following frame
