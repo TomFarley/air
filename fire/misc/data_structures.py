@@ -253,6 +253,10 @@ def swap_xarray_dim(data_array, new_active_dims, old_active_dims=None, alternati
     """
     new_active_dims = make_iterable(new_active_dims)
 
+    if isinstance(data_array, np.ndarray):
+        logger.warning('Cannot swap dimensions on ndarray')
+        return data_array
+
     for i, new_active_dim in enumerate(new_active_dims):
         if new_active_dim in data_array.dims:
             # Already active, so no change required
@@ -315,23 +319,34 @@ def to_image_dataset(data, key='data'):
     return dataset
 
 
-def get_reduce_coord_axis_keep(data, coord_reduce):
-    # Get preserved dimension used for xr.apply_ufunc
+def get_reduce_coord_axis_keep(data, coords_reduce):
+    # Get preserved dimension(s) used for xr.apply_ufunc
+    if isinstance(data, xr.core.rolling.DataArrayRolling):
+        data = data.obj
+
     ndim = data.values.ndim
-    if ndim == 2:
-        axis_reduce = list(data.dims).index(coord_reduce)
+
+    if ndim == 3:
+        axes_reduce = [list(data.dims).index(coord_reduce) for coord_reduce in make_iterable(coords_reduce)]
         coord_keep = list(data.dims)
-        coord_keep.pop(data.dims.index(coord_reduce))
+        for coord_reduce in coords_reduce:
+            coord_keep.pop(coord_keep.index(coord_reduce))
+        coord_keep = coord_keep[0]
+        axis_keep = list(data.dims).index(coord_keep)
+    elif ndim == 2:
+        axes_reduce = list(data.dims).index(coords_reduce)
+        coord_keep = list(data.dims)
+        coord_keep.pop(data.dims.index(coords_reduce))
         coord_keep = coord_keep[0]
         axis_keep = list(data.dims).index(coord_keep)
     elif ndim == 1:
         coord_keep = None
         axis_keep = None
-        axis_reduce = None
+        axes_reduce = None
     else:
         raise ValueError(f'Too many dimensions: {data}')
 
-    return coord_keep, axis_keep, axis_reduce
+    return coord_keep, axis_keep, axes_reduce
 
 
 def reduce_2d_data_array(data_array, func_reduce, coord_reduce, func_args=(), raise_exceptions=False):
@@ -353,16 +368,25 @@ def reduce_2d_data_array(data_array, func_reduce, coord_reduce, func_args=(), ra
 
     func_args = make_iterable(func_args)
     coord_keep, axis_keep, axis_reduce = get_reduce_coord_axis_keep(data_array, coord_reduce)
-    input_core_dims = ((coord_reduce,), ) + tuple(() for i in np.arange(len(func_args)))
+
+    # TODO: Work out how to input core dims for 3D imput data
+    # input_core_dims = ((coord_reduce,), ) + tuple(() for i in np.arange(len(func_args)))
+    input_core_dims = (make_iterable(coord_reduce), ) + tuple(() for i in np.arange(len(func_args)))
 
     try:
         data_array_reduced = xr.apply_ufunc(func_reduce, data_array, *func_args,
-                                                    input_core_dims=input_core_dims, kwargs=dict(axis=axis_keep))
+                                                    input_core_dims=input_core_dims,
+                                            # kwargs=dict(axis=axis_keep)  # Was working with this before?
+                                            kwargs=dict(axis=axis_reduce)
+                                            )
     except ValueError as e:
         if raise_exceptions:
             raise e
         else:
             logger.warning(f'Cannot reduce data along dim {input_core_dims}: {data_array}')
+            out = func_reduce(data_array, *func_args, axis=axis_reduce)
+            # out = np.full((len(data_array[coord_keep])), np.nan)
+            data_array_reduced = xr.DataArray(out, coords={coord_keep: data_array[coord_keep]})
     except Exception as e:
         raise
     return data_array_reduced
