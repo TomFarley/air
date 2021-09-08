@@ -537,16 +537,22 @@ def path_contains_fn(path_fn):
     return out
 
 
-def copy_file(src, dest, extensions_text=('txt', 'csv', 'tsv'), text=None, mkdir_dest=False, verbose=True,
-              raise_exceptions=True):
+def copy_file(src, dest, extensions_text=('txt', 'csv', 'tsv', 'json'), text=None, overwrite=False, mkdir_dest=False,
+              verbose=True, raise_exceptions=True):
     src = Path(src)
     dest = Path(dest)
 
     if mkdir_dest:
         mkdir(dest, verbose=verbose)
 
+    if dest.is_dir():
+        dest = dest / src.name
+
+    if dest.is_file() and (not overwrite):
+        return
+
     try:
-        if text is True or src.suffix in extensions_text:
+        if text is True or src.suffix[1:] in extensions_text:
             dest.write_text(src.read_text())  # for text files
         else:
             dest.write_bytes(src.read_bytes())  # for binary files
@@ -555,7 +561,7 @@ def copy_file(src, dest, extensions_text=('txt', 'csv', 'tsv'), text=None, mkdir
             raise e
         else:
             if verbose:
-                logger.info(f'Failed to copy "{src}" to "{dest}": {e}')
+                logger.warning(f'Failed to copy "{src}" to "{dest}": {e}')
     else:
         if verbose:
             logger.info(f'Copied "{src}" to "{dest}"')
