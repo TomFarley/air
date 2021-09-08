@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 logger.propagate = False
 
 
-def read_user_fire_config(path_fn='~/.fire_config.json'):
+def read_user_fire_config(path_fn='~/.fire/.fire_config.json'):
     path_fn = Path(path_fn).expanduser()
     fire_config = io_basic.json_load(path_fn)
     return fire_config
