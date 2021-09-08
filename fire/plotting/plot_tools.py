@@ -14,6 +14,7 @@ from copy import copy
 import numpy as np
 import pandas as pd
 import xarray as xr
+import matplotlib
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
@@ -26,7 +27,8 @@ logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
 
-def get_fig_ax(ax=None, num=None, ax_grid_dims=(1, 1), dimensions=2, axes_flatten=False, **kwargs):
+def get_fig_ax(ax=None, num=None, ax_grid_dims=(1, 1), dimensions=2, axes_flatten=False,
+               figsize=None, sharex='none', sharey='none', **kwargs):
     """If passed None for the ax keyword, return new figure and axes
 
     Args:
@@ -48,7 +50,8 @@ def get_fig_ax(ax=None, num=None, ax_grid_dims=(1, 1), dimensions=2, axes_flatte
             fig = plt.figure(num=num)
             ax = fig.add_subplot(1, 1, 1, projection='3d')
         else:
-            fig, ax = plt.subplots(*ax_grid_dims, num=num, constrained_layout=True, **kwargs)
+            fig, ax = plt.subplots(*ax_grid_dims, num=num, constrained_layout=True,
+                                   sharex=sharex, sharey=sharey, **kwargs)
             if axes_flatten and isinstance(ax, (np.ndarray)):
                 ax = ax.flatten()
 
@@ -92,7 +95,7 @@ def add_second_x_scale(ax, x_axis_values, y_values=None, label=None, x_map_func=
 def annotate_axis(ax, string, loc='top_right', x=0.85, y=0.955, fontsize=14, coords='axis', box=True,
                   bbox=(('facecolor', 'w'), ('ec', None), ('lw', 0), ('alpha', 0.5), ('boxstyle', 'round')),
                   horizontalalignment='center', verticalalignment='center', multialignment='center',
-                  sub_underscores=True, margin=0.03, clip_on=True, **kwargs):
+                  sub_underscores=True, margin=0.035, clip_on=True, **kwargs):
     """
 
     Args:
@@ -127,20 +130,36 @@ def annotate_axis(ax, string, loc='top_right', x=0.85, y=0.955, fontsize=14, coo
 
     if loc is None:
         pass  # Use passed x,y and alignment values
-    elif loc.replace(' ', '_') == 'top_right':
-        x = 1-margin
-        y = 1-margin
-        horizontalalignment = 'right'
-        verticalalignment = 'top'
-        multialignment = 'right'
-    elif loc.replace(' ', '_') == 'top_left':
-        x = margin
-        y = 1-margin
-        horizontalalignment = 'left'
-        verticalalignment = 'top'
-        multialignment = 'left'
     else:
-        raise NotImplementedError(f'Annotate location: "{loc}"')
+        loc = loc.replace(' ', '_').lower()
+        loc_y, loc_x = loc.split('_')
+
+        if loc_y == 'top':
+            y = 1-margin
+            verticalalignment = 'top'
+        elif loc_y == 'bottom':
+            y = margin
+            verticalalignment = 'bottom'
+        elif loc_y == 'middle':
+            y = 0.5
+            verticalalignment = 'centre'
+        else:
+            raise NotImplementedError(f'Annotate y location: "{loc_y}"')
+
+        if loc_x == 'right':
+            x = 1-margin
+            horizontalalignment = 'right'
+            multialignment = 'right'
+        elif loc_x == 'left':
+            x = margin
+            horizontalalignment = 'left'
+            multialignment = 'left'
+        elif loc_x in ('centre', 'center'):
+            x = 0.5
+            horizontalalignment = 'center'
+            multialignment = 'center'
+        else:
+            raise NotImplementedError(f'Annotate x location: "{loc_x}"')
 
     trans_dict = dict(axis=ax.transAxes, axes=ax.transAxes, data=ax.transData)
     if isinstance(coords, str):
@@ -259,7 +278,7 @@ def close_all_mpl_plots(close_all=True, verbose=True):
         if verbose:
             logger.info('Closed all mpl plot windows')
 
-def show_if(show, close_all=False, tight_layout=False, save_fig_fn=None, save_image_fn=None, save_kwargs=None):
+def show_if(show=True, close_all=False, tight_layout=False, save_fig_fn=None, save_image_fn=None, save_kwargs=None):
     """If show is true show plot. If clear all is true clear all plot windows before showing."""
     close_all_mpl_plots(close_all)
 
@@ -425,7 +444,7 @@ def repeat_color(ax=None, shade_percentage=None, artist_string=None):
     return c
 
 def setup_xarray_colorbar_ax(ax, data_plot=None, robust=True, cbar_label=None, cmap=None, position='right',
-                             add_colorbar=True, size="5%", pad=0.05, **kwargs):
+                             add_colorbar=True, size="5%", pad=0.05, log_cmap=False, **kwargs):
     from matplotlib import ticker
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -448,6 +467,9 @@ def setup_xarray_colorbar_ax(ax, data_plot=None, robust=True, cbar_label=None, c
         if cbar_label is not None:
             kws['cbar_kwargs']['label'] = cbar_label  # If not passed xarray auto generates from dataarray name/attrs
 
+        if log_cmap:
+            kws['norm'] = matplotlib.colors.LogNorm()
+
         if (data_plot is not None) and np.issubdtype(data_plot.dtype, np.int64) and (np.max(data_plot.values) < 20):
             # Integer/quantitative data
             bad_value = -1
@@ -462,7 +484,8 @@ def setup_xarray_colorbar_ax(ax, data_plot=None, robust=True, cbar_label=None, c
             if cmap is None:
                 cmap = 'jet'
             cmap = mpl.cm.get_cmap(cmap, (ticks[-1]-ticks[0])+1)
-        kws['cmap'] = cmap
+    kws['cmap'] = cmap
+    kws['add_colorbar'] = add_colorbar
 
     return kws
 
