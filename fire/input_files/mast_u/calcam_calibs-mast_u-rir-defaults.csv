@@ -1,2 +1,3 @@
 pulse_start,pulse_end,calcam_calibration_file,author,comments
-43937,50001,HL04_B_MWIR_virtual_25mm_v1.ccc,Tom Farley,Virtual calib from pre-plasma view check
+43937,49999,rir_43952_170_eq_glob-align-v3.ccc,Tom Farley,Alignment calibration from shot shortly after camera focused
+50000,50001,HL04_B_MWIR_virtual_25mm_v1.ccc,Tom Farley,Virtual calib from pre-plasma view check
