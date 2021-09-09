@@ -111,12 +111,12 @@ def plot_dark_level_variation(mask_dark, dark_level=None, frame_data=None):
     if frame_data is not None:
         temporal_figures.plot_temporal_stats(frame_data.where(mask_dark), t=frame_data['t'], t_axis=0, ax=ax,
                                              stats=('mean'), roll_width=51, show=False, ls='--',
-                                             roll_reduce_func='mean', roll_center=False)
+                                             roll_reduce_func='median', roll_center=False)
     if dark_level is not None:
-        (-dark_level).plot(ax=ax, label='Dark level')
+        dark_level.plot(ax=ax, label='Dark level', alpha=0.7)
 
     plot_tools.legend(ax)
-    plot_tools.show_if(True)
+    plot_tools.show_if(True, tight_layout=True)
 
 
 if __name__ == '__main__':
