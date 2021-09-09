@@ -49,6 +49,7 @@ def get_machine_coordinate_labels(x_im: coord, y_im: coord, z_im: coord,
                 data[plugin] = func(x_im, y_im, z_im, **kwargs)
             except KeyError as e:
                 pass
+    # TODO: Add s_global_no_nans variables with interpolated out nans?
     return data
 
 def get_s_coord_global(x_im, y_im, z_im, machine_plugins=None, **kwargs):

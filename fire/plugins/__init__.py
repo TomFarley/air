@@ -22,6 +22,7 @@ import fire.plugins.plugins as plugins
 import fire.plugins.plugins_machine as plugins_machine
 import fire.plugins.plugins_movie as plugins_movie
 import fire.plugins.plugins_output_format as plugins_output_format
+from fire.plugins.plugins import call_plugin_func, dummy_function, get_plugins, search_for_plugins
 
 if __name__ == '__main__':
     pass
