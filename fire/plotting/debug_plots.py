@@ -556,14 +556,14 @@ def debug_plot_spatial_2d_unwrapped(image_data, key='frame_data', spatial_dims=(
 def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', robust=True, extend=None,
                           annotate=True, mark_peak=True, label_tiles=True, meta=None, ax=None, t_range=(0.0, 0.6),
                           r_range=None, t_wins=None, machine_plugins=None, add_colorbar=True, colorbar_kwargs=None,
-                          set_data_coord_lims_with_ranges=True, robust_percentiles=(2, 98),
+                          set_data_coord_lims_with_ranges=True, robust_percentiles=(2, 98), num=None,
                           show=True, save_path_fn=None, image_formats=('png'), verbose=True):
     # TODO: Move general code to plot_tools.py func
     path_names = make_iterable(path_names)
     ax_in = ax
     for i_path, path_name in enumerate(path_names):
-        fig, ax, ax_passed = plot_tools.get_fig_ax(ax=ax_in, ax_grid_dims=(len(path_names), 1),
-                                        num=f'{param}_profile_2d {path_name}')
+        num = f'{param}_profile_2d {path_name}' if num is None else num
+        fig, ax, ax_passed = plot_tools.get_fig_ax(ax=ax_in, ax_grid_dims=(len(path_names), 1), num=num)
         ax_i = make_iterable(ax)[i_path]
 
         data = data_paths[f'{param}_{path_name}']
