@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 try:
     import pyuda, cpyuda
     client = pyuda.Client()
+    # pyuda.Client.server = "uda2.hpc.l"  # UDA2 (new office network server). See https://users.mastu.ukaea.uk/sites/default/files/uploads/UDA_data_access.pdf
+    # pyuda.Client.port = 56565
 except ImportError as e:
     logger.warning(f'Failed to import pyuda. ')
     pyuda = False
@@ -40,6 +42,7 @@ UDA_IPX_HEADER_FIELDS = ('board_temp', 'camera', 'ccd_temp', 'codex', 'date_time
                          'filter', 'frame_times', 'gain', 'hbin', 'height', 'is_color', 'left', 'lens',
                          'n_frames', 'offset', 'orientation', 'pre_exp', 'shot', 'strobe', 'taps', 'top', 'trigger',
                          'vbin', 'view', 'width')
+
 use_mast_client = True
 # UDA_IPX_HEADER_FIELDS = ('board_temp', 'camera', 'ccd_temp', 'date_time', 'depth', 'exposure', 'filter', 'frame_times',
 #                          'gain', 'hbin', 'height', 'is_color', 'left', 'lens', 'n_frames', 'offset', 'pre_exp', 'shot',
@@ -115,9 +118,6 @@ def get_uda_movie_obj(pulse: int, camera: str, n_start: Optional[int] = None, n_
     # TODO: Test other keywords and allow ipx path in place of pulse no?
     uda_module, client = uda_utils.get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
 
-    logger.debug(f'Getting images from uda using client: {client}')
-    print(f'Getting images from uda using client: {client}')  # TODO: remove
-
     try:
         vid = client.get_images(camera, pulse, first_frame=n_start, last_frame=n_end, stride=stride,
                                 # frame_number=None,
@@ -131,6 +131,9 @@ def get_uda_movie_obj(pulse: int, camera: str, n_start: Optional[int] = None, n_
                                     use_mast_client=(not use_mast_client), try_alternative_client=False)
         else:
             raise e
+    else:
+        logger.debug(f'Instantiated video object from uda using client: {client}')
+        print(f'Instantiated video object from uda using client: {client}')  # TODO: remove
     return vid
 
 def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
@@ -175,7 +178,7 @@ def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:O
     movie_meta['n_frames'] = ipx_header['n_frames']
     movie_meta['frame_range'] = np.array([n_start, n_end])
     movie_meta['t_range'] = np.array([times[n_start], times[n_end]])
-    movie_meta['t_before_pulse'] = np.abs(movie_meta['t_range'][0])
+    movie_meta['t_before_pulse'] = np.abs(ipx_header.get('trigger', movie_meta['t_range'][0]))
     movie_meta['image_shape'] = np.array((video.height, video.width))
     movie_meta['fps'] = (video.n_frames - 1) / np.ptp(times)
     movie_meta['lens'] = ipx_header['lens'] if 'lens' in ipx_header else 'Unknown'
@@ -238,11 +241,14 @@ def read_movie_data(pulse: int, camera: str,
     return frame_numbers, frame_times, frame_data
 
 if __name__ == '__main__':
-    pulse = 30378
+    # pulse = 30378
+    pulse = 26505
+    # pulse = 28623
     camera = 'rir'
     # camera = 'air'
     n_start, n_end = 100, 110
-    vid = get_uda_movie_obj_legacy(pulse, camera, n_start=n_start, n_end=n_end)
+    # vid = get_uda_movie_obj_legacy(pulse, camera, n_start=n_start, n_end=n_end)
+    vid = get_uda_movie_obj(pulse, camera, n_start=n_start, n_end=n_end)
     # import pdb; pdb.set_trace()
     meta_data = read_movie_meta(pulse, camera, n_start, n_end)
     frame_nos, frame_times, frame_data = read_movie_data(pulse, camera, n_start, n_end)
