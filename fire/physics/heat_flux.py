@@ -104,7 +104,7 @@ def scan_alpha_param(temperature_path, t, s_path, theo_kwargs, alpha_values, tes
         ax.plot(t, profile, marker='.', color=None, label=r'$q_{av}$, $\alpha$='+fr'{alpha}', alpha=0.7)
     ax.set_ylabel('$q_{\perp,av}$ [MW/m$^2$]')
     plot_tools.annotate_providence(ax, meta_data=meta)
-    plot_tools.legend()
+    plot_tools.legend(ax=ax)
 
     ax = axes[1]
     ax.plot(t, radial_average['temperature_av'][0], marker='.', ls='-', color='k', label=r'$T_{av}')
