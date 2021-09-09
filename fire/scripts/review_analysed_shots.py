@@ -196,7 +196,7 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
             debug_plots.debug_spatial_coords(image_data, path_data=path_data, path_name=analysis_path_key,
                                              coord_keys=coord_keys)
 
-        if debug.get('temperature_vs_R_t', False):
+        if debug.get('temperature_vs_R_t-robust', False):
             save_path_fn = None
             robust_percentiles = (35, 99)
             # robust_percentiles = (35, 99.5)
@@ -206,6 +206,14 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
                                               label_tiles=True, t_range=None, robust_percentiles=robust_percentiles,
                                               set_data_coord_lims_with_ranges=True, save_path_fn=save_path_fn,
                                               show=True)
+        if debug.get('temperature_vs_R_t-raw', False):
+            save_path_fn = None
+            debug_plots.debug_plot_profile_2d(path_data, param='temperature', path_names=analysis_path_key,
+                                              robust=False, meta=meta_data, machine_plugins=machine_plugins,
+                                              label_tiles=True, t_range=None, robust_percentiles=None,
+                                              set_data_coord_lims_with_ranges=True, save_path_fn=save_path_fn,
+                                              show=True)
+
 
         if debug.get('heat_flux_vs_R_t-robust', False) or debug.get('heat_flux_vs_R_t-robust-save', False):
             if debug.get('heat_flux_vs_R_t-robust-save', False):
@@ -290,116 +298,117 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
 
 
 
-def review_shot():
+def review_shot(pulse=None):
     import pyuda
     client = pyuda.Client()
 
-    # pulse = 43183  # Nice strike point sweep to T5, but negative heat fluxes
-    # pulse = 43177
-    # pulse = 43530
-    # pulse = 43534
-    # pulse = 43547
-    # pulse = 43415  # Peter Ryan's strike point sweep for LP checks
+    if pulse is None:
+        # pulse = 43183  # Nice strike point sweep to T5, but negative heat fluxes
+        # pulse = 43177
+        # pulse = 43530
+        # pulse = 43534
+        # pulse = 43547
+        # pulse = 43415  # Peter Ryan's strike point sweep for LP checks
 
-    # pulse = 43583  # 2xNBI - Kevin choice
-    # pulse = 43587  #
-    # pulse = 43591  #
-    # pulse = 43596  #
-    # pulse = 43610  #
-    # pulse = 43620  #
-    # pulse = 43624  #
-    # pulse = 43662  #
+        # pulse = 43583  # 2xNBI - Kevin choice
+        # pulse = 43587  #
+        # pulse = 43591  #
+        # pulse = 43596  #
+        # pulse = 43610  #
+        # pulse = 43620  #
+        # pulse = 43624  #
+        # pulse = 43662  #
 
-    # pulse = 43624  #
-    # pulse = 43648  #
+        # pulse = 43624  #
+        # pulse = 43648  #
 
-    # pulse = 43611
-    # pulse = 43613
-    # pulse = 43614
+        # pulse = 43611
+        # pulse = 43613
+        # pulse = 43614
 
-    # pulse = 43415  # LP and IR data --
-    # pulse = 43412  # LP and IR data --
+        # pulse = 43415  # LP and IR data --
+        # pulse = 43412  # LP and IR data --
 
-    pulse = 43805  # Strike point sweep to T5 - good data for IR and LP
-    # pulse = 43823  # Strike point very split on T2 at t=0.4-0.5 s
-    # pulse = 43835  # Strike point split
-    # pulse = 43852
-    # pulse = 43854  # Rapid strike point sweep to T5
-    # pulse = 43836
+        pulse = 43805  # Strike point sweep to T5 - good data for IR and LP
+        # pulse = 43823  # Strike point very split on T2 at t=0.4-0.5 s
+        # pulse = 43835  # Strike point split
+        # pulse = 43852
+        # pulse = 43854  # Rapid strike point sweep to T5
+        # pulse = 43836
 
-    # pulse = 43937
-    # pulse = 43839
+        # pulse = 43937
+        # pulse = 43839
 
-    # pulse = 43859
-    # pulse = 43916
-    # pulse = 43917
-    # pulse = 43922
+        # pulse = 43859
+        # pulse = 43916
+        # pulse = 43917
+        # pulse = 43922
 
-    # pulse = 43952  # Strike point sweep to T5
-    # pulse = 43955  # Evidence of T4 ripple and T5 compensation
-    # pulse = 43987  # V broad strike point
-    # pulse = 43513  # Clean up ref shot - no IR data
+        # pulse = 43952  # Strike point sweep to T5
+        # pulse = 43955  # Evidence of T4 ripple and T5 compensation
+        # pulse = 43987  # V broad strike point
+        # pulse = 43513  # Clean up ref shot - no IR data
 
-    # pulse = 43995  # Super-X
-    # pulse = 43996  # Super-X
-    # pulse = 43998  # Super-X
-    # pulse = 43999  # Super-X
-    # pulse = 44000  # Super-X, detached
-    # pulse = 44003  # LM
-    # pulse = 44004  # LM
-    # pulse = 43835  # Lidia strike point splitting request - good data
+        # pulse = 43995  # Super-X
+        # pulse = 43996  # Super-X
+        # pulse = 43998  # Super-X
+        # pulse = 43999  # Super-X
+        # pulse = 44000  # Super-X, detached
+        # pulse = 44003  # LM
+        # pulse = 44004  # LM
+        # pulse = 43835  # Lidia strike point splitting request - good data
 
-    # pulse = 44006  # beams
+        # pulse = 44006  # beams
 
-    # pulse = 44021  # LM
-    # pulse = 44022  # LM
-    # pulse = 44023  # LM
-    # pulse = 44024  # LM
-    # pulse = 44025  # LM
+        # pulse = 44021  # LM
+        # pulse = 44022  # LM
+        # pulse = 44023  # LM
+        # pulse = 44024  # LM
+        # pulse = 44025  # LM
 
-    # pulse = 43992  # virtual circuit keep SP on T2
-    # pulse = 43998  # Super-X
-    # pulse = 43400  # virtual circuit keep SP on T5
+        # pulse = 43992  # virtual circuit keep SP on T2
+        # pulse = 43998  # Super-X
+        # pulse = 43400  # virtual circuit keep SP on T5
 
-    # pulse = 44158  # virtual circuit keep SP on T5
-    # pulse = 44092  # virtual circuit keep SP on T5
-    # pulse = 44459  # Locked mode
-    # pulse = 44461  # Locked mode
+        # pulse = 44158  # virtual circuit keep SP on T5
+        # pulse = 44092  # virtual circuit keep SP on T5
+        # pulse = 44459  # Locked mode
+        # pulse = 44461  # Locked mode
 
-    # pulse = 44359  # RT18
-    # pulse = 44394  # RT18
-    # pulse = 44396  # RT18
+        # pulse = 44359  # RT18
+        # pulse = 44394  # RT18
+        # pulse = 44396  # RT18
 
-    # pulse = 44463  # first irircam automatic aquisition
-    # pulse = 44717
+        # pulse = 44463  # first irircam automatic aquisition
+        # pulse = 44717
 
-    # pulse = 44677  #  swept SXD (attached?)
+        # pulse = 44677  #  swept SXD (attached?)
 
-    # pulse = 44758  #  compass scan
-    pulse = 44776  #  compass scan
-    # pulse = 44777  #  compass scan
-    # pulse = 44778  #  compass scan
-    # pulse = 44779  #  compass scan
-    # pulse = 44780  #  compass scan
-    # pulse = 44781  #  compass scan
-    # pulse = 44782  #  compass scan
-    # pulse = 44783  #  compass scan
-    # pulse = 44784  #  compass scan
-    # pulse = 44785  #  compass scan
+        # pulse = 44758  #  compass scan
+        pulse = 44776  #  compass scan
+        # pulse = 44777  #  compass scan
+        # pulse = 44778  #  compass scan
+        # pulse = 44779  #  compass scan
+        # pulse = 44780  #  compass scan
+        # pulse = 44781  #  compass scan
+        # pulse = 44782  #  compass scan
+        # pulse = 44783  #  compass scan
+        # pulse = 44784  #  compass scan
+        # pulse = 44785  #  compass scan
 
-    # pulse = 44852  #  TF test shot with gas
+        # pulse = 44852  #  TF test shot with gas
 
-    pulse = 43952  #  RIR calcam calibration shot
+        pulse = 43952  #  RIR calcam calibration shot
 
-    # pulse = 44822  #  Detachment hysteresis - marf
-    # pulse = 44223  #  Fuelling ramp hysteresis - marf
+        # pulse = 44822  #  Detachment hysteresis - marf
+        # pulse = 44223  #  Fuelling ramp hysteresis - marf
 
-    # pulse = 44606  # RT14 lambda_q
-    # pulse = 55931  # RT14 lambda_q
+        # pulse = 44606  # RT14 lambda_q
+        # pulse = 55931  # RT14 lambda_q
 
-    # pulse = 44842  # 600 kA conv, steady fueling without marfe
-    # pulse = 44678  # 750 kA conv, steady fueling without marfe
-    pulse = 44679  # 750 kA conv, steady fueling with marfe
+        # pulse = 44842  # 600 kA conv, steady fueling without marfe
+        # pulse = 44678  # 750 kA conv, steady fueling without marfe
+        pulse = 44679  # 750 kA conv, steady fueling with marfe
 
 
 
@@ -413,8 +422,10 @@ def review_shot():
          'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
          'surfaces': False,
          'analysis_path': False,
-         'temperature_vs_R_t': True,
-         'heat_flux_vs_R_t-robust': True, 'heat_flux_vs_R_t-raw': False,
+         'temperature_vs_R_t-raw': True,
+         'temperature_vs_R_t-robust': False,
+         'heat_flux_vs_R_t-robust': True, 'heat_flux_vs_R_t-raw': True,
+             'heat_flux_vs_R_t-robust-raw': True,
              'heat_flux_vs_R_t-robust-save': True,
          'timings': False, 'strike_point_loc': False,
          # 'heat_flux_path_1d': True,
@@ -535,6 +546,6 @@ def review_latest_shots(n_shots=1, camera='rit', copy_recent_shots=True, n_shots
     print(f'Finished review of shots {shots}: \n{status}')
 
 if __name__ == '__main__':
-    # review_shot()
+    review_shot(44903)
     # review_shot_list()
-    review_latest_shots(n_shots=25, n_shots_skip=50, copy_recent_shots=False, recompute=True, show=False)
+    # review_latest_shots(n_shots=25, n_shots_skip=50, copy_recent_shots=False, recompute=True, show=False)
