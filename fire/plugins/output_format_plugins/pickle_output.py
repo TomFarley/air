@@ -75,9 +75,9 @@ def write_processed_ir_to_pickle_output_file(path_data, image_data, path_names,
                 meta_data=meta_data)
 
     pickled_keys = list(data.keys())
-    data['_pickled_keys '] = pickled_keys
+    data['_pickled_keys'] = pickled_keys
 
-    status = pickle_dump(data, path_fn, verbose=False, raise_exceptions=False)
+    status = pickle_dump(data, path_fn, remove_custom_classes=False, verbose=False, raise_exceptions=False)
 
     if (status is False) or (not path_fn.is_file()):
         # raise FileNotFoundError(f'UDA output file does not exist: {path_fn}')
