@@ -22,7 +22,7 @@ from ccfepyutils.mpl_tools import get_previous_artist_color, annotate_axis
 from ccfepyutils.image import hist_image_equalisation
 from fire.plugins.movie_plugins.uda import read_movie_data
 from fire.plugins.plugins_movie import MovieReader
-from fire.camera.image_processing import find_outlier_pixels
+from fire.camera_tools.image_processing import find_outlier_pixels
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -100,6 +100,8 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
     data['mean'] = ('t', np.mean(frame_data.values, axis=axis))
     data['max'] = ('t', np.max(frame_data.values, axis=axis))
     data['min'] = ('t', np.min(frame_data.values, axis=axis))
+    data['2%'] = ('t', np.percentile(frame_data.values, 2, axis=axis))
+    data['98%'] = ('t', np.percentile(frame_data.values, 98, axis=axis))
     data['std'] = ('t', np.std(frame_data.values, axis=axis))
     data['range'] = ('t', np.ptp(frame_data.values, axis=axis))
     data['range'].attrs['units'] = 's'
@@ -114,14 +116,14 @@ def generate_calcam_calib_images(pulse=30378, camera='rir', machine='mast', n_st
 
     fig, ax = plt.subplots()
     # vars = ['mean', 'std', 'min', 'max']
-    vars = ['mean', 'max', 'std']  # full frame view
+    vars = ['mean', 'max', 'std', '2%', '98%']  # full frame view
     if not np.all(data['range'] == data['max']):
         vars += ['range', 'min']  # zoomed view
     order = np.max((int(np.round(len(frame_nos) / (2*n_images))), 1))
     print(f'order={order}')
     for var in vars:
         d = data[var].swap_dims({'t': 'n'})
-        d.plot.line(ax=ax, label=var, alpha=0.8)
+        d.plot.line(ax=ax, label=var, alpha=0.7)
         i_peaks[var], props_peaks[var] = sp.signal.find_peaks(data[var].values)
         # data[var][i_maxima[var]].plot(ax=ax, marker='x', ls='', color=get_previous_artist_color(ax))
         if len(i_peaks[var]) > 0:
@@ -274,11 +276,16 @@ if __name__ == '__main__':
     # pulse = 30459
     # pulse = 30458
     # pulse = 43141
-    pulse = 43183
+    # pulse = 43183
+
+    # pulse = 43805
+    # pulse = 44760
+    # pulse = 44673  # DN-700-SXD-OH
+    pulse = 43952  # early focus
 
 
-    # camera = 'rir'
-    camera = 'rit'
+    camera = 'rir'
+    # camera = 'rit'
 
     n_start = 200
     # n_start = None
@@ -295,7 +302,8 @@ if __name__ == '__main__':
     # use_raw = False
     use_raw = True
 
-    selection_stat = 'max'
+    # selection_stat = 'max'
+    selection_stat = '98%'
     # selection_stat = 'mean'
 
     # path_out = Path('./calibration_images/{camera}/{pulse}')
