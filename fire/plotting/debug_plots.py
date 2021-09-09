@@ -64,11 +64,12 @@ def debug_movie_data(data, key='frame_data', frame_nos=(0, None, -1), aspect='eq
     plt.tight_layout()
     plt.show()
 
-def debug_calcam_calib_image(calcam_calib, frame_data=None, frame_ref=None, n_frame_ref=None):
+def debug_calcam_calib_image(calcam_calib, frame_data=None, frame_ref=None, n_frame_ref=None, wire_frame=None):
     title_size = 8
 
     calib_image_original = calcam_calib.get_image(coords='Original')
     calib_image_display = calcam_calib.get_image(coords='Display')
+
 
     if frame_data is not None:
         # TODO: Pick out bright frame instead of middle frame
@@ -122,6 +123,13 @@ def debug_calcam_calib_image(calcam_calib, frame_data=None, frame_ref=None, n_fr
                      fontdict={'fontsize': title_size})
         i_ax += 1
 
+    if wire_frame is not None:
+        ax = axes[i_ax]
+        ax.imshow(frame_display, interpolation='none', cmap='gray', origin='upper')
+        ax.imshow(wire_frame, interpolation='none', origin='upper', alpha=0.5)
+        ax.set_title(f'Wire frame overlaid movie image: {Path(calcam_calib.filename).name}',
+                     fontdict={'fontsize': title_size})
+        i_ax += 1
 
 
     plt.tight_layout()
@@ -230,6 +238,9 @@ def debug_camera_shake(pixel_displacements, times=None, plot_float=True, n_shake
     plt.show()
 
 def debug_spatial_coords(data, path_data=None, path_name='path0', points_rzphi=None, points_pix=None,
+                        coord_keys=('x_im', 'y_im',
+                                    'R_im', 'phi_deg_im', 'z_im',
+                                    'ray_lengths_im', 'sector_im', 'wire_frame'),
                          aspect='equal', axes_off=True):
     fig, axes = plt.subplots(3, 3, num='spatial coords', figsize=(13, 13), sharex=True, sharey=True)
     # cid = fig.canvas.mpl_connect('button_press_event', plot_tools.onclick)
@@ -265,14 +276,8 @@ def debug_spatial_coords(data, path_data=None, path_name='path0', points_rzphi=N
                            ypix_out_of_frame=path_data[f'y_pix_out_of_frame_{path}'])
     # Spatial coords
     axs = axes[1:]
-    keys = ['x_im', 'y_im', 'R_im', 'phi_deg_im', 'z_im',
-            # 's_global_im',
-            'ray_lengths_im',
-            'sector_im',
-            # 'surface_id',
-            'wire_frame',
-            ]
-    for ax, key in zip(axs, keys):
+
+    for ax, key in zip(axs, coord_keys):
         try:
             figure_xarray_imshow(data, key=key, ax=ax, axes_off=axes_off, show=False)
         except KeyError as e:
@@ -550,7 +555,7 @@ def debug_plot_spatial_2d_unwrapped(image_data, key='frame_data', spatial_dims=(
 
 def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', robust=True, extend=None,
                           annotate=True, mark_peak=True, label_tiles=True, meta=None, ax=None, t_range=(0.0, 0.6),
-                          r_range=None, t_wins=None, machine_plugins=None, colorbar_kwargs=None,
+                          r_range=None, t_wins=None, machine_plugins=None, add_colorbar=True, colorbar_kwargs=None,
                           set_data_coord_lims_with_ranges=True, robust_percentiles=(2, 98),
                           show=True, save_path_fn=None, image_formats=('png'), verbose=True):
     # TODO: Move general code to plot_tools.py func
@@ -571,37 +576,41 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
         # TODO: Generalise setting coord ranges to other 2d data
         if t_range is not None:
             t_range = np.array(t_range)
-            t_range[1] = np.min([t_range[1], data['t'].values.max()])
+            t_range[1] = np.min([t_range[1], data['t'].values.max()]) if (t_range[1] is not None) else (data[
+                                                                                                't'].values.max())
             if set_data_coord_lims_with_ranges:
                 mask = (t_range[0] <= data['t']) & (data['t'] <= t_range[1])
-                data_masked = data.sel({'t': mask})
+                data_masked = data.where(mask)
                 # data = data.sel({'t': slice(*t_range)})
             ax_i.set_ylim(*t_range)
         if r_range is not None:
             r_range = np.array(r_range)
-            r_range[0] = np.max([r_range[0], data[coord_path].values.min()])
+            r_range[0] = np.max([r_range[0], data[coord_path].values.min()]) if (r_range[0] is not None) else (data[
+                                                                                            coord_path].values.min())
             r_range[1] = np.min([r_range[1], data[coord_path].values.max()])
             if set_data_coord_lims_with_ranges:  # set data ranges to get full range from colorbar
                 # TODO: Make general purpose function for slicing coords since pandas bug or update packages? https://github.com/pydata/xarray/issues/4370
-                mask = (r_range[0] <= data[coord_path]) & (data[coord_path] <= r_range[1])
-                data_masked = data.sel({coord_path: mask})
-                # data = data.sel({coord_path: slice(*r_range)})
+                # mask = (r_range[0] <= data[coord_path]) & (data[coord_path] <= r_range[1])
+                # data_masked = data[mask]
+                data_masked = data.sel({coord_path: slice(*r_range)})
             ax_i.set_xlim(*r_range)
 
         # Configure colorbar axis
         if robust:
-            vmin, vmax = (np.percentile(data_masked, robust_percentiles[0]),
-                          np.percentile(data_masked, robust_percentiles[1]))
+            mask_nan = np.isnan(data_masked)
+            vmin, vmax = (np.percentile(data_masked.values[~mask_nan], robust_percentiles[0]),
+                          np.percentile(data_masked.values[~mask_nan], robust_percentiles[1]))
         else:
             vmin, vmax = np.min(data_masked), np.max(data_masked)
         colorbar_kwargs = colorbar_kwargs if (colorbar_kwargs is not None) else {}
         cmap = cm.get_cmap('coolwarm')
         colorbar_kws = dict(robust=robust, extend=extend, cmap=cmap, vmin=vmin, vmax=vmax)
         colorbar_kws.update(colorbar_kwargs)
-        kws = plot_tools.setup_xarray_colorbar_ax(ax_i, data_plot=data, add_colorbar=True, **colorbar_kws)
+        kws = plot_tools.setup_xarray_colorbar_ax(ax_i, data_plot=data, add_colorbar=add_colorbar, **colorbar_kws)
 
         # Plot data
         try:
+            # Plot all data so you can pan outside axis limit ranges but set colorbar ranges using data_masked
             # Remove any nans from path coord as will make 2d plot fail
             mask_coord_nan = np.isnan(data[coord_path])
             if np.any(mask_coord_nan):
@@ -609,7 +618,7 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             try:
                 r_dim = data.dims[1]
                 data = data.sortby(r_dim, ascending=True)
-                artist = data.plot(center=False, ax=ax_i, **kws)  # pcolormesh
+                artist = data.plot.imshow(center=False, ax=ax_i, **kws)  # pcolormesh
             except ValueError as e:
                 # contourf can handle irregular x axis
                 artist = data.plot.contourf(levels=200, center=False, ax=ax_i, **kws)
@@ -627,7 +636,7 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             data_peak = data_paths[param_peak].values
             data_r_peak = data_paths[param_r_peak]
             mask_low = data_peak < (np.nanmin(data_peak) + 0.01 * (np.nanmax(data_peak)-np.nanmin(data_peak)))
-            data_r_peak.loc[mask_low] = np.nan
+            data_r_peak = data_r_peak.where(~mask_low, np.nan)
             ax_i.plot(data_r_peak.values, data_r_peak[data.dims[0]], ls='', marker='.', ms=2, color='c',  # 'g'
                       lw=2.5, alpha=0.4, label='peak')  # ms=1.5
 
@@ -640,10 +649,12 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             # annotate_axis(ax_i, label, x=0.99, y=0.99, fontsize=12, box=False, horizontalalignment='right',
             #                                                                             verticalalignment='top')
 
-        # if t_range is not None:
-        #     t_range = np.array(t_range)
-        #     t_range[1] = np.min([t_range[1], data['t'].values.max()])
-        #     ax_i.set_ylim(t_range)
+        if t_range is not None:
+            ax_i.set_ylim(*t_range)
+        if r_range is not None:
+            ax_i.set_xlim(*r_range)
+        else:
+            ax_i.set_xlim(data[coord_path].values.min(), data[coord_path].values.max())
 
         if machine_plugins is not None:
             if label_tiles:
@@ -667,8 +678,8 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             logger.info(f'{param}({path_name}): min={data.min().values:0.4g}, mean={data.mean().values:0.4g}, '
                         f'99%={np.percentile(data.values,99):0.4g}, max={data.max().values:0.4g}')
 
+        plot_tools.save_fig(save_path_fn, image_formats=image_formats, fig=fig, mkdir_depth=2)
         plot_tools.show_if(show=show, tight_layout=True)
-        plot_tools.save_fig(save_path_fn, image_formats=image_formats, mkdir_depth=2)
 
     return ax, data, artist
 
@@ -756,7 +767,8 @@ def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_R_peak', 'heat
 def debug_plot_timings(data_profiles, pulse, params=('heat_flux_amplitude_peak_global_{path}',
                                                      'temperature_amplitude_peak_global_{path}',),
                        path_name='path0', comparison_signals=(('xim/da/hm10/t', 'xim/da/hm10/r'),
-                                                               'xpx/clock/lwir-1'), separate_axes=True):
+                                                               'xpx/clock/lwir-1'), separate_axes=True,
+                       meta_data=None):
     from fire.interfaces import uda_utils
     from fire.physics.physics_parameters import find_peaks_info
     # uda_module, client = uda_utils.get_uda_client(use_mast_client=True, try_alternative=True)
@@ -775,7 +787,10 @@ def debug_plot_timings(data_profiles, pulse, params=('heat_flux_amplitude_peak_g
     axes = make_iterable(axes, cast_to=np.ndarray).flatten()
     i_ax = 0
 
+    plot_tools.annotate_providence(axes[i_ax], loc='top right', meta_data=meta_data, annotate=(meta_data is not None))
+
     t_peaks = []
+    frame_times = data_profiles[params[0].format(path=path_name)]['t']
 
     for signals in make_iterable(comparison_signals):
         ax = axes[i_ax]
@@ -813,6 +828,7 @@ def debug_plot_timings(data_profiles, pulse, params=('heat_flux_amplitude_peak_g
 
         if separate_axes:
             ax.yaxis.label.set_size(ylabel_size)
+            ax.plot(frame_times, np.zeros_like(frame_times), ls='', marker='x', markersize=4, color='k', alpha=0.5)
             i_ax += 1
 
     for param in make_iterable(params):
@@ -830,6 +846,7 @@ def debug_plot_timings(data_profiles, pulse, params=('heat_flux_amplitude_peak_g
         if separate_axes:
             ax.yaxis.label.set_size(ylabel_size)
             ax.get_xaxis().set_visible(False)
+            ax.plot(frame_times, np.zeros_like(frame_times), ls='', marker='x', markersize=4, color='k', alpha=0.5)
             i_ax += 1
     ax.get_xaxis().set_visible(True)  # make final x axis visible
 
