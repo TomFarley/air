@@ -36,7 +36,7 @@ def get_freia_ipx_path(pulse, camera):
     ipx_path_fn = MAST_IMAGES + f"0{pulse[0:2]}/{pulse}/{camera}0{pulse}.ipx"
     return ipx_path_fn
 
-def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
+def read_movie_meta_pyipx(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
     """Read frame data from MAST IPX movie file format.
 
     :param path_fn: Path to IPX movie file
@@ -56,29 +56,30 @@ def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> 
     ipx_header = vid.file_header
     ipx_header = convert_ipx_header_to_uda_conventions(ipx_header)
     ret, frame0, frame_header0 = vid.read(transforms=transforms)
-    last_frame = ipx_header['n_frames'] - 1
+    n_frames = ipx_header.get('n_frames', ipx_header.get('numFrames'))
+    i_last_frame = n_frames - 1
 
     # Last frame doesn't always load, so work backwards to last successfully loaded frame
     ret = False
     while not ret:
         # Read last frame
-        vid.set_frame_number(last_frame)
+        vid.set_frame_number(i_last_frame)
         ret, frame_end, frame_header_end = vid.read(transforms=transforms)
         if not ret:
             # File closes when it fails to load a frame, so re-open
             vid = ipxReader(filename=path_fn)
-            last_frame -= 1
+            i_last_frame -= 1
     vid.release()
 
     # Collect summary of ipx file meta data
     # file_header['ipx_version'] = vid.ipx_type
     movie_meta = {'movie_format': '.ipx'}
     movie_meta['n_frames'] = ipx_header['n_frames']
-    movie_meta['frame_range'] = np.array([0, last_frame])
+    movie_meta['frame_range'] = np.array([0, i_last_frame])
     movie_meta['t_range'] = np.array([float(frame_header0['time_stamp']), float(frame_header_end['time_stamp'])])
     movie_meta['t_before_pulse'] = np.abs(ipx_header.get('trigger', movie_meta['t_range'][0]))
     movie_meta['image_shape'] = np.array(frame0.shape)
-    movie_meta['fps'] = (last_frame) / np.ptp(movie_meta['t_range'])
+    movie_meta['fps'] = (i_last_frame) / np.ptp(movie_meta['t_range'])
     movie_meta['exposure'] = ipx_header['exposure']
     movie_meta['bit_depth'] = ipx_header['depth']
     movie_meta['lens'] = ipx_header['lens'] if 'lens' in ipx_header else 'Unknown'
@@ -91,15 +92,32 @@ def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> 
     movie_meta['ipx_header'] = ipx_header
     return movie_meta
 
-def get_detector_window_from_ipx_header(ipx_header, plugin=None, fn=None):
+def get_detector_window_from_ipx_header(ipx_header, plugin=None, fn=None, verbose=True):
     # TODO: Move to generic movie plugin functions module
+    log = logger.warning if verbose else logger.debug
+    problems = 0
 
-    left, top, width, height, right, bottom = np.array([ipx_header[key] if key in ipx_header else np.nan for key in
-                                                         ('left', 'top', 'width', 'height', 'right', 'bottom')])
-    detector_window = np.array([left, top, width, height])
+    # TODO: apply abs to each value so don't have negative 'bottom' value etc?
+    left, top, width, height, right, bottom = np.array([np.abs(ipx_header[key]) if key in ipx_header else np.nan
+                                                      for key in ('left', 'top', 'width', 'height', 'right', 'bottom')])
+    # From IPX1 documentation: left: offset=244, length=2, type=unsigned; Window position (leftmost=1); 0 – not defined.
+    # Therefore subtract 1 to get zero indexed pixel coordinate
+    detector_window = np.array([left-1, top-1, width, height])
+
+    if np.any(detector_window[:2] == -1):
+        log(f'{plugin} Detector window corner coords contain zeros which for ipx standard means "not defined": '
+            f'(left, top = {left}, {top}) ({plugin}, {fn})')
+        detector_window[:2][(detector_window[:2] == -1)] = 0
+        log(f'Assumed window corner at origin: {detector_window}')
+        if np.any(detector_window[2:] < 256):
+            raise ValueError(f'Detector appears to be subwindowed, so assuming corner at origin probably not valid')
+        problems += 1
 
     if np.any(np.isnan(detector_window)):
-        logger.warning(f'IPX file missing meta data for detector sub-window: {detector_window} ({plugin}, {fn})')
+        log(f'{plugin} file missing meta data for detector sub-window: {detector_window} ({plugin}, {fn})')
+        detector_window[:2][np.isnan(detector_window[:2])] = 0
+        log(f'Set nans to zero: {detector_window}')
+        problems += 1
 
     try:
         width_calc = right - left
@@ -108,21 +126,27 @@ def get_detector_window_from_ipx_header(ipx_header, plugin=None, fn=None):
         pass
     else:
         if width_calc != width:
-            logger.warning(f'Detector window width calculated from right-left = {right}-{left} = {width_calc} '
+            log(f'Detector window width calculated from right-left = {right}-{left} = {width_calc} '
                            f'!= {width} = width')
+            problems += 1
 
     try:
-        height_calc = top - bottom
+        # height_calc = top - bottom
+        height_calc = bottom - top
         height = ipx_header['height']
     except KeyError as e:
         pass
     else:
         if height_calc != height:
-            logger.warning(f'Detector window height calculated from top-bottom = {top}-{bottom} = {height_calc} '
+            log(f'Detector window height calculated from top-bottom = {top}-{bottom} = {height_calc} '
                            f'!= {height} = height')
+        problems += 1
 
     if not np.any(np.isnan(detector_window)):
         detector_window = detector_window.astype(int)
+
+    if problems > 0:
+        pass
 
     return detector_window
 
@@ -176,7 +200,7 @@ def convert_ipx_header_to_uda_conventions(header: dict) -> dict:
     # header['right'] = header.pop('left') + header.pop('width')
     return header
 
-def read_movie_data(path_fn: Union[str, Path],
+def read_movie_data_pyipx(path_fn: Union[str, Path],
                     n_start:Optional[int]=None, n_end:Optional[int]=None, stride:Optional[int]=1,
                     frame_numbers: Optional[Union[Iterable, int]]=None,
                     transforms: Optional[Iterable[str]]=()) -> MovieData:
@@ -370,7 +394,7 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
     for n, frame in enumerate(ipx.frames):
         if n in frame_numbers:
             image = ipx.decode_frame(frame.data)  # 'I;16'
-            frame_data[i] = np.array(image)
+            frame_data[i] = np.array(image).astype(np.uint16)
             i += 1
     assert i == n_frames, f"i != n_frames: {i} != {n_frames}"
 
@@ -382,9 +406,10 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
     return frame_numbers, frame_times, frame_data
 
 def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarray, header_dict: dict,
-                             apply_nuc=False, verbose: bool=True):
+                             apply_nuc=False, create_path=False, verbose: bool=True):
     from PIL import Image
     from mastvideo import write_ipx_file, IpxHeader, IpxSensor, SensorType, ImageEncoding
+    from fire.plugins.machine_plugins import mast_u
     from matplotlib import cm
     from fire.scripts.organise_ircam_raw_files import complete_meta_data_dict
     from fire.misc.utils import filter_kwargs
@@ -394,25 +419,46 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
     n_frames, height, width = tuple(movie_data.shape)
     image_shape = (height, width)
 
-    pulse = header_dict.get('shot', header_dict.get('pulse'))
+    pulse = int(header_dict.get('shot', header_dict.get('pulse')))
     camera = header_dict.get('camera', 'IRCAM_Velox81kL_0102')
     times = header_dict['frame_times']
+    view = header_dict.get('view', 'HL04_A-tangential')
+    lens = f'{header_dict["lens"]*1e3}mm'  # 25mm  # TODO: Handle diff lens formats?
+    filter = header_dict.get('filter', 'None')
+    exposure = int(header_dict['exposure'] * 1e6)
+    depth = header_dict.get('bit_depth', header_dict.get('depth', 14))
+    ipx_version = int(header_dict.get('ID', '1')[-1])
+
+    meta_cpf = mast_u.pulse_meta_data(pulse, keys=['exp_date', 'exp_time'])
+    datetime = f'{meta_cpf["exp_date"]} {meta_cpf["exp_time"]}' if 'exp_date' in meta_cpf.keys() else '<placeholder>'
 
     trigger = header_dict.get('t_before_pulse', header_dict.get('trigger',
                                                                 header_dict.get('ipx_header', {}).get('trigger')))
+    trigger=-np.abs(trigger)
 
     # TODO: Use pycpf when it working to get datetime eg '2013-06-11T14:27:21'
-    header_dict_subset = dict(shot=pulse, date_time='<placeholder>', camera=camera,
-                               view='HL04_A-tangential', lens='25 mm', trigger=-np.abs(trigger),
-                               exposure=int(header_dict['exposure'] * 1e6), num_frames=n_frames, frame_width=width,
-                               frame_height=height, depth=14,
-                               # codec='jp2',
+    header_dict_subset = dict(shot=pulse, date_time=datetime,
+                              camera=camera, view=view, lens=lens, filter=filter,
+                              trigger=trigger, exposure=exposure,
+                              num_frames=n_frames, depth=depth,
+                              frame_width=width, frame_height=height,
+                              # orientation=0, filter= 'None', pre_exposure=0,
+                              # board_temperature=0, sensor_temperature=0, strobe=0,
+                        # Other fields are in Sensor object
+                              # codec='JP2',
                               # file_format='IPX 01',
-                               # offset=0.0, ccdtemp=-1, numFrames, filter, codex='JP2', ID='IPX 01'
-        )
+                              # offset=0.0, ccdtemp=-1, numFrames, filter, codex='JP2', ID='IPX 01'
+                              )
+
+    sensor_dict = dict(
+        window_left=None, window_right=None, window_top=None, window_bottom=None,
+        binning_h=0, binning_v=0,
+        taps=None, gain=None, offset=None)  # taps=Number of digitizer channels
+
     if image_shape == (256, 320):
         # header_dict_subset['top'] = 0
-        # header_dict_subset['bottom'] = 0
+        # header_dict_subset['bottom'] = 0  # TODO: check which to set to zero from MAST examples
+        # header_dict_subset['left'] = 0  # TODO: Ask Sam about updating permissable fields to include 'left'?
         pass
     else:
         # raise NotImplementedError(f'Detector subwindowed: {image_shape}')
@@ -435,27 +481,36 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
     nuc_frame = copy(movie_data[1])
     if not apply_nuc:
         nuc_frame *= 0
-    frames_ndarray = [frame - nuc_frame for frame in movie_data]  # for plotting with matplotlib
-    frames = [Image.fromarray(frame-nuc_frame, mode='I;16') for frame in frames_ndarray]  #
+        frames_ndarray = [frame for frame in movie_data]  # for plotting with matplotlib
+        frames = [Image.fromarray(frame, mode='I;16') for frame in frames_ndarray]  #
+    else:
+        logger.warning(f'Applying nuc subtraction to new IPX file: {ipx_path_fn}')
+        frames_ndarray = [frame - nuc_frame for frame in movie_data]  # for plotting with matplotlib
+        frames = [Image.fromarray(frame - nuc_frame, mode='I;16') for frame in frames_ndarray]  #
+
     # frames = [Image.fromarray(np.uint8(cm.Greys(frame-nuc_frame))*255, mode='I;16') for frame in movie_data]  #
     # PIL images
     # frames = [frame.convert('I;16') for frame in frames]
 
-    # fill in some dummy fields
+    # fill in some header fields
     header = IpxHeader(**header_dict_subset)
 
     sensor = IpxSensor(
-        type=SensorType.MONO,
+        type=SensorType.MONO, **sensor_dict
     )
 
     path_fn_ipx = Path(str(path_fn_ipx).format(**header_dict)).expanduser()
 
+    if create_path:
+        from fire.interfaces import io_basic
+        io_basic.mkdir(path_fn_ipx)
+
     with write_ipx_file(
-            path_fn_ipx, header, sensor, version=1,
+            path_fn_ipx, header, sensor, version=ipx_version,
             encoding=ImageEncoding.JPEG2K,
     ) as ipx:
         # write out the frames
-        for time, frame in zip(times, frames):
+        for i, (time, frame) in enumerate(zip(times, frames)):
             ipx.write_frame(time, frame)
 
     message = f'Wrote ipx file: "{path_fn_ipx}"'
@@ -492,6 +547,11 @@ def download_ipx_via_http_request(camera, pulse, path_out='~/data/movies/{machin
         print(message)
 
     return fn_out
+
+read_movie_meta = read_movie_meta_pyipx
+# read_movie_meta = read_movie_meta_with_mastmovie
+read_movie_data = read_movie_data_pyipx
+# read_movie_data = read_movie_data_with_mastmovie
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
