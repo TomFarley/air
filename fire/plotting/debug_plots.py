@@ -562,7 +562,7 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
     path_names = make_iterable(path_names)
     ax_in = ax
     for i_path, path_name in enumerate(path_names):
-        num = f'{param}_profile_2d {path_name}' if num is None else num
+        num = f'{param}_profile_2d {path_name}' if (num is None) else num
         fig, ax, ax_passed = plot_tools.get_fig_ax(ax=ax_in, ax_grid_dims=(len(path_names), 1), num=num)
         ax_i = make_iterable(ax)[i_path]
 
