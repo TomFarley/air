@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 import calcam
 
@@ -146,20 +147,24 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
         debug_plots.debug_temperature_image(image_data)
 
     if (debug.get('movie_temperature_animation', False) or debug.get('movie_temperature_animation_gif', False)):
+        overwrite_gif = False
         if debug.get('movie_temperature_animation_gif', False):
             save_path_fn = paths_output['gifs'] / f'{machine}-{camera}-{pulse}_temperature_movie.gif'
+            if save_path_fn.is_file() and (not overwrite_gif):  # As writing gif is slow don't repeat write
+                save_path_fn = None
         else:
             save_path_fn = None
         show = debug.get('movie_temperature_animation', False)
 
         # cbar_range = [0, 99.8]  # percentile of range
-        cbar_range = [0, 99.9]  # percentile of range
+        cbar_range = [0, 99.7]  # percentile of range
         # cbar_range = [0, 99.95]  # percentile of range
         # cbar_range = [0, 100]  # percentile of range
         # cbar_range = None
         # frame_range = [40, 270]
         frame_range = [40, 410]
         # frame_range = [40, 470]
+        frame_range = np.clip(frame_range, *meta_data['frame_range'])
         image_figures.animate_frame_data(image_data, key='temperature_im', nth_frame=1, duration=15,
                                          n_start=frame_range[0], n_end=frame_range[1], save_path_fn=save_path_fn,
                                          cbar_range=cbar_range,
@@ -167,7 +172,7 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
                                          cbar_label='$T$ [$^\circ$C]',
                                          label_values={'t': frame_times.values*1e3}, show=show)
         if (debug.get('movie_temperature_animation_gif', False) and
-                (not debug.get('movie_temperature_animation', False))):
+                (not debug.get('movie_temperature_animation', False)) and ()):
             plot_tools.close_all_mpl_plots(close_all=True, verbose=True)
 
     for i_path, (analysis_path_key, analysis_path_name) in enumerate(zip(analysis_path_keys, analysis_path_names)):
@@ -177,13 +182,30 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
         if debug.get('poloidal_cross_sec', False):
             spatial_figures.figure_poloidal_cross_section(image_data=image_data, path_data=path_data, pulse=pulse, no_cal=True,
                                                                         show=True)
-        if debug.get('spatial_coords', False):
-            debug_plots.debug_spatial_coords(image_data, path_data=path_data, path_name=analysis_path_key)
+        if debug.get('spatial_coords_raw', False):
+            coord_keys = ('x_im', 'y_im',
+                          'R_im', 'phi_deg_im', 'z_im',
+                          'ray_lengths_im', 'sector_im', 'wire_frame')
+            debug_plots.debug_spatial_coords(image_data, path_data=path_data, path_name=analysis_path_key,
+                                             coord_keys=coord_keys)
+
+        if debug.get('spatial_coords_derived', False):
+            coord_keys = ('s_global_im', 'wire_frame',
+                          'R_im', 'phi_deg_im', 'z_im',
+                          'ray_lengths_im', 'R_im', 'R_im')
+            debug_plots.debug_spatial_coords(image_data, path_data=path_data, path_name=analysis_path_key,
+                                             coord_keys=coord_keys)
 
         if debug.get('temperature_vs_R_t', False):
+            save_path_fn = None
+            robust_percentiles = (35, 99)
+            # robust_percentiles = (35, 99.5)
             debug_plots.debug_plot_profile_2d(path_data, param='temperature', path_names=analysis_path_key,
-                                              robust=False, meta=meta_data, machine_plugins=machine_plugins,
-                                              verbose=True)
+                                              extend='both',
+                                              robust=True, meta=meta_data, machine_plugins=machine_plugins,
+                                              label_tiles=True, t_range=None, robust_percentiles=robust_percentiles,
+                                              set_data_coord_lims_with_ranges=True, save_path_fn=save_path_fn,
+                                              show=True)
 
         if debug.get('heat_flux_vs_R_t-robust', False) or debug.get('heat_flux_vs_R_t-robust-save', False):
             if debug.get('heat_flux_vs_R_t-robust-save', False):
@@ -206,19 +228,30 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
             extend = 'both'
             # extend = 'min'
             # extend = 'neither'
+            num = 'heat_flux_vs_R_t-robust'
             debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key, extend=extend,
-                                              robust=True, meta=meta_data, machine_plugins=machine_plugins,
+                                              robust=True, meta=meta_data, machine_plugins=machine_plugins, num=num,
                                               label_tiles=True, t_range=None, robust_percentiles=robust_percentiles,
                                               set_data_coord_lims_with_ranges=True, save_path_fn=save_path_fn,
                                               show=show)
             if (debug.get('heat_flux_vs_R_t-robust-save', False) and (not debug.get('heat_flux_vs_R_t-robust', False))):
                 plot_tools.close_all_mpl_plots(close_all=True, verbose=True)
 
-        if debug.get('heat_flux_vs_R_t-raw', False):
+        if (debug.get('heat_flux_vs_R_t-raw', False) or debug.get('heat_flux_vs_R_t-raw-save', False)):
+            if debug.get('heat_flux_vs_R_t-raw-save', False):
+                fn = f'heat_flux_vs_R_t-raw-{machine}_{camera}_{pulse}.png'
+                save_path_fn = (paths_output['figures'] / 'heat_flux_vs_R_t-raw' / fn)
+            else:
+                save_path_fn = None
+            show = debug.get('heat_flux_vs_R_t-raw', False)
             robust = False
-            debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key,
-                                              extend='neither', robust=robust,
-                                              meta=meta_data, machine_plugins=machine_plugins)
+            num = 'heat_flux_vs_R_t-raw'
+
+            debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key, num=num,
+                                              extend='neither', robust=robust,  meta=meta_data, t_range=None,
+                                              machine_plugins=machine_plugins, show=show, save_path_fn=save_path_fn)
+            if (debug.get('heat_flux_vs_R_t-raw-save', False) and (not debug.get('heat_flux_vs_R_t-raw', False))):
+                plot_tools.close_all_mpl_plots(close_all=True, verbose=True)
 
         if debug.get('analysis_path', False):
             # TODO: Finish  debug_analysis_path_2d
@@ -237,7 +270,7 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
                            ))
 
         if debug.get('timings', False):
-            debug_plots.debug_plot_timings(path_data, pulse=pulse)
+            debug_plots.debug_plot_timings(path_data, pulse=pulse, meta_data=meta_data)
 
         if debug.get('strike_point_loc', False):
             heat_flux = path_data[f'heat_flux_amplitude_peak_global_{path}'].values
@@ -330,22 +363,60 @@ def review_shot():
 
     # pulse = 44158  # virtual circuit keep SP on T5
     # pulse = 44092  # virtual circuit keep SP on T5
+    # pulse = 44459  # Locked mode
+    # pulse = 44461  # Locked mode
+
+    # pulse = 44359  # RT18
+    # pulse = 44394  # RT18
+    # pulse = 44396  # RT18
+
+    # pulse = 44463  # first irircam automatic aquisition
+    # pulse = 44717
+
+    # pulse = 44677  #  swept SXD (attached?)
+
+    # pulse = 44758  #  compass scan
+    pulse = 44776  #  compass scan
+    # pulse = 44777  #  compass scan
+    # pulse = 44778  #  compass scan
+    # pulse = 44779  #  compass scan
+    # pulse = 44780  #  compass scan
+    # pulse = 44781  #  compass scan
+    # pulse = 44782  #  compass scan
+    # pulse = 44783  #  compass scan
+    # pulse = 44784  #  compass scan
+    # pulse = 44785  #  compass scan
+
+    # pulse = 44852  #  TF test shot with gas
+
+    pulse = 43952  #  RIR calcam calibration shot
+
+    # pulse = 44822  #  Detachment hysteresis - marf
+    # pulse = 44223  #  Fuelling ramp hysteresis - marf
+
+    # pulse = 44606  # RT14 lambda_q
+    # pulse = 55931  # RT14 lambda_q
+
+    # pulse = 44842  # 600 kA conv, steady fueling without marfe
+    # pulse = 44678  # 750 kA conv, steady fueling without marfe
+    pulse = 44679  # 750 kA conv, steady fueling with marfe
+
 
 
     debug = {'calcam_calib_image': False, 'debug_detector_window': False,
              'movie_intensity_stats': False,
          'movie_data_animation': False, 'movie_data_nuc_animation': False,
-             'movie_temperature_animation': True,
+             'movie_temperature_animation': False,
              'movie_temperature_animation_gif': False,
-         'spatial_coords': False,
+             'spatial_coords_raw': False, 'spatial_coords_derived': False,
          'spatial_res': False,
          'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
          'surfaces': False,
          'analysis_path': False,
-         'temperature_vs_R_t': False,
+         'temperature_vs_R_t': True,
          'heat_flux_vs_R_t-robust': True, 'heat_flux_vs_R_t-raw': False,
              'heat_flux_vs_R_t-robust-save': True,
-         'timings': True, 'strike_point_loc': True,
+         'timings': False, 'strike_point_loc': False,
          # 'heat_flux_path_1d': True,
          }
     # debug = {k: True for k in debug}
@@ -359,41 +430,102 @@ def review_shot():
 
 def review_shot_list():
     from ir_tools.automation.ir_automation import latest_uda_shot_number
-    from fire.scripts.organise_ircam_raw_files import copy_raw_files_from_tdrive
+    from fire.scripts.organise_ircam_raw_files import copy_raw_files_from_staging_area
 
-    # shots = np.arange(44016, 44073)
+    recompute = False
+    # recompute = True
 
-    shot_start = latest_uda_shot_number()
-    n_shots = 100
-    # n_shots = 5
-    shots = np.arange(shot_start, shot_start-n_shots, -1)  # [::-1]
+    # shots = np.arange(44547, 44558)
+    # shots = np.arange(44776, 44788)
+    shots = np.arange(44700, 44866)[::-1]
+    # shots = [44677, 44683, 44678]
+    # shots = [44786, 44787]
+    # shots = [44547, 44548, 44550, 44551, 44554, 44555, 44556, 44558]  # missing 44552, 44553,
+    # shots = [44776, 44777, 44778, 44779, 44781, 44782, 44783, 44784, 44785, 44786, 44787][::-1]
+
+    n_shots = len(shots)
+
+    copy_recent_shots = False
+    # copy_recent_shots = True
 
     debug = {'calcam_calib_image': False, 'debug_detector_window': False,
              'movie_intensity_stats': False,
          'movie_data_animation': False, 'movie_data_nuc_animation': False,
              'movie_temperature_animation': False,
-             'movie_temperature_animation_gif': True,
+             'movie_temperature_animation_gif': False,
              'spatial_coords': False, 'spatial_res': False,
              'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
-             'surfaces': False, 'analysis_path': False, 'temperature_vs_R_t': False,
+             'surfaces': False, 'analysis_path': False,
+             'temperature_vs_R_t': False,
              'heat_flux_vs_R_t-robust': False,
              'heat_flux_vs_R_t-raw': False,
              'heat_flux_vs_R_t-robust-save': True,
              'timings': False,
-             'strike_point_loc': True,
+             'strike_point_loc': False,
          }
     # debug = {k: False for k in debug}
 
     logger.info(f'Reviewing shots: {shots}')
 
-    copy_raw_files_from_tdrive(today=True, n_files=np.min([n_shots, 4]))
+    if copy_recent_shots:
+        copy_raw_files_from_staging_area(today=True, n_files=np.min([n_shots, 4]), write_ipx=True, overwrite_ipx=False)
 
     logger.setLevel(logging.WARNING)
     status = {'success': [], 'fail': []}
 
     for shot in shots:
         try:
-            review_analysed_shot_pickle(pulse=shot, debug_figures=debug, recompute=True)
+            review_analysed_shot_pickle(pulse=shot, debug_figures=debug, recompute=recompute)
+        except Exception as e:
+            logger.exception(f'Failed to reivew shot {shot}')
+            status['fail'].append(shot)
+        else:
+            status['success'].append(shot)
+            print()
+    print(f'Finished review of shots {shots}: \n{status}')
+
+def review_latest_shots(n_shots=1, camera='rit', copy_recent_shots=True, n_shots_skip=0, recompute=False, show=True):
+    from ir_tools.automation.ir_automation import latest_uda_shot_number
+    from fire.scripts.organise_ircam_raw_files import copy_raw_files_from_staging_area, convert_ats_files_archive_to_ipx
+
+    shot_start = latest_uda_shot_number()
+    shots = np.arange(shot_start, shot_start-n_shots, -1) - n_shots_skip  # [::-1]
+
+    debug = {'calcam_calib_image': False, 'debug_detector_window': False,
+             'movie_intensity_stats': False,
+         'movie_data_animation': False, 'movie_data_nuc_animation': False,
+             'movie_temperature_animation': False,
+             'movie_temperature_animation_gif': False,
+             'spatial_coords': False, 'spatial_res': False,
+             'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
+             'surfaces': False, 'analysis_path': False,
+             'temperature_vs_R_t': False,
+             'heat_flux_vs_R_t-robust': True,
+             'heat_flux_vs_R_t-raw': True,
+             'heat_flux_vs_R_t-robust-save': True,
+             'heat_flux_vs_R_t-raw-save': True,
+             'timings': False,
+             'strike_point_loc': False,
+         }
+    if not show:
+        debug = {k: False if ('save' not in k) else debug[k] for k in debug}
+
+    logger.info(f'Reviewing shots: {shots}')
+
+    if copy_recent_shots:
+        if camera == 'rit':
+            copy_raw_files_from_staging_area(today=True, n_files=np.min([n_shots, 1]))
+        elif camera == 'rir':
+            path_in = '~/data/movies/mast_u/rir_ats_files/{date}'
+            fn_meta = '/home/tfarley/data/movies/mast_u/rir_ats_files/rir_meta.json'
+            convert_ats_files_archive_to_ipx(pulses=shots, path_in=path_in, copy_ats_file=True, fn_meta=fn_meta)
+
+    logger.setLevel(logging.WARNING)
+    status = {'success': [], 'fail': []}
+
+    for shot in shots:
+        try:
+            review_analysed_shot_pickle(pulse=shot, camera=camera, debug_figures=debug, recompute=recompute)
         except Exception as e:
             logger.exception(f'Failed to reivew shot {shot}')
             status['fail'].append(shot)
@@ -403,5 +535,6 @@ def review_shot_list():
     print(f'Finished review of shots {shots}: \n{status}')
 
 if __name__ == '__main__':
-    review_shot()
+    # review_shot()
     # review_shot_list()
+    review_latest_shots(n_shots=25, n_shots_skip=50, copy_recent_shots=False, recompute=True, show=False)
