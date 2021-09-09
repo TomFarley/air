@@ -10,6 +10,7 @@ import logging
 from typing import Union, Iterable, Sequence, Tuple, Optional, Any, Dict
 from pathlib import Path
 from copy import copy
+from cycler import cycler
 
 import numpy as np
 import pandas as pd
@@ -17,6 +18,8 @@ import xarray as xr
 import matplotlib.pyplot as plt
 from fire.plotting import plot_tools
 from matplotlib import pyplot as plt
+
+from fire.misc.utils import make_iterable
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -77,6 +80,7 @@ def plot_movie_intensity_stats(data_movie, ax=None, bit_depth=14, meta_data=None
     ax.set_ylabel(r'Raw frame intensity [DL]')
 
     plot_tools.annotate_providence(ax, meta_data=meta_data, annotate=(meta_data is not None))
+    plot_tools.annotate_axis(ax, r'$t_{int}=$'+f'{meta_data.get("exposure")*1e3:0.3g} ms', loc='bottom right')
     plot_tools.legend(ax)
 
     ax_n = plot_tools.add_second_x_scale(ax, x_axis_values=data_movie.coords['n'],
@@ -89,6 +93,71 @@ def plot_movie_intensity_stats(data_movie, ax=None, bit_depth=14, meta_data=None
 
     plot_tools.show_if(show=show, close_all=False, tight_layout=True)
     plot_tools.save_fig(save_fn, fig=fig, save=(save_fn is not None))
+
+    return fig, ax
+
+def plot_passed_temporal_stats(stat_profiles, stat_labels, stats=None, t=None, ax=None,
+                               line_styles=(':', '-.', '--', '-.', ':', (0, (2, 5)), (0, (2, 9)))):
+    if t is None:
+        data = stat_profiles[list(stat_labels.values())[0]]
+        if isinstance(data, xr.DataArray):
+            t = data['t']
+        else:
+            t = np.arange(len(data))
+            # raise ValueError('t value not supplied')
+
+    fig, ax, ax_passed = plot_tools.get_fig_ax(ax, num=f'Temporal stats')
+
+    line_styles = (cycler(ls=line_styles))
+    # line_styles = (cycler(ls=['-', '--', '-.', ':', (0, (2, 5)), (0, (2, 9))]))
+    for stat, ls in zip(stats, line_styles):
+        ax.plot(t, stat_profiles[stat_labels[stat]], label=stat, alpha=0.7, **ls)
+
+
+def plot_temporal_stats(data_2d, t=None, ax=None, t_axis=0,
+                        stats=('max', '99.0%', 'mean', '1.0%', 'min'),
+                        ls=(':', '--', '-', '--', ':', (0, (2, 5)), (0, (2, 9))),
+                        bit_depth=None, meta_data=None, times_of_interest=None, y_label=None,
+                        show=True, save_fn=None, roll_width=None, roll_reduce_func='mean', roll_center=True):
+    from fire.physics.physics_parameters import calc_1d_profile_rolling_stats, calc_2d_profile_param_stats
+    from fire.misc.data_structures import swap_xarray_dim
+
+    stats = make_iterable(stats)
+
+    fig, ax, ax_passed = plot_tools.get_fig_ax(ax, num=f'Temporal stats', figsize=(12, 8))
+
+    data_2d = copy(data_2d)
+    data_2d = swap_xarray_dim(data_2d, 't')
+
+    stat_profiles, stat_labels = calc_2d_profile_param_stats(data_2d, stats=stats, coords_reduce=('y_pix', 'x_pix'),
+                                                             roll_width=roll_width,
+                                                             roll_reduce_func=roll_reduce_func, roll_center=roll_center)
+    # calc_1d_profile_rolling_stats()
+
+
+    plot_passed_temporal_stats(stat_profiles, stat_labels, stats=stats, t=t, ax=ax, line_styles=make_iterable(ls))
+
+    n = np.arange(data_2d.shape[t_axis])
+
+    if t is not None:
+        ax.set_xlabel(r'$t$ [s]')
+    else:
+        t = n
+        ax.set_xlabel(r'$x$ [arb]')
+
+    if bit_depth is not None:
+        ax.axhline(2**bit_depth, label='max DL', color='k', ls='--')
+
+    ax.set_ylabel(y_label)
+
+    plot_tools.annotate_providence(ax, meta_data=meta_data, annotate=(meta_data is not None))
+    # plot_tools.annotate_axis(ax, r'$t_{int}=$'+f'{meta_data.get("exposure")*1e3:0.3g} ms', loc='bottom right')
+    plot_tools.legend(ax)
+
+    ax_n = plot_tools.add_second_x_scale(ax, x_axis_values=n, label='$n_{frame}$')
+
+    plot_tools.save_fig(save_fn, fig=fig, save=(save_fn is not None))
+    plot_tools.show_if(show=show, close_all=False, tight_layout=True)
 
     return fig, ax
 
