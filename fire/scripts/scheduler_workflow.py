@@ -343,14 +343,16 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Detect frames with non-uniform time differences (see heat flux func)
 
     # Now frame_data is in its near final form (bad frames removed) merge it into image_data
-    image_data = xr.merge([image_data, frame_data_clipped])  # , combine_attrs='no_conflicts')
+    # image_data = xr.merge([image_data, frame_data_clipped])  # Merging subset DataArray doesn't reduce coord ranges
+    image_data = image_data.drop_sel(dict(n=removed_frames['n_removed']))
+    frame_data = image_data['frame_data']
 
     # Use dark parts of image to detect dark level drift
     # TODO: Store dark level correction and mask in dataset
     dark_level, dark_level_correction_factors, mask_dark = camera_checks.get_dark_level_drift(image_data)
 
-    apply_dark_level_correction = True
-    # apply_dark_level_correction = False
+    # apply_dark_level_correction = True
+    apply_dark_level_correction = False
     if apply_dark_level_correction:
         frame_data = camera_checks.correct_dark_level_drift(image_data['frame_data'], dark_level_correction_factors)
         image_data['frame_data'] = frame_data
@@ -365,7 +367,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             ((not scheduler) and (bad_frames_info['saturated']['n_bad_frames']))):
         # Force plot if there are any saturated frames
         fig, ax, ax_n = temporal_figures.plot_temporal_stats(image_data['frame_data'], meta_data=meta_data,
-                                                             num='movie_intensity_stats-corrected')
+                                                             num='movie_intensity_stats-corrected',
+                                                             bit_depth=meta_data['bit_depth'])
         if removed_frames:
             # Label ends of movie that are discarded due discontinuous intensities etc
             ax_n.axvline(x=removed_frames['start'], ls=':', color='k', label='clipped bad frames from start')
@@ -710,7 +713,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
         if debug.get('temperature_vs_R_t', False):
             debug_plots.debug_plot_profile_2d(path_data, param='temperature', path_names=analysis_path_key,
-                                              num='temperature_vs_R_t', robust=False, meta=meta_data,
+                                              num='temperature_vs_R_t', robust=False, meta=meta_data, t_range=None,
                                               machine_plugins=machine_plugins, verbose=True)
 
         force_material_sub_index = (None if (missing_material_key == -1) else 1)
@@ -753,20 +756,20 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
         path_data_all = xr.merge([path_data_all, path_data])  # , combine_attrs='no_conflicts')
 
-        if debug.get('heat_flux_vs_R_t', False):
+        if debug.get('heat_flux_vs_R_t-raw', False):
             # robust = True
             robust = False
             extend = None
             debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key,
                                               robust=robust, extend=extend, meta=meta_data, mark_peak=True,
-                                              machine_plugins=machine_plugins)
+                                              machine_plugins=machine_plugins, t_range=None)
         if figures.get('heat_flux_vs_R_t-robust', False):
             robust = True
             extend = 'both'
             fn = f'heat_flux_vs_R_t-robust-{machine}_{camera}_{pulse}.png'
             save_path_fn = path_figures / 'heat_flux_vs_R_t-robust' / fn
             debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key,
-                                              extend=extend, robust=robust, meta=meta_data,
+                                              extend=extend, robust=robust, meta=meta_data, t_range=None,
                                               num='heat_flux_vs_R_t-robust',  machine_plugins=machine_plugins,
                                               show=False, save_path_fn=save_path_fn)
 
@@ -1065,6 +1068,8 @@ def run_mastu_rit():  # pragma: no cover
 
     # pulse = 44677  # Standard pulse JH suggests comparing with all diagnostics - RT18 slack, time to eurofusion
 
+    pulse = 44865  #
+
     # 44849 onwards should have uda efit
 
     camera = 'rit'
@@ -1078,9 +1083,9 @@ def run_mastu_rit():  # pragma: no cover
 
     # TODO: Remove redundant movie_data step
     debug = {'calcam_calib_image': False, 'debug_detector_window': False,
-             'movie_intensity_stats-raw': True,
+             'movie_intensity_stats-raw': False,
              'movie_intensity_stats-corrected': True,
-             'movie_intensity_stats-nuc': True,
+             'movie_intensity_stats-nuc': False,
              'dark_level': True,
              'movie_data_animation': False, 'movie_data_nuc_animation': False,
              'movie_temperature_animation': False,
@@ -1089,8 +1094,9 @@ def run_mastu_rit():  # pragma: no cover
              'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
              'surfaces': False, 'analysis_path': False,
              'path_cross_sections': False,
-             'temperature_vs_R_t': False,
-             'heat_flux_vs_R_t': True,
+             'temperature_vs_R_t': True,
+             'heat_flux_vs_R_t-raw': True,
+             'heat_flux_vs_R_t-robust': True,
              'timings': True,
              'strike_point_loc': False,
              # 'heat_flux_path_1d': True,
