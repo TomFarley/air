@@ -667,6 +667,15 @@ def convert_string_to_python_type(string, allow_strings=True, strip_chars=' ', l
             string = string.strip(strip_chars)
         return string
 
+def add_aliases_to_dict(dict_in, aliases, remove_original=False):
+    """Add alternative names for fields"""
+    for original_key, new_keys in aliases.items():
+        for new_key in make_iterable(new_keys):
+            dict_in[new_key] = dict_in[original_key]
+    if remove_original:
+        for key in aliases:
+            dict_in.pop(key)
+    return dict_in
 
 def filter_kwargs(kwargs, funcs=None, include=(), exclude=(), required=None, kwarg_aliases=None,
                   extract_func_dict=True, remove_from_input=False):
