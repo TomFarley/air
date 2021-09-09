@@ -106,6 +106,9 @@ def rewrite_ipx_file_with_mastvideo(pulse, camera='rir'):
     fn_ipx_in = Path(f'/net/fuslsc.mast.l/data/MAST_IMAGES/0{str(pulse)[:2]}/{pulse}/{camera}0{pulse}.ipx')
     fn_ipx_out = f'{camera}0{pulse}_test.ipx'
 
+    print(f'In: {fn_ipx_in}')
+    print(f'Out: {Path(fn_ipx_out).resolve()}')
+
     frame_numbers, frame_times, data_original = read_movie_data(fn_ipx_in)
     meta_original = read_movie_meta(fn_ipx_in)
     meta_original['frame_times'] = frame_times
