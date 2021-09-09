@@ -24,12 +24,34 @@ logger = logging.getLogger(__name__)
 logger.propagate = False
 logger.setLevel(logging.DEBUG)
 
-def read_bfield_data(shot, r, z, t, epm_path='/common/uda-scratch/lkogan/efitpp_eshed/epm0{shot}.nc'):
-    uda_module, client = get_uda_client()
+def get_efit_path(shot):
+    import os
+    path = None
+    if os.path.isfile('/common/uda-scratch/shenders/efit/mastu/{}/efit_shenders_01/efitOut.nc'.format(shot)):
+        path='/common/uda-scratch/shenders/efit/mastu/{}/efit_shenders_01/efitOut.nc'.format(shot)
+    if os.path.isfile('/common/projects/codes/equilibrium/efit++/mast_data/runs_mastu/mastu/{}/efit_lkogan_01/efitOut.nc'.format(shot)):
+        path='/common/projects/codes/equilibrium/efit++/mast_data/runs_mastu/mastu/{}/efit_lkogan_01/efitOut.nc'.format(shot)
+    if os.path.isfile('/common/uda-scratch/lkogan/efitpp_eshed/efitOut_{}.nc'.format(shot)):
+        path='/common/uda-scratch/lkogan/efitpp_eshed/efitOut_{}.nc'.format(shot)
+    return path
 
-    epm_fn = epm_path.format(shot=shot, pulse=shot)
-    epm_times = client.get('/epm/time', epm_fn).data
-    converged_status = client.get('/epm/equilibriumStatusInteger', epm_fn)
+def read_equilibrium_signal(shot, signal='/epm/equilibriumStatusInteger', machine='MASTU'):
+    uda_module, client = get_uda_client()
+    try:
+        data = client.get(signal, shot)
+    except Exception as e:
+        if isinstance(shot, (int, float)):
+            epm_fn = get_efit_path(shot)
+        else:
+            epm_fn = shot.format(shot=shot, pulse=shot)
+        epm_times = client.get('/epm/time', epm_fn).data
+        data = client.get('/epm/equilibriumStatusInteger', epm_fn)
+    return data
+
+def read_bfield_data(shot, r, z, t, epm_path='/common/uda-scratch/lkogan/efitpp_eshed/epm0{shot}.nc'):
+
+    read_equilibrium_signal(shot, signal='/epm/equilibriumStatusInteger')
+
     mask_converged = converged_status.data == 1
     t_converged = epm_times[mask_converged]
 
@@ -44,7 +66,10 @@ def read_bfield_data(shot, r, z, t, epm_path='/common/uda-scratch/lkogan/efitpp_
     t_start = datetime.datetime.now()
     for ti in t:
         if np.any(np.isclose(ti,t_converged)):
-            eqm_data = equilibrium(shot=epm_fn, device='MASTU', time=ti)
+            try:
+                eqm_data = equilibrium(shot=shot, device='MASTU', time=ti)
+            except Exception as e:
+                eqm_data = equilibrium(shot=epm_fn, device='MASTU', time=ti)
 
             for i, (ri, zi) in enumerate(zip(r, z)):
                 # Magnetic field data at this point in space
@@ -70,8 +95,9 @@ def read_bfield_data(shot, r, z, t, epm_path='/common/uda-scratch/lkogan/efitpp_
 
 def lookup_b_field(gfile, ):
     equil = mastu_equilibrium()
+    equil.load_efitpp(44860, time=0.5)
 
-    equil.load_efitpp('epm044427.nc', time=0.5)
+    # equil.load_efitpp('epm044427.nc', time=0.5)
 
 
 if __name__ == '__main__':
