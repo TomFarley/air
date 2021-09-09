@@ -76,7 +76,7 @@ def compare_shots_1d_with_uda_signals(camera: str, signals_ir: dict, signals_uda
 
 def compare_shots_2d(camera: str, signals: dict, pulses: Union[dict, Sequence], machine:str= 'mast_u',
                      t_range=None, r_range=None, t_wins=None, set_ax_lims_with_ranges=True, robust=True,
-                     machine_plugins=None,show=True, colorbar_kwargs=None, **kwargs):
+                     machine_plugins=None, show=True, colorbar_kwargs=None, figsize=(14, 8), **kwargs):
     pulses = make_iterable(pulses)
     data = read_data_for_pulses_pickle(camera, pulses, machine)
 
@@ -85,7 +85,7 @@ def compare_shots_2d(camera: str, signals: dict, pulses: Union[dict, Sequence], 
         colorbar_kws.update(colorbar_kwargs)
 
     fig, axes, ax_passed = plot_tools.get_fig_ax(ax_grid_dims=(1, len(make_iterable(pulses))), axes_flatten=True,
-                                                 figsize=(14, 8), sharex=True, sharey=True)
+                                                 figsize=figsize, sharex=True, sharey=True)
     axes = make_iterable(axes)
 
     path_key = 'path0'  # TODO: Generalise to other paths!
