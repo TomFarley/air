@@ -20,10 +20,6 @@ from fire.plugins.output_format_plugins.pickle_output import read_output_file
 logger = logging.getLogger(__name__)
 logger.propagate = False
 
-if __name__ == '__main__':
-    pass
-
-
 def read_data_for_pulses_pickle(camera: str, pulses: dict, machine:str= 'mast_u', generate=True, recompute=False):
     data = {}
 
@@ -42,6 +38,12 @@ def read_data_for_pulses_pickle(camera: str, pulses: dict, machine:str= 'mast_u'
                 success = False
                 recompute = True
                 logger.warning(e)
+            except AttributeError as e:  # Pickled library out of date
+                exception = e
+                success = False
+                recompute = True
+                logger.warning('Pickled object library likely updated? Need to recompute?')
+                logger.warning(e)
         if (recompute or ((not success) and generate)):
             # debug = {'movie_intensity_stats': True}
             from fire.scripts import scheduler_workflow
@@ -54,3 +56,6 @@ def read_data_for_pulses_pickle(camera: str, pulses: dict, machine:str= 'mast_u'
 
     logger.info(f'Read data for shots: {pulse_values}')
     return data
+
+if __name__ == '__main__':
+    pass
