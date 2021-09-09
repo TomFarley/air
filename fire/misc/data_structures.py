@@ -82,8 +82,9 @@ meta_defaults_default = {
                       'description': 'Radial location of peak target temperature'},
     'xpx/clock/lwir-1': {'label': 'LWIR 1 trigger signal', 'units': 'V', 'symbol': '$V_{LWIR1, trig}$',  # TODO: move to uda_utils
                          'description': 'Voltage of IRCAM1 LWIR HL04 datac loop trigger signal (xpx/clock/lwir-1)'},
-
-}
+    '/xpx/clock/LWIR-1': {'label': 'LWIR 1 trigger signal', 'units': 'V', 'symbol': '$V_{LWIR1, trig}$',
+                         'description': 'Voltage of IRCAM1 LWIR HL04 datac loop trigger signal (xpx/clock/lwir-1)',},
+                        }
 # TODO: Add dict of alternative names for each variable in meta_defaults_default eg 'S', 's_global'
 param_aliases = {
     'temperature': 'T',
