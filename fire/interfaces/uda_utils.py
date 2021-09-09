@@ -724,7 +724,7 @@ def putdata_device(device_name, device_info, attributes=None, client=None, use_m
     if client is None:
         uda_module, client = get_uda_client(use_mast_client=use_mast_client, try_alternative=True)
 
-    group = f'/devices/{device_name}'
+    group = f'devices/{device_name}/'  #
     requried_args = ['id', 'camera_serial_number', 'detector_resolution', 'image_range']
     check_for_required_args(device_info, requried_args, none_as_missing=True, application='Device data')
     # TODO: Add attributes for wavelength range, manufacuturer, model, lens, wavelength filter, neutral density
@@ -819,7 +819,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names, diag_tag,
 
     if (variable_names_image is not None) and (len(variable_names_image) > 0):
         # Variables with data across the whole image
-        group = f'/images'
+        group = f'/{diag_tag}/{path_name}/images'
         groups[group] = image_data
         if 'n' in image_data.dims:
             image_data = image_data.swap_dims({'n': 't'})
@@ -831,7 +831,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names, diag_tag,
     if (variable_names_time is not None) and (len(variable_names_time) > 0):
         # Spatially integrated quantities (eg power to divertor) that are only a function of time
         for path_name in make_iterable(path_names):
-            group = f'/{path_name}'  # /stats'
+            group = f'/{diag_tag}/{path_name}'  # /stats'
             groups[group] = path_data
             if 'n' in path_data.dims:
                 path_data = path_data.swap_dims({'n': 't'})
