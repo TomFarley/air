@@ -43,6 +43,7 @@ fire_paths = {'root': _Path(__file__).parent}
 fire_paths['user_files'] = _fire_user_dir
 fire_paths['input_files'] = fire_paths['root'] / 'input_files'
 fire_paths['config'] = _fire_user_dir / '.fire_config.json'
+fire_paths['figures'] = _fire_user_dir / 'figures'
 
 with open(fire_paths['root'] / 'logging_config.yaml', 'r') as f:
     _logging_config = _yaml.safe_load(f.read())
@@ -95,5 +96,5 @@ _xr.set_options(**{'cmap_sequential': 'gray'})
 _plt.style.use(f'{fire_paths["root"]}/plotting/fire.mplstyle')
 
 # Import FIRE sub-modules
-from .interfaces import interfaces
+# from .interfaces import interfaces
 from .misc import utils
