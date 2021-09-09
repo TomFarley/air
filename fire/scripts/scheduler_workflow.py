@@ -29,7 +29,7 @@ from fire.camera_tools import field_of_view, camera_shake, nuc, image_processing
 from fire.geometry import geometry, s_coordinate
 from fire.physics import temperature, heat_flux, physics_parameters
 from fire.misc import data_quality, data_structures, utils
-from fire.plotting import debug_plots, image_figures, temporal_figures, spatial_figures
+from fire.plotting import plot_tools, debug_plots, image_figures, temporal_figures, spatial_figures
 heat_flux_module = heat_flux  # Alias to avoid name clashes
 
 # TODO: remove after debugging core dumps etc
@@ -211,6 +211,49 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     meta_runtime['calcam_calib'] = calcam_calib
     meta_data['calcam_CAD'] = None
 
+    # Get calcam raycast
+    raycast_checkpoint_path_fn = files['raycast_checkpoint']
+    if raycast_checkpoint_path_fn.exists() and (not update_checkpoints):
+        logger.info(f'Reusing existing raycast checkpoint file for image coordiante mapping. '
+                    f'Set keyword update_checkpoints=True to recalculate the file.')
+        # TODO: Consider saving raydata with calcam.RayData.save() and calculating dataarrays each time
+        # Open pre-calculated raycast data to save time
+        data_raycast = xr.open_dataset(raycast_checkpoint_path_fn)
+        # TODO: Consider only saving raycast data for full frame views and using calcam.RayData.set_detector_window
+        x_im, y_im, z_im = (data_raycast[f'{coord}_im'] for coord in ['x', 'y', 'z'])
+    else:
+        if raycast_checkpoint_path_fn.exists():
+            logger.info(f'Reproduing raycast checkpoint file')
+        else:
+            logger.info(f'Producing raycast checkpoint file for first time for camera={camera}, pulse={pulse}: '
+                        f'{raycast_checkpoint_path_fn}')
+        # TODO: Make CAD model pulse range dependent
+        cad_model_args = config['machines'][machine]['cad_models'][0]
+        cad_model = calcam_calibs.get_calcam_cad_obj(**cad_model_args)
+
+        # # TODO: remove tmp
+        # from fire.interfaces import calcam_cad
+        # cell_locator = calcam_cad.get_cell_locator(cad_model)
+
+        # TODO: Add CAD model to separate meta_objects dict to make meta_data easily serialisable
+        meta_data_extra['calcam_CAD'] = cad_model
+        data_raycast = calcam_calibs.get_surface_coords(calcam_calib, cad_model, image_coords=image_coords,
+                                                        remove_long_rays=True)
+        cad_model.unload()
+        x_im, y_im, z_im = (data_raycast[f'{coord}_im'] for coord in ['x', 'y', 'z'])
+        # Call machine plugin functions to get s_gloabl, sector, louvre and tile values etc.
+        machine_coord_labels = plugins.plugins_machine.get_machine_coordinate_labels(x_im, y_im, z_im,
+                                                                                     machine_plugins=machine_plugins)
+        for key in machine_coord_labels:
+            data_raycast[key + '_im'] = (('y_pix', 'x_pix'), machine_coord_labels[key])
+
+        if raycast_checkpoint_path_fn.exists():
+            raycast_checkpoint_path_fn.unlink()  # Avoid error overwriting existing file
+        data_raycast.to_netcdf(raycast_checkpoint_path_fn)
+        logger.info(f'Wrote raycast data to: {raycast_checkpoint_path_fn}')
+    image_data = xr.merge([image_data, data_raycast])  # , combine_attrs='no_conflicts')
+
+
     # TODO: Print out summary of analysis settings prior to analysis
 
     # TODO: Validate frame range etc
@@ -221,6 +264,36 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     (frame_nos, frame_times, frame_data) = movie_data
 
     logger.info("Movie time period [%g, %g]" % (np.nanmin(frame_times), np.nanmax(frame_times)))
+
+    # TODO: Use techniques in generate_calcam_calib_images to identify bright images for plotting elsewhere
+    n_middle = int(np.floor(len(frame_data) / 2))  # Frame number in middle of movie
+    frame_ref_pre_transforms = copy(frame_data[n_middle])  # Copy of a frame before calcam transformations applied
+    calcam_calib_im_pre_transforms = copy(calcam_calib.get_image(coords='Original'))
+
+    #  window = (Left,Top,Width,Height)
+    detector_window = movie_meta['detector_window']
+    detector_window_info = calcam_calibs.update_detector_window(calcam_calib, frame_data=frame_data,
+                                                                detector_window=detector_window, coords='Original')
+    calcam_calib_image_windowed = calcam_calib.get_image(coords=image_coords)  # Before detector_window applied
+
+    # Apply transformations (rotate, flip etc.) to get images "right way up" if requested.
+    # Must be applied after detector_window
+    frame_data = calcam_calibs.apply_frame_display_transformations(frame_data, calcam_calib, image_coords)
+
+    frame_data = data_structures.movie_data_to_dataarray(frame_data, frame_times, frame_nos,
+                                                         meta_data=meta_data['variables'])
+    image_data = xr.merge([image_data, frame_data])  # , combine_attrs='no_conflicts')
+
+    image_shape = np.array(frame_data.shape[1:])  # NOTE: meta_data['image_shape'] and ipx header info is without image
+    # transformations
+
+    if np.any(np.diff(frame_data['t']) < 0):
+        logger.warning(f'Movie data contains non-monotonic time data. Re-ordering frames by timestamps')
+        frame_data = frame_data.sortby('t')
+
+    if (debug.get('movie_intensity_stats-raw', False)):
+        # Force plot if there are any saturated frames
+        temporal_figures.plot_movie_intensity_stats(frame_data, meta_data=meta_data, num='movie_intensity_stats-raw')
 
     if (movie_origin['plugin'] == 'ipx') and (machine == 'mast_u') and (np.max(frame_data) <= 2**12):
         frame_data *= 4  # TODO: Remove when ipx writing fixed!
@@ -260,30 +333,6 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # (frame_nos, frame_times, frame_data), movie_origin = plugins.plugins_movie.read_movie_data(pulse, camera, machine,
     #                                                             movie_plugin,movie_paths=movie_path, movie_fns=movie_fn,
     #                                                             verbose=True)
-    # TODO: Use techniques in generate_calcam_calib_images to identify bright images for plotting elsewhere
-    n_middle = int(np.floor(len(frame_data)/2))  # Frame number in middle of movie
-    frame_ref_pre_transforms = copy(frame_data[n_middle])  # Copy of a frame before calcam transformations applied
-    calcam_calib_im_pre_transforms = copy(calcam_calib.get_image(coords='Original'))
-
-    #  window = (Left,Top,Width,Height)
-    detector_window = movie_meta['detector_window']
-    detector_window_info = calcam_calibs.update_detector_window(calcam_calib, frame_data=frame_data,
-                                                                detector_window=detector_window, coords='Original')
-    calcam_calib_image_windowed = calcam_calib.get_image(coords=image_coords)  # Before detector_window applied
-
-    # Apply transformations (rotate, flip etc.) to get images "right way up" if requested.
-    # Must be applied after detector_window
-    frame_data = calcam_calibs.apply_frame_display_transformations(frame_data, calcam_calib, image_coords)
-
-    frame_data = data_structures.movie_data_to_dataarray(frame_data, frame_times, frame_nos,
-                                                         meta_data=meta_data['variables'])
-
-    image_shape = np.array(frame_data.shape[1:])  # NOTE: meta_data['image_shape'] and ipx header info is without image
-    # transformations
-
-    if np.any(np.diff(frame_data['t']) < 0):
-        logger.warning(f'Movie data contains non-monotonic time data. Re-ordering frames by timestamps')
-        frame_data = frame_data.sortby('t')
 
     # Detect saturated pixels, uniform frames etc
     bad_frames_info = data_quality.identify_bad_frames(frame_data, bit_depth=movie_meta['bit_depth'],
@@ -293,13 +342,36 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                                                                     frames_nos_discontinuous)
     # TODO: Detect frames with non-uniform time differences (see heat flux func)
 
-    # Now frame_data is in its final form (bad frames removed) merge it into image_data
+    # Now frame_data is in its near final form (bad frames removed) merge it into image_data
     image_data = xr.merge([image_data, frame_data_clipped])  # , combine_attrs='no_conflicts')
 
-    if (debug.get('movie_intensity_stats', False) or
+    # Use dark parts of image to detect dark level drift
+    # TODO: Store dark level correction and mask in dataset
+    dark_level, dark_level_correction_factors, mask_dark = camera_checks.get_dark_level_drift(image_data)
+
+    apply_dark_level_correction = True
+    # apply_dark_level_correction = False
+    if apply_dark_level_correction:
+        frame_data = camera_checks.correct_dark_level_drift(image_data['frame_data'], dark_level_correction_factors)
+        image_data['frame_data'] = frame_data
+
+    if (debug.get('dark_level', False)):
+        camera_checks.plot_dark_level_variation(mask_dark=mask_dark, frame_data=image_data['frame_data'],
+                                                dark_level=dark_level)
+
+    t = image_data['t']
+
+    if (debug.get('movie_intensity_stats-corrected', False) or
             ((not scheduler) and (bad_frames_info['saturated']['n_bad_frames']))):
         # Force plot if there are any saturated frames
-        temporal_figures.plot_movie_intensity_stats(frame_data, meta_data=meta_data, removed_frames=removed_frames)
+        fig, ax, ax_n = temporal_figures.plot_temporal_stats(image_data['frame_data'], meta_data=meta_data,
+                                                             num='movie_intensity_stats-corrected')
+        if removed_frames:
+            # Label ends of movie that are discarded due discontinuous intensities etc
+            ax_n.axvline(x=removed_frames['start'], ls=':', color='k', label='clipped bad frames from start')
+            ax_n.axvline(x=len(image_data['frame_data']) - 1 - removed_frames['end'], ls=':', color='k',
+                         label='clipped bad frames from end')
+        plot_tools.show_if(show=True)
 
     # TODO: Add coordinates for pre-transformation frame data
     # image_data_ref = xr.Dataset(coords=image_data.coords)
@@ -318,17 +390,18 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         # percentile_n_shake_ref = 85
         n_shake_ref = np.percentile(frame_data.n, percentile_n_shake_ref, interpolation='nearest')  # Frame towards video end
         # n_shake_ref = frame_data.mean(dim=('x_pix', 'y_pix')).argmax(dim='n')  # brightest frame (may have shake?)
-        frame_shake_ref = frame_data[n_shake_ref]
+        frame_shake_ref = image_data['frame_data'][n_shake_ref]
         # frame_shake_ref = calcam_calib_image_windowed
         erroneous_displacement = 50
         # TODO: Apply for multiple camera shake ref frames to account for variation across movie (take min displacements)
-        pixel_displacements, shake_stats = camera_shake.calc_camera_shake_displacements(frame_data, frame_shake_ref,
-                                                            erroneous_displacement=erroneous_displacement, verbose=True)
+        pixel_displacements, shake_stats = camera_shake.calc_camera_shake_displacements(image_data['frame_data'],
+                                        frame_shake_ref,erroneous_displacement=erroneous_displacement, verbose=True)
         pixel_displacements = xr.DataArray(pixel_displacements, coords={'n': image_data['n'], 'pixel_coord': ['x', 'y']},
                                           dims=['n', 'pixel_coord'])
         image_data['pixel_displacements'] = pixel_displacements
-        image_data['frame_data'] = camera_shake.remove_camera_shake(frame_data, pixel_displacements=pixel_displacements,
-                                                            verbose=True)
+        frame_data = camera_shake.remove_camera_shake(image_data['frame_data'], pixel_displacements=pixel_displacements,
+                                                      verbose=True)
+        image_data['frame_data'] = frame_data
 
         if debug.get('camera_shake', False):
             debug_plots.debug_camera_shake(pixel_displacements=pixel_displacements, n_shake_ref=n_shake_ref)
@@ -351,14 +424,27 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Consider using min over whole (good frame) movie range to avoid negative values from nuc subtraction
     # TODO: consider using custon nuc time/frame number range for each movie? IDL sched had NUC time option
     # TODO: Look up first shot of day and load starting nuc frames from there to avoid warming from preceding shots
-    nuc_frame = nuc.get_nuc_frame(origin={'n': nuc_frame_range}, frame_data=frame_data, reduce_func='mean')  # Old air sched code
+    nuc_frame = nuc.get_nuc_frame(origin={'n': nuc_frame_range}, frame_data=image_data['frame_data'],
+                                  reduce_func='mean')
 
     # nuc_frame = get_nuc_frame(origin={'n': [None, None]}, frame_data=frame_data, reduce_func='min')
-    frame_data_nuc = nuc.apply_nuc_correction(frame_data, nuc_frame, raise_on_negatives=False)
+    frame_data_nuc = nuc.apply_nuc_correction(image_data['frame_data'], nuc_frame, raise_on_negatives=False)
     frame_data_nuc = data_structures.attach_standard_meta_attrs(frame_data_nuc, varname='frame_data_nuc',
                                                                 key='frame_data')
     image_data['nuc_frame'] = (('y_pix', 'x_pix'), nuc_frame.data)
     image_data['frame_data_nuc'] = frame_data_nuc
+
+    if (debug.get('movie_intensity_stats-nuc', False) or
+            ((not scheduler) and (bad_frames_info['saturated']['n_bad_frames']))):
+        # Force plot if there are any saturated frames
+        fig, ax, ax_n = temporal_figures.plot_temporal_stats(image_data['frame_data_nuc'], meta_data=meta_data,
+                                                             num='movie_intensity_stats-nuc')
+        if removed_frames:
+            # Label ends of movie that are discarded due discontinuous intensities etc
+            ax_n.axvline(x=removed_frames['start'], ls=':', color='k', label='clipped bad frames from start')
+            ax_n.axvline(x=len(image_data['frame_data_nuc']) - 1 - removed_frames['end'], ls=':', color='k',
+                         label='clipped bad frames from end')
+        plot_tools.show_if(show=True)
 
     if output.get('raw_frame_image', False):
         # nuc_out = True
@@ -388,50 +474,6 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         debug_plots.debug_movie_data(image_data, frame_nos=np.arange(n_check, n_check+4), key='frame_data')
         # frame_data_nuc
 
-    # Get calcam raycast
-    raycast_checkpoint_path_fn = files['raycast_checkpoint']
-    if raycast_checkpoint_path_fn.exists() and (not update_checkpoints):
-        logger.info(f'Reusing existing raycast checkpoint file for image coordiante mapping. '
-                    f'Set keyword update_checkpoints=True to recalculate the file.')
-        # TODO: Consider saving raydata with calcam.RayData.save() and calculating dataarrays each time
-        # Open pre-calculated raycast data to save time
-        data_raycast = xr.open_dataset(raycast_checkpoint_path_fn)
-        # TODO: Consider only saving raycast data for full frame views and using calcam.RayData.set_detector_window
-        x_im, y_im, z_im = (data_raycast[f'{coord}_im'] for coord in ['x', 'y', 'z'])
-    else:
-        if raycast_checkpoint_path_fn.exists():
-            logger.info(f'Reproduing raycast checkpoint file')
-        else:
-            logger.info(f'Producing raycast checkpoint file for first time for camera={camera}, pulse={pulse}: '
-                        f'{raycast_checkpoint_path_fn}')
-        # TODO: Make CAD model pulse range dependent
-        cad_model_args = config['machines'][machine]['cad_models'][0]
-        cad_model = calcam_calibs.get_calcam_cad_obj(**cad_model_args)
-
-
-        # # TODO: remove tmp
-        # from fire.interfaces import calcam_cad
-        # cell_locator = calcam_cad.get_cell_locator(cad_model)
-
-
-        # TODO: Add CAD model to separate meta_objects dict to make meta_data easily serialisable
-        meta_data_extra['calcam_CAD'] = cad_model
-        data_raycast = calcam_calibs.get_surface_coords(calcam_calib, cad_model, image_coords=image_coords,
-                                                        remove_long_rays=True)
-        cad_model.unload()
-        x_im, y_im, z_im = (data_raycast[f'{coord}_im'] for coord in ['x', 'y', 'z'])
-        # Call machine plugin functions to get s_gloabl, sector, louvre and tile values etc.
-        machine_coord_labels = plugins.plugins_machine.get_machine_coordinate_labels(x_im, y_im, z_im,
-                                                                       machine_plugins=machine_plugins)
-        for key in machine_coord_labels:
-            data_raycast[key + '_im'] = (('y_pix', 'x_pix'), machine_coord_labels[key])
-
-        if raycast_checkpoint_path_fn.exists():
-            raycast_checkpoint_path_fn.unlink()  # Avoid error overwriting existing file
-        data_raycast.to_netcdf(raycast_checkpoint_path_fn)
-        logger.info(f'Wrote raycast data to: {raycast_checkpoint_path_fn}')
-    image_data = xr.merge([image_data, data_raycast])  # , combine_attrs='no_conflicts')
-
     if debug.get('calcam_calib_image', False):
         debug_plots.debug_calcam_calib_image(calcam_calib, frame_data=frame_data,
                                              frame_ref=frame_ref_pre_transforms, n_frame_ref=n_middle,
@@ -448,11 +490,6 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         fn_spatial_res = path_figures / f'spatial_res_{pulse}_{camera}_{spatial_res_type}.png'
         image_figures.figure_spatial_res(image_data, res_type=spatial_res_type, clip_range=clip_range, log_cmap=False,
                                          save_fn=fn_spatial_res, show=True)
-
-    # Use dark parts of image to detect dark level drift
-    dark_level_correction_factors, mask_dark = camera_checks.get_dark_level_drift(image_data)
-    image_data['frame_data'] = camera_checks.correct_dark_level_drift(image_data['frame_data'],
-                                                                      dark_level_correction_factors)
 
     # TODO: calculate rho_psi coordinate across image
     # TODO: Include strike point number eg snow flake SP4
@@ -673,7 +710,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
         if debug.get('temperature_vs_R_t', False):
             debug_plots.debug_plot_profile_2d(path_data, param='temperature', path_names=analysis_path_key,
-                                              robust=False, meta=meta_data, machine_plugins=machine_plugins, verbose=True)
+                                              num='temperature_vs_R_t', robust=False, meta=meta_data,
+                                              machine_plugins=machine_plugins, verbose=True)
 
         force_material_sub_index = (None if (missing_material_key == -1) else 1)
         material_name, theo_kwargs = heat_flux_module.theo_kwargs_for_path(material_ids, visible_materials, material_properties,
@@ -729,7 +767,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             save_path_fn = path_figures / 'heat_flux_vs_R_t-robust' / fn
             debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key,
                                               extend=extend, robust=robust, meta=meta_data,
-                                              machine_plugins=machine_plugins, show=False, save_path_fn=save_path_fn)
+                                              num='heat_flux_vs_R_t-robust',  machine_plugins=machine_plugins,
+                                              show=False, save_path_fn=save_path_fn)
 
         if debug.get('analysis_path', False):
             # TODO: Finish  debug_analysis_path_2d
@@ -987,7 +1026,7 @@ def run_mastu_rit():  # pragma: no cover
 
     # pulse = 43753  # Lidia strike point splitting request - no data
 
-    pulse = 43805  # Strike point sweep to T5 - good data for IR and LP
+    # pulse = 43805  # Strike point sweep to T5 - good data for IR and LP
 
     # pulse = 43823
     # pulse = 43835  # Lidia strike point splitting request - good data
@@ -1009,10 +1048,10 @@ def run_mastu_rit():  # pragma: no cover
     # pulse = 44697  # DATAC software acquisition ftp'd straight to data store - access via UDA
 
     # pulse = 44677   # RT18 - Swept (attached?) super-x
-    # pulse = 44683   # RT18 - Attached T5 super-x
+    pulse = 44683   # RT18 - Attached T5 super-x
 
     # pulse = 44695   # 400 kA
-    pulse = 44613   # 400 kA
+    # pulse = 44613   # 400 kA
 
     # pulse = 44550   # error field exp
     # pulse = 44776   # error field exp
@@ -1022,7 +1061,7 @@ def run_mastu_rit():  # pragma: no cover
 
     # pulse = 44815   # RT13
 
-    pulse = 44852  #  TF test shot with gas
+    # pulse = 44852  #  TF test shot with gas
 
     # pulse = 44677  # Standard pulse JH suggests comparing with all diagnostics - RT18 slack, time to eurofusion
 
@@ -1039,7 +1078,10 @@ def run_mastu_rit():  # pragma: no cover
 
     # TODO: Remove redundant movie_data step
     debug = {'calcam_calib_image': False, 'debug_detector_window': False,
-             'movie_intensity_stats': False,
+             'movie_intensity_stats-raw': True,
+             'movie_intensity_stats-corrected': True,
+             'movie_intensity_stats-nuc': True,
+             'dark_level': True,
              'movie_data_animation': False, 'movie_data_nuc_animation': False,
              'movie_temperature_animation': False,
              'spatial_coords': False,
@@ -1057,7 +1099,7 @@ def run_mastu_rit():  # pragma: no cover
     output = {'strike_point_loc': True, 'raw_frame_image': False}
 
     # debug = {k: True for k in debug}
-    debug = {k: False for k in debug}
+    # debug = {k: False for k in debug}
     figures = {'spatial_res': False, 'heat_flux_vs_R_t-robust': True}
     logger.info(f'Running MAST-U ait scheduler workflow...')
     status = scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
