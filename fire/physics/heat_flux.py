@@ -45,6 +45,8 @@ def scan_alpha_param(temperature_path, t, s_path, theo_kwargs, alpha_values, tes
     print(f'Performing alpha scan with values: {alpha_values}')
     pulse, camera, machine = dict(meta).get('pulse'), dict(meta).get('camera'), dict(meta).get('machine')
 
+    alpha_passed = theo_kwargs.get('alpha_top_org')
+
     fig, axes, ax_passed = plot_tools.get_fig_ax(num=f'alpha_scan_heatmaps, {machine} {camera} {pulse}',
                                                  ax_grid_dims=(2, int(np.ceil(len(alpha_values)/2))),
                                                  figsize=(12, 12))
@@ -55,6 +57,8 @@ def scan_alpha_param(temperature_path, t, s_path, theo_kwargs, alpha_values, tes
     radial_average['temperature_av'].append(np.mean(temperature_path, axis=0))
     radial_average['temperature_min'].append(np.min(temperature_path, axis=0))
     radial_average['temperature_max'].append(np.max(temperature_path, axis=0))
+    radial_average['temperature_98%'].append(np.percentile(temperature_path, 98, axis=0))
+    radial_average['temperature_95%'].append(np.percentile(temperature_path, 95, axis=0))
 
     for i, alpha in enumerate(alpha_values):
         theo_kwargs['alpha_top_org'] = alpha
@@ -76,6 +80,7 @@ def scan_alpha_param(temperature_path, t, s_path, theo_kwargs, alpha_values, tes
         plot_tools.annotate_axis(ax, rf'$\alpha=${alpha}', loc='top left')
         plt.colorbar(im, ax=ax)
         plt.tight_layout()
+    ax.axvline(x=alpha_passed, ls='--', color='k')
     plot_tools.annotate_providence(ax, meta_data=meta)
     plot_tools.save_fig(fire_paths['figures'] / f'alpha_scan/heatmaps/'
                                                 f'alpha_scan_heatmaps-{machine}-{camera}-{pulse}.png', mkdir_depth=2)
@@ -101,16 +106,20 @@ def scan_alpha_param(temperature_path, t, s_path, theo_kwargs, alpha_values, tes
                                                ax_grid_dims=(1, 2), sharex=True)
     ax = axes[0]
     for alpha, profile in zip(alphas_flat, radial_average['heat_flux']):
-        ax.plot(t, profile, marker='.', color=None, label=r'$q_{av}$, $\alpha$='+fr'{alpha}', alpha=0.7)
+        ax.plot(t, profile, marker='.', color=None, label=r'$q_{av}$, $\alpha$='+fr'{alpha:0.3g}', alpha=0.7)
     ax.set_ylabel('$q_{\perp,av}$ [MW/m$^2$]')
     plot_tools.annotate_providence(ax, meta_data=meta)
     plot_tools.legend(ax=ax)
 
     ax = axes[1]
-    ax.plot(t, radial_average['temperature_av'][0], marker='.', ls='-', color='k', label=r'$T_{av}')
-    ax.plot(t, radial_average['temperature_min'][0], marker='.', ls='-', color=None, label=r'$T_{min}')
-    ax.plot(t, radial_average['temperature_max'][0], marker='.', ls='-', color=None, label=r'$T_{max}')
-    plot_tools.legend()
+    ax.plot(t, radial_average['temperature_max'][0], marker='.', ls='-', color=None, label=r'$T_{max}$')
+    ax.plot(t, radial_average['temperature_98%'][0], marker='.', ls='-', color=None, label=r'$T_{98%}$')
+    ax.plot(t, radial_average['temperature_95%'][0], marker='.', ls='-', color=None, label=r'$T_{95%}$')
+    ax.plot(t, radial_average['temperature_av'][0], marker='.', ls='-', color='k', label=r'$T_{av}$')
+    ax.plot(t, radial_average['temperature_min'][0], marker='.', ls='-', color=None, label=r'$T_{min}$')
+
+    plot_tools.legend(ax=ax)
+
     ax.set_xlabel('$t$ [s]')
     ax.set_ylabel('$T$ [$^\circ$C]')
     plot_tools.save_fig(fire_paths['figures'] / f'alpha_scan/radial_av/'
