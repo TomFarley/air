@@ -12,7 +12,7 @@ from collections import defaultdict, namedtuple
 import numpy as np
 import pandas as pd
 import xarray as xr
-from scipy import interpolate
+from scipy import interpolate, signal
 
 import matplotlib.pyplot as plt
 
@@ -20,7 +20,7 @@ from fire.geometry.geometry import (calc_horizontal_path_anulus_areas, calc_tile
     calc_divertor_area_integrated_param)
 from fire.misc.data_structures import attach_standard_meta_attrs, get_reduce_coord_axis_keep, reduce_2d_data_array
 from fire.misc.utils import make_iterable
-from fire.plotting import debug_plots
+from fire.plotting import debug_plots, plot_tools
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -73,10 +73,10 @@ def find_peaks_info(profile, x=None, peak_kwargs=(('width', 3),), add_boundary_l
     ind_peaks, properties_peaks = signal.find_peaks(profile, **peak_kwargs)
     n_peaks = len(ind_peaks)
 
-    ind_rel_max = signal.argrelmax(np.array(profile), order=peak_kwargs['width'])
+    ind_rel_max = signal.argrelmax(np.array(profile), order=peak_kwargs.get('width', 3))
 
     i_max = np.argmax(np.array(profile))
-    if i_max in (0, len(profile)):
+    if i_max in (0, len(profile)-1):
         # Peak value is at boundaries of data that will not be picked up by scipy's find_peaks
         pass
 
@@ -805,6 +805,30 @@ def add_custom_shifted_coord(data_array, coord_old, coord_new, data, offset_para
     data_array.swap_dims({data_array.dims[0]: coord_new})
 
     return data_array, coord_new
+
+def get_t_end_shot(heat_flux, t=None, plot=True, t_end_pad=0.03, t_end_min=0.1):
+    if t is None:
+        t = heat_flux['t']
+    # t_max = float(heat_flux.argmax(dim='t'))
+    i_max = signal.argrelmax(np.array(heat_flux), order=50)[0]
+    heat_flux_array = np.array(heat_flux)
+    peaks_info = find_peaks_info(heat_flux_array, x=t, peak_kwargs=dict(prominence=np.ptp(heat_flux_array)*0.04))
+    i_max = peaks_info['ind_peaks']
+    t_max = t[i_max[-1]] if (i_max[-1] < (len(t)-1)-10) else t[i_max[-2]]
+    # t_end = float(t[heat_flux.where(t > t_max).argmin(dim='t')])
+    t_end = float(t_max) + t_end_pad
+
+    if plot:
+        fig, ax, ax_passed = plot_tools.get_fig_ax()
+        heat_flux.plot(ax=ax)
+        ax.plot(t[i_max], heat_flux[i_max], ls='', marker='x')
+        ax.axvline(t_max, ls=':', color='k')
+        ax.axvline(t_end, ls='--', color='k')
+        plt.show()
+
+    logger.info(f't_end = {t_end:0.3f} s')
+    t_end = np.max([t_end+t_end_pad, t_end_min])
+    return t_end
 
 if __name__ == '__main__':
     pass
