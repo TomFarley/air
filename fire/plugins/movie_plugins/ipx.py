@@ -299,7 +299,12 @@ def read_movie_meta_with_mastmovie(path_fn: Union[str, Path], transforms: Iterab
 
     # display information about the file
     # print(ipx.header)
-    print(ipx.sensor)
+    # print(ipx.sensor)
+    ref_frames = [np.array(ipx.decode_frame(ref.data)).astype(np.uint16) for ref in ipx.ref_frames]
+    if ipx.badpixels is not None:
+        bad_pixels = np.array(ipx.decode_frame(ipx.badpixels.data)).astype(np.uint16)
+    else:
+        bad_pixels = None
 
     movie_meta = dict(movie_format='.ipx')
 
@@ -328,6 +333,11 @@ def read_movie_meta_with_mastmovie(path_fn: Union[str, Path], transforms: Iterab
     }
 
     movie_meta.update({name: getattr(ipx.header, key) for key, name in header_fields.items()})
+
+    for i, ref_frame in enumerate(ref_frames):
+        movie_meta[f'ref_frame_{i}'] = ref_frame
+
+    movie_meta['bad_pixels_frame'] = bad_pixels
 
     sensor_fields = {
                      'binning_h': 'binning_h',
@@ -558,14 +568,15 @@ if __name__ == '__main__':
     # ipx_path = Path('../../../tests/test_data/mast/').resolve()
     # ipx_fn = 'rir030378.ipx'
     # ipx_path = Path('/home/tfarley/data/movies/mast_u/43651/rit/')
+    ipx_path = Path('/home/tfarley/data/movies/mast_u/rit_ipx_files/')
+    ipx_fn = 'rit044628.ipx'
     # ipx_fn = 'rit043651.ipx'
-    #
-    # ipx_path_fn = ipx_path / ipx_fn
 
-    ipx_path_fn = get_freia_ipx_path(29125, 'rit')
+    ipx_path_fn = ipx_path / ipx_fn
+    # ipx_path_fn = get_freia_ipx_path(29125, 'rit')
 
-    # meta_data = read_movie_meta_mastmovie(ipx_path / ipx_fn)
-    # print(meta_data)
+    meta_data = read_movie_meta_with_mastmovie(ipx_path / ipx_fn)
+    print(meta_data)
     # frame_nos, frame_times, frame_data = read_movie_data_mastmovie(ipx_path / ipx_fn)
     # print(frame_times)
 
