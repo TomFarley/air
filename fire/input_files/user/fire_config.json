@@ -342,7 +342,9 @@
         "variables": {
             "analysis_path": [
                 "heat_flux",
-                "temperature"
+                "temperature",
+                "surface_id",
+                "sector"
             ],
             "time": [
                 "heat_flux_total",
