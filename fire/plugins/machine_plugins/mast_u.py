@@ -430,6 +430,8 @@ def pulse_meta_data(shot, keys=
                     out['exp_date'], out['exp_time'] = client.get_shot_date_time(shot=shot)
                 except Exception as e:
                     logger.warning('Also failed to retrieve date and time from UDA')
+                else:
+                    logger.info(f'Successfully retrieved shot time with UDA: {out["exp_date"], out["exp_time"]}')
     return out
 
     # from matplotlib import patches
