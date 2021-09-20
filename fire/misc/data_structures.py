@@ -63,6 +63,8 @@ meta_defaults_default = {
                'description': 'Integer array index along analysis path (alternative to R/s_global)'},
     'surface_id': {'label': 'Surface id', 'units': 'count', 'symbol': '$ID_{surface}$',
                   'description': 'Integer ID specifying what machine component/tile etc is visible at that pixel'},
+    'sector': {'label': 'Sector', 'units': 'count', 'symbol': '$n_{sector}$',
+                      'description': 'Integer ID specifying what machine sector is visible at that pixel'},
     'temperature_peak': {'label': 'Peak temperature', 'units': '$^\circ$C', 'symbol': '$T_{peak}$',
                   'description': 'Peak target temperature along analysis path as a function of time'},
     'heat_flux_amplitude_peak_global': {'label': 'Peak heat flux', 'units': 'MWm$^{-2}$', 'symbol': '$q_{\perp,peak}$',
@@ -83,8 +85,12 @@ meta_defaults_default = {
     'xpx/clock/lwir-1': {'label': 'LWIR 1 trigger signal', 'units': 'V', 'symbol': '$V_{LWIR1, trig}$',  # TODO: move to uda_utils
                          'description': 'Voltage of IRCAM1 LWIR HL04 datac loop trigger signal (xpx/clock/lwir-1)'},
     '/xpx/clock/LWIR-1': {'label': 'LWIR 1 trigger signal', 'units': 'V', 'symbol': '$V_{LWIR1, trig}$',
-                         'description': 'Voltage of IRCAM1 LWIR HL04 datac loop trigger signal (xpx/clock/lwir-1)',},
+                         'description': 'Voltage of IRCAM1 LWIR HL04 datac loop trigger signal (xpx/clock/LWIR-1)',},
+    '/xpx/clock/MWIR-1': {'label': 'MWIR 1 trigger signal', 'units': 'V', 'symbol': '$V_{MWIR1, trig}$',
+                         'description': 'Voltage of FLIR1 MWIR HL04 datac loop trigger signal (xpx/clock/MWIR-1)',},
+    'V':                {'label': 'Voltage', 'units': 'V', 'symbol': '$V$', 'description': 'Signal voltage', },
                         }
+
 # TODO: Add dict of alternative names for each variable in meta_defaults_default eg 'S', 's_global'
 param_aliases = {
     'temperature': 'T',
