@@ -301,12 +301,17 @@ def list_uda_signals_for_shot(pulse, filter_string=None):
     signals = filter_uda_signals(filter_string, pulse=pulse)
     return signals
 
-def get_uda_meta_dict(uda_obj, key_map, defaults=module_defaults, predefined_values=module_defaults, dim_name=None):
-    if dim_name is None:
-        dim_name = uda_obj.label
+def get_uda_meta_dict(uda_obj, key_map, defaults=module_defaults, predefined_values=module_defaults, dim_name=None,
+                      signal=None):
+
     if (defaults is module_defaults) or (defaults == 'default'):
-        defaults = meta_defaults_default.get(dim_name, {})
-        if len(defaults) == 0:
+        for name in [dim_name, signal, uda_obj.label]:
+            defaults = meta_defaults_default.get(name, {})
+            if len(defaults) == 0 and (isinstance(name, str)):
+                defaults = meta_defaults_default.get(name.lower(), {})
+            if len(defaults) > 0:
+                break
+        else:
             logger.debug(f'No UDA meta defaults for "{dim_name}"')
 
     if predefined_values is module_defaults:
