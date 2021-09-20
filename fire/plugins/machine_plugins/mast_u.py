@@ -410,7 +410,7 @@ def pulse_meta_data(shot, keys=
                     #      'tstart_nbi', 'tend_nbi', 'pnbi_max', 'rmag_efit', 'te0_max', 'ngreenwald_ipmax',
                     #      'ngreenwaldratio_ipmax', 'q95_ipmax', 'zeff_max', 'zeff_ipmax', 'betmhd_ipmax', 'zmag_efit',
                     #      'rinner_efit', 'router_efit')
-('tstart', 'tend', 'ip_max', 'tftstart', 'tftend', )
+('exp_date', 'exp_time', 'tstart', 'tend', 'ip_max', 'tftstart', 'tftend', )
                     ):
     try:
         from pycpf import pycpf
@@ -426,13 +426,19 @@ def pulse_meta_data(shot, keys=
             logger.warning(f'Failed to perform CPF query for {shot}, {key}')
             if key in ('exp_date', 'exp_time'):
                 try:
-                    client = uda_utils.get_uda_client()
+                    uda_module, client = uda_utils.get_uda_client()
                     out['exp_date'], out['exp_time'] = client.get_shot_date_time(shot=shot)
                 except Exception as e:
                     logger.warning('Also failed to retrieve date and time from UDA')
                 else:
                     logger.info(f'Successfully retrieved shot time with UDA: {out["exp_date"], out["exp_time"]}')
     return out
+
+def get_shot_date_time(shot):
+    meta_cpf = pulse_meta_data(shot, keys=['exp_date', 'exp_time'])
+    date_time = (f'{meta_cpf["exp_date"]} {meta_cpf["exp_time"][:8]}' if 'exp_date' in meta_cpf.keys() else
+                '<placeholder>')
+    return date_time
 
     # from matplotlib import patches
     # from fire.plotting.plot_tools import get_fig_ax
