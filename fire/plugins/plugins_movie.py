@@ -96,9 +96,10 @@ class MovieReader:
             # TODO: catch module not found errors eg pyIpx missing
             raise IOError(f'Failed to load any movie reader plugins')
 
-    def read_movie_meta_data(self, pulse: Union[int, str], camera: str, machine: str,
+    def read_movie_meta_data(self, pulse: Union[int, str], camera: str, machine: str, meta: Union[dict, tuple]=(),
                          check_output: bool=True, substitute_unknown_values: bool=False) -> Tuple[Dict[str, Any],
                                                                                                Dict[str, str]]:
+        meta = dict(meta)  # Parameters used to locate movie files eg date
         plugin_names = list(self.plugins.keys())
         exceptions = []
         for name, plugin in self.plugins.items():
@@ -107,7 +108,7 @@ class MovieReader:
                 meta_data, origin = plugin.read_movie_meta_data(pulse=pulse, camera=camera, machine=machine,
                                                   movie_paths=self.movie_paths,
                                         movie_fns=self.movie_fns, check_output=check_output,
-                                        substitute_unknown_values=substitute_unknown_values)
+                                        substitute_unknown_values=substitute_unknown_values, **meta)
             except IOError as e:
                 exceptions.append(e)
                 continue
@@ -134,17 +135,18 @@ class MovieReader:
     def read_movie_data(self, pulse: Union[int, str], camera: str, machine: str,
                         n_start: Optional[int] = None, n_end: Optional[int] = None, stride: Optional[int] = 1,
                         frame_numbers: Optional[Union[Iterable, int]] = None,
-                        transforms: Optional[Iterable[str]] = ()
+                        transforms: Optional[Iterable[str]] = (), meta: Union[dict, tuple]=(),
                          # check_output: bool=True,
                         ) -> Tuple[Dict[str, Any], Dict[str, str]]:
         exceptions = []
+        meta = dict(meta)
         for name, plugin in self.plugins.items():
             try:
                 movie_data, origin = plugin.read_movie_data(pulse=pulse, camera=camera, machine=machine,
                                                     n_start=n_start, n_end=n_end, stride=stride,
                                                     frame_numbers=frame_numbers,
                                                     movie_paths=self.movie_paths, movie_fns=self.movie_fns,
-                                                    transforms=transforms
+                                                    transforms=transforms, **meta
                                                            # check_output=check_output,
                                                     )
             except IOError as e:
@@ -208,8 +210,8 @@ class MoviePlugin:
 
     def read_movie_meta_data(self, pulse: Union[int, str], camera: str, machine: str,
                          movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
-                         check_output: bool=True, substitute_unknown_values: bool=False) -> Tuple[Dict[str, Any],
-                                                                                               Dict[str, str]]:
+                         check_output: bool=True, substitute_unknown_values: bool=False, **meta) -> Tuple[Dict[str,Any],
+                                                                                                Dict[str, str]]:
         """Read movie header meta data
 
         Args:
@@ -228,7 +230,7 @@ class MoviePlugin:
         meta_data, origin = read_movie_meta_data(pulse, camera, machine, movie_plugins,
                                                     movie_paths=movie_paths, movie_fns=movie_fns,
                                                     check_output=check_output,
-                                                    substitute_unknown_values=substitute_unknown_values)
+                                                    substitute_unknown_values=substitute_unknown_values, **meta)
         return meta_data, origin
 
     def read_movie_data(self, pulse: Union[int, str], camera: str, machine: str,
@@ -236,7 +238,7 @@ class MoviePlugin:
                         n_start: Optional[int] = None, n_end: Optional[int] = None, stride: Optional[int] = 1,
                         frame_numbers: Optional[Union[Iterable, int]] = None,
                         transforms: Optional[Iterable[str]] = (),
-                        verbose: bool=True
+                        verbose: bool=True, **meta
                         ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, str]]:
         """Read movie frame data
 
@@ -257,14 +259,14 @@ class MoviePlugin:
                                              n_start=n_start, n_end=n_end, stride=stride,
                                              frame_numbers=frame_numbers,
                                              movie_paths=movie_paths, movie_fns=movie_fns,
-                                             transforms=transforms, verbose=verbose)
+                                             transforms=transforms, verbose=verbose, **meta)
         return movie_data, origin
 
 
 def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movie_plugins: dict,
                          movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
-                         check_output: bool=True, substitute_unknown_values: bool=False) -> Tuple[Dict[str, Any],
-                                                                                               Dict[str, str]]:
+                         check_output: bool=True,
+                         substitute_unknown_values: bool=False, **meta) -> Tuple[Dict[str, Any], Dict[str, str]]:
     """Read movie header meta data
 
     Args:
@@ -284,7 +286,7 @@ def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movi
                                   'bit_depth', 'image_shape', 'detector_window']
     plugin_key = 'meta'
     meta_data, origin = try_movie_plugins_dicts(plugin_key, pulse, camera, machine, movie_plugins,
-                                                movie_paths=movie_paths, movie_fns=movie_fns)
+                                                movie_paths=movie_paths, movie_fns=movie_fns, **meta)
 
     rename_meta_data_fields(meta_data)
     check_movie_meta_data(meta_data, required_fields=movie_meta_required_fields, check_bad_values=True,
@@ -298,7 +300,7 @@ def read_movie_data(pulse: Union[int, str], camera: str, machine: str, movie_plu
                     n_start:Optional[int]=None, n_end:Optional[int]=None, stride:Optional[int]=1,
                     frame_numbers: Optional[Union[Iterable, int]]=None,
                     movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
-                    transforms: Optional[Iterable[str]] = (), verbose: bool=True) \
+                    transforms: Optional[Iterable[str]] = (), verbose: bool=True, **meta) \
                     -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, str]]:
     """Read movie frame data
 
@@ -319,7 +321,7 @@ def read_movie_data(pulse: Union[int, str], camera: str, machine: str, movie_plu
                                                  n_start=n_start, n_end=n_end, stride=stride,
                                                  frame_numbers=frame_numbers,
                                                  movie_paths=movie_paths, movie_fns=movie_fns,
-                                                 transforms=transforms)
+                                                 transforms=transforms, **meta)
     frame_numbers, frame_times, frame_data = movie_data
     # Convert tuples to named tuples
     movie_data_tup = namedtuple('movie_data', ('frame_nos', 'frame_times', 'frame_data'))
@@ -338,7 +340,7 @@ def try_movie_plugins_dicts(plugin_key, pulse, camera, machine, movie_plugins,
                             frame_numbers: Optional[Union[Iterable, int]]=None,
                             movie_paths:Optional[PathList]=None, movie_fns=None,
                             transforms: Optional[Iterable[str]]=(),
-                            func_kwargs=None):
+                            func_kwargs=None, **meta):
     """Iterate through calling supplied movie plugin functions in order supplied, until successful.
 
     Args:
@@ -360,6 +362,7 @@ def try_movie_plugins_dicts(plugin_key, pulse, camera, machine, movie_plugins,
               'transforms': transforms,
               'pulse_prefix': str(pulse)[0:2],
               'fire_path': str(fire_paths['root'])}
+    kwargs.update(meta)
     data, origin = None, None
     for plugin_name, plugin_funcs in movie_plugins.items():
         movie_func = plugin_funcs[plugin_key]
