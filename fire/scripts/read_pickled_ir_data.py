@@ -48,8 +48,10 @@ def read_data_for_pulses_pickle(camera: str, pulses: dict, machine:str= 'mast_u'
             # debug = {'movie_intensity_stats': True}
             from fire.scripts import scheduler_workflow
             debug = {}
-            out = scheduler_workflow.scheduler_workflow(pulse=pulse, camera=camera, pass_no=0, machine=machine,
+            outputs = scheduler_workflow.scheduler_workflow(pulse=pulse, camera=camera, pass_no=0, machine=machine,
                                                   scheduler=False, debug=debug)
+            scheduler_workflow.copy_output(outputs, copy_to_uda_scrach=True, clean_netcdf=True)
+
             data[pulse] = read_output_file(camera, pulse, machine=machine)
         elif (not success) and (not generate):
             raise exception
