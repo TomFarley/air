@@ -814,9 +814,13 @@ def get_t_end_shot(heat_flux, t=None, plot=True, t_end_pad=0.03, t_end_min=0.1):
     heat_flux_array = np.array(heat_flux)
     peaks_info = find_peaks_info(heat_flux_array, x=t, peak_kwargs=dict(prominence=np.ptp(heat_flux_array)*0.04))
     i_max = peaks_info['ind_peaks']
-    t_max = t[i_max[-1]] if (i_max[-1] < (len(t)-1)-10) else t[i_max[-2]]
-    # t_end = float(t[heat_flux.where(t > t_max).argmin(dim='t')])
-    t_end = float(t_max) + t_end_pad
+    if len(i_max) > 0:
+        t_max = t[i_max[-1]] if (i_max[-1] < (len(t)-1)-10) else t[i_max[-2]]
+        # t_end = float(t[heat_flux.where(t > t_max).argmin(dim='t')])
+        t_end = float(t_max) + t_end_pad
+    else:
+        logger.warning('Failed to estimate end time of shot - no heat flux peaks')
+        t_end = 2
 
     if plot:
         fig, ax, ax_passed = plot_tools.get_fig_ax()
