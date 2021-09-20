@@ -287,33 +287,66 @@ def age_of_file(fn_path):
     t_age = t_now-os.path.getmtime(fn_path)
     return t_age
 
+def is_relative_to(path_fn, path_relative):
+    """is_relative_to fuction prior to python 3.9"""
+    path_fn = Path(path_fn).expanduser().resolve()
+    path_relative = Path(path_relative).expanduser().resolve()
+    try:
+        path_fn.relative_to(path_relative)
+    except ValueError as e:
+        return False
+    else:
+        return True
 
-def delete_files_recrusive(pattern, path=None, delete_files=True, delete_directories=False, prompt_user=True):
+def delete_files_recrusive(pattern, path=None, exclude_dirs=(), delete_files=True, delete_directories=False,
+                           prompt_user=True,
+                           debug=False):
     from fire.misc.utils import ask_input_yes_no
     if path is None:
         path = '.'
-    path = Path(path).resolve()
+    if debug:
+        prompt_user = True
+    path = Path(path).expanduser().resolve()
     h = re.compile(pattern)
-    to_be_removed = {'files': [], 'dirs': []}
+    exclude_dirs = [Path(exclude_dir).expanduser().resolve() for exclude_dir in make_iterable(exclude_dirs)]
+
+    to_be_removed = {'files': [], 'dirs': [], 'excluded': []}
     for root, dirs, files in os.walk(path):
         if delete_directories:
             for dir0 in filter(lambda x: h.match(x), dirs):
                 path_fn = os.path.join(root, dir0)
-                to_be_removed['dirs'].append(path_fn)
-                if not prompt_user:
-                    os.remove(path_fn)
+                exclude = False
+                for exclude_dir in exclude_dirs:
+                    if is_relative_to(path_fn, exclude_dir):
+                        to_be_removed['excluded'].append(path_fn)
+                        exclude = True
+                if not exclude:
+                    to_be_removed['dirs'].append(path_fn)
+                    if not prompt_user:
+                        os.remove(path_fn)
         if delete_files:
             for file in filter(lambda x: h.match(x), files):
                 path_fn = os.path.join(root, file)
-                to_be_removed['files'].append(path_fn)
-                if not prompt_user:
-                    os.remove(path_fn)
+                exclude = False
+                for exclude_dir in exclude_dirs:
+                    if is_relative_to(path_fn, exclude_dir):
+                        to_be_removed['excluded'].append(path_fn)
+                        exclude = True
+                if not exclude:
+                    to_be_removed['files'].append(path_fn)
+                    if not prompt_user:
+                        os.remove(path_fn)
     n_files = len(to_be_removed["files"])
     n_dirs = len(to_be_removed["dirs"])
+    n_excluded = len(to_be_removed["excluded"])
 
-    if prompt_user:
-        print(f'{n_files} files and {n_dirs} directories to be deleted: \n{to_be_removed}'.format(
-            to_be_removed=to_be_removed))
+    message = (f'{n_files} files to be deleted: {to_be_removed["files"]}\n' 
+              f'{n_dirs} directories to be deleted: {to_be_removed["dirs"]}\n '
+               f'{n_excluded} excluded files and dirs: {to_be_removed["excluded"]}')
+    if debug:
+        print(message)
+    elif prompt_user:
+        print(message)
         if ask_input_yes_no('Delete files'):
             for file in to_be_removed['files']:
                 os.remove(file)
