@@ -4,7 +4,7 @@
 The `interfaces` module contains functions for interfacing with other codes and files.
 """
 
-import os, logging, json
+import os, logging, json, re
 import importlib.util
 from typing import Union, Sequence, Optional
 from pathlib import Path
@@ -23,6 +23,17 @@ logger = logging.getLogger(__name__)
 # print(logger_info(logger))
 
 PathList = Sequence[Union[Path, str]]
+
+def digest_shot_file_name(fn, pattern='(?P<diag_tag>\D*)(?P<shot>\d+)\.(?P<extension>\w+)'):
+    info = {}
+    m = re.match(pattern, fn)
+    if m:
+        info = m.groupdict()
+        try:
+            info['shot'] = int(info['shot'])
+        except (KeyboardInterrupt, ValueError) as e:
+            pass
+    return info
 
 def format_path(path: Union[str, Path] , **kwargs) -> Path:
     kwargs.update({'fire_path': fire_paths['root']})
