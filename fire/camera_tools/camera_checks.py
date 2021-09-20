@@ -6,8 +6,7 @@
 Created: 
 """
 
-import logging
-
+import logging, datetime
 
 import numpy as np
 import pandas as pd
@@ -40,9 +39,6 @@ def get_dark_level_drift(image_data, plot=False):
 
     mask_dark = get_dark_level_image_mask(frame_data, ray_lengths=ray_lengths, frame_range=[None, None])
 
-    if plot:
-        plot_dark_level_variation(frame_data, mask_dark)
-
     stat = 'mean'
     dark_level_stats, stat_keys = calc_2d_profile_param_stats(frame_data.where(mask_dark), stats=(stat,),
                                              coords_reduce=('y_pix', 'x_pix'),
@@ -54,11 +50,14 @@ def get_dark_level_drift(image_data, plot=False):
     dark_level_correction.name = 'dark_level_correction'
 
     logger.info(f'Dark level variation is: {np.ptp(np.array(dark_level_correction))}')
+
+    if plot:
+        plot_dark_level_variation(mask_dark, dark_level=dark_level, frame_data=frame_data)
     # temporal_figures.plot_temporal_stats(frame_data)
     return dark_level, dark_level_correction, mask_dark
 
 def get_dark_level_image_mask(frame_data, ray_lengths=None, dark_percentile=10, std_percentile=10, ptp_percentile=15,
-                              frame_range=[None, None], frac_dark=0.8, n_dark_pix_min=50):
+                              frame_range=[None, None], frac_dark=0.8, n_dark_pix_min=50, ray_length_threshold=1.0):
     logger.info('Getting dark level mask')
     frame_data = np.array(frame_data)
     frame_data = frame_data[slice(*frame_range)]
@@ -81,12 +80,37 @@ def get_dark_level_image_mask(frame_data, ray_lengths=None, dark_percentile=10, 
 
     mask_combined = mask_low_std * mask_low_ptp  # * mask_dark
     if ray_lengths is not None:
-        mask_distance = ray_lengths <= 1.0  # Closest surfaces in MAST-U RIR view ~1.29 m
+        mask_distance = np.array(ray_lengths <= ray_length_threshold)  # Closest surfaces in MAST-U RIR view ~1.29 m
         mask_combined *= mask_distance
 
     n_dark = np.sum(mask_combined)
-    if n_dark == 0:
-        logger.warning('No dark areas of image identified for dark level drift check')
+    n_std = np.sum(mask_low_std)
+    n_ptp = np.sum(mask_low_ptp)
+    n_dist = np.sum(mask_distance)
+    if n_dark < n_dark_pix_min:
+        date = datetime.datetime.now().strftime('%Y-%m-%d')
+        logger.warning(f'{date} Not enough dark areas of image identified for dark level drift check '
+                       f'({n_dark}<{n_dark_pix_min}). Incrementing percentiles. '
+                       f'n_std={n_std}, n_ptp={n_ptp}, n_dist={n_dist}')
+        inc = False
+        if n_std <= np.min([n_ptp, n_dist]) and std_percentile < 97:
+            std_percentile += 2
+            inc = True
+        if n_ptp <= np.min([n_std, n_dist]) and ptp_percentile < 97:
+            ptp_percentile += 2
+            inc = True
+        if n_dist <= np.min([n_std, n_ptp]):
+            ray_length_threshold *= 1.1
+            inc = True
+        logger.warning(f'std_percentile={std_percentile}, ptp_percentile={ptp_percentile}, '
+                    f'ray_length_threshold={ray_length_threshold}, n_dark_pix_min={n_dark_pix_min}')
+        if inc:
+            mask_combined = get_dark_level_image_mask(frame_data, ray_lengths=ray_lengths,
+                                      std_percentile=std_percentile,
+                                      ptp_percentile=ptp_percentile,
+                                      ray_length_threshold=ray_length_threshold,
+                                      n_dark_pix_min=n_dark_pix_min
+                                      )
 
     return mask_combined
 
