@@ -987,8 +987,11 @@ def compare_dict(dict1, dict2, tol=1e-12, top=True):
     assert(isinstance(dict1, dict) and isinstance(dict2, dict))
     from collections import Counter
     if Counter(dict1.keys()) != Counter(dict2.keys()):  # Use counter to ignore order (if objects are hashable)
-        print('def compare_numeric_dict: Dictionaries have different keys:\ndict1: {}\ndict2: {}'.format(
-            dict1.keys(), dict2.keys()))
+        keys_unique_1 = [k for k in dict1 if k not in dict2]
+        keys_unique_2 = [k for k in dict2 if k not in dict1]
+        keys_common = [k for k in dict2 if k in dict1]
+        print(f'def compare_numeric_dict: Dictionaries have different keys:\n'
+              f'keys_common: {keys_common}\ndict1_unique: {keys_unique_1}\ndict2_unique: {keys_unique_2}')
         return False
 
     for key in dict1.keys():
