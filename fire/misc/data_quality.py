@@ -15,11 +15,15 @@ from copy import copy
 import numpy as np
 import xarray as xr
 from scipy import stats
+import matplotlib.pyplot as plt
 
 from fire.misc import data_structures
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+info_removed_frames = {'start': 0, 'middle': 0, 'end': 0, 'n_removed': [], 'n_removed_start': [], 'n_removed_end': [],
+            'n_middle_naned': []}
 
 def identify_bad_frames(frame_data, bit_depth=None, n_discontinuities_expected=0.01,
                         raise_on_saturated=False, raise_on_uniform=False, raise_on_sudden_intensity_changes=False):
@@ -216,31 +220,56 @@ def calc_outlier_nsigma_for_sample_size(n_data, n_outliers_expected=1):
 
     return nsigma
 
-def remove_bad_opening_and_closing_frames(frame_data, bad_frames):
-    info = {'start': 0, 'end': 0, 'n_removed': []}
+def remove_bad_frames(frame_data, bad_frames, remove_opening_closing=True, nan_middle=True, debug=False):
+    info = copy(info_removed_frames)
 
     n = len(frame_data)-1
     i = 0
 
-    while i in bad_frames:
-        frame_data = frame_data[1:]
-        info['start'] += 1
-        info["n_removed"].append(i)
-        i += 1
+    def plot_bad_frame(n, debug):
+        if debug:
+            plt.figure(num=f'Bad frame {n}')
+            plt.imshow(frame_data[n])
+            plt.show()
 
-    while n in bad_frames:
-        frame_data = frame_data[:-1]
-        info['end'] += 1
-        info["n_removed"].append(n)
-        n -= 1
+    if remove_opening_closing:
+        while i in bad_frames:
+            info['start'] += 1
+            info["n_removed"].append(i)
+            info["n_removed_start"].append(i)
+            plot_bad_frame(i, debug)
+            i += 1
+
+        while n in bad_frames:
+            info['end'] += 1
+            info["n_removed"].append(n)
+            info["n_removed_end"].append(n)
+            plot_bad_frame(n, debug)
+            n -= 1
+
+    if nan_middle:
+        for n in bad_frames:
+            if n not in info['n_removed']:
+                plot_bad_frame(n, debug)
+                frame_data[n] = np.nan
+                info['middle'] += 1
+                info["n_middle_naned"].append(n)
+
+    frame_data = frame_data[info["start"]:]
+    frame_data = frame_data[:-info["end"]]
 
     if info['start'] > 0:
-        logger.warning(f'Removed {info["start"]} bad frames from start of movie: {info["n_removed"]}')
+        logger.warning(f'{info["start"]} bad frames at start of movie: {info["n_removed_start"]}')
     if info['end'] > 0:
-        logger.warning(f'Removed {info["end"]} bad frames from end of movie: {info["n_removed"]}')
+        logger.warning(f'{info["end"]} bad frames at end of movie: {info["n_removed_removed_end"]}')
+    if info['middle'] > 0:
+        logger.warning(f'Set {info["middle"]} bad frames in middle of movie movie to nans: {info["n_middle_naned"]}')
 
     return frame_data, info
 
+
+
+    return frame_data, info
 
 if __name__ == '__main__':
     pass
