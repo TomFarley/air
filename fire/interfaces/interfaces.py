@@ -26,6 +26,7 @@ PathList = Sequence[Union[Path, str]]
 
 def digest_shot_file_name(fn, pattern='(?P<diag_tag>\D*)(?P<shot>\d+)\.(?P<extension>\w+)'):
     info = {}
+    fn = str(Path(fn).name)
     m = re.match(pattern, fn)
     if m:
         info = m.groupdict()
