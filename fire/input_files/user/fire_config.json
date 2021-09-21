@@ -9,6 +9,10 @@
             "email": null
         },
         "directory": "~/.fire/",
+        "fire_path": "~/.fire/",
+        "paths": {
+            "figures": "~/{fire_path}/figures/"
+        },
         "default_params": {
             "machine": "mast_u",
             "pulse": 43183,
@@ -286,7 +290,8 @@
             "/home/tfarley/data/movies/{machine}/{pulse}/{camera}/",
             "~/data/movies/mast_u/rit_ipx_files/",
             "~/data/movies/mast_u/rir_ats_files/test/",
-            "~/data/movies/mast_u/rir_ats_files/.*/"
+            "~/data/movies/mast_u/rir_ats_files/.*/",
+            "~/data/movies/diagnostic_pc_transfer/{camera}/{date}/"
         ]
     },
     "paths_output": {
