@@ -13,7 +13,14 @@ from copy import copy
 from collections import namedtuple
 
 import numpy as np
-import xarray as xr
+from fire.plugins.movie_plugins.ipx_standard import (check_ipx_detector_window_meta_data,
+    get_detector_window_from_ipx_header, convert_ipx_header_to_uda_conventions)
+
+try:
+    from fire.plugins.movie_plugins import ipx_standard
+    IPX_HEADER_FIELDS = ipx_standard.UDA_IPX_HEADER_FIELDS
+except ImportError as e:
+    IPX_HEADER_FIELDS = ('left', 'top', 'width', 'height', 'right', 'bottom')
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -83,6 +90,12 @@ def read_movie_meta_with_pyipx(path_fn: Union[str, Path], transforms: Iterable[s
     movie_meta['exposure'] = ipx_header['exposure']
     movie_meta['bit_depth'] = ipx_header['depth']
     movie_meta['lens'] = ipx_header['lens'] if 'lens' in ipx_header else 'Unknown'
+
+    # Make sure detector window fields are extracted from ipx header
+    for key in IPX_HEADER_FIELDS:
+        if key in ipx_header:
+            movie_meta[key] = ipx_header[key]
+
     # TODO: Add filter name?
 
     # TODO: Move derived fields to common function for all movie plugins: image_shape, fps, t_range
@@ -91,143 +104,6 @@ def read_movie_meta_with_pyipx(path_fn: Union[str, Path], transforms: Iterable[s
     movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
     movie_meta['ipx_header'] = ipx_header
     return movie_meta
-
-def check_ipx_detector_window_meta_data(ipx_header, plugin=None, fn=None, modify=True, verbose=True):
-    # TODO: Move to generic movie plugin functions module
-    log = logger.warning if verbose else logger.debug
-    problems = 0
-
-    # TODO: apply abs to each value so don't have negative 'bottom' value etc?
-    left, top, width, height, right, bottom = np.array([np.abs(ipx_header[key]) if key in ipx_header else np.nan
-                                                      for key in ('left', 'top', 'width', 'height', 'right', 'bottom')])
-
-    left_top = np.array([left, top])
-    width_height = np.array([width, height])
-
-    if np.any(np.isnan(width_height)):
-        raise ValueError(f'Ipx header dict is missing width/height meta data: {width_height}')
-
-    # From IPX1 documentation: left: offset=244, length=2, type=unsigned; Window position (leftmost=1); 0 – not defined.
-    # Therefore subtract 1 to get zero indexed pixel coordinate
-    if np.any(left_top == -1):
-        log(f'{plugin} Detector window corner coords contain zeros which for ipx standard means "not defined": '
-            f'(left, top = {left}, {top}) ({plugin}, {fn})')
-        left_top[(left_top == -1)] = 1
-        left, top = left_top.astype(int)
-        log(f'Assumed window corner at origin (leftmost=1): {left_top}')
-        if np.any(width_height < 256):
-            raise ValueError(f'Detector appears to be subwindowed, so assuming corner at origin probably not valid')
-        problems += 1
-
-    if np.any(np.isnan(left_top)):
-        log(f'{plugin} file missing meta data for detector sub-window origin: {left_top} ({plugin}, {fn})')
-        left_top[np.isnan(left_top)] = 1
-        left, top = left_top.astype(int)
-        log(f'Set left, top nans to origin (leftmost=1): {left_top}')
-        problems += 1
-
-    if np.isnan(right):
-        right = int(left + width)
-        logger.debug(f'Calculated sub-window "right" = left + width = {right}')
-    else:
-        width_calc = right - left
-        if width_calc != width:
-            log(f'Detector window width calculated from right-left = {right}-{left} = {width_calc} '
-                           f'!= {width} = width')
-            problems += 1
-
-    if np.isnan(bottom):
-        bottom = int(top + height)
-        logger.debug(f'Calculated sub-window "bottom" = top + height = {bottom}')
-    else:
-        height_calc = bottom - top
-        if height_calc != height:
-            log(f'Detector window height calculated from bottom-top = {bottom}-{top} = {height_calc} '
-                           f'!= {height} = height')
-            problems += 1
-
-    if problems > 0:
-        pass
-
-    image_resolution = ipx_header.get('image_resolution', ipx_header.get('image_shape'))
-    if image_resolution is not None:  # Not standard ipx field, but used in FIRE - equal to frame_data.shape[1:]
-        if not np.all(image_resolution == np.array([height, width])):
-            raise ValueError('Image_resolution field doesnt match other header meta data')
-
-    if modify:
-        for key, value in zip(('left', 'top', 'width', 'height', 'right', 'bottom'),
-                              (left, top, width, height, right, bottom)):
-            ipx_header[key] = int(value)
-
-    return (left, top, width, height, right, bottom)
-
-def get_detector_window_from_ipx_header(ipx_header):
-    """Return tuple of ('left', 'top', 'width', 'height') with left and top starting at 0 (not 1 as in ipx standard).
-    Note: Coordinates and widths should be according to 'Original' coords not 'Display' coords (Calcam conventions)"""
-    # TODO: apply abs to each value so don't have negative 'bottom' value etc?
-    left, top, width, height, right, bottom = np.array([np.abs(ipx_header[key]) if key in ipx_header else np.nan
-                                                      for key in ('left', 'top', 'width', 'height', 'right', 'bottom')])
-
-    # From IPX1 documentation: left: offset=244, length=2, type=unsigned; Window position (leftmost=1); 0 – not defined.
-    # Therefore subtract 1 to get zero indexed pixel coordinate
-    detector_window = np.array([left-1, top-1, width, height])
-
-    if not np.any(np.isnan(detector_window)):
-        detector_window = detector_window.astype(int)
-    else:
-        raise ValueError(f'Detector sub-window contains nans: {detector_window}')
-
-    return detector_window
-
-def convert_ipx_header_to_uda_conventions(header: dict) -> dict:
-    """
-
-    :param header: Ipx header dict with each parameter a separate scalar value
-    :return: Reformatted header dict
-    """
-    # TODO: Make generic functions for use in all plugins: rename_dict_keys, convert_types, modify_values
-    header = copy(header)  # Prevent changes to pyIpx movieReader attribute still used for reading video
-    # TODO: Update values due to changes in uda output conventions (now using underscores?)
-    key_map = {'numFrames': 'n_frames', 'codec': 'codex', 'color': 'is_color', 'ID': 'ipx_version', 'hBin': 'hbin',
-                'vBin': 'vbin', 'datetime': 'date_time', 'preExp': 'pre_exp', 'preexp': 'pre_exp',
-               'ipx_version': 'file_format', 'orient': 'orientation'}
-    missing = []
-    for old_key, new_key in key_map.items():
-        if new_key in header:
-            pass  # Already has correct name
-        else:
-            try:
-                header[new_key] = header.pop(old_key)
-                logger.debug(f'Renamed ipx header parameter from "{old_key}" to "{new_key}".')
-            except KeyError as e:
-                missing.append(old_key)
-    if len(missing) > 0:
-        missing = {k: key_map[k] for k in missing}
-        logger.warning(f'Could not rename {len(missing)} ipx header parameters as original keys missing: '
-                       f'{missing}')
-
-    missing_scalar_keys = []
-    if 'gain' not in header:
-        try:
-            header['gain'] = [header.pop('gain_0'), header.pop('gain_1')]
-        except KeyError as e:
-            missing_scalar_keys.append('gain')
-    if 'offset' not in header:
-        try:
-            header['offset'] = [header.pop('offset_0'), header.pop('offset_1')]
-        except KeyError as e:
-            missing_scalar_keys.append('offset')
-    if len(missing_scalar_keys) > 0:
-        logger.warning(f'Could not build missing ipx header parameters {missing_scalar_keys} as scalar params also '
-                       f'missing')
-
-    if 'size' in header:
-        # Size field is left over from binary header size for IPX1? reader - not useful
-        header.pop('size')
-
-    # header['bottom'] = header.pop('top') - header.pop('height')  # TODO: check - not +
-    # header['right'] = header.pop('left') + header.pop('width')
-    return header
 
 def read_movie_data_with_pyipx(path_fn: Union[str, Path],
                                n_start:Optional[int]=None, n_end:Optional[int]=None, stride:Optional[int]=1,
@@ -317,7 +193,7 @@ def read_movie_meta_with_mastmovie(path_fn: Union[str, Path], transforms: Iterab
     :return: Dictionary of ipx file information
     :type: dict
     """
-    from mastvideo import load_ipx_file, VideoDecoder
+    from mastvideo import load_ipx_file
 
     if not Path(path_fn).is_file():
         raise FileNotFoundError(f'IPX file does not exist: {path_fn}')
@@ -407,7 +283,7 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
                                    frame_numbers: Optional[Union[Iterable, int]] = None,
                                    transforms: Optional[Iterable[str]] = (),
                                    verbose: bool = True) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    from mastvideo import load_ipx_file, VideoDecoder
+    from mastvideo import load_ipx_file
 
     if not Path(path_fn).is_file():
         raise FileNotFoundError(f'IPX file does not exist: {path_fn}')
@@ -456,14 +332,13 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
     from mastvideo import write_ipx_file, IpxHeader, IpxSensor, SensorType, ImageEncoding
     from fire.plugins.machine_plugins import mast_u
     from fire.interfaces import interfaces
-    from matplotlib import cm
-    from fire.scripts.organise_ircam_raw_files import complete_meta_data_dict
-    from fire.misc.utils import filter_kwargs
 
     movie_data = movie_data.astype(np.uint16)
 
     n_frames, height, width = tuple(movie_data.shape)
     image_shape = (height, width)
+    left, top, right, bottom = np.array([np.abs(header_dict[key]) if key in header_dict else None
+                                                        for key in ('left', 'top', 'right', 'bottom')])
 
     pulse = int(header_dict.get('shot', header_dict.get('pulse')))
     camera = header_dict.get('camera', 'IRCAM_Velox81kL_0102')
@@ -497,7 +372,7 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
                               )
 
     sensor_dict = dict(
-        window_left=None, window_right=None, window_top=None, window_bottom=None,
+        window_left=left, window_right=right, window_top=top, window_bottom=bottom,
         binning_h=0, binning_v=0,
         taps=None, gain=None, offset=None)  # taps=Number of digitizer channels
 

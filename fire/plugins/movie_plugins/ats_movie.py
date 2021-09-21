@@ -40,7 +40,8 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbo
     :type: dict
     """
     from fire.interfaces.flir_ats_movie_reader import ats_to_dict, read_ats_file_header
-    from fire.plugins.movie_plugins.ipx import check_ipx_detector_window_meta_data, get_detector_window_from_ipx_header
+    from fire.plugins.movie_plugins.ipx_standard import (get_detector_window_from_ipx_header,
+                                                         check_ipx_detector_window_meta_data)
 
     if verbose:
         print(f'{datetime.now()}: Reading ats meta data: {path_fn}')

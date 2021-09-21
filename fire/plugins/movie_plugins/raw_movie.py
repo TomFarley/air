@@ -16,7 +16,8 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 from fire.interfaces.interfaces import json_load
-from fire.plugins.movie_plugins.ipx import check_ipx_detector_window_meta_data, get_detector_window_from_ipx_header
+from fire.plugins.movie_plugins.ipx_standard import (get_detector_window_from_ipx_header,
+                                                         check_ipx_detector_window_meta_data)
 from fire.interfaces.camera_data_formats import read_ircam_raw_int16_sequence_file
 
 logging.basicConfig()

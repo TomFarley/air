@@ -21,7 +21,8 @@ from copy import copy
 import numpy as np
 import pandas as pd
 
-from fire.plugins.movie_plugins.ipx import check_ipx_detector_window_meta_data, get_detector_window_from_ipx_header
+from fire.plugins.movie_plugins.ipx_standard import (get_detector_window_from_ipx_header,
+                                                         check_ipx_detector_window_meta_data)
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)

@@ -19,11 +19,15 @@ from copy import copy
 
 import numpy as np
 
-from fire.plugins.movie_plugins.ipx import check_ipx_detector_window_meta_data, get_detector_window_from_ipx_header
+from fire.plugins.movie_plugins.ipx_standard import (get_detector_window_from_ipx_header,
+                                                         check_ipx_detector_window_meta_data)
 from fire.interfaces import uda_utils
+from fire.plugins.movie_plugins import ipx_standard
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
+
+UDA_IPX_HEADER_FIELDS = ipx_standard.UDA_IPX_HEADER_FIELDS
 
 try:
     import pyuda, cpyuda
@@ -38,20 +42,7 @@ movie_plugin_name = 'uda'
 plugin_info = {'description': 'This plugin reads movie data from UDA (Universal Data Access)',
                'arg_name_mapping': {'camera': 'camera'}}
 
-UDA_IPX_HEADER_FIELDS = ('board_temp', 'camera', 'ccd_temp', 'codex', 'date_time', 'depth', 'exposure', 'file_format',
-                         'filter', 'frame_times', 'gain', 'hbin', 'height', 'is_color', 'left', 'lens',
-                         'n_frames', 'offset', 'orientation', 'pre_exp', 'shot', 'strobe', 'taps', 'top', 'trigger',
-                         'vbin', 'view', 'width')
-
 use_mast_client = True
-# UDA_IPX_HEADER_FIELDS = ('board_temp', 'camera', 'ccd_temp', 'date_time', 'depth', 'exposure', 'filter', 'frame_times',
-#                          'gain', 'hbin', 'height', 'is_color', 'left', 'lens', 'n_frames', 'offset', 'pre_exp', 'shot',
-#                          'taps', 'top', 'vbin', 'view', 'width')
-# uda_ipx_header_fields = ('board_temp', 'camera', 'ccd_temp', 'datetime', 'depth', 'exposure', 'filter', 'frame_times',
-#                          'gain', 'hbin', 'height', 'is_color', 'left', 'lens', 'n_frames', 'offset', 'preexp', 'shot',
-#                          'taps', 'top', 'vbin', 'view', 'width')
-# uda_ipx_header_fields += ('ID', 'size', 'codec', 'date_time', 'trigger', 'orient', 'color', 'hBin',
-#                           'right', 'vBin', 'bottom', 'offset_0', 'offset_1', 'gain_0', 'gain_1', 'preExp', 'strobe')
 
 def get_uda_movie_obj_legacy(pulse: int, camera: str, n_start:Optional[int]=None, n_end:Optional[int]=None,
                              stride: Optional[int]=1):
