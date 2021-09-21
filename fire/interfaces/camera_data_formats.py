@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 from fire.interfaces.io_basic import read_csv
 from fire import fire_paths
-from fire.scripts.organise_ircam_raw_files import generate_json_meta_data_file_for_ircam_raw
+from fire.scripts.organise_movie_files_from_diag_pc import generate_json_meta_data_file_for_ircam_raw
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)

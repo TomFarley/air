@@ -10,7 +10,7 @@ import logging, re
 from typing import Union, Iterable, Sequence, Tuple, Optional, Any, Dict
 from pathlib import Path
 from copy import copy
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 
 from fire.interfaces import io_utils, io_basic
 from fire.misc.utils import make_iterable, safe_arange
+from fire.plotting import plot_tools
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -60,12 +61,13 @@ def complete_meta_data_dict(meta_data_dict, n_frames=None, image_shape=None, rep
         dict_out.update(meta_data_dict)
     return dict_out
 
-def generate_ipx_file_from_ircam_raw_movie(path_fn_raw, path_fn_ipx, pulse, verbose=True, plot_check=True):
+def generate_ipx_file_from_ircam_raw_movie(path_fn_raw, path_fn_ipx, pulse, verbose=True, plot_check=False):
     # from fire.interfaces.camera_data_formats import read_ircam_raw_int16_sequence_file
     from fire.plugins.movie_plugins.raw_movie import read_movie_data, read_movie_meta
     from fire.plugins.movie_plugins.ipx import write_ipx_with_mastmovie
-    from fire.plugins.movie_plugins.ipx import read_movie_data as read_movie_data_ipx
-    from fire.plugins.movie_plugins.ipx import read_movie_meta as read_movie_meta_ipx
+    from fire.plugins.movie_plugins.ipx import read_movie_data_with_mastmovie, read_movie_data_with_pyipx
+    from fire.plugins.movie_plugins.ipx import read_movie_meta_with_mastmovie, read_movie_meta_with_pyipx
+    from fire.misc import utils
     from fire.plugins.plugins_movie import MovieReader
     from PIL import Image
     # from ccfepyutils.mast_data.get_data import get_session_log_data
@@ -118,25 +120,64 @@ def generate_ipx_file_from_ircam_raw_movie(path_fn_raw, path_fn_ipx, pulse, verb
     
     if plot_check:
         n = 250
-        frame_numbers_out, frame_times_out, data_out = read_movie_data_ipx(path_fn_ipx)
-        meta_new = read_movie_meta_ipx(path_fn_ipx)
-        frame_new = data_out[n]
         frame_original = frame_data[n]
 
-        meta_data_dict.pop('frame_times'); meta_data_dict.pop('shot');
+        frame_numbers_mastmovie, frame_times_mastmovie, data_mastmovie = read_movie_data_with_mastmovie(path_fn_ipx)
+        meta_mastmovie = read_movie_meta_with_mastmovie(path_fn_ipx)
+        frame_mastmovie = data_mastmovie[n]
+
+        frame_numbers_pyipx, frame_times_pyipx, data_pyipx = read_movie_data_with_pyipx(path_fn_ipx)
+        meta_pyipx = read_movie_meta_with_pyipx(path_fn_ipx)
+        frame_pyipx = data_pyipx[n]
+
+        for dic in [meta_data_dict, meta_mastmovie, meta_pyipx]:
+            for key in ['frame_times', 'shot']:
+                if key in dic:
+                    dic.pop(key)
+        utils.compare_dict(meta_data_dict, meta_mastmovie)
+        utils.compare_dict(meta_data_dict, meta_pyipx)
 
         print(meta_data_dict)
-        print(meta_new)
+        print(meta_mastmovie)
 
-        plt.ion()
-        fig, (ax0, ax1) = plt.subplots(1, 2, sharex=True, sharey=True)
+        # plt.ion()
+        fig, axes, ax_passed = plot_tools.get_fig_ax(ax=None, ax_grid_dims=(2, 3), sharex=True, sharey=True,
+                                                     axes_flatten=True)
         fig.suptitle(f'{pulse}, n={n}')
-        im0 = ax0.imshow(frame_original, interpolation='none', origin='upper', cmap='gray')  # , vmin=0, vmax=2**14-1)
+
+        ax = axes[0]
+        im0 = ax.imshow(frame_original, interpolation='none', origin='upper', cmap='gray')  # , vmin=0, vmax=2**14-1)
         # plt.colorbar(im0)
-        ax0.set_title(f'Original raw')
-        im1 = ax1.imshow(frame_new, interpolation='none', origin='upper', cmap='gray')  # , vmin=0, vmax=2**14-1)
+        ax.set_title(f'Original raw')
+
+        ax = axes[1]
+        im1 = ax.imshow(frame_mastmovie, interpolation='none', origin='upper', cmap='gray')  # , vmin=0, vmax=2**14-1)
         # plt.colorbar(im1)
-        ax1.set_title(f'Mastvideo output')
+        ax.set_title(f'Mastvideo output')
+
+        ax = axes[2]
+        im2 = ax.imshow(frame_pyipx, interpolation='none', origin='upper', cmap='gray')  # , vmin=0, vmax=2**14-1)
+        # plt.colorbar(im1)
+        ax.set_title(f'pyIpx output')
+
+        ax = axes[3]
+        im2 = ax.imshow(frame_original-frame_original, interpolation='none', origin='upper', cmap='gray')
+        # plt.colorbar(im1)
+        ax.set_title(f'Original-Original')
+
+        ax = axes[4]
+        im2 = ax.imshow(frame_original - frame_mastmovie, interpolation='none', origin='upper', cmap='gray')
+        # plt.colorbar(im1)
+        ax.set_title(f'Original-mastmovie output')
+        print('Origianl - mastmovie', np.max(frame_original-frame_mastmovie), np.mean(frame_original-frame_mastmovie))
+
+        ax = axes[5]
+        im2 = ax.imshow(frame_original-frame_pyipx, interpolation='none', origin='upper', cmap='gray')
+        # plt.colorbar(im1)
+        ax.set_title(f'Original-pyIpx output')
+        print('Origianl - pyIpx', np.max(frame_original-frame_pyipx), np.mean(frame_original-frame_pyipx))
+
+
         plt.tight_layout()
         plt.show()
 
@@ -239,8 +280,8 @@ def generate_json_meta_data_file_for_ircam_raw(path, fn, n_frames, image_shape, 
     json_dump(list_out, fn, path, overwrite=True)
     logger.info(f'Wrote meta data file to: {path}/{fn}')
 
-def organise_ircam_raw_files(path_in='/home/tfarley/data/movies/diagnostic_pc_transfer/{today}/',
-                             fn_in='(\d+).RAW', fn_in_group_keys=('pulse',),
+def organise_ircam_raw_files(path_in='/home/tfarley/data/movies/diagnostic_pc_transfer/{date}/',
+                             fn_in='(\d+).RAW', fn_in_group_keys=('pulse',), date='today',
                              path_out='~/data/movies/mast_u/{pulse}/{camera}/', fn_raw_out='{camera}_{pulse}.raw',
                              fn_meta='{camera}_{pulse}_meta.json', fn_ipx_format='rit0{pulse}.ipx',
                              pulse_whitelist=None, pulse_blacklist=None,
@@ -248,8 +289,9 @@ def organise_ircam_raw_files(path_in='/home/tfarley/data/movies/diagnostic_pc_tr
     from fire.interfaces.io_utils import filter_files_in_dir
     from fire.interfaces.camera_data_formats import read_ircam_raw_int16_sequence_file, get_ircam_raw_int_nframes_and_shape
 
-    str_today = datetime.now().strftime('%Y-%m-%d')
-    path_in = Path(str(path_in).format(today=str_today))
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    date_str = today_str if (date == 'today') else date
+    path_in = Path(str(path_in).format(today=today_str, date=date_str))
 
     if meta is None:
         meta = {}
@@ -294,7 +336,7 @@ def organise_ircam_raw_files(path_in='/home/tfarley/data/movies/diagnostic_pc_tr
             # Create ipx file in same directory
             fn_ipx = fn_raw_dest.with_name(fn_ipx_format.format(pulse=keys))
             if overwrite_ipx or (not fn_ipx.is_file()):
-                generate_ipx_file_from_ircam_raw_movie(fn_raw_dest, fn_ipx, pulse=keys, plot_check=False)
+                generate_ipx_file_from_ircam_raw_movie(fn_raw_dest, fn_ipx, pulse=keys, plot_check=True)
             # generate_ipx_file_from_ircam_raw(dest, meta_data_dict=camera_settings)
 
         if len(files_filtered) == n_files:
@@ -303,9 +345,12 @@ def organise_ircam_raw_files(path_in='/home/tfarley/data/movies/diagnostic_pc_tr
     logger.info(f'Copied raw movie files and generated json meta data for {len(files_filtered)} pulses: '
                 f'{list(files_filtered.keys())}')
 
-def copy_raw_files_from_staging_area(today=False, n_files=None, write_ipx=True, overwrite_ipx=True):
+def copy_raw_files_from_staging_area(date='today', n_files=None, write_ipx=True, overwrite_ipx=True,
+                                     path_archive='/home/tfarley/data/movies/diagnostic_pc_transfer/rit/{date}/',
+                                     path_out='~/data/movies/mast_u/{pulse}/{camera}/'):
     pulse_whitelist = None
     camera_settings = dict(camera='rit', fps=400, exposure=0.25e-3, lens=25e-3, t_before_pulse=100e-3)
+
     # fn_in = 'MASTU_LWIR_HL04A-(\d+).RAW'
     # path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210128/'
     # path_in = '/home/tfarley/ccfepc/T/tfarley/Ops_20210130/'
@@ -391,18 +436,23 @@ def copy_raw_files_from_staging_area(today=False, n_files=None, write_ipx=True, 
     # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-08-19/'
     # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-08-20/'
     # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-08-24/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-08-26/'
     # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-09-01/'
-    path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-09-08/'
+    # path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/2021-09-08/'
 
+    if path_archive is not None:
+        today_str = datetime.now().strftime('%Y-%m-%d')
 
-    if today:
-        # path_in = f'/home/tfarley/ccfepc/T/tfarley/RIT/{datetime.now().strftime("%Y-%m-%d")}/'
-        path_in = f'/home/tfarley/data/movies/diagnostic_pc_transfer/{datetime.now().strftime("%Y-%m-%d")}/'
+        if (date == 'today'):
+            date_str = today_str
+        elif isinstance(date, int):
+            date_str = (datetime.today()-timedelta(days=-date)).strftime('%Y-%m-%d')
+        else:
+            date_str = date
+        print(f'Date: {date_str}')
+        path_in = Path(str(path_archive).format(today=today_str, date=date_str))
 
     # TODO: Extract camera settings meta data from spreadsheet
-
-
-    path_out = '~/data/movies/mast_u/{pulse}/{camera}/'
 
     try:
         organise_ircam_raw_files(path_in=path_in, fn_in=fn_in, path_out=path_out, camera_settings=camera_settings,
@@ -444,7 +494,9 @@ def convert_ats_files_archive_to_ipx(pulses=None, path_in=None, date=None, copy_
     from fire.interfaces.io_utils import filter_files, filter_files_in_dir
     path_root = Path('~/data/movies/mast_u/').expanduser()
 
-    if date is None:
+    success, failed = [], []
+
+    if (date is None) or (date == 'today'):
         date = datetime.now().strftime('%Y-%m-%d')
 
     if path_in is not None:
@@ -456,7 +508,7 @@ def convert_ats_files_archive_to_ipx(pulses=None, path_in=None, date=None, copy_
     io_basic.copy_file(fn_meta, path_in, mkdir_dest=False, verbose=True, overwrite=True)
 
     if pulses is None:
-        pulses = list(sorted([p.stem for p in path_in.glob('[!.]*')]))
+        pulses = list(reversed(sorted([p.stem for p in path_in.glob('[!.]*')])))
         # pulses = [44677, 44683]
         # pulses = [44613]
         # pulses = pulses[:1]  # tmp
@@ -487,22 +539,34 @@ def convert_ats_files_archive_to_ipx(pulses=None, path_in=None, date=None, copy_
 
         path_fn_ats = path_in / fn_ats_formatted
         path_fn_ipx = path_out / fn_ipx
-        generate_ipx_file_from_flir_ats_movie(path_fn_ats, path_fn_ipx, pulse=pulse, plot_check=False)
+        try:
+            generate_ipx_file_from_flir_ats_movie(path_fn_ats, path_fn_ipx, pulse=pulse, plot_check=False)
+        except IndexError as e:
+            logger.exception(f'Failed to convert ats file to ipx for shot {pulse}')
+            failed.append(pulse)
+        else:
+            success.append(pulse)
 
         if copy_ats_file:
             io_basic.copy_file(path_fn_ats, Path(path_fn_ipx).with_suffix('.ats'), overwrite=True, verbose=True)
             io_basic.copy_file(path_fn_ats.with_name(fn_meta), Path(path_fn_ipx).parent, overwrite=True,
                                raise_exceptions=False, verbose=True)
-
+    print(f'Successfully created ipx files for pulses {success}, failed for {failed}')
 
 if __name__ == '__main__':
-    # copy_raw_files_from_staging_area(write_ipx=True)
+    # copy_raw_files_from_staging_area(write_ipx=True, date=-3)
     # convert_raw_files_archive_to_ipx(path=Path('~/data/movies/mast_u/44777/rit/').expanduser())
 
-    convert_ats_files_archive_to_ipx(path_in='~/data/movies/mast_u/rir_ats_files/{date}', copy_ats_file=True,
+    # path_ats = '~/data/movies/mast_u/rir_ats_files/{date}'
+    path_ats = '~/data/movies/diagnostic_pc_transfer/rir/{date}'
+
+    convert_ats_files_archive_to_ipx(path_in=path_ats, copy_ats_file=False,
                                      fn_ats='0{pulse}.ats',
                                      # fn_ats='rir-0{pulse}.ats',
-                                     # date=None,
-                                     date='2021-09-09',
-                                     # pulses=[43952]
+                                     date='today',
+                                     # date='2021-08-13',
+                                     # pulses=[44677],
+                                     # date='2021-05-13',
+                                     # pulses=[43952],  # Calibration movie
+                                     pulses=[44980],  # Calibration movie
                                      )
