@@ -419,19 +419,20 @@ def pulse_meta_data(shot, keys=
 
     out = dict()
     for key in keys:
-        try:
-            out[key] = pycpf.query([key], filters=['exp_number = {}'.format(shot)])[key]   # [0]
-            out['erc'] = 0
-        except Exception as e:
-            logger.warning(f'Failed to perform CPF query for {shot}, {key}')
-            if key in ('exp_date', 'exp_time'):
-                try:
-                    uda_module, client = uda_utils.get_uda_client()
-                    out['exp_date'], out['exp_time'] = client.get_shot_date_time(shot=shot)
-                except Exception as e:
-                    logger.warning('Also failed to retrieve date and time from UDA')
-                else:
-                    logger.info(f'Successfully retrieved shot time with UDA: {out["exp_date"], out["exp_time"]}')
+        if key not in out:
+            try:
+                out[key] = pycpf.query([key], filters=['exp_number = {}'.format(shot)])[key]   # [0]
+                out['erc'] = 0
+            except Exception as e:
+                logger.warning(f'Failed to perform CPF query for {shot}, {key}')
+                if key in ('exp_date', 'exp_time'):
+                    try:
+                        uda_module, client = uda_utils.get_uda_client()
+                        out['exp_date'], out['exp_time'] = client.get_shot_date_time(shot=shot)
+                    except Exception as e:
+                        logger.warning('Also failed to retrieve date and time from UDA')
+                    else:
+                        logger.info(f'Successfully retrieved shot time with UDA: {out["exp_date"], out["exp_time"]}')
     return out
 
 def get_shot_date_time(shot):
