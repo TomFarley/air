@@ -22,8 +22,10 @@ def hex8_to_float(hex):
 def FLIR_record_header_decomposition(header):
 	# There is certainly a field for the filter used, but I don't have files with different filters on to compare.
 	camera_type = bytearray.fromhex(header[678:724]).decode()
+
 	width = hex4_to_int(header[814:818])
 	height = hex4_to_int(header[818:822])
+
 	camera_SN = int(bytearray.fromhex(header[1034:1050]).decode())
 	lens = bytearray.fromhex(header[1066:1074]).decode()
 	return dict([('camera_type',camera_type),('width',width),('height',height),('camera_SN',camera_SN),('lens',lens)])
@@ -67,7 +69,9 @@ def raw_to_image(raw_digital_level,width,height,digital_level_bytes):
 	counts_digital_level = []
 	for i in range(pixels):
 		counts_digital_level.append(hex4_to_int(raw_digital_level[i*digital_level_bytes:(i+1)*digital_level_bytes]))
-	return np.flip(np.array(counts_digital_level).reshape((height,width)),axis=0)
+	# frame = np.flip(np.array(counts_digital_level).reshape((height,width)),axis=0)
+	frame = np.array(counts_digital_level).reshape((height,width))
+	return frame
 
 def read_ats_file_header(path, fileats, digital_level_bytes=4, header_marker='4949'):
 	data = open(os.path.join(path, fileats), 'rb').read()
@@ -164,7 +168,8 @@ def ats_to_dict(path, fileats, digital_level_bytes=4, header_marker='4949', n_fr
 	# return data,digitizer_ID,time_of_measurement,IntegrationTime,FrameRate,ExternalTrigger,SensorTemp_0,DetectorTemp,width,height,camera_SN,frame_counter
 	movie_data = dict([('data',data),('digitizer_ID',digitizer_ID),('time_of_measurement',time_of_measurement),
 				  ('IntegrationTime',IntegrationTime),('FrameRate',FrameRate),('ExternalTrigger',ExternalTrigger),
-				('SensorTemp_0',SensorTemp_0),('DetectorTemp',DetectorTemp),('width',width),('height',height),
+				('SensorTemp_0',SensorTemp_0),('DetectorTemp',DetectorTemp),
+					   ('height',height), ('width',width),  # Swap names here?
 					   ('camera', camera), ('camera_SN',camera_SN), ('lens', lens), ('frame_counter',frame_counter)])
 	return movie_data
 
