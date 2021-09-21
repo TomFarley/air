@@ -138,7 +138,7 @@ def plot_passed_temporal_stats(stat_profiles, stat_labels, stats=None, t=None, n
         t = n
         ax.set_xlabel(r'$x$ [arb]')
 
-    ax_n = plot_tools.add_second_x_scale(ax, x_axis_values=n, label='$n_{frame}$')
+    ax_n = plot_tools.add_second_x_scale(ax, x_axis_values=np.array(n), y_values=y, label='$n_{frame}$')
 
     if bit_depth is not None:
         ax.axhline(2**bit_depth, label='max DL', color='k', ls='--')
@@ -147,7 +147,7 @@ def plot_passed_temporal_stats(stat_profiles, stat_labels, stats=None, t=None, n
 
     plot_tools.annotate_providence(ax, meta_data=meta_data, annotate=(meta_data is not None))
     # plot_tools.annotate_axis(ax, r'$t_{int}=$'+f'{meta_data.get("exposure")*1e3:0.3g} ms', loc='bottom right')
-    plot_tools.legend(ax)
+    plot_tools.legend(ax, loc='center right')
 
     plot_tools.save_fig(save_fn, fig=fig, save=(save_fn is not None))
     plot_tools.show_if(show=show, close_all=False, tight_layout=True)
