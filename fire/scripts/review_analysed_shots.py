@@ -6,7 +6,7 @@
 Created: 
 """
 
-import logging
+import logging, datetime
 from pathlib import Path
 
 import numpy as np
@@ -21,6 +21,7 @@ from fire.interfaces import interfaces
 from fire.plugins import plugins
 from fire.plotting import debug_plots, image_figures, spatial_figures, temporal_figures, plot_tools
 from fire.scripts.read_pickled_ir_data import read_data_for_pulses_pickle
+from fire.physics import physics_parameters
 
 logger = logging.getLogger(__name__)
 logger.propagate = False
@@ -84,7 +85,13 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
     machine_plugins, machine_plugins_info = machine_plugins[machine], machine_plugins_info[machine]
     fire.active_machine_plugin = (machine_plugins, machine_plugins_info)
 
+    t_end = physics_parameters.get_t_end_shot(path_data['heat_flux_total_path0'], plot=False, t_end_min=0.1)
+    # r_end = path_data['t'][path_data['heat_flux_total_path0'].where(path_data['t']> 0.05).argmin(dim='t')] + 0.05
+    t_range = [0, t_end]
 
+    # r_range = [None, 1.0]
+    # r_range = [None, 1.65]
+    r_range = None
 
     n_middle = int(np.floor(len(frame_data)/2))  # Frame number in middle of movie
 
@@ -203,14 +210,16 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
             debug_plots.debug_plot_profile_2d(path_data, param='temperature', path_names=analysis_path_key,
                                               extend='both',
                                               robust=True, meta=meta_data, machine_plugins=machine_plugins,
-                                              label_tiles=True, t_range=None, robust_percentiles=robust_percentiles,
+                                              label_tiles=True, t_range=t_range, r_range=r_range,
+                                              robust_percentiles=robust_percentiles,
                                               set_data_coord_lims_with_ranges=True, save_path_fn=save_path_fn,
                                               show=True)
         if debug.get('temperature_vs_R_t-raw', False):
             save_path_fn = None
             debug_plots.debug_plot_profile_2d(path_data, param='temperature', path_names=analysis_path_key,
                                               robust=False, meta=meta_data, machine_plugins=machine_plugins,
-                                              label_tiles=True, t_range=None, robust_percentiles=None,
+                                              label_tiles=True, t_range=t_range, r_range=r_range,
+                                              robust_percentiles=None,
                                               set_data_coord_lims_with_ranges=True, save_path_fn=save_path_fn,
                                               show=True)
 
@@ -239,7 +248,8 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
             num = 'heat_flux_vs_R_t-robust'
             debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key, extend=extend,
                                               robust=True, meta=meta_data, machine_plugins=machine_plugins, num=num,
-                                              label_tiles=True, t_range=None, robust_percentiles=robust_percentiles,
+                                              label_tiles=True, t_range=t_range, r_range=r_range,
+                                              robust_percentiles=robust_percentiles,
                                               set_data_coord_lims_with_ranges=True, save_path_fn=save_path_fn,
                                               show=show)
             if (debug.get('heat_flux_vs_R_t-robust-save', False) and (not debug.get('heat_flux_vs_R_t-robust', False))):
@@ -256,7 +266,8 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
             num = 'heat_flux_vs_R_t-raw'
 
             debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key, num=num,
-                                              extend='neither', robust=robust,  meta=meta_data, t_range=None,
+                                              extend='neither', robust=robust,  meta=meta_data,
+                                              t_range=t_range, r_range=r_range,
                                               machine_plugins=machine_plugins, show=show, save_path_fn=save_path_fn)
             if (debug.get('heat_flux_vs_R_t-raw-save', False) and (not debug.get('heat_flux_vs_R_t-raw', False))):
                 plot_tools.close_all_mpl_plots(close_all=True, verbose=True)
@@ -298,7 +309,7 @@ def review_analysed_shot(image_data, path_data, meta, debug=None, output=None):
 
 
 
-def review_shot(pulse=None):
+def review_shot(pulse=None, camera = 'rit', machine='mast_u'):
     import pyuda
     client = pyuda.Client()
 
@@ -410,10 +421,10 @@ def review_shot(pulse=None):
         # pulse = 44678  # 750 kA conv, steady fueling without marfe
         pulse = 44679  # 750 kA conv, steady fueling with marfe
 
+        pulse = 44677  # Standard pulse JH suggests comparing with all diagnostics - RT18 slack, time to eurofusion
 
-
-    debug = {'calcam_calib_image': False, 'debug_detector_window': False,
-             'movie_intensity_stats': False,
+    debug = {'calcam_calib_image': True, 'debug_detector_window': False,
+             'movie_intensity_stats': True,
          'movie_data_animation': False, 'movie_data_nuc_animation': False,
              'movie_temperature_animation': False,
              'movie_temperature_animation_gif': False,
@@ -421,13 +432,13 @@ def review_shot(pulse=None):
          'spatial_res': False,
          'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
          'surfaces': False,
-         'analysis_path': False,
+         'analysis_path': True,
          'temperature_vs_R_t-raw': True,
          'temperature_vs_R_t-robust': False,
          'heat_flux_vs_R_t-robust': True, 'heat_flux_vs_R_t-raw': True,
-             'heat_flux_vs_R_t-robust-raw': True,
+             'heat_flux_vs_R_t-raw-save': True,
              'heat_flux_vs_R_t-robust-save': True,
-         'timings': False, 'strike_point_loc': False,
+         'timings': True, 'strike_point_loc': False,
          # 'heat_flux_path_1d': True,
          }
     # debug = {k: True for k in debug}
@@ -436,23 +447,22 @@ def review_shot(pulse=None):
     # recompute = True
     recompute = False
 
-    review_analysed_shot_pickle(pulse=pulse, debug_figures=debug, recompute=recompute)
+    review_analysed_shot_pickle(pulse=pulse, camera=camera, machine=machine, debug_figures=debug, recompute=recompute)
     pass
 
-def review_shot_list():
+def review_shot_list(shots=None, camera='rit', recompute=False):
     from ir_tools.automation.ir_automation import latest_uda_shot_number
     from fire.scripts.organise_ircam_raw_files import copy_raw_files_from_staging_area
 
-    recompute = False
-    # recompute = True
-
-    # shots = np.arange(44547, 44558)
-    # shots = np.arange(44776, 44788)
-    shots = np.arange(44700, 44866)[::-1]
-    # shots = [44677, 44683, 44678]
-    # shots = [44786, 44787]
-    # shots = [44547, 44548, 44550, 44551, 44554, 44555, 44556, 44558]  # missing 44552, 44553,
-    # shots = [44776, 44777, 44778, 44779, 44781, 44782, 44783, 44784, 44785, 44786, 44787][::-1]
+    if shots is None:
+        # shots = np.arange(44547, 44558)
+        # shots = np.arange(44776, 44788)
+        # shots = np.arange(44700, 44866)[::-1]
+        # shots = [44815,44818,44819, 44820]  # Bob WPTE shots
+        shots = [44801, 44805, 44894, 44896, 44903]  # Omkar shots
+        # shots = [44786, 44787]
+        # shots = [44547, 44548, 44550, 44551, 44554, 44555, 44556, 44558]  # missing 44552, 44553,
+        # shots = [44776, 44777, 44778, 44779, 44781, 44782, 44783, 44784, 44785, 44786, 44787][::-1]
 
     n_shots = len(shots)
 
@@ -468,9 +478,10 @@ def review_shot_list():
              'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
              'surfaces': False, 'analysis_path': False,
              'temperature_vs_R_t': False,
-             'heat_flux_vs_R_t-robust': False,
-             'heat_flux_vs_R_t-raw': False,
+             'heat_flux_vs_R_t-robust': True,
+             'heat_flux_vs_R_t-raw': True,
              'heat_flux_vs_R_t-robust-save': True,
+             'heat_flux_vs_R_t-raw-save': True,
              'timings': False,
              'strike_point_loc': False,
          }
@@ -486,7 +497,7 @@ def review_shot_list():
 
     for shot in shots:
         try:
-            review_analysed_shot_pickle(pulse=shot, debug_figures=debug, recompute=recompute)
+            review_analysed_shot_pickle(pulse=shot, camera=camera, debug_figures=debug, recompute=recompute)
         except Exception as e:
             logger.exception(f'Failed to reivew shot {shot}')
             status['fail'].append(shot)
@@ -498,6 +509,7 @@ def review_shot_list():
 def review_latest_shots(n_shots=1, camera='rit', copy_recent_shots=True, n_shots_skip=0, recompute=False, show=True):
     from ir_tools.automation.ir_automation import latest_uda_shot_number
     from fire.scripts.organise_ircam_raw_files import copy_raw_files_from_staging_area, convert_ats_files_archive_to_ipx
+    from fire.plugins.machine_plugins import mast_u
 
     shot_start = latest_uda_shot_number()
     shots = np.arange(shot_start, shot_start-n_shots, -1) - n_shots_skip  # [::-1]
@@ -524,12 +536,8 @@ def review_latest_shots(n_shots=1, camera='rit', copy_recent_shots=True, n_shots
     logger.info(f'Reviewing shots: {shots}')
 
     if copy_recent_shots:
-        if camera == 'rit':
-            copy_raw_files_from_staging_area(today=True, n_files=np.min([n_shots, 1]))
-        elif camera == 'rir':
-            path_in = '~/data/movies/mast_u/rir_ats_files/{date}'
-            fn_meta = '/home/tfarley/data/movies/mast_u/rir_ats_files/rir_meta.json'
-            convert_ats_files_archive_to_ipx(pulses=shots, path_in=path_in, copy_ats_file=True, fn_meta=fn_meta)
+        path_archive = '/home/tfarley/data/movies/diagnostic_pc_transfer/{camera}/{date}/'
+        organise_recent_shots(camera=camera, date='today', path_archive=path_archive)
 
     logger.setLevel(logging.WARNING)
     status = {'success': [], 'fail': []}
@@ -540,12 +548,35 @@ def review_latest_shots(n_shots=1, camera='rit', copy_recent_shots=True, n_shots
         except Exception as e:
             logger.exception(f'Failed to reivew shot {shot}')
             status['fail'].append(shot)
+            info = mast_u.pulse_meta_data(shot, keys=('exp_date', 'exp_time'))
+            if 'exp_date' in info:
+                date = info['exp_date']
+                organise_recent_shots(camera=camera, date=date)
         else:
             status['success'].append(shot)
             print()
     print(f'Finished review of shots {shots}: \n{status}')
 
+def organise_recent_shots(camera='rit', date='today', n_files=2,
+                          path_archive='/home/tfarley/data/movies/diagnostic_pc_transfer/{camera}/{date}/'):
+    from fire.scripts.organise_ircam_raw_files import copy_raw_files_from_staging_area, convert_ats_files_archive_to_ipx
+    if date == 'today':
+        date = datetime.datetime.now().strftime("%Y-%m-%d")
+
+    path_archive = path_archive.format(camera=camera, date=date)
+
+    if camera == 'rit':
+        copy_raw_files_from_staging_area(date=date, n_files=n_files, path_archive=path_archive, write_ipx=True)
+    elif camera == 'rir':
+        path_in = '/home/tfarley/data/movies/diagnostic_pc_transfer/rir/{date}/'
+        fn_meta = '/home/tfarley/data/movies/mast_u/rir_ats_files/rir_meta.json'
+        convert_ats_files_archive_to_ipx(pulses=None, path_in=path_in, copy_ats_file=False, fn_meta=fn_meta, date=date)
+
 if __name__ == '__main__':
-    review_shot(44903)
-    # review_shot_list()
-    # review_latest_shots(n_shots=25, n_shots_skip=50, copy_recent_shots=False, recompute=True, show=False)
+    # review_shot(44683, camera='rit', machine='mast_u')  # Low density locked modes
+    # review_shot(44910, camera='rit', machine='mast_u')  # RT18 slow sweep - raw images aswell
+    # review_shot(44677, camera='rir', machine='mast_u')
+    # review_shot(29541, camera='rir', machine='mast')
+    # review_shot(44896, camera='rit', machine='mast_u')
+    # review_shot_list(camera='rit', recompute=True)
+    review_latest_shots(camera='rit', n_shots=2, n_shots_skip=0, copy_recent_shots=True, recompute=False, show=False)
