@@ -1099,7 +1099,11 @@ def args_for(func, kwargs, include=(), exclude=(), match_signature=True, named_d
     return kws
 
 def mode_simple(data):
-    mode = stats.mode(make_iterable(data, ndarray=True)).mode[0]
+    data = make_iterable(data, ndarray=True)
+    if len(data) > 0:
+        mode = stats.mode(data).mode[0]
+    else:
+        mode = np.nan
     # mode = ndarray_0d_to_scalar(mode)
     return mode
 
