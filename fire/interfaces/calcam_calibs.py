@@ -110,21 +110,30 @@ def update_detector_window(calcam_calib: calcam.Calibration, detector_window: Op
     # TODO: Handle setting window when there are multiple subviews - need to extract subview windows from subview mask?
     geom = calcam_calib.geometry
     sensor_resolution = (geom.get_original_shape() if coords.lower() == 'original' else geom.get_display_shape())
+
+    if frame_data is not None:
+        frame_data_resolution = frame_data.shape[:0:-1]  # (x_width, y_hight)
+
     if (detector_window is None) or np.any(np.isnan(detector_window)):
         if frame_data is None:
             raise ValueError(f'Require either frame data or detector window as inputs. Both None.')
         logger.warning(f'Detector window not supplied - assuming centred detector window')
-        image_resolution = frame_data.shape[:0:-1]  # (x_width, y_hight)
+        image_resolution = frame_data_resolution
         # TODO: Check using x, y coords right way round with calcam conventions etc, +1 offsets etc
-        left = int(sensor_resolution[0]/2 - image_resolution[0]/2)
-        top = int(sensor_resolution[1]/2 - image_resolution[1]/2)  # Origin in top left
-        detector_window = np.array([left, top, *image_resolution])  # +1
+        left = int(sensor_resolution[0]/2 - image_resolution[0]/2) + 1
+        top = int(sensor_resolution[1]/2 - image_resolution[1]/2) + 1  # Origin in top left starts at 1 in ipx standard
+        #  window = (Left, Top, Width, Height)
+        detector_window = np.array([left-1, top-1, *image_resolution])  # Subtract 1 from left/top so coords start at 0
     else:
         # TODO: Check if image_resolution needs reversing?
         image_resolution = detector_window[2:]
+        if frame_data is not None:
+            if not np.all(frame_data.shape[:0:-1] == image_resolution):
+                raise ValueError('Image resolution from detector window does not match frame data shape: '
+                                 f'{image_resolution} != {frame_data_resolution}')
     assert len(detector_window) == 4
 
-    detector_window_applied = np.all(sensor_resolution == image_resolution)
+    detector_window_applied = np.any(sensor_resolution != image_resolution)
 
     # NOTE: Detector window coordinates must always be in "original" coordinates.
     try:
