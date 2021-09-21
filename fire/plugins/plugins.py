@@ -164,7 +164,8 @@ def get_compatible_plugins(plugin_paths: PathList,
 def call_plugin_func(pluggins, name, args, kwargs=(), dummy_ouput=None, verbose_dummy_func=True):
     args = make_iterable(args)
     kwargs = dict(kwargs)
-    func = pluggins.get(name, dummy_function(name, dummy_ouput, verbose=verbose_dummy_func))
+    dummy_func = dummy_function(name, dummy_ouput, verbose=verbose_dummy_func)
+    func = pluggins.get(name, dummy_func)
     out = func(*args, **kwargs)
     return out
 
