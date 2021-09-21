@@ -36,7 +36,7 @@ def get_freia_ipx_path(pulse, camera):
     ipx_path_fn = MAST_IMAGES + f"0{pulse[0:2]}/{pulse}/{camera}0{pulse}.ipx"
     return ipx_path_fn
 
-def read_movie_meta_pyipx(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
+def read_movie_meta_with_pyipx(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
     """Read frame data from MAST IPX movie file format.
 
     :param path_fn: Path to IPX movie file
@@ -87,12 +87,12 @@ def read_movie_meta_pyipx(path_fn: Union[str, Path], transforms: Iterable[str]=(
 
     # TODO: Move derived fields to common function for all movie plugins: image_shape, fps, t_range
     # TODO: Check ipx field 'top' follows image/calcam conventions
-    movie_meta['detector_window'] = get_detector_window_from_ipx_header(ipx_header, plugin='ipx', fn=path_fn)
-
+    check_ipx_detector_window_meta_data(movie_meta, plugin='ipx', fn=path_fn, modify=True)  # Complete missing fields
+    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
     movie_meta['ipx_header'] = ipx_header
     return movie_meta
 
-def get_detector_window_from_ipx_header(ipx_header, plugin=None, fn=None, verbose=True):
+def check_ipx_detector_window_meta_data(ipx_header, plugin=None, fn=None, modify=True, verbose=True):
     # TODO: Move to generic movie plugin functions module
     log = logger.warning if verbose else logger.debug
     problems = 0
@@ -100,53 +100,82 @@ def get_detector_window_from_ipx_header(ipx_header, plugin=None, fn=None, verbos
     # TODO: apply abs to each value so don't have negative 'bottom' value etc?
     left, top, width, height, right, bottom = np.array([np.abs(ipx_header[key]) if key in ipx_header else np.nan
                                                       for key in ('left', 'top', 'width', 'height', 'right', 'bottom')])
+
+    left_top = np.array([left, top])
+    width_height = np.array([width, height])
+
+    if np.any(np.isnan(width_height)):
+        raise ValueError(f'Ipx header dict is missing width/height meta data: {width_height}')
+
     # From IPX1 documentation: left: offset=244, length=2, type=unsigned; Window position (leftmost=1); 0 – not defined.
     # Therefore subtract 1 to get zero indexed pixel coordinate
-    detector_window = np.array([left-1, top-1, width, height])
-
-    if np.any(detector_window[:2] == -1):
+    if np.any(left_top == -1):
         log(f'{plugin} Detector window corner coords contain zeros which for ipx standard means "not defined": '
             f'(left, top = {left}, {top}) ({plugin}, {fn})')
-        detector_window[:2][(detector_window[:2] == -1)] = 0
-        log(f'Assumed window corner at origin: {detector_window}')
-        if np.any(detector_window[2:] < 256):
+        left_top[(left_top == -1)] = 1
+        left, top = left_top.astype(int)
+        log(f'Assumed window corner at origin (leftmost=1): {left_top}')
+        if np.any(width_height < 256):
             raise ValueError(f'Detector appears to be subwindowed, so assuming corner at origin probably not valid')
         problems += 1
 
-    if np.any(np.isnan(detector_window)):
-        log(f'{plugin} file missing meta data for detector sub-window: {detector_window} ({plugin}, {fn})')
-        detector_window[:2][np.isnan(detector_window[:2])] = 0
-        log(f'Set nans to zero: {detector_window}')
+    if np.any(np.isnan(left_top)):
+        log(f'{plugin} file missing meta data for detector sub-window origin: {left_top} ({plugin}, {fn})')
+        left_top[np.isnan(left_top)] = 1
+        left, top = left_top.astype(int)
+        log(f'Set left, top nans to origin (leftmost=1): {left_top}')
         problems += 1
 
-    try:
-        width_calc = right - left
-        width = ipx_header['width']
-    except KeyError as e:
-        pass
+    if np.isnan(right):
+        right = int(left + width)
+        logger.debug(f'Calculated sub-window "right" = left + width = {right}')
     else:
+        width_calc = right - left
         if width_calc != width:
             log(f'Detector window width calculated from right-left = {right}-{left} = {width_calc} '
                            f'!= {width} = width')
             problems += 1
 
-    try:
-        # height_calc = top - bottom
-        height_calc = bottom - top
-        height = ipx_header['height']
-    except KeyError as e:
-        pass
+    if np.isnan(bottom):
+        bottom = int(top + height)
+        logger.debug(f'Calculated sub-window "bottom" = top + height = {bottom}')
     else:
+        height_calc = bottom - top
         if height_calc != height:
-            log(f'Detector window height calculated from top-bottom = {top}-{bottom} = {height_calc} '
+            log(f'Detector window height calculated from bottom-top = {bottom}-{top} = {height_calc} '
                            f'!= {height} = height')
-        problems += 1
-
-    if not np.any(np.isnan(detector_window)):
-        detector_window = detector_window.astype(int)
+            problems += 1
 
     if problems > 0:
         pass
+
+    image_resolution = ipx_header.get('image_resolution', ipx_header.get('image_shape'))
+    if image_resolution is not None:  # Not standard ipx field, but used in FIRE - equal to frame_data.shape[1:]
+        if not np.all(image_resolution == np.array([height, width])):
+            raise ValueError('Image_resolution field doesnt match other header meta data')
+
+    if modify:
+        for key, value in zip(('left', 'top', 'width', 'height', 'right', 'bottom'),
+                              (left, top, width, height, right, bottom)):
+            ipx_header[key] = int(value)
+
+    return (left, top, width, height, right, bottom)
+
+def get_detector_window_from_ipx_header(ipx_header):
+    """Return tuple of ('left', 'top', 'width', 'height') with left and top starting at 0 (not 1 as in ipx standard).
+    Note: Coordinates and widths should be according to 'Original' coords not 'Display' coords (Calcam conventions)"""
+    # TODO: apply abs to each value so don't have negative 'bottom' value etc?
+    left, top, width, height, right, bottom = np.array([np.abs(ipx_header[key]) if key in ipx_header else np.nan
+                                                      for key in ('left', 'top', 'width', 'height', 'right', 'bottom')])
+
+    # From IPX1 documentation: left: offset=244, length=2, type=unsigned; Window position (leftmost=1); 0 – not defined.
+    # Therefore subtract 1 to get zero indexed pixel coordinate
+    detector_window = np.array([left-1, top-1, width, height])
+
+    if not np.any(np.isnan(detector_window)):
+        detector_window = detector_window.astype(int)
+    else:
+        raise ValueError(f'Detector sub-window contains nans: {detector_window}')
 
     return detector_window
 
@@ -200,10 +229,10 @@ def convert_ipx_header_to_uda_conventions(header: dict) -> dict:
     # header['right'] = header.pop('left') + header.pop('width')
     return header
 
-def read_movie_data_pyipx(path_fn: Union[str, Path],
-                    n_start:Optional[int]=None, n_end:Optional[int]=None, stride:Optional[int]=1,
-                    frame_numbers: Optional[Union[Iterable, int]]=None,
-                    transforms: Optional[Iterable[str]]=()) -> MovieData:
+def read_movie_data_with_pyipx(path_fn: Union[str, Path],
+                               n_start:Optional[int]=None, n_end:Optional[int]=None, stride:Optional[int]=1,
+                               frame_numbers: Optional[Union[Iterable, int]]=None,
+                               transforms: Optional[Iterable[str]]=()) -> MovieData:
     """Read frame data from MAST IPX movie file format.
 
     :param path_fn: Path to IPX movie file
@@ -253,7 +282,7 @@ def read_movie_data_pyipx(path_fn: Union[str, Path],
     vid.set_frame_number(n)
     while n <= n_end:
         if n in frame_numbers:
-            # frames are read with 16 bit dynamic range, but values are 10 bit!
+            # frames are read with 16 bit dynamic range, but values are 14 bit!
             try:
                 ret, frame, header = vid.read(transforms=transforms)
             except Exception as e:
@@ -361,7 +390,9 @@ def read_movie_meta_with_mastmovie(path_fn: Union[str, Path], transforms: Iterab
     movie_meta['t_range'] = np.array([ipx.frames[0].time, ipx.frames[-1].time])  # TODO: Refine
     movie_meta['image_shape'] = np.array([movie_meta['height'], movie_meta['width']])
     movie_meta['fps'] = movie_meta['n_frames'] / (movie_meta['t_range'][1] - movie_meta['t_range'][0])
-    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta, plugin='ipx', fn=path_fn)
+
+    check_ipx_detector_window_meta_data(movie_meta, plugin='raw', fn=path_fn, modify=True)  # Complete missing fields
+    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
 
     frame_times = np.array([frame.time for frame in ipx.frames])
     movie_meta['fps'] = 1 / np.median(np.diff(frame_times))
@@ -381,7 +412,6 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
     if not Path(path_fn).is_file():
         raise FileNotFoundError(f'IPX file does not exist: {path_fn}')
 
-
     # open the file
     ipx = load_ipx_file(open(path_fn, mode='rb'))
 
@@ -389,6 +419,7 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
     # frames = list(video.frames())
 
     n_frames = ipx.header.num_frames
+    bit_depth = ipx.header.depth
 
     frame_data = np.zeros((n_frames, ipx.header.frame_height, ipx.header.frame_width))
 
@@ -408,6 +439,10 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
             i += 1
     assert i == n_frames, f"i != n_frames: {i} != {n_frames}"
 
+    # IPX files need to be written and read with x4 factor applied
+    pil_depth_correction = 2 ** (16 - bit_depth)
+    frame_data /= pil_depth_correction
+
     message = f'Read ipx file with mastmovie: "{path_fn}"'
     logger.debug(message)
     if verbose:
@@ -420,6 +455,7 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
     from PIL import Image
     from mastvideo import write_ipx_file, IpxHeader, IpxSensor, SensorType, ImageEncoding
     from fire.plugins.machine_plugins import mast_u
+    from fire.interfaces import interfaces
     from matplotlib import cm
     from fire.scripts.organise_ircam_raw_files import complete_meta_data_dict
     from fire.misc.utils import filter_kwargs
@@ -439,8 +475,8 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
     depth = header_dict.get('bit_depth', header_dict.get('depth', 14))
     ipx_version = int(header_dict.get('ID', '1')[-1])
 
-    meta_cpf = mast_u.pulse_meta_data(pulse, keys=['exp_date', 'exp_time'])
-    datetime = f'{meta_cpf["exp_date"]} {meta_cpf["exp_time"]}' if 'exp_date' in meta_cpf.keys() else '<placeholder>'
+    shot = interfaces.digest_shot_file_name(fn=path_fn_ipx)['shot']
+    datetime = mast_u.get_shot_date_time(shot)
 
     trigger = header_dict.get('t_before_pulse', header_dict.get('trigger',
                                                                 header_dict.get('ipx_header', {}).get('trigger')))
@@ -488,14 +524,18 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
 
     # header_dict_subset = filter_kwargs(header_dict, funcs=(IpxHeader,), kwarg_aliases=name_conventions)
 
+    # mastmovie assumes images are up-scaled to use full 16 bit dynamic range for displaying with PIL. Therefore
+    # mastmovie downscales images before writing - compensate before write to reverse effect
+    bit_depth_factor = 2**(16-depth)
+
     nuc_frame = copy(movie_data[1])
     if not apply_nuc:
         nuc_frame *= 0
-        frames_ndarray = [frame for frame in movie_data]  # for plotting with matplotlib
+        frames_ndarray = [frame for frame in movie_data*bit_depth_factor]  # for plotting with matplotlib
         frames = [Image.fromarray(frame, mode='I;16') for frame in frames_ndarray]  #
     else:
         logger.warning(f'Applying nuc subtraction to new IPX file: {ipx_path_fn}')
-        frames_ndarray = [frame - nuc_frame for frame in movie_data]  # for plotting with matplotlib
+        frames_ndarray = [frame - nuc_frame for frame in movie_data*bit_depth_factor]  # for plotting with matplotlib
         frames = [Image.fromarray(frame - nuc_frame, mode='I;16') for frame in frames_ndarray]  #
 
     # frames = [Image.fromarray(np.uint8(cm.Greys(frame-nuc_frame))*255, mode='I;16') for frame in movie_data]  #
@@ -558,9 +598,9 @@ def download_ipx_via_http_request(camera, pulse, path_out='~/data/movies/{machin
 
     return fn_out
 
-read_movie_meta = read_movie_meta_pyipx
+read_movie_meta = read_movie_meta_with_pyipx
 # read_movie_meta = read_movie_meta_with_mastmovie
-read_movie_data = read_movie_data_pyipx
+read_movie_data = read_movie_data_with_pyipx
 # read_movie_data = read_movie_data_with_mastmovie
 
 if __name__ == '__main__':

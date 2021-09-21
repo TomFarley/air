@@ -21,7 +21,7 @@ from copy import copy
 import numpy as np
 import pandas as pd
 
-from fire.plugins.movie_plugins.ipx import get_detector_window_from_ipx_header
+from fire.plugins.movie_plugins.ipx import check_ipx_detector_window_meta_data, get_detector_window_from_ipx_header
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -140,7 +140,9 @@ def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> 
     if 'detector_window' not in file_dict:
         movie_meta['width'] = image_shape[1]
         movie_meta['height'] = image_shape[0]
-        movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta, plugin='npz', fn=path_fn)
+
+    check_ipx_detector_window_meta_data(movie_meta, plugin='raw', fn=path_fn, modify=True)  # Complete missing fields
+    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
 
     meta_keys = ['n_frames', 'frame_range', 't_range', 'image_shape', 'fps', 'exposure', 'bit_depth', 'lens',
                  'detector_window']

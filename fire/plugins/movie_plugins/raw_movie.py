@@ -16,7 +16,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 from fire.interfaces.interfaces import json_load
-from fire.plugins.movie_plugins.ipx import get_detector_window_from_ipx_header
+from fire.plugins.movie_plugins.ipx import check_ipx_detector_window_meta_data, get_detector_window_from_ipx_header
 from fire.interfaces.camera_data_formats import read_ircam_raw_int16_sequence_file
 
 logging.basicConfig()
@@ -61,6 +61,22 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True) -> di
             raise IOError(message)
         else:
             logger.warning(message)
+
+    for i, key in enumerate(['left', 'top', 'width', 'height']):
+        movie_meta[key] = movie_meta['detector_window'][i]
+    movie_meta['left'] += 1
+    movie_meta['top'] += 1
+
+    check_ipx_detector_window_meta_data(movie_meta, plugin='raw', fn=path_fn, modify=True)  # Complete missing fields
+    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
+
+    if 'date_time' not in movie_meta:
+        from fire.plugins.machine_plugins import mast_u
+        from fire.interfaces import interfaces
+        fn_info = interfaces.digest_shot_file_name(path_fn)
+        shot = fn_info['shot']
+        movie_meta['date_time'] = mast_u.get_shot_date_time(shot)
+
     return movie_meta
 
 def read_movie_data(path_fn: Union[str, Path],

@@ -19,7 +19,7 @@ from copy import copy
 
 import numpy as np
 
-from fire.plugins.movie_plugins.ipx import get_detector_window_from_ipx_header
+from fire.plugins.movie_plugins.ipx import check_ipx_detector_window_meta_data, get_detector_window_from_ipx_header
 from fire.interfaces import uda_utils
 
 logger = logging.getLogger(__name__)
@@ -186,7 +186,8 @@ def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:O
     movie_meta['bit_depth'] = ipx_header['depth']
     # TODO: Add filter name?
 
-    movie_meta['detector_window'] = get_detector_window_from_ipx_header(ipx_header, plugin='uda')
+    check_ipx_detector_window_meta_data(movie_meta, plugin='uda', fn=path_fn, modify=True)  # Complete missing fields
+    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
 
     movie_meta['ipx_header'] = ipx_header
 

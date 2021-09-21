@@ -40,7 +40,7 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbo
     :type: dict
     """
     from fire.interfaces.flir_ats_movie_reader import ats_to_dict, read_ats_file_header
-    from fire.plugins.movie_plugins.ipx import get_detector_window_from_ipx_header
+    from fire.plugins.movie_plugins.ipx import check_ipx_detector_window_meta_data, get_detector_window_from_ipx_header
 
     if verbose:
         print(f'{datetime.now()}: Reading ats meta data: {path_fn}')
@@ -114,8 +114,8 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbo
 
     movie_meta['t_range'] = np.array([np.min(movie_meta['frame_times']), np.max(movie_meta['frame_times'])])
 
-    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta, plugin='ats', fn=path_fn,
-                                                                        verbose=verbose)
+    check_ipx_detector_window_meta_data(movie_meta, plugin='ats', fn=path_fn, modify=True)  # Complete missing fields
+    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
 
     # TODO: Rename meta data fields to standard
 
@@ -185,8 +185,12 @@ if __name__ == '__main__':
 
     # path = Path('/home/tfarley/data/movies/mast_u/rir_ats_files/2021-08-19')
     # file_ats = '044749.ats'
-    path = Path('/home/tfarley/data/movies/mast_u/rir_ats_files/2021-08-17')
-    file_ats = '044684.ats'
+    # path = Path('/home/tfarley/data/movies/mast_u/rir_ats_files/2021-08-17')
+    # file_ats = '044684.ats'
+    shot = 44677
+    path = Path('/home/tfarley/data/movies/diagnostic_pc_transfer/rir/2021-08-13/')
+
+    file_ats = f'0{shot}.ats'
 
     print(f'Reading FLIR ats movie (may be slow): {path}/{file_ats}')
     movie_meta = read_movie_meta(path / file_ats)
@@ -195,6 +199,6 @@ if __name__ == '__main__':
     print(movie_meta)
 
     plt.figure(f'ats movie {file_ats}')
-    plt.imshow(movie_data.frame_data[10])
+    plt.imshow(movie_data.frame_data[100])
     plt.show()
     pass

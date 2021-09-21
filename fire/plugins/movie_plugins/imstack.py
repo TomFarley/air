@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 from pyIpx.movieReader import imstackReader
 from fire.interfaces.interfaces import json_load
-from fire.plugins.movie_plugins.ipx import get_detector_window_from_ipx_header
+from fire.plugins.movie_plugins.ipx import check_ipx_detector_window_meta_data, get_detector_window_from_ipx_header
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -91,7 +91,8 @@ def read_movie_meta(path: Union[str, Path], transforms: Iterable[str]=()) -> dic
     # TODO: Check ipx field 'top' follows image/calcam conventions
     movie_meta['width'] = image_shape[1]
     movie_meta['height'] = image_shape[0]
-    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta, plugin='imstack', fn=path)
+    check_ipx_detector_window_meta_data(movie_meta, plugin='imstack', modify=True)  # Complete missing fields
+    movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
 
     imstack_header['imstack_filenames'] = vid.file_list
     movie_meta['imstack_header'] = imstack_header
