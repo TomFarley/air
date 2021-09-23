@@ -33,8 +33,8 @@ from fire.plotting import plot_tools, debug_plots, image_figures, temporal_figur
 heat_flux_module = heat_flux  # Alias to avoid name clashes
 
 # TODO: remove after debugging core dumps etc
-import faulthandler
-faulthandler.enable()
+# import faulthandler
+# faulthandler.enable()
 
 # TODO: Remove after debugging pandas warnings
 import warnings
@@ -137,6 +137,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     machine_plugins, machine_plugins_info = machine_plugins[machine], machine_plugins_info[machine]
     fire.active_machine_plugin = (machine_plugins, machine_plugins_info)
     meta_pulse = plugins.call_plugin_func(machine_plugins, 'pulse_meta_data', args=(pulse,), dummy_ouput={})
+    meta_data.update(meta_pulse)
+
+    date = meta_data.get('exp_date', None)
 
     # Load movie plugins compatible with camera
     # TODO: Move movie reader config information to separate json config file
@@ -165,7 +168,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                                      movie_paths=movie_paths, movie_fns=movie_fns,
                                                      plugin_precedence=None, movie_plugin_definition_file=None)
     movie_meta, movie_origin = movie_reader.read_movie_meta_data(pulse=pulse, camera=camera, machine=machine,
-                                                         check_output=True, substitute_unknown_values=(not scheduler))
+                                                         check_output=True, substitute_unknown_values=(not scheduler),
+                                                                 meta=dict(date=date))
 
     # movie_meta, movie_origin = plugins.plugins_movie.read_movie_meta_data(pulse, camera, machine, movie_plugins,
     #                                                 movie_paths=movie_paths, movie_fns=movie_fns,
@@ -260,7 +264,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # Load raw frame data
     movie_data, movie_origin = movie_reader.read_movie_data(pulse=pulse, camera=camera, machine=machine,
-                                                            n_start=None, n_end=None, stride=1, transforms=None)
+                                                            n_start=None, n_end=None, stride=1, transforms=None,
+                                                            meta=dict(date=date))
     (frame_nos, frame_times, frame_data) = movie_data
 
     logger.info("Movie time period [%g, %g]" % (np.nanmin(frame_times), np.nanmax(frame_times)))
@@ -336,26 +341,32 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # Detect saturated pixels, uniform frames etc
     bad_frames_info = data_quality.identify_bad_frames(frame_data, bit_depth=movie_meta['bit_depth'],
-                                                       n_discontinuities_expected=1, raise_on_saturated=False)
+                                            n_discontinuities_expected=1, raise_on_saturated=False, debug_plot=False)
     frames_nos_discontinuous = bad_frames_info['discontinuous']['frames']['n']
-    frame_data_clipped, removed_frames = data_quality.remove_bad_opening_and_closing_frames(frame_data,
-                                                                                    frames_nos_discontinuous)
-    # TODO: Detect frames with non-uniform time differences (see heat flux func)
-
-    # Now frame_data is in its near final form (bad frames removed) merge it into image_data
-    # image_data = xr.merge([image_data, frame_data_clipped])  # Merging subset DataArray doesn't reduce coord ranges
-    image_data = image_data.drop_sel(dict(n=removed_frames['n_removed']))
+    frame_data_clipped, modified_frames = data_quality.remove_bad_frames(frame_data, frames_nos_discontinuous,
+                            remove_opening_closing=True, interpolate_middle=True, nan_middle=False, debug_plot=False)
+    # Merge to set bad frames to nan
+    image_data = xr.merge([image_data, frame_data_clipped])  # Merging subset DataArray doesn't reduce coord ranges
+    # Merging subset DataArray doesn't reduce coord ranges so need to drop
+    image_data = image_data.drop_sel(dict(n=modified_frames['removed']))
     frame_data = image_data['frame_data']
 
-    # Use dark parts of image to detect dark level drift
-    # TODO: Store dark level correction and mask in dataset
-    dark_level, dark_level_correction_factors, mask_dark = camera_checks.get_dark_level_drift(image_data)
+    # TODO: Detect frames with non-uniform time differences (see heat flux func)
 
+
+    # Use dark parts of image to detect dark level drift
     # apply_dark_level_correction = True
     apply_dark_level_correction = False
+
+    if apply_dark_level_correction or debug.get('dark_level', False):
+        # TODO: Store dark level correction and mask in dataset
+        dark_level, dark_level_correction_factors, mask_dark = camera_checks.get_dark_level_drift(image_data, plot=False)
+
     if apply_dark_level_correction:
         frame_data = camera_checks.correct_dark_level_drift(image_data['frame_data'], dark_level_correction_factors)
         image_data['frame_data'] = frame_data
+    else:
+        logger.info('NOT applying dark level drift correction')
 
     if (debug.get('dark_level', False)):
         camera_checks.plot_dark_level_variation(mask_dark=mask_dark, frame_data=image_data['frame_data'],
@@ -368,12 +379,14 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         # Force plot if there are any saturated frames
         fig, ax, ax_n = temporal_figures.plot_temporal_stats(image_data['frame_data'], meta_data=meta_data,
                                                              num='movie_intensity_stats-corrected',
-                                                             bit_depth=meta_data['bit_depth'])
-        if removed_frames:
+                                                             bit_depth=meta_data['bit_depth'], show=False)
+        if modified_frames:
             # Label ends of movie that are discarded due discontinuous intensities etc
-            ax_n.axvline(x=removed_frames['start'], ls=':', color='k', label='clipped bad frames from start')
-            ax_n.axvline(x=len(image_data['frame_data']) - 1 - removed_frames['end'], ls=':', color='k',
-                         label='clipped bad frames from end')
+            ax_n.axvline(x=modified_frames['n_removed_start'], ls=':', color='k', label='Clipped bad frames from start')
+            ax_n.axvline(x=len(image_data['frame_data']) - 1 - modified_frames['n_removed_end'], ls=':', color='k',
+                         label='Clipped bad frames from end')
+            for n in modified_frames['interpolated_middle']:
+                ax_n.axvline(x=n, ls=':', lw=1, color='r', label='Interpolated bad frame')
         plot_tools.show_if(show=True)
 
     # TODO: Add coordinates for pre-transformation frame data
@@ -427,26 +440,28 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Consider using min over whole (good frame) movie range to avoid negative values from nuc subtraction
     # TODO: consider using custon nuc time/frame number range for each movie? IDL sched had NUC time option
     # TODO: Look up first shot of day and load starting nuc frames from there to avoid warming from preceding shots
-    nuc_frame = nuc.get_nuc_frame(origin={'n': nuc_frame_range}, frame_data=image_data['frame_data'],
-                                  reduce_func='mean')
+    nuc_frames = nuc.get_nuc_frames(origin={'n': nuc_frame_range}, frame_data=image_data['frame_data'],
+                                              reduce_func='mean', n_digitisers=2)
 
     # nuc_frame = get_nuc_frame(origin={'n': [None, None]}, frame_data=frame_data, reduce_func='min')
-    frame_data_nuc = nuc.apply_nuc_correction(image_data['frame_data'], nuc_frame, raise_on_negatives=False)
+    frame_data_nuc = nuc.apply_nuc_correction(image_data['frame_data'], nuc_frames, raise_on_negatives=False)
     frame_data_nuc = data_structures.attach_standard_meta_attrs(frame_data_nuc, varname='frame_data_nuc',
                                                                 key='frame_data')
-    image_data['nuc_frame'] = (('y_pix', 'x_pix'), nuc_frame.data)
+    image_data['nuc_frames'] = nuc_frames
     image_data['frame_data_nuc'] = frame_data_nuc
 
     if (debug.get('movie_intensity_stats-nuc', False) or
             ((not scheduler) and (bad_frames_info['saturated']['n_bad_frames']))):
         # Force plot if there are any saturated frames
         fig, ax, ax_n = temporal_figures.plot_temporal_stats(image_data['frame_data_nuc'], meta_data=meta_data,
-                                                             num='movie_intensity_stats-nuc')
-        if removed_frames:
+                                                             num='movie_intensity_stats-nuc', show=False)
+        if modified_frames:
             # Label ends of movie that are discarded due discontinuous intensities etc
-            ax_n.axvline(x=removed_frames['start'], ls=':', color='k', label='clipped bad frames from start')
-            ax_n.axvline(x=len(image_data['frame_data_nuc']) - 1 - removed_frames['end'], ls=':', color='k',
-                         label='clipped bad frames from end')
+            ax_n.axvline(x=modified_frames['n_removed_start'], ls=':', color='k', label='Clipped bad frames from start')
+            ax_n.axvline(x=len(image_data['frame_data']) - 1 - modified_frames['n_removed_end'], ls=':', color='k',
+                         label='Clipped bad frames from end')
+            for n in modified_frames['interpolated_middle']:
+                ax_n.axvline(x=n, ls=':', lw=1, color='r', label='Interpolated bad frame')
         plot_tools.show_if(show=True)
 
     if output.get('raw_frame_image', False):
@@ -846,296 +861,19 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     status = 'success'
     return {'status': status, 'outputs': outputs, 'meta_data': meta_data}
 
-
-def run_jet():  # pragma: no cover
-    pulse = 94935  # Split view example 715285
-    camera = 'kldt'
-    pass_no = 0
-    machine = 'JET'
-    scheduler = False
-    magnetics = False
-    update_checkpoints = False
-    # update_checkpoints = True
-    debug = {'debug_detector_window': False, 'camera_shake': True,
-             'movie_data_animation': False, 'movie_data_nuc_animation': False,
-             'spatial_coords': True, 'spatial_res': False, 'movie_data_nuc': False,
-             'temperature_im': False, 'surfaces': False, 'analysis_path': True}
-    # debug = {k: True for k in debug}
-    # debug = {k: False for k in debug}
-    figures = {'spatial_res': False}
-    logger.info(f'Running JET scheduler workflow...')
-    status = scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
-                       equilibrium=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures)
-    return status
-
-def run_mast_rir():  # pragma: no cover
-    # pulse = 23586  # Full frame with clear spatial calibration
-    pulse = 26505  # Full frame OSP only louvre12d, 1D analysis profile, HIGH current - REQUIRES NEW CALCAM CALIBRATION
-    # pulse = 26489  # Full frame OSP only, 1D analysis profile, MODERATE current - REQUIRES NEW CALCAM CALIBRATION
-    # pulse = 28866  # Low power, (8x320)
-    # pulse = 29210  # High power, (8x320) - Lots of bad frames/missing data?
-    # pulse = 29936  # Full frame, has good calcam calib
-    # pulse = 30378  # High ELM surface temperatures ~450 C
-
-    # pulse = 24688  # full frame - requires new callibration - looking at inner strike point only
-    # pulse = 26098  # full frame - no?
-    # pulse = 30012  # full frame
-    # pulse = 29945  # [  0  80 320  88] TODO: Further check detector window aligned correctly?
-
-    # pulse = 28623  # 700kA
-
-    # Pulses with bad detector window meta data (512 widths?): 23775, 26935
-
-    # # pulse_range_rand = [23586, 28840]
-    # # pulse_range_rand = [28840, 29936]
-    # pulse_range_rand = [29936, 30471]
-    # pulse = int(pulse_range_rand[0] + np.diff(pulse_range_rand)[0] * np.random.rand())
-
-    camera = 'rir'
-    pass_no = 0
-    machine = 'MAST'
-    scheduler = False
-    magnetics = False
-    update_checkpoints = False
-    # update_checkpoints = True
-    debug = {'debug_detector_window': False, 'camera_shake': False,
-             'movie_data_animation': False, 'movie_data_nuc_animation': False,
-             'spatial_coords': True, 'spatial_res': False, 'movie_data_nuc': False,
-             'surfaces': False, 'analysis_path': True, 'temperature_im': False}
-    # debug = {k: True for k in debug}
-    debug = {k: False for k in debug}
-    figures = {'spatial_res': False}
-    logger.info(f'Running MAST scheduler workflow...')
-    status = scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
-                       equilibrium=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures)
-    return status
-
-def run_mast_rit():  # pragma: no cover
-    # pulse = 30378
-    # pulse = 29936
-    # pulse = 27880  # Full frame upper divertor
-    # pulse = 29000  # 80x256 upper divertor
-    # pulse = 28623   # 700kA - no data?
-    pulse = 26798   # MAST 400kA
-    camera = 'rit'
-
-    pass_no = 0
-    machine = 'MAST'
-    scheduler = False
-    magnetics = False
-    update_checkpoints = False
-    # update_checkpoints = True
-    debug = {'debug_detector_window': True, 'camera_shake': True,
-             'movie_data_animation': False, 'movie_data_nuc_animation': False,
-             'spatial_coords': True, 'spatial_res': False, 'movie_data_nuc': False,
-             'surfaces': False, 'analysis_path': True, 'temperature_im': False,}
-    # debug = {k: True for k in debug}
-    debug = {k: False for k in debug}
-    figures = {'spatial_res': False}
-    logger.info(f'Running MAST scheduler workflow...')
-    status = scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
-                       equilibrium=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures)
-    return status
-
-def run_mastu_rir():  # pragma: no cover
-    # pulse = 50000  # CAD view calibrated from test installation images - no plasma
-    # pulse = 50001  # Test movie consisting of black body cavity calibration images
-
-    # pulse = 44726  #
-    # pulse = 44673  # DN-700-SXD-OH
-    pulse = 43952  # early focus
-
-    camera = 'rir'
-    pass_no = 0
-    machine = 'MAST_U'
-
-    scheduler = False
-    magnetics = False
-    update_checkpoints = False
-    # update_checkpoints = True
-
-    # TODO: Remove redundant movie_data step
-    debug = {'calcam_calib_image': False, 'debug_detector_window': False,
-             'movie_intensity_stats': True,
-             'movie_data_animation': False, 'movie_data_nuc_animation': False,
-             'movie_temperature_animation': False,
-             'spatial_coords': True,
-             'spatial_res': False,
-             'movie_data_nuc': True, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
-             'surfaces': False, 'analysis_path': False,
-             'path_cross_sections': False,
-             'temperature_vs_R_t': True,
-             'heat_flux_vs_R_t': True,
-             'timings': True,
-             'strike_point_loc': True,
-             # 'heat_flux_path_1d': True,
-             }
-
-    output = {'strike_point_loc': True, 'raw_frame_image': False}
-
-    # debug = {k: True for k in debug}
-    # debug = {k: False for k in debug}
-    figures = {'spatial_res': False, 'heat_flux_vs_R_t-robust': True}
-    logger.info(f'Running {machine} {camera} scheduler workflow...')
-    status = scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
-                       equilibrium=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures,
-                                output=output)
-    return status
-
-def run_mastu_rit():  # pragma: no cover
-    # pulse = 50000  # CAD view calibrated from test installation images - no plasma
-    # pulse = 50001  # Test movie consisting of black body cavity calibration images
-    # pulse = 50002  # IRCAM Works raw file for debugging
-    # pulse = 43141  # Early diverted plasma on T2-T4
-    # pulse = 43183  # Early diverted plasma on T2-T5
-    # pulse = 43163  # TODO: check frame rate and expsure meta data on LWIR PC
-    # pulse = 43412  # Peter Ryan's strike point sweep based on 43391 for LP checks
-    # pulse = 43413  # Peter Ryan's strike point sweep based on 43391 for LP checks
-    # pulse = 43415  # Peter Ryan's strike point sweep for LP checks
-    # pulse = 43524  # Double NBI in
-    # pulse = 43530  # Peter Ryan's strike point sweep for LP checks
-    # pulse = 43534  # T5 sweep
-    # pulse = 43535  # T5 sweep with NBI
-    # pulse = 43547  # T5 sweep with NBI
-    # pulse = 43561  # NBI
-    # pulse = 43575  # NBI
-    # pulse = 43583  # NBI
-    # pulse = 43584  # NBI
-    # pulse = 43591
-    # pulse = 43587
-    # pulse = 43610
-    # pulse = 43643
-    # pulse = 43644
-    # pulse = 43648
-    # pulse = 43685
-
-    # pulse = 43610  # MU KPI
-    # pulse = 43611
-    # pulse = 43613
-    # pulse = 43614
-    # pulse = 43591
-    # pulse = 43596
-    # pulse = 43415
-    # pulse = 43644
-    # pulse = 43587
-
-    # Peter's list of shots with a strike point sweep to T5:
-    # pulse = 43756  # LP, but NO IR data
-    # pulse = 43755  # NO LP or IR data
-    # pulse = 43529  # LP, but NO IR data
-    # pulse = 43415  # LP and IR data --
-    # pulse = 43412  # LP and IR data --
-    # pulse = 43391  # no LP or IR data
-
-    # pulse = 43753  # Lidia strike point splitting request - no data
-
-    # pulse = 43805  # Strike point sweep to T5 - good data for IR and LP
-
-    # pulse = 43823
-    # pulse = 43835  # Lidia strike point splitting request - good data
-    # pulse = 44004  # LM
-    # pulse = 43835
-    # pulse = 43852
-    # pulse = 43836
-
-    # pulse = 43839
-    # pulse = 43996
-
-    # pulse = 43998  # Super-X
-
-    # pulse = 44463  # first irircam automatic aquisition
-
-    # pulse = 44386
-
-    # pulse = 44628  # DATAC software acquisition ftp'd straight to data store - access via UDA
-    # pulse = 44697  # DATAC software acquisition ftp'd straight to data store - access via UDA
-
-    # pulse = 44677   # RT18 - Swept (attached?) super-x
-    pulse = 44683   # RT18 - Attached T5 super-x
-
-    # pulse = 44695   # 400 kA
-    # pulse = 44613   # 400 kA
-
-    # pulse = 44550   # error field exp
-    # pulse = 44776   # error field exp
-    # pulse = 44777   # error field exp
-    # pulse = 44778   # error field exp
-    # pulse = 44779   # error field exp
-
-    # pulse = 44815   # RT13
-
-    # pulse = 44852  #  TF test shot with gas
-
-    # pulse = 44677  # Standard pulse JH suggests comparing with all diagnostics - RT18 slack, time to eurofusion
-
-    pulse = 44865  #
-
-    # 44849 onwards should have uda efit
-
-    camera = 'rit'
-    pass_no = 0
-    machine = 'MAST_U'
-
-    scheduler = False
-    magnetics = False
-    update_checkpoints = False
-    # update_checkpoints = True
-
-    # TODO: Remove redundant movie_data step
-    debug = {'calcam_calib_image': False, 'debug_detector_window': False,
-             'movie_intensity_stats-raw': False,
-             'movie_intensity_stats-corrected': True,
-             'movie_intensity_stats-nuc': False,
-             'dark_level': True,
-             'movie_data_animation': False, 'movie_data_nuc_animation': False,
-             'movie_temperature_animation': False,
-             'spatial_coords': False,
-             'spatial_res': False,
-             'movie_data_nuc': False, 'specific_frames': False, 'camera_shake': False, 'temperature_im': False,
-             'surfaces': False, 'analysis_path': False,
-             'path_cross_sections': False,
-             'temperature_vs_R_t': True,
-             'heat_flux_vs_R_t-raw': True,
-             'heat_flux_vs_R_t-robust': True,
-             'timings': True,
-             'strike_point_loc': False,
-             # 'heat_flux_path_1d': True,
-             }
-
-    output = {'strike_point_loc': True, 'raw_frame_image': False}
-
-    # debug = {k: True for k in debug}
-    # debug = {k: False for k in debug}
-    figures = {'spatial_res': False, 'heat_flux_vs_R_t-robust': True}
-    logger.info(f'Running MAST-U ait scheduler workflow...')
-    status = scheduler_workflow(pulse=pulse, camera=camera, pass_no=pass_no, machine=machine, scheduler=scheduler,
-                       equilibrium=magnetics, update_checkpoints=update_checkpoints, debug=debug, figures=figures,
-                                output=output)
-    return status
-
-if __name__ == '__main__':
-    # delete_file('~/.fire_config.json', verbose=True, raise_on_fail=True)
-    copy_default_user_settings(replace_existing=True)
-
-    # AIR, AIT, AIS, AIU, AIV
-    # status = run_mast_rir()
-    # status = run_mast_rit()
-    # status = run_mastu_rir()
-    status = run_mastu_rit()
-    # status = run_jet()
-
-    outputs = status['outputs']
-
-    clean_netcdf = True
-    copy_to_uda_scrach = True
-
+def copy_output(outputs, clean_netcdf=True, copy_to_uda_scrach=True):
     path_fn_netcdf = outputs.get('uda_putdata', {}).get('path_fn')
 
+    shot = outputs['meta_data']['shot']
+
     if copy_to_uda_scrach and (path_fn_netcdf is not None):
+        path_fn_projects = Path(f'/projects/SOL/Data_analysis/IR/ait/{shot}') / path_fn_netcdf.name
         path_fn_scratch = Path('/common/uda-scratch/IR') / path_fn_netcdf.name
         path_fn_scratch.parent.mkdir(exist_ok=True)
+        path_fn_projects.parent.mkdir(exist_ok=True)
         path_fn_scratch.write_bytes(path_fn_netcdf.read_bytes())
-        logger.info(f'Copied uda output file to uda scratch: {str(path_fn_scratch)}')
+        path_fn_projects.write_bytes(path_fn_netcdf.read_bytes())
+        logger.info(f'Copied uda output file to: {str(path_fn_scratch)}, {str(path_fn_projects)}')
 
     if clean_netcdf:
         if ('uda_putdata' in outputs) and (outputs['uda_putdata']['success']):
@@ -1146,3 +884,6 @@ if __name__ == '__main__':
                 path_fn_netcdf.unlink()
                 logger.info(f'Deleted uda output file to avoid clutter since run from main in scheduler_workflow.py: '
                             f'{path_fn_netcdf}')
+
+
+
