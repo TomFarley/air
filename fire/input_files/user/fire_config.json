@@ -11,7 +11,9 @@
         "directory": "~/.fire/",
         "fire_path": "~/.fire/",
         "paths": {
-            "figures": "~/{fire_path}/figures/"
+            "figures": ["~/{fire_path}/figures/{figure_subdir}",
+                        "/projects/SOL/Data_analysis/IR/{diag_tag}/{shot}/"
+            ]
         },
         "default_params": {
             "machine": "mast_u",
