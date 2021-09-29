@@ -170,9 +170,12 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
                 new_key = f'{key}{in_frame_str}_{path}'
                 key_var = key
             # TODO: Handle 't' as active dim name
-            coords = ('n',)
+            coords = ('n', 'i_digitiser',)  # Possible additional coordinates
             coords = tuple((coord for coord in coords if coord in data.dims)) + (coord_path,)
-            data_path_extracted[new_key] = (coords, np.array(data.sel(x_pix=x_pix_path, y_pix=y_pix_path)))
+            try:
+                data_path_extracted[new_key] = (coords, np.array(data.sel(x_pix=x_pix_path, y_pix=y_pix_path)))
+            except ValueError as e:
+                raise e
             data_path_extracted[new_key].attrs.update(data.attrs)  # Unnecessary?
             data_path_extracted = data_structures.attach_standard_meta_attrs(data_path_extracted, varname=new_key,
                                                                              replace=True, key=key_var)
