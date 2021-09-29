@@ -278,7 +278,7 @@ def close_all_mpl_plots(close_all=True, verbose=True):
         if verbose:
             logger.info('Closed all mpl plot windows')
 
-def show_if(show=True, close_all=False, tight_layout=False, save_fig_fn=None, save_image_fn=None, save_kwargs=None):
+def show_if(show=True, close_all=False, tight_layout=True, save_fig_fn=None, save_image_fn=None, save_kwargs=None):
     """If show is true show plot. If clear all is true clear all plot windows before showing."""
     close_all_mpl_plots(close_all)
 
@@ -296,48 +296,55 @@ def show_if(show=True, close_all=False, tight_layout=False, save_fig_fn=None, sa
             plt.tight_layout()
         plt.show()
 
-def save_fig(path_fn, fig=None, path=None, transparent=True, bbox_inches='tight', dpi=90, save=True,
+def save_fig(path_fn, fig=None, paths=None, transparent=True, bbox_inches='tight', dpi=90, save=True,
              image_formats=None, image_format_subdirs='subsequent',
-             mkdir_depth=None, mkdir_start=None, description='', verbose=True):
+             mkdir_depth=None, mkdir_start=None, description='', meta_dict=(), verbose=True):
     if (not save) or (path_fn is None):
         return False
     image_formats = make_iterable(image_formats, ignore_types=(None,))
+    meta_dict = dict(meta_dict)
 
     if fig is None:
         fig = plt.gcf()
-    if path is not None:
-        path_fn = os.path.join(path, path_fn)
-    path_fn = os.path.realpath(os.path.expanduser(path_fn))
-    # if not pos_path(path_fn, allow_relative=True):  # string path
-    #     raise IOError('Not valid save path: {}'.format(path_fn))
 
-    if (mkdir_depth is not None) or (mkdir_start is not None):
-        mkdir(os.path.dirname(path_fn), depth=mkdir_depth, start_dir=mkdir_start)
-
-    if image_formats is None:
-        _, ext = os.path.splitext(path_fn)
-        path_fns = {ext: path_fn}
+    if paths is not None:
+        paths = [Path(str(path).format(**meta_dict)) for path in make_iterable(paths)]
     else:
-        # Handle filesnames without extension with periods in
-        path_fn0, ext = os.path.splitext(path_fn)
-        path_fn0 = path_fn0 if len(ext) <= 4 else path_fn
-        path_fns = {}
-        for i, ext in enumerate(image_formats):
-            path_fn = '{}.{}'.format(path_fn0, ext)
-            if ((image_format_subdirs == 'all') or (image_format_subdirs is True) or
-                    ((image_format_subdirs == 'subsequent') and (i > 0))):
-                path_fn = io_utils.insert_subdir_in_path(path_fn, ext, -1, create_dir=True)
-            path_fns[ext] = path_fn
-    for ext, path_fn in path_fns.items():
-        try:
-            fig.savefig(path_fn, bbox_inches=bbox_inches, transparent=transparent, dpi=dpi)
-        except RuntimeError as e:
-            logger.exception('Failed to save plot to: {}'.format(path_fn))
-            raise e
-    if verbose:
-        logger.info('Saved {} plot to:\n{}'.format(description, path_fns))
-        print('Saved {} plot to:'.format(description))
-        print(path_fns)
+        paths = [Path(path_fn.parent)]
+
+    fn = Path(str(path_fn).format(**meta_dict)).name
+
+    for path in paths:
+        path_fn = (path / fn).expanduser().resolve()
+
+        if (mkdir_depth is not None) or (mkdir_start is not None):
+            mkdir(path, depth=mkdir_depth, start_dir=mkdir_start)
+
+        if image_formats is None:
+            ext = fn.suffix
+            path_fns = {ext: path_fn}
+        else:
+            # Handle file names without extension with periods in
+            path_fn0, ext = os.path.splitext(str(path_fn))
+            path_fn0 = path_fn0 if len(ext) <= 4 else path_fn
+            path_fns = {}
+            for i, ext in enumerate(image_formats):
+                ext_dot = '.'+ext if ext[:1] != '.' else ext
+                path_fn = path_fn.with_suffix(ext_dot)
+                if ((image_format_subdirs == 'all') or (image_format_subdirs is True) or
+                        ((image_format_subdirs == 'subsequent') and (i > 0))):
+                    path_fn = io_utils.insert_subdir_in_path(path_fn, ext, -1, create_dir=True)
+                path_fns[ext] = path_fn
+        for ext, path_fn in path_fns.items():
+            try:
+                fig.savefig(path_fn, bbox_inches=bbox_inches, transparent=transparent, dpi=dpi)
+            except RuntimeError as e:
+                logger.exception('Failed to save plot to: {}'.format(path_fn))
+                raise e
+        if verbose:
+            logger.info('Saved {} plot to:\n{}'.format(description, path_fns))
+            print('Saved {} plot to:'.format(description))
+            print(path_fns)
 
 def save_image(path_fn, image_data, path=None, save=True, image_formats=None, image_format_subdirs='subsequent',
              mkdir_depth=None, mkdir_start=None, description='', verbose=True):
