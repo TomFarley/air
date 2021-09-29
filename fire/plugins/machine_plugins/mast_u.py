@@ -16,7 +16,6 @@ from copy import copy
 
 import numpy as np
 import xarray as xr
-from fire.camera_tools.camera_checks import logger
 from fire.interfaces import uda_utils
 from fire.plotting.plot_tools import format_poloidal_plane_ax
 from fire.geometry.s_coordinate import interpolate_rz_coords, separate_rz_points_top_bottom, calc_s_coord_lookup_table, \
@@ -436,10 +435,19 @@ def pulse_meta_data(shot, keys=
     return out
 
 def get_shot_date_time(shot):
-    meta_cpf = pulse_meta_data(shot, keys=['exp_date', 'exp_time'])
-    date_time = (f'{meta_cpf["exp_date"]} {meta_cpf["exp_time"][:8]}' if 'exp_date' in meta_cpf.keys() else
+    meta_cpf = pulse_meta_data(shot, keys=['exp_time'])
+    date = get_shot_date(shot)
+    date_time = (f'{date} {meta_cpf["exp_time"][:8]}' if 'exp_date' in meta_cpf.keys() else
                 '<placeholder>')
     return date_time
+
+def get_shot_date(shot):
+    meta_cpf = pulse_meta_data(shot, keys=['exp_date'])
+    date = meta_cpf.get("exp_date", '')
+    if isinstance(date, (list, tuple)):
+        date = date[0]
+    date = date.strip("'")
+    return date
 
     # from matplotlib import patches
     # from fire.plotting.plot_tools import get_fig_ax
@@ -514,12 +522,17 @@ def get_camera_external_clock_info(camera, pulse):
 
     t = data['t']
 
+    signal_ptp = np.ptp(np.array(data))
     signal_dv = np.concatenate([[0], np.diff(data)])
 
     frame_times = t[signal_dv > 1e-5]  # rising edges
 
-    dt_frame = utils.mode_simple(np.diff(frame_times))  # time between frame aquisitions
+    dt_frame = utils.mode_simple(np.diff(frame_times))  # time between frame acquisitions
     clock_freq = 1/dt_frame
+
+    if (signal_ptp == 0) or (np.isnan(dt_frame)):
+        logger.warning(f'Bad clock signal "{signal_clock}", cannot infer frame times: {data}')
+        return None
 
     clock_peak_width = np.diff(t[np.abs(signal_dv) > 1e-5][:2])[0]  # Width of first square wave
 
