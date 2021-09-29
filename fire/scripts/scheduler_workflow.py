@@ -293,8 +293,16 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # transformations
 
     if np.any(np.diff(frame_data['t']) < 0):
-        logger.warning(f'Movie data contains non-monotonic time data. Re-ordering frames by timestamps')
-        frame_data = frame_data.sortby('t')
+        t_out_of_order = (frame_data["t"].diff(dim='n')) <= 0
+        n_out_of_order = frame_data['n'].where(t_out_of_order, drop=True)
+        if (len(n_out_of_order) == 1) and (n_out_of_order[0] == frame_data['n'][-1]):
+            logger.warning(f'Bad timestamp at end of movie: {np.array(image_data["t"][-4:])}. Dropping it.')
+            image_data = image_data.drop_sel(dict(n=n_out_of_order))
+        else:
+            logger.warning(f'Movie data contains non-monotonic time data. Re-ordering frames by timestamps. '
+                           f'{t_out_of_order}')
+            image_data = image_data.sortby('t')
+        frame_data = image_data['frame_data']
 
     if (debug.get('movie_intensity_stats-raw', False)):
         # Force plot if there are any saturated frames
@@ -341,14 +349,16 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # Detect saturated pixels, uniform frames etc
     bad_frames_info = data_quality.identify_bad_frames(frame_data, bit_depth=movie_meta['bit_depth'],
-                                            n_discontinuities_expected=1, raise_on_saturated=False, debug_plot=False)
+                                            n_discontinuities_expected=1e-3, n_sigma_multiplier=3,
+                                            raise_on_saturated=False, debug_plot=False)
     frames_nos_discontinuous = bad_frames_info['discontinuous']['frames']['n']
-    frame_data_clipped, modified_frames = data_quality.remove_bad_frames(frame_data, frames_nos_discontinuous,
-                            remove_opening_closing=True, interpolate_middle=True, nan_middle=False, debug_plot=False)
-    # Merge to set bad frames to nan
-    image_data = xr.merge([image_data, frame_data_clipped])  # Merging subset DataArray doesn't reduce coord ranges
-    # Merging subset DataArray doesn't reduce coord ranges so need to drop
-    image_data = image_data.drop_sel(dict(n=modified_frames['removed']))
+    frame_data_fixed, modified_frames = data_quality.remove_bad_frames(frame_data, frames_nos_discontinuous,
+                            remove_opening_closing=True, interpolate_middle=True, nan_middle=False, debug_plot=True)
+    # Merge to set bad frames to interpolated/nan values.
+    # Note: Merging subset DataArray with join and compat keywords DOES reduce coord ranges, so don't use .drop_sel()
+    image_data = xr.merge([image_data, frame_data_fixed], join='right', compat='override')
+    # Merging subset DataArray doesn't reduce coord ranges so need to drop bad opening or closing coords
+    # image_data = image_data.drop_sel(dict(n=modified_frames['removed']))
     frame_data = image_data['frame_data']
 
     # TODO: Detect frames with non-uniform time differences (see heat flux func)
@@ -440,8 +450,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Consider using min over whole (good frame) movie range to avoid negative values from nuc subtraction
     # TODO: consider using custon nuc time/frame number range for each movie? IDL sched had NUC time option
     # TODO: Look up first shot of day and load starting nuc frames from there to avoid warming from preceding shots
+    n_digitisers = 1
     nuc_frames = nuc.get_nuc_frames(origin={'n': nuc_frame_range}, frame_data=image_data['frame_data'],
-                                              reduce_func='mean', n_digitisers=2)
+                                              reduce_func='mean', n_digitisers=1)
 
     # nuc_frame = get_nuc_frame(origin={'n': [None, None]}, frame_data=frame_data, reduce_func='min')
     frame_data_nuc = nuc.apply_nuc_correction(image_data['frame_data'], nuc_frames, raise_on_negatives=False)
@@ -475,14 +486,33 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     if debug.get('debug_detector_window', False):  # Need to plot before detector window applied to calibration
         debug_plots.debug_detector_window(detector_window=detector_window, frame_data=image_data,
-                                          calcam_calib=calcam_calib, image_full_frame=calcam_calib_image_full_frame,
-                                          image_coords=image_coords)
+                                          calcam_calib=calcam_calib,  # image_full_frame=calcam_calib_image_full_frame,
+                                          image_coords=image_coords, meta_data=meta_data)
     if debug.get('movie_data_animation', False):
-        image_figures.animate_frame_data(image_data, key='frame_data', nth_frame=1)
-                        #                  n_start=40, n_end=350,
-                        # save_path_fn=paths_output['gifs'] / f'{machine}-{pulse}-{camera}-frame_data.gif')
+        save_path_fn = None
+        frame_range = [40, 410]
+        cbar_range = [0, 99.9]  # percentage of range
+        frame_range = np.clip(frame_range, *meta_data['frame_range'])
+
+        image_figures.animate_frame_data(image_data, key='frame_data', nth_frame=1, duration=15,
+                                         n_start=frame_range[0], n_end=frame_range[1], save_path_fn=save_path_fn,
+                                         cbar_range=cbar_range,
+                                         frame_label=f'{camera.upper()} {pulse} $t=${{t:0.1f}} ms',
+                                         cbar_label='$DL_{raw}$ [DL]',
+                                         label_values={'t': image_data['t'].values * 1e3}, show=True)
+
     if debug.get('movie_data_nuc_animation', False):
-        image_figures.animate_frame_data(image_data, key='frame_data_nuc', nth_frame=1)
+        save_path_fn = None
+        frame_range = [40, 410]
+        cbar_range = [0, 99.9]  # percentage of range
+        frame_range = np.clip(frame_range, *meta_data['frame_range'])
+
+        image_figures.animate_frame_data(image_data, key='frame_data_nuc', nth_frame=1, duration=15,
+                                         n_start=frame_range[0], n_end=frame_range[1], save_path_fn=save_path_fn,
+                                         cbar_range=cbar_range,
+                                         frame_label=f'{camera.upper()} {pulse} $t=${{t:0.1f}} ms',
+                                         cbar_label='$DL-DL_{NUC}$ [DL]',
+                                         label_values={'t': image_data['t'].values * 1e3}, show=True)
 
     if debug.get('movie_data_nuc', False):
         debug_plots.debug_movie_data(image_data, key='frame_data_nuc')
