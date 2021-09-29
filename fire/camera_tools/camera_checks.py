@@ -46,7 +46,11 @@ def get_dark_level_drift(image_data, plot=False):
     dark_level = dark_level_stats[stat_keys[stat]]
     dark_level.name = 'dark_level'
 
-    dark_level_correction = (int(dark_level[0]) - dark_level).astype(int)
+    if not np.isnan(dark_level[0]):
+        dark_level_correction = (int(dark_level[0]) - dark_level).astype(int)
+        logger.warning('Failed to calculate dark level variation - nans')
+    else:
+        dark_level_correction = dark_level[0]
     dark_level_correction.name = 'dark_level_correction'
 
     logger.info(f'Dark level variation is: {np.ptp(np.array(dark_level_correction))}')
@@ -121,8 +125,6 @@ def plot_dark_level_variation(mask_dark, dark_level=None, frame_data=None):
 
     ax = axes[0]
     ax.imshow(mask_dark)
-
-    # mask = np.tile(mask, [len(frame_data), 1, 1])
 
     ax = axes[1]
     # temporal_figures.plot_temporal_stats(frame_data.where(mask), t=frame_data['t'], t_axis=0, ax=ax, stats=('mean'),
