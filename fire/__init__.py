@@ -61,6 +61,7 @@ if len(handlers) > 0:
 else:
     logger_fire.warning(f'Failed to set up fire stream handler')
 logger_fire.setLevel(_logging.DEBUG)
+# [i.setLevel('DEBUG') for i in [logger_fire, stream_handler]]
 # stream_handler.setLevel(_logging.DEBUG)  # Uncomment to print debug level messages to console throughout fire
 
 active_machine_plugin = None
