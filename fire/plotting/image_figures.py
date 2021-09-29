@@ -403,6 +403,7 @@ def animate_image_data(frames, ax=None, duration=None, interval=None,
                        show=True):
     # import numpy as np
     # import matplotlib.pyplot as plt
+    import matplotlib.animation as anim
     from matplotlib.animation import FuncAnimation
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -421,7 +422,7 @@ def animate_image_data(frames, ax=None, duration=None, interval=None,
     nframes_animate = int((n_end - n_start) / nth_frame)
     frame_nos = np.arange(n_start, n_end + 1, nth_frame, dtype=int)
 
-    logger.info(f'Plotting matplotlib annimation ({nframes_animate} frames)')
+    logger.info(f'Plotting matplotlib animation ({nframes_animate} frames)')
 
     fig, ax, ax_passed = get_fig_ax(ax=ax, **fig_kwargs)
 
@@ -496,13 +497,24 @@ def animate_image_data(frames, ax=None, duration=None, interval=None,
                         # init_func=init,
                         blit=False)
     if save_path_fn is not None:
-        save_path_fn = str(Path(save_path_fn).expanduser().resolve())
+        save_path_fn = Path(save_path_fn).expanduser().resolve()
         try:
             kwargs = dict(fps=30)
             if save_kwargs is not None:
                 kwargs.update(save_kwargs)
-            anim.save(save_path_fn, writer='imagemagick', **kwargs)
-                      # savefig_kwargs=dict(bbox_inches='tight', transparent=True))  # transparent makes blury
+            if save_path_fn.suffix == '.gif':
+                anim.save(str(save_path_fn), writer='imagemagick', **kwargs)
+                          # savefig_kwargs=dict(bbox_inches='tight', transparent=True))  # transparent makes blury
+            else:
+                Writer = anim.writers['ffmpeg']
+                kws = dict(codec='ffv1', fps=15, bitrate=1e6)  # codec='ffv1', codec='mpeg4',
+                kws.update(kwargs)
+                writer = Writer(**kws)
+                #
+                dpi = 100
+                with writer.saving(fig, save_path_fn, dpi):
+                    # code to plot/update figure
+                    writer.grab_frame(facecolor='k')
         except Exception as e:
             logger.exception(f'Failed to save matplotlib animation gif to {save_path_fn}')
         else:
