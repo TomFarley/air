@@ -438,7 +438,7 @@ def dirs_exist(paths: Iterable[Union[str, Path]], path_kws: Optional[dict]=None
         try:
             path = path_raw.format(**path_kws)
         except KeyError as e:
-                raise ValueError(f'Cannot locate file without value for "{e.args[0]}": "{path_raw}", {path_kws}"')
+            raise ValueError(f'Cannot locate file without value for "{e.args[0]}": "{path_raw}", {path_kws}"')
         try:
             path = Path(path).expanduser().resolve(strict=False)
         except RuntimeError as e:
