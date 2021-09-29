@@ -14,11 +14,13 @@ from collections import namedtuple
 from pathlib import Path
 
 import numpy as np
+
 from fire import fire_paths
 from fire.interfaces.interfaces import PathList
 from fire.misc.utils import dirs_exist, locate_files
 from fire.plugins import plugins
 from fire.interfaces.read_user_fire_config import read_user_fire_config
+from fire.plugins.machine_plugins import mast_u
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -100,6 +102,9 @@ class MovieReader:
                          check_output: bool=True, substitute_unknown_values: bool=False) -> Tuple[Dict[str, Any],
                                                                                                Dict[str, str]]:
         meta = dict(meta)  # Parameters used to locate movie files eg date
+        if 'mast' in machine:
+            meta['date'] = mast_u.get_shot_date(shot=pulse)
+
         plugin_names = list(self.plugins.keys())
         exceptions = []
         for name, plugin in self.plugins.items():
@@ -356,7 +361,7 @@ def try_movie_plugins_dicts(plugin_key, pulse, camera, machine, movie_plugins,
              movie file etc.
 
     """
-    kwargs = {'machine': machine, 'camera': camera, 'pulse': pulse,
+    kwargs = {'machine': machine, 'camera': camera, 'pulse': pulse, 'shot': pulse,
               'n_start': n_start, 'n_end': n_end, 'stride': stride, 'frame_numbers': frame_numbers,
               'movie_paths': movie_paths, 'movie_fns': movie_fns,
               'transforms': transforms,
@@ -514,14 +519,22 @@ def add_alternative_meta_data_representations(meta_data):
     if value:
         try:
             meta_data['lens_in_mm'] = int(value*1e3)
-        except TypeError as e:
+        except (TypeError, ValueError) as e:
             logger.exception(f'Failed to convert lens focal length value "{value}" to mm')
-            raise e
+            meta_data['lens_in_mm'] = 25
+            logger.warning('Set lens to hard coded value {meta_data["lens_in_mm"]}')
+            # raise e
 
     key = 'exposure'
     value = meta_data.get(key, None)
     if value:
-        meta_data['exposure_in_us'] = int(value*1e6)
+        try:
+            meta_data['exposure_in_us'] = int(value*1e6)
+        except TypeError as e:
+            logger.exception(f'Failed to convert exposure value "{value}" to us')
+            meta_data['exposure_in_us'] = 250
+            logger.warning('Set lens to hard coded value {meta_data["lens_in_mm"]}')
+            # raise e
 
     return meta_data
 
