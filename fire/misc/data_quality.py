@@ -14,19 +14,24 @@ from copy import copy
 
 import numpy as np
 import xarray as xr
-from scipy import stats
+from scipy import stats, interpolate
 import matplotlib.pyplot as plt
 
 from fire.misc import data_structures
+from fire.plotting import plot_tools
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-info_removed_frames = {'start': 0, 'middle': 0, 'end': 0, 'n_removed': [], 'n_removed_start': [], 'n_removed_end': [],
-            'n_middle_naned': []}
+info_removed_frames = {'n_corrected': 0, 'corrected': [],
+                       'n_removed_start': 0, 'n_removed_end': 0, 'n_removed': 0,
+                       'removed_start': [], 'removed_end': [], 'removed': [],
+                        'n_interpolated_middle': 0, 'n_naned_middle': 0,
+                       'interpolated_middle': [], 'naned_middle': []}
 
-def identify_bad_frames(frame_data, bit_depth=None, n_discontinuities_expected=0.01,
-                        raise_on_saturated=False, raise_on_uniform=False, raise_on_sudden_intensity_changes=False):
+def identify_bad_frames(frame_data, bit_depth=None, n_discontinuities_expected=0.01, n_sigma_multiplier=1,
+                        debug_plot=False, raise_on_saturated=False, raise_on_uniform=False,
+                        raise_on_sudden_intensity_changes=False):
     t0 = time.time()
 
     bad_frame_info = {}
@@ -38,7 +43,8 @@ def identify_bad_frames(frame_data, bit_depth=None, n_discontinuities_expected=0
     bad_frame_info['uniform'] = uniform_frames
 
     discontinuous_frames = identify_sudden_intensity_changes(frame_data, n_outliers_expected=n_discontinuities_expected,
-                                                             raise_on_sudden_intensity_changes=raise_on_sudden_intensity_changes)
+                                                             n_sigma_multiplier=n_sigma_multiplier,
+                            raise_on_sudden_intensity_changes=raise_on_sudden_intensity_changes, debug_plot=debug_plot)
     bad_frame_info['discontinuous'] = discontinuous_frames
 
     if bit_depth is not None:
@@ -118,19 +124,36 @@ def identify_saturated_frames(frame_data: xr.DataArray, bit_depth, raise_on_satu
 
     return out
 
-def identify_sudden_intensity_changes(frame_data: xr.DataArray, n_outliers_expected: float=1,
-                                      raise_on_sudden_intensity_changes: bool=True):
-    """Useful for identifying dropped for faulty frames"""
+def identify_sudden_intensity_changes(frame_data: xr.DataArray, n_outliers_expected: float=1, n_sigma_multiplier=1,
+                                      raise_on_sudden_intensity_changes: bool=True, debug_plot: bool=True):
+    """Useful for identifying dropped or faulty frames"""
+
+    frame_data = data_structures.swap_xarray_dim(frame_data, 'n')
 
     frame_intensities = frame_data.astype(np.int64).sum(dim=['x_pix', 'y_pix'])
-    diffs = np.abs(frame_intensities.diff(dim='n'))
+    diffs = frame_intensities.diff(dim='n')
+    diffs_abs = np.abs(diffs)
+    # If there are several bad frames in a row they will be followed by an opposite (normally negative) diff that
+    # will bring the cumsum back close to zero
+    diffs_cum_sum = diffs.cumsum(dim='n')
+    diffs_cum_sum_abs = np.abs(diffs_cum_sum)
     # diffs['n'] -= 1
     # diffs['t'] -= (diffs['t'][1] - diffs['t'][0])
     # discontinuous_frames = diffs.where(diffs > (diffs.mean() * tol), drop=True).coords
     # TODO: Use more robust method of identifying outliers?
     nsigma = calc_outlier_nsigma_for_sample_size(len(frame_data), n_outliers_expected=n_outliers_expected)
-    diff_threshold = (diffs.mean() + diffs.std() * nsigma)
-    discontinuous_mask = diffs > diff_threshold
+
+    # Raw diff is useful for catching bad starting frames
+    diff_threshold = (diffs_abs.mean() + diffs_abs.std() * (nsigma*n_sigma_multiplier))
+    diff_mask = diffs_abs > diff_threshold
+    # TODO: Avoid raw diff marking negative diff following positive diff (ie first subsequent good frame) as bad
+
+    # Cumulative diff is useful for finding sets of bad frames in a row
+    diff_sum_abs_threshold = (diffs_cum_sum_abs.mean() + diffs_cum_sum_abs.std() * (nsigma*n_sigma_multiplier))
+    diff_cum_abs_mask = diffs_cum_sum_abs > diff_sum_abs_threshold
+
+    # Combine masks for start and middle
+    discontinuous_mask = diff_mask + diff_cum_abs_mask
 
     # Generally want to identify a frame if it is a sudden change from the previous frame, but in case of first
     # frame want to identify first frame as discontinuous if it differs a lot from following frame
@@ -141,41 +164,50 @@ def identify_sudden_intensity_changes(frame_data: xr.DataArray, n_outliers_expec
     # n = discontinuous_mask['n'].values
     # t = discontinuous_mask['t'].values
     # mask_values = discontinuous_mask.values
-    dt = float(diffs['t'][1] - diffs['t'][0])
+    if n_discontinuous_start > 0:
+        dt = float(diffs['t'][1] - diffs['t'][0])
 
-    discontinuous_mask = data_structures.swap_xarray_dim(discontinuous_mask, 'n')
-    diffs = data_structures.swap_xarray_dim(diffs, 'n')
-    n_modified = copy(discontinuous_mask['n'].values)
-    n_modified[:n_discontinuous_start] -= 1
-    discontinuous_mask['n'] = n_modified
-    diffs['n'] = n_modified
+        n_dim_modified = copy(discontinuous_mask['n'].values)
+        n_dim_modified[:n_discontinuous_start] -= 1
+        # Need to make sure coord is active before it can be modified
+        discontinuous_mask = data_structures.swap_xarray_dim(discontinuous_mask, 'n')
+        diffs = data_structures.swap_xarray_dim(diffs, 'n')
+        discontinuous_mask['n'] = n_dim_modified
+        diffs['n'] = n_dim_modified
 
-    discontinuous_mask = data_structures.swap_xarray_dim(discontinuous_mask, 't')
-    diffs = data_structures.swap_xarray_dim(diffs, 't')
-    t_modified = copy(discontinuous_mask['t'].values)
-    t_modified[:n_discontinuous_start] -= dt
-    discontinuous_mask['t'] = t_modified
-    diffs['t'] = t_modified
+        t_dim_modified = copy(discontinuous_mask['t'].values)
+        t_dim_modified[:n_discontinuous_start] -= dt
+        # Need to make sure coord is active before it can be modified
+        discontinuous_mask = data_structures.swap_xarray_dim(discontinuous_mask, 't')
+        diffs = data_structures.swap_xarray_dim(diffs, 't')
+        discontinuous_mask['t'] = t_dim_modified
+        diffs['t'] = t_dim_modified
 
-    discontinuous_mask = data_structures.swap_xarray_dim(discontinuous_mask, 'n')
-    diffs = data_structures.swap_xarray_dim(diffs, 'n')
+        coords = {'n': [discontinuous_mask['n'][n_discontinuous_start - 1] + 1],
+                  't': ('n', [discontinuous_mask['t'][n_discontinuous_start - 1] + dt])}
 
-    coords = {'n': [n_discontinuous_start], 't': ('n', [discontinuous_mask['t'][n_discontinuous_start - 1] + dt])}
+        gap_value = xr.DataArray([False], dims=['n'], coords=coords)
+        discontinuous_mask = data_structures.swap_xarray_dim(discontinuous_mask, 'n')
+        discontinuous_mask = xr.concat([discontinuous_mask, gap_value], dim='n').sortby('n')
 
-    gap_value = xr.DataArray([False], dims=['n'], coords=coords)
-    discontinuous_mask = xr.concat([discontinuous_mask, gap_value], dim='n').sortby('n')
-
-    gap_value = xr.DataArray([0], dims=['n'], coords=coords)
-    diffs = xr.concat([diffs, gap_value], dim='n').sortby('n')
-
-        # n_discontinuous = np.concatenate(([0], n_discontinuous[:-1]))
-        # t_with_start = np.concatenate(([frame_data['t'].values[0]], discontinuous_mask['t'].values[1:]))
-        # discontinuous_mask = discontinuous_mask.assign_coords(n=n_discontinuous)
-        # diffs = diffs.assign_coords(n=n_discontinuous)
-        # logger.info(f'First frame has discontinuous intensity. Reordered xarray coord accordingly.')
-        # discontinuous_mask = discontinuous_mask.assign_coords(t=t_with_start)
+        gap_value = xr.DataArray([0], dims=['n'], coords=coords)
+        diffs = data_structures.swap_xarray_dim(diffs, 'n')
+        diffs = xr.concat([diffs, gap_value], dim='n').sortby('n')
 
     discontinuous_frames = diffs.where(discontinuous_mask, drop=True).coords
+
+    if debug_plot:
+        fig, ax, ax_passed = plot_tools.get_fig_ax()
+        frame_intensities.plot(ax=ax, label='Frame summed intensity', ls=':')
+        diffs.plot(ax=ax, label='Diffs', ls=':')
+        diffs_abs.plot(ax=ax, label='Diffs abs', ls='--')
+        diffs_cum_sum_abs.plot(ax=ax, label='Diffs cum sum abs')
+        ax.axhline(y=diff_threshold, ls='--', color='k', label='Diffs abs threshold')
+        ax.axhline(y=diff_sum_abs_threshold, ls='-', color='k', label='Diffs cum sum threshold')
+        for n in discontinuous_frames['n']:
+            ax.axvline(x=n, ls=':', color='k', lw=1, alpha=0.7)
+        plot_tools.legend(ax)
+        plot_tools.show_if(True, tight_layout=True)
 
     n_bad = len(discontinuous_frames['n'])
     if n_bad > 0:
@@ -220,50 +252,75 @@ def calc_outlier_nsigma_for_sample_size(n_data, n_outliers_expected=1):
 
     return nsigma
 
-def remove_bad_frames(frame_data, bad_frames, remove_opening_closing=True, nan_middle=True, debug=False):
+def remove_bad_frames(frame_data, bad_frames, remove_opening_closing=True, interpolate_middle=True, nan_middle=False,
+                                                                                        debug_plot=False):
     info = copy(info_removed_frames)
-
-    n = len(frame_data)-1
-    i = 0
 
     def plot_bad_frame(n, debug):
         if debug:
-            plt.figure(num=f'Bad frame {n}')
+            plt.figure(num=f'Bad frame {int(n)}')
             plt.imshow(frame_data[n])
             plt.show()
 
     if remove_opening_closing:
+        i = 0
         while i in bad_frames:
-            info['start'] += 1
-            info["n_removed"].append(i)
-            info["n_removed_start"].append(i)
-            plot_bad_frame(i, debug)
+            info['n_corrected'] += 1
+            info['corrected'].append(i)
+            info['n_removed_start'] += 1
+            info["removed_start"].append(i)
+            info["removed"].append(i)
+            plot_bad_frame(i, debug_plot)
             i += 1
 
-        while n in bad_frames:
-            info['end'] += 1
-            info["n_removed"].append(n)
-            info["n_removed_end"].append(n)
-            plot_bad_frame(n, debug)
+        n = len(frame_data) - 1
+        while n in np.array(bad_frames):
+            info['n_corrected'] += 1
+            info['corrected'].append(n)
+            info['n_removed_end'] += 1
+            info["removed_end"].append(n)
+            info["removed"].append(n)
+            plot_bad_frame(n, debug_plot)
             n -= 1
 
-    if nan_middle:
+    if interpolate_middle:
+        # Occasionally there are bad frames in the middle of the movie. To prevent these messing up heat flux
+        # calculations, while preserving time axis spacing, interpolate these bad frames from good neighbours
+        for n in np.array(bad_frames):
+            if n not in info['corrected']:
+                info['n_corrected'] += 1
+                info['corrected'].append(n)
+                info['n_interpolated_middle'] += 1
+                info["interpolated_middle"].append(n)
+
+        if info['n_interpolated_middle'] > 0:
+            mask_bad = frame_data['n'].isin(info["corrected"])
+            frames_ok = frame_data.where(~mask_bad, drop=True)
+            f = interpolate.interp1d(frames_ok['n'].values, frames_ok.values, kind='linear', axis=0)
+            frame_data.loc[mask_bad] = np.round(f(frame_data['n'].where(mask_bad, drop=True)))
+    elif nan_middle:
         for n in bad_frames:
-            if n not in info['n_removed']:
-                plot_bad_frame(n, debug)
-                frame_data[n] = np.nan
-                info['middle'] += 1
-                info["n_middle_naned"].append(n)
+            if n not in info['corrected']:
+                plot_bad_frame(n, debug_plot)
+                frame_data[n] = np.nan  # Setting uint16 to nan will actually set it to zero
+                info['n_corrected'] += 1
+                info['corrected'].append(i)
+                info['n_naned_middle'] += 1
+                info["naned_middle"].append(i)
 
-    frame_data = frame_data[info["start"]:]
-    frame_data = frame_data[:-info["end"]]
+    frame_data = frame_data[info["n_removed_start"]:]
+    frame_data = frame_data[:-(info["n_removed_end"]+1)]
 
-    if info['start'] > 0:
-        logger.warning(f'{info["start"]} bad frames at start of movie: {info["n_removed_start"]}')
-    if info['end'] > 0:
-        logger.warning(f'{info["end"]} bad frames at end of movie: {info["n_removed_removed_end"]}')
-    if info['middle'] > 0:
-        logger.warning(f'Set {info["middle"]} bad frames in middle of movie movie to nans: {info["n_middle_naned"]}')
+    if info['n_removed_start'] > 0:
+        logger.warning(f'{info["n_removed_start"]} bad frames at start of movie: {info["removed_start"]}')
+    if info['n_removed_end'] > 0:
+        logger.warning(f'{info["n_removed_end"]} bad frames at end of movie: {info["removed_end"]}')
+    if info['n_interpolated_middle'] > 0:
+        logger.warning(f'Interpolated {info["n_interpolated_middle"]} bad frames in middle of movie based on good '
+                       f'neighbours: {info["interpolated_middle"]}')
+    if info['n_naned_middle'] > 0:
+        logger.warning(f'Set {info["n_naned_middle"]} bad frames in middle of movie movie to nans: '
+                       f'{info["naned_middle"]}')
 
     return frame_data, info
 
