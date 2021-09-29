@@ -53,10 +53,12 @@ def debug_movie_data(data, key='frame_data', frame_nos=(0, None, -1), aspect='eq
     figure_frame_data(data, ax=ax, n=frame_nos[2], key=key, label_outliers=False, aspect=aspect, show=False)
 
     ax = axes[3]
-    figure_frame_data(data, key='nuc_frame', ax=ax, n=None, label_outliers=True, aspect=aspect, show=False)
+    figure_xarray_imshow(data, 'nuc_frames', slice_={'i_digitiser': 0}, ax=ax, axes_off=True, aspect=aspect,
+                            show=False)
 
     ax = axes[4]
-    plot_image_data_hist(data, key='nuc_frame', xlabel='NUC frame DL', ax=ax, show=False)
+    nuc_frame_0 = data['nuc_frames'].sel(i_digitiser=0)
+    plot_image_data_hist(nuc_frame_0, key=None, xlabel='NUC frame 0 DL', ax=ax, show=False)
 
     ax = axes[5]
     image_figures.plot_image_data_temporal_stats(data, key=key, ax=ax,
@@ -79,7 +81,7 @@ def debug_calcam_calib_image(calcam_calib, frame_data=None, frame_ref=None, n_fr
         frame_display = frame_data[n]
 
     fig_shape = (2, 1+2*((calib_image_original is not None) and (frame_data is not None) or (frame_ref is not None)))
-    fig, axes = plt.subplots(*fig_shape, num='calcam_calib_image', figsize=(14, 8), sharex='col', sharey='col')
+    fig, axes = plt.subplots(*fig_shape, num='calcam_calib_image', figsize=(14, 8))  # , sharex='col', sharey='col')
     axes = axes.flatten()
     i_ax = 0
 
@@ -126,7 +128,7 @@ def debug_calcam_calib_image(calcam_calib, frame_data=None, frame_ref=None, n_fr
     if wire_frame is not None:
         ax = axes[i_ax]
         ax.imshow(frame_display, interpolation='none', cmap='gray', origin='upper')
-        ax.imshow(wire_frame, interpolation='none', origin='upper', alpha=0.5)
+        ax.imshow(wire_frame, interpolation='none', origin='upper', alpha=0.8)
         ax.set_title(f'Wire frame overlaid movie image: {Path(calcam_calib.filename).name}',
                      fontdict={'fontsize': title_size})
         i_ax += 1
@@ -137,7 +139,9 @@ def debug_calcam_calib_image(calcam_calib, frame_data=None, frame_ref=None, n_fr
 
 def debug_detector_window(detector_window, frame_data=None, key='frame_data_nuc', calcam_calib=None,
                           image_full_frame=None, subview_mask_full_frame=None, aspect='equal',
-                          image_coords='Display', image_full_frame_label=None):
+                          image_coords='Display', image_full_frame_label=None, meta_data=None):
+    if meta_data is None:
+        meta_data = frame_data.attrs.get('meta_data', {})
 
     if image_full_frame is None:
         # Get full frame calibration image without detector window applied
@@ -145,7 +149,8 @@ def debug_detector_window(detector_window, frame_data=None, key='frame_data_nuc'
         image_full_frame = calcam_calib.get_image(coords=image_coords)
         subview_mask_full_frame = calcam_calib.get_subview_mask(coords=image_coords)
         calcam_calib.set_detector_window(detector_window)  # Re-apply detector_window
-        image_full_frame_label = 'Calcam calibration image (full frame)'
+        image_full_frame_label = f'Calcam calibration image ({calcam_calib.name})'
+
     if image_full_frame_label is None:
         image_full_frame_label = 'Full frame reference image'
 
@@ -176,6 +181,7 @@ def debug_detector_window(detector_window, frame_data=None, key='frame_data_nuc'
         # ax.imshow(image, cmap='gray', interpolation='none')
 
         figure_frame_data(frame_data, ax=ax, n='bright', key='frame_data_nuc', label_outliers=False, aspect=aspect, show=False)
+        plot_tools.annotate_providence(ax, meta_data=meta_data)
 
         ax = axes[2]
         figure_frame_data(frame_data, ax=ax, n=None, key='frame_data_nuc', label_outliers=True, aspect=aspect, show=False)
