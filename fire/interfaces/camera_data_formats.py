@@ -14,8 +14,6 @@ import matplotlib.pyplot as plt
 
 from fire.interfaces.io_basic import read_csv
 from fire import fire_paths
-from fire.scripts.organise_movie_files_from_diag_pc import generate_json_meta_data_file_for_ircam_raw
-
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
@@ -52,17 +50,17 @@ def read_ircam_asc_image_file(path_fn, verbose=True):
     return image
 
 def hex8_to_int(hex):
-	temp = hex[-2:]+hex[4:6]+hex[2:4]+hex[0:2]
-	return int(temp,16)
+    temp = hex[-2:]+hex[4:6]+hex[2:4]+hex[0:2]
+    return int(temp,16)
 
 def hex4_to_int(hex):
-	temp = hex[-2:]+hex[0:2]
-	return int(temp,16)
+    temp = hex[-2:]+hex[0:2]
+    return int(temp,16)
 
 def hex8_to_float(hex):
-	import struct
-	temp = hex[-2:]+hex[4:6]+hex[2:4]+hex[0:2]
-	return struct.unpack('!f', bytes.fromhex(temp))[0]
+    import struct
+    temp = hex[-2:]+hex[4:6]+hex[2:4]+hex[0:2]
+    return struct.unpack('!f', bytes.fromhex(temp))[0]
 
 def raw_frame_data_to_image(raw_digital_level, width, height, digital_level_bytes):
     pixels = width*height
@@ -140,7 +138,6 @@ def read_ircam_raw_int16_sequence_file(path_fn, flip_y=True, transpose=False, n_
         data_movie = data_movie.T
 
     return frame_numbers, data_movie
-
 
 if __name__ == '__main__':
     from fire.camera.nuc import get_nuc_frame

@@ -8,11 +8,8 @@ This module defines functions for interfacing raw movie files exported from the 
 import logging
 from typing import Union, Iterable, Tuple, Optional
 from pathlib import Path
-import numbers
-from copy import copy
 
 import numpy as np
-import xarray as xr
 import matplotlib.pyplot as plt
 
 from fire.interfaces.interfaces import json_load
@@ -138,7 +135,6 @@ def read_movie_data(path_fn: Union[str, Path],
         raise NotImplementedError
 
     return frame_numbers, frame_times, frame_data
-
 
 if __name__ == '__main__':
     # directory = Path('/projects/SOL/Data/Cameras/SA1/29496/C001H001S0001/').resolve()
