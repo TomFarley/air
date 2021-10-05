@@ -950,11 +950,11 @@ def plot_mixed_fire_uda_signals(signals, pulses=None, path_data=None, meta_data=
     if separate_pulse_axes:
         n_ax_cols = n_pulses
         # label = '{signal}'  # format string
-        annotate_format = '{machine} {camera} {pulse} {path_label}'
+        annotate_format = '{machine} {diag_tag_raw} {pulse} {path_label}'
     else:
         n_ax_cols = 1
         # label = '{pulse}'  # format string
-        annotate_format = '{machine} {camera}'
+        annotate_format = '{machine} {diag_tag_raw}'
 
     n_ax_grid = (n_ax_rows, n_ax_cols)
     n_ax = n_ax_rows * n_ax_cols

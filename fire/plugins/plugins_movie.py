@@ -47,13 +47,13 @@ class MovieReader:
             }
         }
         movie_paths = ["/net/fuslsc/data/MAST_Data/{pulse}/LATEST/",  # Directory path used by UDA
-                        "~/data/movies/{machine}/{pulse}/{camera}/",
+                        "~/data/movies/{machine}/{pulse}/{diag_tag_raw}/",
                         "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
                         "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
                         "{fire_path}/../tests/test_data/{machine}/"]
-        movie_fns = ["{camera}0{pulse}.ipx",
-                     "{camera}_{pulse}.npz",
-                     "{camera}_{pulse}.raw"]
+        movie_fns = ["{diag_tag_raw}0{pulse}.ipx",
+                     "{diag_tag_raw}_{pulse}.npz",
+                     "{diag_tag_raw}_{pulse}.raw"]
 
     def __init__(self, movie_plugin_paths: Optional[PathList]=None, plugin_filter: Optional[Sequence[str]]=None,
                  plugin_precedence: Optional[Sequence[str]]=None,
@@ -98,7 +98,7 @@ class MovieReader:
             # TODO: catch module not found errors eg pyIpx missing
             raise IOError(f'Failed to load any movie reader plugins')
 
-    def read_movie_meta_data(self, pulse: Union[int, str], camera: str, machine: str, meta: Union[dict, tuple]=(),
+    def read_movie_meta_data(self, pulse: Union[int, str], diag_tag_raw: str, machine: str, meta: Union[dict, tuple]=(),
                          check_output: bool=True, substitute_unknown_values: bool=False) -> Tuple[Dict[str, Any],
                                                                                                Dict[str, str]]:
         meta = dict(meta)  # Parameters used to locate movie files eg date
@@ -110,7 +110,7 @@ class MovieReader:
         for name, plugin in self.plugins.items():
             # TODO: Fix hanging on some UDA calls for inexistent pulse numbers
             try:
-                meta_data, origin = plugin.read_movie_meta_data(pulse=pulse, camera=camera, machine=machine,
+                meta_data, origin = plugin.read_movie_meta_data(pulse=pulse, diag_tag_raw=diag_tag_raw, machine=machine,
                                                   movie_paths=self.movie_paths,
                                         movie_fns=self.movie_fns, check_output=check_output,
                                         substitute_unknown_values=substitute_unknown_values, **meta)
@@ -133,21 +133,21 @@ class MovieReader:
                     break
         else:
             exceptions_str = "\n\n".join([str(e) for e in exceptions])
-            raise IOError(f'Failed to read movie for {machine}, {camera}, {pulse} with plugins {plugin_names}.\n'
+            raise IOError(f'Failed to read movie for {machine}, {diag_tag_raw}, {pulse} with plugins {plugin_names}.\n'
                           f'Exceptions: \n{exceptions_str}')
         return meta_data, origin
 
-    def read_movie_data(self, pulse: Union[int, str], camera: str, machine: str,
+    def read_movie_data(self, pulse: Union[int, str], diag_tag_raw: str, machine: str,
                         n_start: Optional[int] = None, n_end: Optional[int] = None, stride: Optional[int] = 1,
                         frame_numbers: Optional[Union[Iterable, int]] = None,
                         transforms: Optional[Iterable[str]] = (), meta: Union[dict, tuple]=(),
-                         # check_output: bool=True,
+                        # check_output: bool=True,
                         ) -> Tuple[Dict[str, Any], Dict[str, str]]:
         exceptions = []
         meta = dict(meta)
         for name, plugin in self.plugins.items():
             try:
-                movie_data, origin = plugin.read_movie_data(pulse=pulse, camera=camera, machine=machine,
+                movie_data, origin = plugin.read_movie_data(pulse=pulse, diag_tag_raw=diag_tag_raw, machine=machine,
                                                     n_start=n_start, n_end=n_end, stride=stride,
                                                     frame_numbers=frame_numbers,
                                                     movie_paths=self.movie_paths, movie_fns=self.movie_fns,
@@ -165,7 +165,7 @@ class MovieReader:
                     self._active_plugin = name
                     break
         else:
-            raise IOError(f'Failed to read movie meta data for {machine}, {camera}, {pulse} with plugins '
+            raise IOError(f'Failed to read movie meta data for {machine}, {diag_tag_raw}, {pulse} with plugins '
                           f'{self.plugins.keys()}.\nExceptions: \n{exceptions}')
         return movie_data, origin
 
@@ -213,15 +213,15 @@ class MoviePlugin:
         plugin = cls(name, plugin_dict, plugin_info)
         return plugin
 
-    def read_movie_meta_data(self, pulse: Union[int, str], camera: str, machine: str,
-                         movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
-                         check_output: bool=True, substitute_unknown_values: bool=False, **meta) -> Tuple[Dict[str,Any],
+    def read_movie_meta_data(self, pulse: Union[int, str], diag_tag_raw: str, machine: str,
+                             movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
+                             check_output: bool=True, substitute_unknown_values: bool=False, **meta) -> Tuple[Dict[str,Any],
                                                                                                 Dict[str, str]]:
         """Read movie header meta data
 
         Args:
             pulse           : Shot/pulse number or string name for synthetic movie data
-            camera          : Camera diagnostic id/tag string
+            diag_tag_raw          : Camera diagnostic id/tag string
             machine         : Tokamak that the data originates from
             movie_paths     : Search directories containing movie files
             movie_fns       : Movie filename format strings
@@ -232,14 +232,14 @@ class MoviePlugin:
         """
         movie_plugins = {self.name: self._methods}
 
-        meta_data, origin = read_movie_meta_data(pulse, camera, machine, movie_plugins,
-                                                    movie_paths=movie_paths, movie_fns=movie_fns,
-                                                    check_output=check_output,
-                                                    substitute_unknown_values=substitute_unknown_values, **meta)
+        meta_data, origin = read_movie_meta_data(pulse, diag_tag_raw, machine, movie_plugins,
+                                                 movie_paths=movie_paths, movie_fns=movie_fns,
+                                                 check_output=check_output,
+                                                 substitute_unknown_values=substitute_unknown_values, **meta)
         return meta_data, origin
 
-    def read_movie_data(self, pulse: Union[int, str], camera: str, machine: str,
-                    movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
+    def read_movie_data(self, pulse: Union[int, str], diag_tag_raw: str, machine: str,
+                        movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
                         n_start: Optional[int] = None, n_end: Optional[int] = None, stride: Optional[int] = 1,
                         frame_numbers: Optional[Union[Iterable, int]] = None,
                         transforms: Optional[Iterable[str]] = (),
@@ -249,7 +249,7 @@ class MoviePlugin:
 
         Args:
             pulse           : Shot/pulse number or string name for synthetic movie data
-            camera          : Camera diagnostic id/tag string
+            diag_tag_raw          : Camera diagnostic id/tag string
             machine         : Tokamak that the data originates from
             movie_plugins   : Dict of plugin functions for reading movie data
             movie_paths     : Search directories containing movie files
@@ -260,7 +260,7 @@ class MoviePlugin:
         """
         movie_plugins = {self.name: self._methods}
 
-        movie_data, origin = read_movie_data(pulse, camera, machine, movie_plugins,
+        movie_data, origin = read_movie_data(pulse, diag_tag_raw, machine, movie_plugins,
                                              n_start=n_start, n_end=n_end, stride=stride,
                                              frame_numbers=frame_numbers,
                                              movie_paths=movie_paths, movie_fns=movie_fns,
@@ -301,7 +301,7 @@ def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movi
 
     return meta_data, origin
 
-def read_movie_data(pulse: Union[int, str], camera: str, machine: str, movie_plugins: dict,
+def read_movie_data(pulse: Union[int, str], diag_tag_raw: str, machine: str, movie_plugins: dict,
                     n_start:Optional[int]=None, n_end:Optional[int]=None, stride:Optional[int]=1,
                     frame_numbers: Optional[Union[Iterable, int]]=None,
                     movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
@@ -311,7 +311,7 @@ def read_movie_data(pulse: Union[int, str], camera: str, machine: str, movie_plu
 
     Args:
         pulse           : Shot/pulse number or string name for synthetic movie data
-        camera          : Camera diagnostic id/tag string
+        diag_tag_raw          : Camera diagnostic id/tag string
         machine         : Tokamak that the data originates from
         movie_plugins   : Dict of plugin functions for reading movie data
         movie_paths     : Search directories containing movie files
@@ -322,7 +322,7 @@ def read_movie_data(pulse: Union[int, str], camera: str, machine: str, movie_plu
     """
     # TODO: Handle passing arguments for sub range of movie frames
     plugin_key = 'data'
-    movie_data, origin = try_movie_plugins_dicts(plugin_key, pulse, camera, machine, movie_plugins,
+    movie_data, origin = try_movie_plugins_dicts(plugin_key, pulse, diag_tag_raw, machine, movie_plugins,
                                                  n_start=n_start, n_end=n_end, stride=stride,
                                                  frame_numbers=frame_numbers,
                                                  movie_paths=movie_paths, movie_fns=movie_fns,
@@ -337,10 +337,10 @@ def read_movie_data(pulse: Union[int, str], camera: str, machine: str, movie_plu
         raise ValueError(f'Inconsistent lengths of frame data and frame numbers/times')
 
     if verbose:
-        logger.info(f'Read {len(movie_data[0])} frames for camera "{camera}", pulse "{pulse}" from {str(origin)[1:-1]}')
+        logger.info(f'Read {len(movie_data[0])} frames for camera "{diag_tag_raw}", pulse "{pulse}" from {str(origin)[1:-1]}')
     return movie_data_and_origin
 
-def try_movie_plugins_dicts(plugin_key, pulse, camera, machine, movie_plugins,
+def try_movie_plugins_dicts(plugin_key, pulse, diag_tag_raw, machine, movie_plugins,
                             n_start:Optional[int]=None, n_end:Optional[int]=None, stride:Optional[int]=1,
                             frame_numbers: Optional[Union[Iterable, int]]=None,
                             movie_paths:Optional[PathList]=None, movie_fns=None,
@@ -351,7 +351,7 @@ def try_movie_plugins_dicts(plugin_key, pulse, camera, machine, movie_plugins,
     Args:
         plugin_key      : Key for movie plugin function e.g. 'data'/'meta'
         pulse           : Pulse argument for movie plugin
-        camera          : Camera argument for movie plugin
+        diag_tag_raw          : Camera argument for movie plugin
         machine         : Machine/tokamak argument for movie plugin
         movie_plugins   : Dict of movie plugin functions keyed: movie_plugins[<plugin_name>][<plugin_func>]
         movie_paths     : (Optional) Paths in which to look for movie files for file based plugins
@@ -361,7 +361,7 @@ def try_movie_plugins_dicts(plugin_key, pulse, camera, machine, movie_plugins,
              movie file etc.
 
     """
-    kwargs = {'machine': machine, 'camera': camera, 'pulse': pulse, 'shot': pulse,
+    kwargs = {'machine': machine, 'camera': diag_tag_raw, 'diag_tag_raw': diag_tag_raw, 'pulse': pulse, 'shot': pulse,
               'n_start': n_start, 'n_end': n_end, 'stride': stride, 'frame_numbers': frame_numbers,
               'movie_paths': movie_paths, 'movie_fns': movie_fns,
               'transforms': transforms,
@@ -419,7 +419,7 @@ def try_movie_plugins_dicts(plugin_key, pulse, camera, machine, movie_plugins,
                       f'for plugin args: \n'
                       f'{kwargs}')
     origin_str = ", ".join([f'{k}="{str(v)}"' for k, v in origin.items() if k not in ['plugin', 'path_fn']])
-    logger.info(f'Read movie "{plugin_key}" for ({machine}, {camera}, {pulse}) using plugin "{origin["plugin"]}": '
+    logger.info(f'Read movie "{plugin_key}" for ({machine}, {diag_tag_raw}, {pulse}) using plugin "{origin["plugin"]}": '
                 f'{origin_str}')
 
     return data, origin

@@ -55,9 +55,9 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
         search_paths_inputs = ["~/fire/input_files/{machine}/", "{fire_path}/input_files/{machine}/", "~/calcam/calibrations/"]
     if fn_patterns_inputs is None:
         # TODO: UPDATE
-        fn_patterns_inputs = {"calcam_calibs": ["calcam_calibs-{machine}-{camera}-defaults.csv"],
-                              "analysis_paths": ["analysis_paths-{machine}-{camera}-defaults.json"],
-                              "surface_props": ["surface_props-{machine}-{camera}-defaults.json"]}
+        fn_patterns_inputs = {"calcam_calibs": ["calcam_calibs-{machine}-{diag_tag_raw}-defaults.csv"],
+                              "analysis_paths": ["analysis_paths-{machine}-{diag_tag_raw}-defaults.json"],
+                              "surface_props": ["surface_props-{machine}-{diag_tag_raw}-defaults.json"]}
     if params is None:
         params = {}
     params.update({'pulse': pulse, 'camera': camera, 'machine': machine, 'fire_path': str(fire_paths['root'])})
@@ -144,7 +144,7 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
 #         logger.info(f'Created fire checkpoint data directory: {path}')
 #     return path
 
-def generate_pulse_id_strings(id_strings, pulse, camera, machine, pass_no=0):
+def generate_pulse_id_strings(id_strings, pulse, diag_tag_raw, machine, pass_no=0):
     """Return standardised ID strings used for consistency in filenames and data labels
     :param id_strings: Dict of string_ids to update/populate
     :param pulse: Shot/pulse number or string name for synthetic movie data
@@ -153,10 +153,10 @@ def generate_pulse_id_strings(id_strings, pulse, camera, machine, pass_no=0):
     :return: Dict of ID strings
     """
     pulse_id = f'{machine}-{pulse}'
-    camera_id = f'{pulse_id}-{camera}'
+    camera_id = f'{pulse_id}-{diag_tag_raw}'
     pass_id = f'{pulse_id}-{pass_no}'
 
-    # calcam_id = f'{machine}-{camera}-{calib_date}-{pass_no}'
+    # calcam_id = f'{machine}-{diag_tag_raw}-{calib_date}-{pass_no}'
 
     id_strings.update({'pulse_id': pulse_id,
                        'camera_id': camera_id,
@@ -315,15 +315,15 @@ def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, allow_overlap
         return pulse_info
 
 
-def lookup_pulse_info(pulse: Union[int, str], camera: str, machine: str, search_paths: PathList,
-                          filename_patterns: Union[str, Path], params: Optional[dict]=None,
-                          file_type: Optional[str]=None,
-                          csv_kwargs: Optional[dict]=None, raise_=True) -> pd.Series:
+def lookup_pulse_info(pulse: Union[int, str], diag_tag_raw: str, machine: str, search_paths: PathList,
+                      filename_patterns: Union[str, Path], params: Optional[dict]=None,
+                      file_type: Optional[str]=None,
+                      csv_kwargs: Optional[dict]=None, raise_=True) -> pd.Series:
     """Extract information from pulse look up file
 
     Args:
         pulse               : Shot/pulse number or string name for synthetic movie data
-        camera              : Name of camera to analyse (unique name of camera or diagnostic code)
+        diag_tag_raw              : Name of camera to analyse (unique name of camera or diagnostic code)
         machine             : Tokamak that the data originates from
         search_paths        : Format strings for paths to search for files
         filename_patterns   : Format string for possible filesnames to locate
@@ -336,12 +336,12 @@ def lookup_pulse_info(pulse: Union[int, str], camera: str, machine: str, search_
     """
     params = {} if params is None else params
     csv_kwargs = {} if csv_kwargs is None else csv_kwargs
-    params.update({'pulse': pulse, 'camera': camera, 'machine': machine})
+    params.update({'pulse': pulse, 'camera': diag_tag_raw, 'diag_tag_raw': diag_tag_raw, 'machine': machine})
     try:
         path, fn = locate_file(search_paths, fns=filename_patterns, path_kws=params, fn_kws=params, raise_=True)
     except FileNotFoundError as e:
         message = (f'Failed to locate "{file_type}" pulse lookup file for '
-                   f'machine="{machine}", camera="{camera}", pulse="{pulse}"\n{str(e)}')
+                   f'machine="{machine}", camera="{diag_tag_raw}", pulse="{pulse}"\n{str(e)}')
         if raise_:
             raise FileNotFoundError(message)
         else:
@@ -373,7 +373,7 @@ def check_settings_complete(settings, machine, camera):
     sub_settings = settings['machines'][machine]['cameras']
     if camera not in sub_settings:
         # TODO: include alias options
-        raise ValueError(f'Fire config settings file does not contain settings for "{machine}" camera "{camera}". '
+        raise ValueError(f'Fire config settings file does not contain settings for "{machine}" camera "{diag_tag_raw}". '
                          f'Options: {", ".join(list(sub_settings.keys()))}')
 
 
@@ -395,7 +395,7 @@ def get_module_from_path_fn(path_fn):
             module = None
     return module
 
-def archive_netcdf_output(path_fn_in, path_archive='~/{user_dir}/archive_netcdf_output/{camera}/', meta_data=None):
+def archive_netcdf_output(path_fn_in, path_archive='~/{user_dir}/archive_netcdf_output/{diag_tag_raw}/', meta_data=None):
     success = False
     if path_fn_in is None:
         return success

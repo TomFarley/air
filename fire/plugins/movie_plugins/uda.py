@@ -62,7 +62,7 @@ def get_uda_movie_obj_legacy(pulse: int, camera: str, n_start:Optional[int]=None
     if not isinstance(camera, str) or len(camera) != 3:
         raise ValueError(f'Camera argument should be MAST-U camera 3-letter diagnostic code (e.g. rir, rbb etc.)')
 
-    command_str_base = f'NEWIPX::read(filename=/net/fuslsc/data/MAST_Data/{pulse}/LATEST/{camera}0{pulse}.ipx'
+    command_str_base = f'NEWIPX::read(filename=/net/fuslsc/data/MAST_Data/{pulse}/LATEST/{diag_tag_raw}0{pulse}.ipx'
     command_str = copy(command_str_base)
     if (n_start is not None) and (n_start == n_end):
         command_str += f', frame={n_start}'

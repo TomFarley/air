@@ -164,7 +164,7 @@ def convert_aps_data_to_ipx(movie_dict, movie_meta, path_ipx_archive='~/data/mov
 
     pulse = int(movie_meta["pulse"])
     camera = movie_meta["camera"]
-    path_fn_ipx = path_ipx_archive / f'{pulse}/{camera}/{camera}0{pulse}.ipx'
+    path_fn_ipx = path_ipx_archive / f'{pulse}/{diag_tag_raw}/{diag_tag_raw}0{pulse}.ipx'
 
     frame_data = movie_dict['data']
     frame_times = movie_meta['frame_times']

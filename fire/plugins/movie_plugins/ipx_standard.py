@@ -13,6 +13,8 @@ from pathlib import Path
 
 import numpy as np
 
+from fire.misc import utils
+
 logger = logging.getLogger(__name__)
 logger.propagate = False
 
@@ -36,8 +38,8 @@ def check_ipx_detector_window_meta_data(ipx_header, plugin=None, fn=None, modify
     problems = 0
 
     # TODO: apply abs to each value so don't have negative 'bottom' value etc?
-    left, top, width, height, right, bottom = np.array([np.abs(ipx_header[key]) if key in ipx_header else np.nan
-                                                      for key in ('left', 'top', 'width', 'height', 'right', 'bottom')])
+    left, top, width, height, right, bottom = [np.abs(utils.str_to_number(ipx_header.get(key, np.nan), cast=int))
+                                                      for key in ('left', 'top', 'width', 'height', 'right', 'bottom')]
 
     left_top = np.array([left, top])
     width_height = np.array([width, height])

@@ -584,7 +584,7 @@ def get_mastu_wall_coords():
     print(coords)
     return coords
 
-def get_uda_scheduler_filename(fn_pattern='{diag_tag}{shot:06d}.nc', path=None, kwarg_aliases=None, **kwargs):
+def get_uda_scheduler_filename(fn_pattern='{diag_tag_analysed}{shot:06d}.nc', path=None, kwarg_aliases=None, **kwargs):
     fn = format_str(fn_pattern, kwargs, kwarg_aliases)
     fn = get_analysed_diagnostic_tag(fn)  # Change diagnostic tag from raw to analysed
     if path is not None:
@@ -599,7 +599,7 @@ def get_raw_diagnostic_tag(diag_tag):
     raw_tag = re.sub("^a", 'r', diag_tag)  # Change diagnostic tag from raw to analysed
     return raw_tag
 
-def putdata_create(fn='{diag_tag}{shot:06d}.nc', path='./', shot=None, pass_number=None, status=None,
+def putdata_create(fn='{diag_tag_analysed}{shot:06d}.nc', path='./', shot=None, pass_number=None, status=None,
                    conventions=None, data_class=None, title=None, comment=None, code=None, version=None,
                    xml=None, date=None, time=None, verbose=None,
                    kwarg_aliases=None, close=False, client=None, use_mast_client=False, **kwargs):
@@ -804,6 +804,9 @@ def putdata_variables_from_datasets(path_data, image_data, path_names, diag_tag,
         existing_coords = defaultdict(list)
     optional_dim_attrs = ['units', 'label', 'comment']
 
+    diag_tag_analysed = get_analysed_diagnostic_tag(diag_tag)
+    diag_tag_raw = get_raw_diagnostic_tag(diag_tag)
+
     # Collect together the names and origin of the variables that are to be written to each file group
     group_variables = defaultdict(list)
     groups = {}
@@ -814,7 +817,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names, diag_tag,
         # Variables with coordinates along an analysis path
         for path_name in make_iterable(path_names):
             # TODO: Use longname for path?
-            group = f'/{diag_tag}/{path_name}'
+            group = f'/{diag_tag_analysed}/{path_name}'
             path_data = data_structures.swap_xarray_dim(path_data, new_active_dims=f'R_{path_name}',
                                                         raise_on_fail=False)
             groups[group] = path_data
@@ -824,7 +827,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names, diag_tag,
 
     if (variable_names_image is not None) and (len(variable_names_image) > 0):
         # Variables with data across the whole image
-        group = f'/{diag_tag}/{path_name}/images'
+        group = f'/{diag_tag_analysed}/{path_name}/images'
         groups[group] = image_data
         if 'n' in image_data.dims:
             image_data = image_data.swap_dims({'n': 't'})
@@ -836,7 +839,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names, diag_tag,
     if (variable_names_time is not None) and (len(variable_names_time) > 0):
         # Spatially integrated quantities (eg power to divertor) that are only a function of time
         for path_name in make_iterable(path_names):
-            group = f'/{diag_tag}/{path_name}'  # /stats'
+            group = f'/{diag_tag_analysed}/{path_name}'  # /stats'
             groups[group] = path_data
             if 'n' in path_data.dims:
                 path_data = path_data.swap_dims({'n': 't'})

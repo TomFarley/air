@@ -176,16 +176,17 @@ def annotate_axis(ax, string, loc='top_right', x=0.85, y=0.955, fontsize=14, coo
             **kwargs)
     return artist
 
-def annotate_providence(ax, label='{machine} {pulse} {camera}\n({path_label})', loc='top_right', meta_data=None,
+def annotate_providence(ax, label='{machine} {pulse} {diag_tag_analysed}\n({path_label})', loc='top_right', meta_data=None,
                         aliases=None, fontsize=12, upper_case=('machine', 'camera'), replace_chars=(('_', '-'), ),
                         cut_strings='_path0', annotate=True, **kwargs):
     if not annotate:
         return
 
     backup_labels = [
-        '{machine} {camera} {pulse} {path_label}',
-        '{machine} {camera} {pulse}',
-        '{camera} {pulse}',
+        '{machine} {pulse} {diag_tag_raw}\n({path_label})'
+        '{machine} {pulse} {diag_tag_raw} {path_label}',
+        '{machine} {pulse} {diag_tag_raw}',
+        '{pulse} {diag_tag_raw}',
     ]
 
     # TODO: split into meta prep function
@@ -227,7 +228,7 @@ def annotate_providence(ax, label='{machine} {pulse} {camera}\n({path_label})', 
         meta_dict = None
 
     if '{' in label:
-        logger.warning(f'Unformatted annotation string: {label}, {meta_dict}')
+        logger.warning(f'Un-formatted annotation string: {label}, {meta_dict}')
 
     artist = annotate_axis(ax=ax, string=label, loc=loc, fontsize=fontsize, **kwargs)
 

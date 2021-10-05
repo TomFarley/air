@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # Required:
 output_format_plugin_name = 'uda_putdata'
 # Optional:
-output_filename_format = '{diag_tag}{shot:06d}.nc'  # Filename of output
+output_filename_format = '{diag_tag_analysed}{shot:06d}.nc'  # Filename of output
 output_path_format = '{fire_path}/../'  # Path to save output
 # See bottom of file for function aliases
 # ====================================================================
@@ -111,7 +111,7 @@ output_signals = {
 def write_processed_ir_to_uda_netcdf_file(path_data, image_data, path_names,
                                           variable_names_path, variable_names_time, variable_names_image,
                                           header_info, device_info, meta_data,
-                                          fn_output='{diag_tag}{shot:06d}.nc', path_output='./',
+                                          fn_output='{diag_tag_analysed}{shot:06d}.nc', path_output='./',
                                           client=None,
                                           use_mast_client=False):
     """

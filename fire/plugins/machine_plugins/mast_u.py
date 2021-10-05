@@ -506,7 +506,7 @@ def get_camera_external_clock_info(camera, pulse):
     elif camera.lower() in ['rir', 'air']:
         signal_clock = 'xpx/clock/mwir-1'
     else:
-        raise ValueError(f'Camera name "{camera}" not supported')
+        raise ValueError(f'Camera name "{diag_tag_raw}" not supported')
 
     info_out = {}
 

@@ -26,7 +26,7 @@ class TestSchedulerWorkflowJet(unittest.TestCase):
             conf.save()
             logger.info('CAD models %s' % models)
             # self.assertTrue('MAST' in models)
-        # TODO: Delete existing output files in repo dir '{diag_tag}{shot:06d}.nc'
+        # TODO: Delete existing output files in repo dir '{diag_tag_analysed}{shot:06d}.nc'
 
     def test_scheduler_workflow_jet_kldt(self):
         pulses = [94935]

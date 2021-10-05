@@ -40,7 +40,7 @@ def get_freia_ipx_path(pulse, camera):
     pulse = str(pulse)
     # MAST_IMAGES = '/net/fuslsa/data/MAST_IMAGES/'
     MAST_IMAGES = '/net/fuslsc.mast.l/data/MAST_IMAGES/'
-    ipx_path_fn = MAST_IMAGES + f"0{pulse[0:2]}/{pulse}/{camera}0{pulse}.ipx"
+    ipx_path_fn = MAST_IMAGES + f"0{pulse[0:2]}/{pulse}/{diag_tag_raw}0{pulse}.ipx"
     return ipx_path_fn
 
 def read_movie_meta_with_pyipx(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> dict:
@@ -446,7 +446,7 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
     return frames
 
 def download_ipx_via_http_request(camera, pulse, path_out='~/data/movies/{machine}/{pulse}/',
-                                  fn_out='{camera}0{pulse}.ipx', verbose=True):
+                                  fn_out='{diag_tag_raw}0{pulse}.ipx', verbose=True):
     import requests
     from fire.interfaces.io_basic import mkdir
 
@@ -457,7 +457,7 @@ def download_ipx_via_http_request(camera, pulse, path_out='~/data/movies/{machin
     path_fn = path_out / fn_out
     mkdir(path_out, depth=2)
 
-    url = f'http://video-replay-dev.mastu.apps.l/0{pulse}/{camera}/raw'
+    url = f'http://video-replay-dev.mastu.apps.l/0{pulse}/{diag_tag_raw}/raw'
     r = requests.get(url, allow_redirects=True)
 
     if b'404 Not Found' in r.content:

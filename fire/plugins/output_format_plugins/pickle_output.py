@@ -28,8 +28,8 @@ logger = logging.getLogger('fire.pickle_output')
 # Required:
 output_format_plugin_name = 'pickle_output'
 # Optional:
-output_filename_format = '{diag_tag}{shot:06d}.p'  # Filename of output
-output_path_format = '~/{user_dir}/pickle_output_archive/{camera}/'  # Path to save output
+output_filename_format = '{diag_tag_analysed}{shot:06d}.p'  # Filename of output
+output_path_format = '~/{user_dir}/pickle_output_archive/{diag_tag_analysed}/'  # Path to save output
 # See bottom of file for function aliases
 # ====================================================================
 
@@ -56,7 +56,7 @@ def write_processed_ir_to_pickle_output_file(path_data, image_data, path_names,
     path_fn = path / fn
 
     if not path.is_dir():
-        fire.interfaces.basic_io.mkdir(path, depth=3)
+        fire.interfaces.io_basic.mkdir(path, depth=3)
 
     if filter_output:
         try:
@@ -90,15 +90,18 @@ def write_processed_ir_to_pickle_output_file(path_data, image_data, path_names,
     return dict(success=success, path_fn=path_fn)
 
 def read_processed_ir_to_pickle_output_file(camera, pulse, machine='mast_u',
-                                            path_archive='~/{user_dir}/pickle_output_archive/{camera}/',
-                                            fn_format='{diag_tag}{pulse:06d}.p', meta_data=None):
+                                            path_archive='~/{user_dir}/pickle_output_archive/{diag_tag_analysed}/',
+                                            fn_format='{diag_tag_analysed}{pulse:06d}.p', meta_data=None):
     from fire.interfaces.io_basic import pickle_load
+    from fire.interfaces import uda_utils
 
     if meta_data is None:
         meta_data = {}
     meta_data.setdefault('user_dir', fire_paths['user'])
 
-    meta_args = dict(camera=camera, pulse=pulse, shot=pulse, machine=machine, diag_tag=camera)
+    diag_tag_raw = camera
+    meta_args = dict(camera=camera, pulse=pulse, shot=pulse, machine=machine,
+                     diag_tag_raw=diag_tag_raw, diag_tag_analysed=uda_utils.get_analysed_diagnostic_tag(diag_tag_raw))
 
     path = Path(str(path_archive).format(**meta_args, **meta_data)).expanduser()
     fn = str(fn_format).format(**meta_args, **meta_data)

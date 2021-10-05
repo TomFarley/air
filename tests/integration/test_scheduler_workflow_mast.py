@@ -26,7 +26,7 @@ class TestSchedulerWorkflowMast(unittest.TestCase):
             conf.save()
             logger.info('CAD models %s' % models)
             # self.assertTrue('MAST' in models)
-        # TODO: Delete existing output files in repo dir '{diag_tag}{shot:06d}.nc'
+        # TODO: Delete existing output files in repo dir '{diag_tag_analysed}{shot:06d}.nc'
 
     def test_scheduler_workflow_mast_rir(self):
         inputs = {'pulse': 27880, 'camera': 'rir', 'machine': 'MAST', 'pass_no': 0, 'scheduler': False,

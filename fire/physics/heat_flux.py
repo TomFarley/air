@@ -47,7 +47,7 @@ def scan_alpha_param(temperature_path, t, s_path, theo_kwargs, alpha_values, tes
 
     alpha_passed = theo_kwargs.get('alpha_top_org')
 
-    fig, axes, ax_passed = plot_tools.get_fig_ax(num=f'alpha_scan_heatmaps, {machine} {camera} {pulse}',
+    fig, axes, ax_passed = plot_tools.get_fig_ax(num=f'alpha_scan_heatmaps, {machine} {diag_tag_raw} {pulse}',
                                                  ax_grid_dims=(2, int(np.ceil(len(alpha_values)/2))),
                                                  figsize=(12, 12))
     axes = axes.flatten()
@@ -83,10 +83,10 @@ def scan_alpha_param(temperature_path, t, s_path, theo_kwargs, alpha_values, tes
     ax.axvline(x=alpha_passed, ls='--', color='k')
     plot_tools.annotate_providence(ax, meta_data=meta)
     plot_tools.save_fig(fire_paths['figures'] / f'alpha_scan/heatmaps/'
-                                                f'alpha_scan_heatmaps-{machine}-{camera}-{pulse}.png', mkdir_depth=2)
+                                                f'alpha_scan_heatmaps-{machine}-{diag_tag_analysed}-{pulse}.png', mkdir_depth=2)
     plot_tools.show_if(True)
 
-    fig, ax, ax_passed = plot_tools.get_fig_ax(num=f'alpha_scan_q_stats, {machine} {camera} {pulse}',
+    fig, ax, ax_passed = plot_tools.get_fig_ax(num=f'alpha_scan_q_stats, {machine} {diag_tag_analysed} {pulse}',
                                                ax_grid_dims=(1, 1))
     alphas_flat = [a[0] for a in alpha_values]
     for stat, values in stats.items():
@@ -98,11 +98,11 @@ def scan_alpha_param(temperature_path, t, s_path, theo_kwargs, alpha_values, tes
     plot_tools.legend(ax)
     ax.set_xlabel(r'$\alpha$ [W/(m$^2$•K)]')
     ax.set_ylabel(r'$q_\perp$ [MW]')
-    plot_tools.save_fig(fire_paths['figures'] / f'alpha_scan/q_stats/alpha_scan_q_stats-{machine}-{camera}-{pulse}.png',
+    plot_tools.save_fig(fire_paths['figures'] / f'alpha_scan/q_stats/alpha_scan_q_stats-{machine}-{diag_tag_analysed}-{pulse}.png',
                         mkdir_depth=2)
     plot_tools.show_if(show=True, tight_layout=True)
 
-    fig, axes, ax_passed = plot_tools.get_fig_ax(num=f'alpha_scan_radial_av, {machine} {camera} {pulse}',
+    fig, axes, ax_passed = plot_tools.get_fig_ax(num=f'alpha_scan_radial_av, {machine} {diag_tag_analysed} {pulse}',
                                                ax_grid_dims=(1, 2), sharex=True)
     ax = axes[0]
     for alpha, profile in zip(alphas_flat, radial_average['heat_flux']):
@@ -123,7 +123,7 @@ def scan_alpha_param(temperature_path, t, s_path, theo_kwargs, alpha_values, tes
     ax.set_xlabel('$t$ [s]')
     ax.set_ylabel('$T$ [$^\circ$C]')
     plot_tools.save_fig(fire_paths['figures'] / f'alpha_scan/radial_av/'
-                                                f'alpha_scan_radial_av-{machine}-{camera}-{pulse}.png',mkdir_depth=2)
+                                                f'alpha_scan_radial_av-{machine}-{diag_tag_analysed}-{pulse}.png',mkdir_depth=2)
     plot_tools.show_if(show=True, tight_layout=True)
 
 

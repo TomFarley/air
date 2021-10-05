@@ -12,7 +12,7 @@
         "fire_path": "~/.fire/",
         "paths": {
             "figures": ["~/{fire_path}/figures/{figure_subdir}",
-                        "/projects/SOL/Data_analysis/IR/{diag_tag}/{shot}/"
+                        "/projects/SOL/Data_analysis/IR/{diag_tag_analysed}/{shot}/"
             ]
         },
         "default_params": {
@@ -35,6 +35,9 @@
                     ],
                     "device_details": {
                         "id": "FLIR SC7500 MWIR Camera 1",
+                        "diag_tag_raw": "rir",
+                        "diag_tag_analysed": "air",
+                        "camera_short_name": "MWIR1",
                         "camera_serial_number": 6580045,
                         "detector_resolution": [320, 256],
                         "image_range": [0, 16383],
@@ -63,6 +66,9 @@
                     ],
                     "device_details": {
                         "id": "IRcam Velox 81k Camera 1",
+                        "diag_tag_raw": "rit",
+                        "diag_tag_analysed": "ait",
+                        "camera_short_name": "LWIR1",
                         "camera_serial_number": "0101-A18-CH",
                         "detector_resolution": [320, 256],
                         "image_range": [0, 16383],
@@ -102,6 +108,9 @@
                     ],
                     "device_details": {
                         "id": "Santa Barbara Focal Plane SBF 125 Camera",
+                        "diag_tag_raw": "rir",
+                        "diag_tag_analysed": "air",
+                        "camera_short_name": "MWIR",
                         "camera_serial_number": "???",
                         "detector_resolution": [320, 256],
                         "image_range": [0, 16383],
@@ -127,6 +136,9 @@
                     ],
                     "device_details": {
                         "id": "Thermosensorik CMT256 LHS",
+                        "diag_tag_raw": "rit",
+                        "diag_tag_analysed": "ait",
+                        "camera_short_name": "LWIR",
                         "camera_serial_number": "???",
                         "detector_resolution": [256, 256],
                         "image_range": [0, 16383],
@@ -164,7 +176,10 @@
                     ],
                     "device_details": {
                         "id": "?",
-                        "camera_serial_number": -1,
+                        "diag_tag_raw": "kldt",
+                        "diag_tag_analysed": "kldt",
+                        "camera_short_name": "kldt",
+                        "camera_serial_number": "????",
                         "detector_resolution": [
                             400,
                             256
@@ -273,7 +288,7 @@
         "input_files": [
             "{fire_path}/input_files/",
             "{fire_path}/input_files/{machine}/",
-            "{fire_path}/input_files/{machine}/{camera}/",
+            "{fire_path}/input_files/{machine}/{diag_tag_raw}/",
             "{fire_path}/input_files/{machine}/calcam_calibs/",
             "~/input_files/{machine}/",
             "~/input_files/",
@@ -285,15 +300,15 @@
         "movie_files": [
             "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
             "/net/fuslsc/data/MAST_Data/{pulse}/LATEST/",
-            "~/data/movies/{machine}/{pulse}/{camera}/",
+            "~/data/movies/{machine}/{pulse}/{diag_tag_raw}/",
             "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
             "{fire_path}/../tests/test_data/{machine}/",
-            "/scratch/ir_movies_mastu/{machine}/{pulse}/{camera}/",
-            "/home/tfarley/data/movies/{machine}/{pulse}/{camera}/",
+            "/scratch/ir_movies_mastu/{machine}/{pulse}/{diag_tag_raw}/",
+            "/home/tfarley/data/movies/{machine}/{pulse}/{diag_tag_raw}/",
             "~/data/movies/mast_u/rit_ipx_files/",
             "~/data/movies/mast_u/rir_ats_files/test/",
             "~/data/movies/mast_u/rir_ats_files/.*/",
-            "~/data/movies/diagnostic_pc_transfer/{camera}/{date}/"
+            "~/data/movies/diagnostic_pc_transfer/{diag_tag_raw}/{date}/"
         ]
     },
     "paths_output": {
@@ -305,30 +320,30 @@
     },
     "filenames_input": {
         "movie_files": [
-            "{camera}0{pulse}.ipx",
-            "{camera}_{pulse}.npz",
-            "{camera}_{pulse}.raw",
+            "{diag_tag_raw}0{pulse}.ipx",
+            "{diag_tag_raw}_{pulse}.npz",
+            "{diag_tag_raw}_{pulse}.raw",
             "0{pulse}.ats",
             "rir-0{pulse}.ats"
         ],
         "camera_settings": [
-            "camera_settings-{machine}-{camera}.csv"
+            "camera_settings-{machine}-{diag_tag_raw}.csv"
         ],
         "calcam_calibs": [
-            "calcam_calibs-{machine}-{camera}-defaults.csv"
+            "calcam_calibs-{machine}-{diag_tag_raw}-defaults.csv"
         ],
         "analysis_paths": [
-            "analysis_paths-{machine}-{camera}-defaults.csv"
+            "analysis_paths-{machine}-{diag_tag_raw}-defaults.csv"
         ],
         "analysis_path_dfns": [
-            "analysis_path_dfns-{machine}-{camera}-defaults.json"
+            "analysis_path_dfns-{machine}-{diag_tag_raw}-defaults.json"
         ],
         "black_body_curve": [
             "bb_photons-{lens_in_mm}mm-{exposure_in_us}us.tsv"
         ],
         "temperature_coefs": [
-            "temperature_coefs-{machine}-{camera}.csv",
-            "temperature_coefs-{machine}-{camera}-{lens_in_mm:0.0f}mm-{exposure_in_us:0.0f}us.csv"
+            "temperature_coefs-{machine}-{diag_tag_raw}.csv",
+            "temperature_coefs-{machine}-{diag_tag_raw}-{lens_in_mm:0.0f}mm-{exposure_in_us:0.0f}us.csv"
         ],
         "structure_coords": [
             "structure_coords-{machine}-default.csv"
@@ -343,7 +358,7 @@
             "uda_putdata"
         ],
         "file_header": {
-            "title": "Processed infa-red camera data from IR camera {camera} on {machine}",
+            "title": "Processed infa-red camera data from IR camera {diag_tag_raw} on {machine}",
             "comment": "Heat flux, temperature and other physics quantities derived from IR camera data"
         },
         "variables": {

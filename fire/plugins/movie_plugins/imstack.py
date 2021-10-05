@@ -35,7 +35,7 @@ def get_freia_imstack_path(pulse, camera):
     :return: Path to imstack directory
     """
     pulse = str(pulse)
-    imstack_path_fn = f"/projects/SOL/Data/Cameras/SA1/{pulse}/{camera}/C001H001S0001/"
+    imstack_path_fn = f"/projects/SOL/Data/Cameras/SA1/{pulse}/{diag_tag_raw}/C001H001S0001/"
     return imstack_path_fn
 
 def read_movie_meta(path: Union[str, Path], transforms: Iterable[str]=()) -> dict:

@@ -86,7 +86,7 @@ class TestInterfaces(unittest.TestCase):
 
     def test_lookup_pulse_info(self):
         path_search = (pwd / '../test_data/mast/').resolve()
-        fn_pattern = "calcam_calibs-{machine}-{camera}-defaults.csv"
+        fn_pattern = "calcam_calibs-{machine}-{diag_tag_raw}-defaults.csv"
         kwargs = {'pulse': 20378, 'machine': 'mast', 'camera': 'rit'}
         path, fn, info = lookup_pulse_info(search_paths=path_search, filename_patterns=fn_pattern, **kwargs)
         self.assertEqual(path, path_search)

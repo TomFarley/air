@@ -97,14 +97,14 @@ def write_ipx_example(verbose=True):
         print(message)
 
 
-def rewrite_ipx_file_with_mastvideo(pulse, camera='rir'):
+def rewrite_ipx_file_with_mastvideo(pulse, diag_tag_raw='rir'):
     from fire.plugins.movie_plugins.ipx import (read_movie_data_with_mastmovie, read_movie_data_with_mastmovie,
         read_movie_data, read_movie_meta, write_ipx_with_mastmovie)
 
     n = 350
 
-    fn_ipx_in = Path(f'/net/fuslsc.mast.l/data/MAST_IMAGES/0{str(pulse)[:2]}/{pulse}/{camera}0{pulse}.ipx')
-    fn_ipx_out = f'{camera}0{pulse}_test.ipx'
+    fn_ipx_in = Path(f'/net/fuslsc.mast.l/data/MAST_IMAGES/0{str(pulse)[:2]}/{pulse}/{diag_tag_raw}0{pulse}.ipx')
+    fn_ipx_out = f'{diag_tag_raw}0{pulse}_test.ipx'
 
     print(f'In: {fn_ipx_in}')
     print(f'Out: {Path(fn_ipx_out).resolve()}')
