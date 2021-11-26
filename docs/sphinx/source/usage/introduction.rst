@@ -33,9 +33,9 @@ Machine and camera specific variables are stored in a number of input files in h
      - | Lookup table for which calcam spatial calibration files
        | (.ccc) to use for different pulse ranges
      - csv
-     - calcam_calibs-{machine}-{camera}-defaults.csv
+     - calcam_calibs-{machine}-{diag_tag_raw}-defaults.csv
    * - analysis_paths
      - | Spatial coordinates of paths along tile surfaces to
        | calculate heat fluxes along
      - csv
-     - analysis_paths-{machine}-{camera}-defaults.csv
+     - analysis_paths-{machine}-{diag_tag_raw}-defaults.csv
