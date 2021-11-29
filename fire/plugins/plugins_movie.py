@@ -15,11 +15,12 @@ from pathlib import Path
 
 import numpy as np
 
-from fire import fire_paths
+
 from fire.interfaces.interfaces import PathList
+from fire.misc import utils
 from fire.misc.utils import dirs_exist, locate_files
 from fire.plugins import plugins
-from fire.interfaces.read_user_fire_config import read_user_fire_config
+from fire.interfaces.user_config import get_user_fire_config
 from fire.plugins.machine_plugins import mast_u
 
 logger = logging.getLogger(__name__)
@@ -28,13 +29,14 @@ logger = logging.getLogger(__name__)
 class MovieReader:
     # TODO: Read plugin module attributes definition from file?
     # movie_plugin_definition_file = 'movie_plugin_definition.json'
-    _plugin_paths = ["{fire_path}/plugins/movie_plugins/"]
+    _plugin_paths = ["{fire_source_dir}/plugins/movie_plugins/"]
 
     try:
-        config = read_user_fire_config()
+        config, config_groups, config_path_fn = get_user_fire_config()
         plugin_attributes = config['plugins']['movie']['module_attributes']
         movie_paths = config['paths_input']['movie_files']
         movie_fns = config['filenames_input']['movie_files']
+        _base_paths = config_groups['fire_paths']
     except Exception as e:
         plugin_attributes = {
             "required": {
@@ -50,7 +52,7 @@ class MovieReader:
                         "~/data/movies/{machine}/{pulse}/{diag_tag_raw}/",
                         "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
                         "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
-                        "{fire_path}/../tests/test_data/{machine}/"]
+                        "{fire_source_dir}/../tests/test_data/{machine}/"]
         movie_fns = ["{diag_tag_raw}0{pulse}.ipx",
                      "{diag_tag_raw}_{pulse}.npz",
                      "{diag_tag_raw}_{pulse}.raw"]
@@ -58,10 +60,13 @@ class MovieReader:
     def __init__(self, movie_plugin_paths: Optional[PathList]=None, plugin_filter: Optional[Sequence[str]]=None,
                  plugin_precedence: Optional[Sequence[str]]=None,
                  movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
-                 movie_plugin_definition_file: Optional[Union[str,Path]]=None):
-        self.plugin_paths = movie_plugin_paths
-        self.plugin_filter = plugin_filter
+                 movie_plugin_definition_file: Optional[Union[str,Path]]=None,
+                 base_paths: Union[dict,tuple]=()):
         self._plugin_precedence = plugin_precedence
+        self.base_paths = dict(base_paths)  # property
+        self.plugin_paths = movie_plugin_paths  # property
+        self.plugin_filter = plugin_filter
+
         if movie_paths is not None:
             self.movie_paths = movie_paths
         if movie_fns is not None:
@@ -93,7 +98,8 @@ class MovieReader:
         for name, plugin_dict in self._plugin_dicts.items():
             info = plugin_info[name] if (plugin_info is not None) and (name in plugin_info) else None
 
-            self._plugins[name] = MoviePlugin.build_from_plugin_dict(name, plugin_dict, plugin_info=info)
+            self._plugins[name] = MoviePlugin.build_from_plugin_dict(name, plugin_dict, plugin_info=info,
+                                                                     base_paths=self.base_paths)
         if len(self._plugins) == 0:
             # TODO: catch module not found errors eg pyIpx missing
             raise IOError(f'Failed to load any movie reader plugins')
@@ -193,15 +199,26 @@ class MovieReader:
     def plugin_paths(self, plugin_paths):
         # NOTE: Functionality duplicated in plugins.py?
         if plugin_paths is not None:
-            self._plugin_paths = [Path(str(p).format(fire_path=fire_paths['root'])) for p in plugin_paths]
+            self._plugin_paths = [Path(str(p).format(**self._base_paths)) for p in plugin_paths]
+
+    @property
+    def base_paths(self):
+        return self._base_paths
+
+    @base_paths.setter
+    def base_paths(self, base_paths):
+        # NOTE: Functionality duplicated in plugins.py?
+        if base_paths is not None and (len(base_paths) > 0):
+            self._base_paths = dict(base_paths)
 
 class MoviePlugin:
     module = None
 
-    def __init__(self, name, methods, info=None):
+    def __init__(self, name, methods, info=None, base_paths=()):
         self.name = name
         self._methods = methods
         self._info = info
+        self._base_paths = dict(base_paths)
         pass
 
     def __repr__(self):
@@ -209,14 +226,14 @@ class MoviePlugin:
         return out
 
     @classmethod
-    def build_from_plugin_dict(cls, name, plugin_dict, plugin_info=None):
-        plugin = cls(name, plugin_dict, plugin_info)
+    def build_from_plugin_dict(cls, name, plugin_dict, plugin_info=None, base_paths=()):
+        plugin = cls(name, plugin_dict, plugin_info, base_paths=base_paths)
         return plugin
 
     def read_movie_meta_data(self, pulse: Union[int, str], diag_tag_raw: str, machine: str,
                              movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
-                             check_output: bool=True, substitute_unknown_values: bool=False, **meta) -> Tuple[Dict[str,Any],
-                                                                                                Dict[str, str]]:
+                             check_output: bool=True, substitute_unknown_values: bool=False,
+                             **meta) -> Tuple[Dict[str,Any], Dict[str, str]]:
         """Read movie header meta data
 
         Args:
@@ -235,15 +252,15 @@ class MoviePlugin:
         meta_data, origin = read_movie_meta_data(pulse, diag_tag_raw, machine, movie_plugins,
                                                  movie_paths=movie_paths, movie_fns=movie_fns,
                                                  check_output=check_output,
-                                                 substitute_unknown_values=substitute_unknown_values, **meta)
+                                                 substitute_unknown_values=substitute_unknown_values,
+                                                 base_paths=self._base_paths, **meta)
         return meta_data, origin
 
     def read_movie_data(self, pulse: Union[int, str], diag_tag_raw: str, machine: str,
                         movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
                         n_start: Optional[int] = None, n_end: Optional[int] = None, stride: Optional[int] = 1,
                         frame_numbers: Optional[Union[Iterable, int]] = None,
-                        transforms: Optional[Iterable[str]] = (),
-                        verbose: bool=True, **meta
+                        transforms: Optional[Iterable[str]] = (), verbose: bool=True, **meta
                         ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, str]]:
         """Read movie frame data
 
@@ -262,16 +279,17 @@ class MoviePlugin:
 
         movie_data, origin = read_movie_data(pulse, diag_tag_raw, machine, movie_plugins,
                                              n_start=n_start, n_end=n_end, stride=stride,
-                                             frame_numbers=frame_numbers,
-                                             movie_paths=movie_paths, movie_fns=movie_fns,
-                                             transforms=transforms, verbose=verbose, **meta)
+                                             frame_numbers=frame_numbers, movie_paths=movie_paths, movie_fns=movie_fns,
+                                             transforms=transforms, verbose=verbose, base_paths=self._base_paths,
+                                             **meta)
         return movie_data, origin
 
 
 def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movie_plugins: dict,
                          movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
                          check_output: bool=True,
-                         substitute_unknown_values: bool=False, **meta) -> Tuple[Dict[str, Any], Dict[str, str]]:
+                         substitute_unknown_values: bool=False, base_paths: Union[dict, tuple]=(),
+                         **meta) -> Tuple[Dict[str, Any], Dict[str, str]]:
     """Read movie header meta data
 
     Args:
@@ -282,6 +300,7 @@ def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movi
         movie_paths     : Search directories containing movie files
         movie_fns       : Movie filename format strings
         check_output    : Whether to run checks on format of outputed meta data
+        base_paths      : (Optional) Paths to substitute into move_paths
 
     Returns: (meta data dictionary, data origin dictionary)
 
@@ -291,7 +310,8 @@ def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movi
                                   'bit_depth', 'image_shape', 'detector_window']
     plugin_key = 'meta'
     meta_data, origin = try_movie_plugins_dicts(plugin_key, pulse, camera, machine, movie_plugins,
-                                                movie_paths=movie_paths, movie_fns=movie_fns, **meta)
+                                                movie_paths=movie_paths, movie_fns=movie_fns,
+                                                base_paths=base_paths, **meta)
 
     rename_meta_data_fields(meta_data)
     check_movie_meta_data(meta_data, required_fields=movie_meta_required_fields, check_bad_values=True,
@@ -305,8 +325,8 @@ def read_movie_data(pulse: Union[int, str], diag_tag_raw: str, machine: str, mov
                     n_start:Optional[int]=None, n_end:Optional[int]=None, stride:Optional[int]=1,
                     frame_numbers: Optional[Union[Iterable, int]]=None,
                     movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
-                    transforms: Optional[Iterable[str]] = (), verbose: bool=True, **meta) \
-                    -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, str]]:
+                    transforms: Optional[Iterable[str]] = (), base_paths: Union[dict, tuple]=(), verbose: bool=True,
+                    **meta) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, str]]:
     """Read movie frame data
 
     Args:
@@ -316,6 +336,7 @@ def read_movie_data(pulse: Union[int, str], diag_tag_raw: str, machine: str, mov
         movie_plugins   : Dict of plugin functions for reading movie data
         movie_paths     : Search directories containing movie files
         movie_fns       : Movie filename format strings
+        base_paths      : (Optional) Paths to substitute into move_paths
         verbose         : Print to console
 
     Returns: namedtuple: (frame_nos, frame_times, frame_data), origin
@@ -326,7 +347,7 @@ def read_movie_data(pulse: Union[int, str], diag_tag_raw: str, machine: str, mov
                                                  n_start=n_start, n_end=n_end, stride=stride,
                                                  frame_numbers=frame_numbers,
                                                  movie_paths=movie_paths, movie_fns=movie_fns,
-                                                 transforms=transforms, **meta)
+                                                 transforms=transforms, base_paths=base_paths, **meta)
     frame_numbers, frame_times, frame_data = movie_data
     # Convert tuples to named tuples
     movie_data_tup = namedtuple('movie_data', ('frame_nos', 'frame_times', 'frame_data'))
@@ -345,7 +366,7 @@ def try_movie_plugins_dicts(plugin_key, pulse, diag_tag_raw, machine, movie_plug
                             frame_numbers: Optional[Union[Iterable, int]]=None,
                             movie_paths:Optional[PathList]=None, movie_fns=None,
                             transforms: Optional[Iterable[str]]=(),
-                            func_kwargs=None, **meta):
+                            func_kwargs=None, base_paths: Union[dict,tuple]=(), **meta):
     """Iterate through calling supplied movie plugin functions in order supplied, until successful.
 
     Args:
@@ -356,6 +377,7 @@ def try_movie_plugins_dicts(plugin_key, pulse, diag_tag_raw, machine, movie_plug
         movie_plugins   : Dict of movie plugin functions keyed: movie_plugins[<plugin_name>][<plugin_func>]
         movie_paths     : (Optional) Paths in which to look for movie files for file based plugins
         movie_fns       : (Optional) Filename patterns for movie files for file based plugins
+        base_paths      : (Optional) Paths to substitute into move_paths
 
     Returns: Tuple of data returned by plugin and a dictionary specifying the origin of the data (i.e. plugin,
              movie file etc.
@@ -366,13 +388,14 @@ def try_movie_plugins_dicts(plugin_key, pulse, diag_tag_raw, machine, movie_plug
               'movie_paths': movie_paths, 'movie_fns': movie_fns,
               'transforms': transforms,
               'pulse_prefix': str(pulse)[0:2],
-              'fire_path': str(fire_paths['root'])}
+              **dict(base_paths)}
     kwargs.update(meta)
     data, origin = None, None
     for plugin_name, plugin_funcs in movie_plugins.items():
         movie_func = plugin_funcs[plugin_key]
-        status, kws, origin_options = get_movie_plugin_args(movie_func, kwargs, func_kwargs,
-                                                           movie_paths=movie_paths, movie_fns=movie_fns)
+        status, kws, origin_options = get_movie_plugin_args(movie_func,
+                                                            kwargs_generic=kwargs, kwargs_specific=func_kwargs,
+                                                            movie_paths=movie_paths, movie_fns=movie_fns)
         if status != 'ok':
             logger.debug(status)
         else:
@@ -427,6 +450,8 @@ def try_movie_plugins_dicts(plugin_key, pulse, diag_tag_raw, machine, movie_plug
 def get_movie_plugin_args(read_movie_func, kwargs_generic=None, kwargs_specific=None, movie_paths=None, movie_fns=None):
     signature = inspect.signature(read_movie_func).parameters.keys()
     kwargs = copy(kwargs_generic)
+    if kwargs_specific is not None:
+        raise NotImplementedError
     # Default fail values
     kws = {}
     origin_options = {}
@@ -516,9 +541,19 @@ def add_alternative_meta_data_representations(meta_data):
     """
     key = 'lens'
     value = meta_data.get(key, None)
-    if value:
+    if isinstance(value, str):
+        from_mm = 'mm' in value
+        value = value.strip('m "\'')
+        value = utils.str_to_number(value, cast=int, if_not_numeric='return_input')
+        if (not from_mm) and utils.is_numeric(value):  # assume meters
+            value *= 1e3
+    elif isinstance(value, (int, float)):
+        value = int(value*1e3)
+    else:
+        logger.warning(f'No value for "{key}"')
+    if isinstance(value, int):
         try:
-            meta_data['lens_in_mm'] = int(value*1e3)
+            meta_data['lens_in_mm'] = value
         except (TypeError, ValueError) as e:
             logger.exception(f'Failed to convert lens focal length value "{value}" to mm')
             meta_data['lens_in_mm'] = 25
@@ -535,6 +570,8 @@ def add_alternative_meta_data_representations(meta_data):
             meta_data['exposure_in_us'] = 250
             logger.warning('Set lens to hard coded value {meta_data["lens_in_mm"]}')
             # raise e
+    else:
+        logger.warning(f'No value for "{key}"')
 
     return meta_data
 

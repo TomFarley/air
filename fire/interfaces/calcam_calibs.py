@@ -32,7 +32,7 @@ import xarray as xr
 import skimage
 
 import calcam
-from fire import fire_paths
+
 from fire.geometry.geometry import cartesian_to_toroidal, cylindrical_to_cartesian, angles_to_convention
 from fire.camera_tools.image_processing import find_outlier_intensity_threshold
 from fire.interfaces.interfaces import lookup_pulse_row_in_csv

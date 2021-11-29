@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 
-from fire import fire_paths
+
 from fire.plugins.plugins_movie import MovieReader, MoviePlugin
 
 pwd = Path(__file__).parent
@@ -39,7 +39,7 @@ class TestMovieReader(unittest.TestCase):
         fire_path = fire_paths['root']
         machine = 'mast'
         fn = 'rir030378.ipx'
-        path_test_data = Path(f'{fire_path}/../tests/test_data/{machine}/{fn}').resolve()
+        path_test_data = Path(f'{fire_source_dir}/../tests/test_data/{machine}/{fn}').resolve()
         self.assertTrue(path_test_data.exists(), msg=f'{path_test_data} does not exist')
 
     def test_init(self):

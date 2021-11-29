@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 
 from fire.geometry.s_coordinate import get_s_coord_global_r, get_s_coord_path_ds
+from fire.interfaces import user_config
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -88,20 +89,19 @@ def get_s_coord_path(x_path, y_path, z_path, machine_plugins, **kwargs):
 def get_machine_plugins(machine='mast_u'):
     import fire
     from fire.interfaces import interfaces
-    from fire import fire_paths
+
     from fire.plugins import plugins
-    config = interfaces.json_load(fire_paths['config'], key_paths_drop=('README',))
+    config, config_groups, path_fn = user_config.get_user_fire_config()
+    base_paths = config_groups['fire_paths']
 
     # Load machine plugins
     machine_plugin_paths = config['paths_input']['plugins']['machine']
     machine_plugin_attrs = config['plugins']['machine']['module_attributes']
     machine_plugins, machine_plugins_info = plugins.get_compatible_plugins(machine_plugin_paths,
-                                                                                   attributes_required=
-                                                                                   machine_plugin_attrs['required'],
-                                                                                   attributes_optional=
-                                                                                   machine_plugin_attrs['optional'],
-                                                                                   plugins_required=machine,
-                                                                                   plugin_type='machine')
+                                                attributes_required=machine_plugin_attrs['required'],
+                                                attributes_optional=machine_plugin_attrs['optional'],
+                                                plugins_required=machine, plugin_type='machine',
+                                                                           base_paths=base_paths)
     machine_plugins, machine_plugins_info = machine_plugins[machine], machine_plugins_info[machine]
     fire.active_machine_plugin = (machine_plugins, machine_plugins_info)
 

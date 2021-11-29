@@ -7,7 +7,7 @@ from fire.interfaces.interfaces import (lookup_pulse_row_in_csv, lookup_pulse_in
                                         generate_pulse_id_strings, generate_camera_id_strings,
                                         generate_frame_id_strings, get_module_from_path_fn)
 from fire.interfaces.io_basic import json_dump, json_load
-from fire import fire_paths
+
 
 pwd = Path(__file__).parent
 
@@ -25,11 +25,11 @@ class TestInterfaces(unittest.TestCase):
               "default_params":
                   {"machine": "mast", "pulse": 23586, "camera": "rir", "pass": 0},
               "paths":
-                  {"movie_plugins": ["{fire_path}/interfaces/movie_plugins/"],
-                    "machine_plugins": ["{fire_path}/interfaces/machine_plugins/"],
+                  {"movie_plugins": ["{fire_source_dir}/interfaces/movie_plugins/"],
+                    "machine_plugins": ["{fire_source_dir}/interfaces/machine_plugins/"],
                     "input_file_types": ["pulse_lookups", "black_body_calibrations", "surface_properties"],
                     "input_files": ["~/fire/input_files/{machine}/",
-                                    "{fire_path}/input_files/{machine}/"],
+                                    "{fire_source_dir}/input_files/{machine}/"],
                     "calcam_calibrations": ["~/calcam/calibrations/",
                                             "~/calcam2/calibrations/"]
                   },

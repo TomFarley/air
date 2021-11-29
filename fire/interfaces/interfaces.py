@@ -14,7 +14,6 @@ import pandas as pd
 
 from fire.interfaces.io_basic import read_csv
 from fire.misc.utils import (locate_file, mkdir, filter_nested_dict_key_paths, drop_nested_dict_key_paths, cast_lists_to_arrays)
-from fire import fire_paths
 from fire.interfaces.exceptions import InputFileException
 
 logger = logging.getLogger(__name__)
@@ -36,14 +35,13 @@ def digest_shot_file_name(fn, pattern='(?P<diag_tag>\D*)(?P<shot>\d+)\.(?P<exten
             pass
     return info
 
-def format_path(path: Union[str, Path] , **kwargs) -> Path:
-    kwargs.update({'fire_path': fire_paths['root']})
+def format_path(path: Union[str, Path], base_paths: Union[dict, str]=(), **kwargs) -> Path:
+    kwargs.update(dict(base_paths))
     path = Path(str(path).format(**kwargs)).expanduser()
     return path
 
 def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns_inputs=None,
-                   paths_output=None, fn_pattern_checkpoints=None,
-                   params=None):
+                   paths_output=None, base_paths=(), fn_pattern_checkpoints=None, params=None):
     """Return dict of paths to input files needed for IR analysis
 
     :param pulse: Shot/pulse number or string name for synthetic movie data
@@ -52,7 +50,7 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
     :return: Dict of filepaths
     """
     if search_paths_inputs is None:
-        search_paths_inputs = ["~/fire/input_files/{machine}/", "{fire_path}/input_files/{machine}/", "~/calcam/calibrations/"]
+        search_paths_inputs = ["~/fire/input_files/{machine}/", "{fire_source_dir}/input_files/{machine}/", "~/calcam/calibrations/"]
     if fn_patterns_inputs is None:
         # TODO: UPDATE
         fn_patterns_inputs = {"calcam_calibs": ["calcam_calibs-{machine}-{diag_tag_raw}-defaults.csv"],
@@ -60,7 +58,9 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
                               "surface_props": ["surface_props-{machine}-{diag_tag_raw}-defaults.json"]}
     if params is None:
         params = {}
-    params.update({'pulse': pulse, 'camera': camera, 'machine': machine, 'fire_path': str(fire_paths['root'])})
+    base_paths = dict(base_paths)
+
+    params.update({'pulse': pulse, 'camera': camera, 'machine': machine, **base_paths})
 
     files = {}
 
@@ -395,14 +395,14 @@ def get_module_from_path_fn(path_fn):
             module = None
     return module
 
-def archive_netcdf_output(path_fn_in, path_archive='~/{user_dir}/archive_netcdf_output/{diag_tag_raw}/', meta_data=None):
+def archive_netcdf_output(path_fn_in, path_archive='~/{fire_user_dir}/archive_netcdf_output/{diag_tag_raw}/',
+                          meta_data=None):
     success = False
     if path_fn_in is None:
         return success
 
     if meta_data is None:
         meta_data = {}
-    meta_data.setdefault('user_dir', fire_paths['user'])
 
     path_archive = path_archive.format(**meta_data)
 

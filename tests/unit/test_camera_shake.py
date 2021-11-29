@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 from fire.camera_tools.camera_shake import (calc_camera_shake_displacements, remove_camera_shake)
-from fire import fire_paths
+
 
 pwd = Path(__file__).parent
 

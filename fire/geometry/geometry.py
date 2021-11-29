@@ -17,13 +17,15 @@ import xarray as xr
 
 import fire
 import fire.interfaces.io_basic
-import fire.interfaces.read_user_fire_config
+import fire.interfaces.user_config
 from fire.misc import utils
 from fire.misc.utils import ndarray_0d_to_scalar
 from pyEquilibrium.equilibrium import equilibrium
 import pyuda
 client = pyuda.Client()
 import time as clock
+
+from fire import PATH_FIRE_SOURCE
 from fire.interfaces import interfaces, io_utils
 
 logger = logging.getLogger(__name__)
@@ -31,11 +33,11 @@ logger = logging.getLogger(__name__)
 
 def locate_structure_coords_file(machine='mast_u', paths=None, fns=None):
     if (paths is None) or (fns is None):
-        config = fire.interfaces.read_user_fire_config.read_user_fire_config()
+        config = fire.interfaces.user_config._read_user_fire_config()
         paths = config['paths_input']['input_files']
         fns = config['filenames_input']['structure_coords']
 
-    kws = dict(machine=machine, fire_path=fire.fire_paths['root'])
+    kws = dict(machine=machine, fire_source_dir=PATH_FIRE_SOURCE)
     path_fn = io_utils.locate_file(paths, fns=fns, path_kws=kws, fn_kws=kws)
     # print(path_fn)
     path_fn = path_fn[0] / path_fn[1]

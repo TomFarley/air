@@ -12,12 +12,11 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
+from fire import PATH_FIRE_SOURCE
 from fire.interfaces.io_basic import read_csv
-from fire import fire_paths
+
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
-
-fire_root = fire_paths['root']
 
 def read_altair_asc_image_file(path_fn, verbose=True):
     """Read .asc image file produced by the Altair software.
@@ -176,7 +175,7 @@ if __name__ == '__main__':
 
     plot_movie_frames(data_movie_nucsub, cmap_percentiles=(2, 98)) #(0, 100))
 
-    path = Path(fire_root) / '../tests/test_data/lab/'
+    path = Path(PATH_FIRE_SOURCE) / '../tests/test_data/lab/'
 
     bbname = 'bb_10us.ASC'
     bgname = 'bg_10us.ASC'

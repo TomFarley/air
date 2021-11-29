@@ -13,7 +13,7 @@ from typing import Union, Tuple, List, Optional, Dict
 from pathlib import Path
 from collections import OrderedDict, defaultdict
 
-from fire import fire_paths
+
 from fire.interfaces.interfaces import PathList, get_module_from_path_fn
 from fire.misc.utils import make_iterable
 
@@ -58,7 +58,7 @@ def get_plugins(path: Union[Path, str], attributes_requried: Dict[str, str],
               ...]
 
     """
-    path = Path(path)
+    path = Path(path).expanduser()
     plugins, pulgins_info = defaultdict(dict), defaultdict(dict)
     attributes_requried = make_iterable(attributes_requried)
     attributes_optional = make_iterable(attributes_optional) if attributes_optional is not None else []
@@ -119,7 +119,7 @@ def get_plugins(path: Union[Path, str], attributes_requried: Dict[str, str],
 def get_compatible_plugins(plugin_paths: PathList,
                            attributes_required: List[str], attributes_optional: Optional[List[str]]=None,
                            plugin_filter: Optional[List[str]]=None, plugins_required: Optional[List[str]]=None,
-                           plugin_type: str= '') -> Tuple[Dict, Dict]:
+                           plugin_type: str= '', base_paths: Union[dict, tuple]=()) -> Tuple[Dict, Dict]:
     """Return a nested dict of plugin functions and attributes found in the supplied paths with the required attributes.
 
     Args:
@@ -129,6 +129,7 @@ def get_compatible_plugins(plugin_paths: PathList,
         plugin_filter       : Names of subset of plugins to return that are compatible with your application
         plugins_required    : Names of plugins that are required. An exception is raised if not all found.
         plugin_type         : (Optional) Name of plugin type used in logging messages
+        base_paths          : Path roots to substitute into path format strings
 
     Returns: Nested dict of movie plugins with key structure:
              plugins[<plugin_name>]['meta']         - function returning meta data for movie
@@ -138,8 +139,9 @@ def get_compatible_plugins(plugin_paths: PathList,
     """
     if attributes_optional is None:
         attributes_optional = {}
-    path_substitutions = {'fire_path': fire_paths['root']}
-    plugin_paths = [str(p).format(**path_substitutions) for p in plugin_paths]
+
+    base_paths = dict(base_paths)
+    plugin_paths = [str(p).format(**base_paths) for p in plugin_paths]
     # plugins_all = get_movie_plugins(plugin_paths)
 
     plugins, info = search_for_plugins(plugin_paths, attributes_required,

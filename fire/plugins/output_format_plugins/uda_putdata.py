@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 output_format_plugin_name = 'uda_putdata'
 # Optional:
 output_filename_format = '{diag_tag_analysed}{shot:06d}.nc'  # Filename of output
-output_path_format = '{fire_path}/../'  # Path to save output
+output_path_format = '{fire_source_dir}/../'  # Path to save output
 # See bottom of file for function aliases
 # ====================================================================
 
@@ -126,8 +126,10 @@ module use /projects/UDA/uda-install-develop/modulefiles
 module load uda/develop              #-fatclient
 
     """
-    from fire.interfaces.uda_utils import (putdata_create, putdata_device, putdata_variables_from_datasets,
-                                           putdata_close)
+    from fire.interfaces.uda_putdata import putdata_close
+    from fire.interfaces.uda_putdata import putdata_variables_from_datasets
+    from fire.interfaces.uda_putdata import putdata_device
+    from fire.interfaces.uda_putdata import putdata_create
     if client is None:
         # Important to get client object here and pass to all other functions using it (client is not singleton)
         uda_module, client = uda_utils.get_uda_client(use_mast_client=use_mast_client, try_alternative=False)

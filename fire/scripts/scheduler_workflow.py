@@ -22,12 +22,11 @@ import matplotlib.pyplot as plt
 import calcam
 
 import fire
-from fire import fire_paths, copy_default_user_settings
 from fire import plugins, camera_tools
-from fire.interfaces import interfaces, calcam_calibs, io_basic, io_utils, uda_utils
+from fire.interfaces import interfaces, calcam_calibs, io_basic, io_utils, uda_utils, user_config
 from fire.camera_tools import field_of_view, camera_shake, nuc, image_processing, camera_checks
 from fire.geometry import geometry, s_coordinate
-from fire.physics import temperature, heat_flux, physics_parameters
+from fire.physics import temperature, heat_flux, physics_parameters, efit_utils
 from fire.misc import data_quality, data_structures, utils
 from fire.plotting import plot_tools, debug_plots, image_figures, temporal_figures, spatial_figures
 heat_flux_module = heat_flux  # Alias to avoid name clashes
@@ -47,35 +46,58 @@ logger = logging.getLogger('fire.scheduler_workflow')  # TODO: Check propagation
 
 cwd = Path(__file__).parent
 # path_figures = (cwd / '../figures/').resolve()
-path_figures = (fire_paths['user'] / 'figures/').resolve()
-logger.info(f'Scheduler workflow: Figures will be output to: {path_figures}')
+# path_figures = (fire_paths['user'] / 'figures/').resolve()
+# logger.info(f'Scheduler workflow: Figures will be output to: {path_figures}')
 
 def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, machine:str='MAST', scheduler:bool=False,
-                       equilibrium:bool=False, update_checkpoints:bool=False, analaysis_steps:Optional[list]=None,
-                       image_coords = 'Display',
-                       debug:Optional[dict]=None, figures:Optional[dict]=None, output:Optional[dict]=None):
-    """Primary analysis workflow for MAST-U/JET IR scheduler analysis.
+                       equilibrium:bool=False, update_checkpoints:bool=False, analysis_steps: Optional[list]=None,
+                       n_cores=1,
+                       path_out=None, path_calib=None, path_user=None,
+                       movie_plugins_filter=None,
+                       image_coords='Display',
+                       debug:Optional[dict]=None, figures:Optional[dict]=None, output_files: Optional[dict]=None):
+    """ Primary analysis workflow for MAST-U/JET IR scheduler analysis.
+    Called from the command line with run_fire.py.
 
-    :param pulse: Shot/pulse number or string name for synthetic movie data
-    :param camera: Name of camera to analyse (unique name of camera or diagnostic code)
-    :param pass_no: Scheduler pass number
-    :param machine: Tokamak that the data originates from
-    :param shceduler: Has code been called by the scheduler?
-    :param equilibrium: Produce additional output with scheduler efit as additional dependency
-    :return: Error code
+    Args:
+        pulse               : Shot/pulse number or string name for synthetic movie data
+        camera              : Name of camera to analyse (unique name of camera or diagnostic tag)
+        pass_no             : Scheduler pass number
+        machine             : Tokamak/device that the data originates from
+        shceduler           : (Optional) Has code been called by the scheduler?
+        equilibrium         : (Optional) Produce additional output with scheduler efit as additional dependency
+        update_checkpoints  : (Optional) Update (eg calcam geometry) checkpoint files used to speed up repeated analysis
+        analysis_steps      : (Optional) Which analysis steps to perform
+        n_cores             : (Optional) Number of cores to use for multiprocessing
+        path_out            : (Optional) User supplied path for (default eg UDA) output file
+        path_calib          : (Optional) User supplied path for calibration input files
+        path_user           : (Optional) User supplied path for user config file and output (eg figures)
+        movie_plugins_filter       : (Optional) List of movie plugin names to restrict use to
+        image_coords        : (Optional) Whether to perform analysis in 'Display' or 'Original' coords (see Calcam defn)
+        debug               : (Optional) Dict specifying which debug figures to plot
+        figures             : (Optional) Dict specifying which output figures to plot/save
+        output_files        : (Optional) Dict specifying which additional output files to produce (eg strike point loc)
+
+    Returns: Dict with {'status', 'outputs', 'meta_data'}
+
     """
     logger.info(f'Starting scheduler workflow run for inputs: {machine}, {camera}, {pulse}, {pass_no}')
 
-    if analaysis_steps is None:
+    if analysis_steps is None:
         # TODO: Properly set up top level control of analysis steps
-        analaysis_steps = dict(camera_shake_correction=False)
+        analysis_steps = dict(camera_shake_correction=False)
 
     if debug is None:
         debug = {}
     if figures is None:
         figures = {}
-    if output is None:
-        output = {}
+    if output_files is None:
+        output_files = {}
+
+    if n_cores > 1:
+        raise NotImplementedError('Multi-processing has not been implemented yet')
+
+    uda_module, client = uda_utils.get_uda_client(use_mast_client=False, try_alternative=True)
 
     if machine.lower() == 'mast':
         # nuc_frame_range = [0, 0]
@@ -90,11 +112,19 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # Set up data structures
     settings, files, image_data, path_data_all, meta_data, meta_runtime = data_structures.init_data_structures()
     meta_data_extra = {}
-    if not scheduler:
-        config = interfaces.json_load(fire_paths['config'], key_paths_drop=('README',))
-    else:
-        raise NotImplementedError
+
+    config, config_groups, config_path_fn = user_config.get_user_fire_config(base_paths=dict(
+                                            fire_user_dir=path_user, path_uda_output=path_out, calib_dir=path_calib))
+
     settings['config'] = config
+    fire_paths = config_groups['fire_paths']
+    path_figures = fire_paths['figures_dir'].expanduser()
+
+    # Replace users default values from fire_config.json with values passed from command line
+    if path_out is not None:
+        config['user']['paths']['output']['uda_putdata'] = path_out
+    if path_calib is not None:
+        config['user']['paths']['calibration_files'] = [path_calib]
 
     # Load user's default call arguments
     pulse, camera, machine = utils.update_call_args(config['user']['default_params'], pulse, camera, machine)
@@ -102,12 +132,16 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # Set up/extract useful meta data
     # TODO: Separate camera name and diag_tag?
-    diag_tag_raw = camera
-    diag_tag_analysed = uda_utils.get_analysed_diagnostic_tag(diag_tag_raw)
-    meta_data.update(dict(pulse=pulse, shot=pulse, camera=camera, diag_tag=diag_tag_raw, diag_tag_raw=diag_tag_raw,
-                          diag_tag_analysed=diag_tag_analysed, machine=machine, pass_no=pass_no, status=1, 
-                          fire_path=fire_paths['root']))
-    kwarg_aliases = {'pulse': ['shot'], 'pass_no': ['pass', 'pass_number'], 'fire_path': ['fire']}
+    camera_info = config['machines'][machine]['cameras'][camera]['device_details']
+    diag_tag_raw = camera_info.get('diag_tag_raw', camera)
+    diag_tag_analysed = camera_info.get('diag_tag_analysed', uda_utils.get_analysed_diagnostic_tag(diag_tag_raw))
+
+    meta_data.update(dict(pulse=pulse, shot=pulse, camera=camera, machine=machine, pass_no=pass_no,
+                          diag_tag_raw=diag_tag_raw, diag_tag_analysed=diag_tag_analysed,  status=1,
+                          fire_source_dir=fire_paths['fire_source_dir'], fire_user_dir=fire_paths['fire_user_dir']))
+    # Get paths for inserting into path format string (format strings from fire_config.json and elsewhere)
+    meta_data.update()
+    kwarg_aliases = {'pulse': ['shot'], 'pass_no': ['pass', 'pass_number']}
     meta_data['kwarg_aliases'] = kwarg_aliases
     device_details = config['machines'][machine]['cameras'][diag_tag_raw]['device_details']
     meta_data.update(device_details)
@@ -116,24 +150,14 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     meta_data['variables'] = config['variable_meta_data']
     meta_data.update(config['machines'][machine]['cameras'][diag_tag_raw]['device_details'])
 
-
-    # TODO: REMOVE tmp
-    import pyuda;
-    client = pyuda.Client()
-    meta_data_extra['client'] = client
-    from fire.interfaces.uda_utils import putdata_create, putdata_close
-    file_id, path_fn = putdata_create(fn='ait044852.nc', path='/home/tfarley/repos/air', client=client, **meta_data)
-    putdata_close(file_id, client=client)
-
-
-
     # Load machine plugins
     machine_plugin_paths = config['paths_input']['plugins']['machine']
     machine_plugin_attrs = config['plugins']['machine']['module_attributes']
     machine_plugins, machine_plugins_info = plugins.plugins.get_compatible_plugins(machine_plugin_paths,
                                                                    attributes_required=machine_plugin_attrs['required'],
                                                                    attributes_optional=machine_plugin_attrs['optional'],
-                                                                   plugins_required=machine, plugin_type='machine')
+                                                                   plugins_required=machine, plugin_type='machine',
+                                                                   base_paths=fire_paths)
     machine_plugins, machine_plugins_info = machine_plugins[machine], machine_plugins_info[machine]
     fire.active_machine_plugin = (machine_plugins, machine_plugins_info)
     meta_pulse = plugins.call_plugin_func(machine_plugins, 'pulse_meta_data', args=(pulse,), dummy_ouput={})
@@ -145,11 +169,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Move movie reader config information to separate json config file
     movie_plugin_paths = config['paths_input']['plugins']['movie']
     movie_plugin_attrs = config['plugins']['movie']['module_attributes']
-    movie_plugins_compatible = config['machines'][machine]['cameras'][camera]['movie_plugins']
-    # movie_plugins, movie_plugins_info = plugins.plugins.get_compatible_plugins(movie_plugin_paths,
-    #                                                        movie_plugin_attrs['required'],
-    #                                                        attributes_optional=movie_plugin_attrs['optional'],
-    #                                                        plugin_filter=movie_plugins_compatible, plugin_type='movie')
+    if movie_plugins_filter is None:
+        # Try all movie plugins compatible with camera
+        movie_plugins_filter = config['machines'][machine]['cameras'][camera]['movie_plugins']
 
     # Load output format plugins for writing output data
     output_plugin_paths = config['paths_input']['plugins']['output_format']
@@ -159,15 +181,17 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     output_plugins, output_plugins_info = plugins.plugins.get_compatible_plugins(output_plugin_paths,
                                                                  attributes_required=output_plugin_attrs['required'],
                                                                  attributes_optional=output_plugin_attrs['optional'],
-                                                                 plugin_filter=output_plugins_active, plugin_type='output_format')
+                                                                 plugin_filter=output_plugins_active,
+                                                                 plugin_type='output_format',
+                                                                 base_paths=fire_paths)
 
     # Load movie meta data to get lens and integration time etc.
     movie_paths = config['paths_input']['movie_files']
     movie_fns = config['filenames_input']['movie_files']
-    movie_reader = plugins.plugins_movie.MovieReader(movie_plugin_paths, plugin_filter=movie_plugins_compatible,
-                                                     movie_paths=movie_paths, movie_fns=movie_fns,
-                                                     plugin_precedence=None, movie_plugin_definition_file=None)
-    movie_meta, movie_origin = movie_reader.read_movie_meta_data(pulse=pulse, camera=camera, machine=machine,
+    movie_reader = plugins.plugins_movie.MovieReader(movie_plugin_paths, plugin_filter=movie_plugins_filter,
+                                 movie_paths=movie_paths, movie_fns=movie_fns,
+                                 plugin_precedence=None, movie_plugin_definition_file=None, base_paths=fire_paths)
+    movie_meta, movie_origin = movie_reader.read_movie_meta_data(pulse=pulse, diag_tag_raw=diag_tag_raw, machine=machine,
                                                          check_output=True, substitute_unknown_values=(not scheduler),
                                                                  meta=dict(date=date))
 
@@ -177,7 +201,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     meta_data.update(movie_meta)
     # TODO: format strings to numbers eg lens exposure etc
-    meta_data.update(field_of_view.calc_field_of_view(meta_data['lens'], pixel_pitch=meta_data['pixel_pitch'],
+    lens_focal_length_mm = meta_data.get('lens_in_mm', meta_data['lens'])
+    meta_data.update(field_of_view.calc_field_of_view(lens_focal_length_mm, pixel_pitch=meta_data['pixel_pitch'],
                                         image_shape=meta_data['detector_resolution']))
     # NOTE: meta_data['image_shape'] and ipx header hight/width etc prior to calcam image transformations
 
@@ -188,10 +213,11 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     paths_output = {key: Path(path) for key, path in config['paths_output'].items()}
     fn_patterns_input = config['filenames_input']
     fn_pattern_checkpoints = config['checkpoints']['filenames']
-    params = {'fire_path': fire_paths['root'], 'image_coords': image_coords, **movie_meta}
+    params = {'image_coords': image_coords, **fire_paths, **movie_meta}
     files, lookup_info = interfaces.identify_files(pulse, camera, machine, params=params,
                                         search_paths_inputs=paths_input, fn_patterns_inputs=fn_patterns_input,
-                                        paths_output=paths_output, fn_pattern_checkpoints=fn_pattern_checkpoints)
+                                        paths_output=paths_output, base_paths=fire_paths,
+                                        fn_pattern_checkpoints=fn_pattern_checkpoints)
     meta_data['files'] = files
     logger.info(f'Located input files for analysis: {files}')
     # TODO: Load camera state
@@ -229,7 +255,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         if raycast_checkpoint_path_fn.exists():
             logger.info(f'Reproduing raycast checkpoint file')
         else:
-            logger.info(f'Producing raycast checkpoint file for first time for camera={camera}, pulse={pulse}: '
+            logger.info(f'Producing raycast checkpoint file for first time for camera={diag_tag_raw}, pulse={pulse}: '
                         f'{raycast_checkpoint_path_fn}')
         # TODO: Make CAD model pulse range dependent
         cad_model_args = config['machines'][machine]['cad_models'][0]
@@ -263,7 +289,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Validate frame range etc
 
     # Load raw frame data
-    movie_data, movie_origin = movie_reader.read_movie_data(pulse=pulse, camera=camera, machine=machine,
+    movie_data, movie_origin = movie_reader.read_movie_data(pulse=pulse, diag_tag_raw=camera, machine=machine,
                                                             n_start=None, n_end=None, stride=1, transforms=None,
                                                             meta=dict(date=date))
     (frame_nos, frame_times, frame_data) = movie_data
@@ -308,16 +334,17 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         # Force plot if there are any saturated frames
         temporal_figures.plot_movie_intensity_stats(frame_data, meta_data=meta_data, num='movie_intensity_stats-raw')
 
-    if (movie_origin['plugin'] == 'ipx') and (machine == 'mast_u') and (np.max(frame_data) <= 2**12):
-        frame_data *= 4  # TODO: Remove when ipx writing fixed!
-        logger.warning('Multiplied data from MAST-U ipx file by factor of 4 due to mastvideo ipx writing issue')
+    # if (movie_origin['plugin'] == 'ipx') and (machine == 'mast_u') and (np.max(frame_data) <= 2**12):
+    #     frame_data *= 4  # TODO: Remove when ipx writing fixed!
+    #     logger.warning('Multiplied data from MAST-U ipx file by factor of 4 due to mastvideo ipx writing issue')
 
     clock_info = fire.plugins.plugins.call_plugin_func(machine_plugins, 'get_camera_external_clock_info',
                                                        args=(camera, pulse))
 
     # TODO: move time checks to separate function
     if clock_info is not None:
-        if (not np.isclose(movie_meta['t_before_pulse'], np.abs(clock_info['clock_t_window'][0]))):
+        if (not np.isclose(np.abs(movie_meta.get('trigger', movie_meta.get('t_before_pulse'))),
+                           np.abs(clock_info['clock_t_window'][0]))):
             raise ValueError(f'Movie and camera clock start times do not match. '
                              f'movie={movie_meta["t_before_pulse"]}, clock={clock_info["clock_t_window"]}')
         if np.abs(movie_meta['fps'] - clock_info['clock_frequency']) > 1:
@@ -325,11 +352,11 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                              f'movie={movie_meta["fps"]}, clock={clock_info["clock_frequency"]}')
             logger.warning(message)
             pass
-
-            if True:
+            apply_time_axis_correction = False
+            if apply_time_axis_correction:
                 time_correction_info = fire.plugins.machine_plugins.mast_u.get_frame_time_correction(frame_times,
-                                                                                                     clock_info['clock_frame_times'],
-                                                                                                     clock_info=clock_info)
+                                                                                 clock_info['clock_frame_times'],
+                                                                                 clock_info=clock_info)
                 # TODO: Update t_before_pulse to be -ve and rename to 't_movie_start'? - update all meta data files...
                 t_offset = np.abs(movie_meta['t_before_pulse'])
                 time_correction_factor = (movie_meta['fps']/clock_info['clock_frequency'])
@@ -347,13 +374,54 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     #                                                             movie_plugin,movie_paths=movie_path, movie_fns=movie_fn,
     #                                                             verbose=True)
 
+    # Perform bad pixel replacement (BPR)
+    mask_bad_pixels = movie_meta.get('bad_pixel_frame')
+    frame0_raw = frame_data[0]
+    if mask_bad_pixels is None:
+        # TODO: Lookup known anomalies to mask - eg stray LP cable, jammed shutter - replace image data with nans?
+
+        # TODO: Detect anommalies
+        # TODO: Monitor number of bad pixels for detector health - option to separate odd/even frames for FLIR sensors
+        # detect_bpr = True
+        detect_bpr = False
+        if detect_bpr:
+            # bad_pixels, frame_no_dead = image_processing.find_outlier_pixels(frame_raw, n_sigma_tol=10, check_edges=True)
+            bad_pixels = image_processing.identify_bad_pixels(frame0_raw, method='blur_diff',  # 'blur_diff', 'flicker_offset
+                                                n_sigma_tol=None, n_bad_pixels_expected=678*1e1, blur_axis=1)
+            (bad_pixels, mask_bad_pixels, threshold_hot, detector_bands, images_blured) = bad_pixels
+        elif (diag_tag_raw == 'rit'):
+            # TODO: Move to file lookup with calcam calibration etc
+            path_fn_bpr = '/home/tfarley/repos/air/fire/input_files/mast_u/badPixel_231864.BPR'
+            bad_pixels = io_basic.read_csv(path_fn_bpr, names=('y_pix', 'x_pix'))
+            mask_bad_pixels = image_processing.bpr_list_to_mask(bad_pixels, image_shape)
+            logger.info(f'Read bad pixel coordinate list from file: {path_fn_bpr}')
+
+    # remove_bad_pixels = False
+    remove_bad_pixels = True
+    if remove_bad_pixels and (mask_bad_pixels is not None):
+        # TODO: Else read BPR from file?
+        image_data['frame_data'][:] = image_processing.apply_bpr_correction(frame_data, mask_bad_pixels,
+                                                                         method='median_loop', kwargs=dict(size=5))
+        frame_data = image_data['frame_data']
+    else:
+        logger.info('NOT applying bad pixel replacement (BPR)')
+
+    if (debug.get('bad_pixels', False)):  # TODO: Remove duplicate
+        debug_plots.plot_bad_pixels(mask_bad_pixels=mask_bad_pixels, frame_data=frame0_raw,
+                                    frame_data_corrected=frame_data)
+        temporal_figures.plot_movie_intensity_stats(frame_data, meta_data=meta_data, num='movie_intensity_stats-bpr')
+
     # Detect saturated pixels, uniform frames etc
     bad_frames_info = data_quality.identify_bad_frames(frame_data, bit_depth=movie_meta['bit_depth'],
-                                            n_discontinuities_expected=1e-3, n_sigma_multiplier=3,
-                                            raise_on_saturated=False, debug_plot=False)
+                                                       n_discontinuities_expected=1e-3, meta_data=meta_data, scheduler=scheduler,
+                                                       n_sigma_multiplier_high=1.5,  #  2.5, 4
+                                                       n_sigma_multiplier_low=1.5,
+                                                       n_sigma_multiplier_start=1,
+                                                       raise_on_saturated=False, debug_plot=debug.get('bad_frames_intensity', False))
     frames_nos_discontinuous = bad_frames_info['discontinuous']['frames']['n']
     frame_data_fixed, modified_frames = data_quality.remove_bad_frames(frame_data, frames_nos_discontinuous,
-                            remove_opening_closing=True, interpolate_middle=True, nan_middle=False, debug_plot=True)
+                            remove_opening_closing=True, interpolate_middle=True, nan_middle=False, meta_data=meta_data,
+                            debug_plot=debug.get('bad_frames_images', False), scheduler=scheduler)
     # Merge to set bad frames to interpolated/nan values.
     # Note: Merging subset DataArray with join and compat keywords DOES reduce coord ranges, so don't use .drop_sel()
     image_data = xr.merge([image_data, frame_data_fixed], join='right', compat='override')
@@ -395,7 +463,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             ax_n.axvline(x=modified_frames['n_removed_start'], ls=':', color='k', label='Clipped bad frames from start')
             ax_n.axvline(x=len(image_data['frame_data']) - 1 - modified_frames['n_removed_end'], ls=':', color='k',
                          label='Clipped bad frames from end')
-            for n in modified_frames['interpolated_middle']:
+            for n in modified_frames['corrected']:
                 ax_n.axvline(x=n, ls=':', lw=1, color='r', label='Interpolated bad frame')
         plot_tools.show_if(show=True)
 
@@ -408,7 +476,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Lookup and apply t_offset correction to frame times? See IDL get_toffset.pro reading toffset.dat
 
     # Fix camera shake
-    if analaysis_steps['camera_shake_correction']:
+    if analysis_steps['camera_shake_correction']:
         # TODO: Find best reference frame, as want bright clear frame with NUC shutter
         # TODO: Consider checking camera rotation which is issue on ASDEX-U
         percentile_n_shake_ref = 10
@@ -434,11 +502,6 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # TODO: Pass bad_frames_info to debug plots
 
-    # TODO: Lookup known anomalies to mask - eg stray LP cable, jammed shutter - replace image data with nans?
-
-    # TODO: Detect anommalies
-    # TODO: Monitor number of bad pixels for detector health - option to separate odd/even frames for FLIR sensors
-    # bad_pixels, frame_no_dead = find_outlier_pixels(frame_raw, tol=30, check_edges=True)
     # TODO: Detect 'twinkling pixels' by looking for pixels with abnormally large ptp variation for steady state images
     # TODO: Detect missing frames in time stamps, regularity of frame rate
     # TODO: Compare sensor temperature change during/between pulses to monitor sensor health, predict frame losses etc.
@@ -450,7 +513,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Consider using min over whole (good frame) movie range to avoid negative values from nuc subtraction
     # TODO: consider using custon nuc time/frame number range for each movie? IDL sched had NUC time option
     # TODO: Look up first shot of day and load starting nuc frames from there to avoid warming from preceding shots
-    n_digitisers = 1
+    n_digitisers = 1  # FLIR SC7500 has dual digitisers
     nuc_frames = nuc.get_nuc_frames(origin={'n': nuc_frame_range}, frame_data=image_data['frame_data'],
                                               reduce_func='mean', n_digitisers=1)
 
@@ -471,15 +534,15 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             ax_n.axvline(x=modified_frames['n_removed_start'], ls=':', color='k', label='Clipped bad frames from start')
             ax_n.axvline(x=len(image_data['frame_data']) - 1 - modified_frames['n_removed_end'], ls=':', color='k',
                          label='Clipped bad frames from end')
-            for n in modified_frames['interpolated_middle']:
+            for n in modified_frames['corrected']:
                 ax_n.axvline(x=n, ls=':', lw=1, color='r', label='Interpolated bad frame')
         plot_tools.show_if(show=True)
 
-    if output.get('raw_frame_image', False):
+    if output_files.get('raw_frame_image', False):
         # nuc_out = True
         nuc_out = False
         n_ref = 240
-        path_fn = paths_output['raw_images'] / f'{machine}-{camera}-{pulse}-n{n_ref}{"_nuc"*nuc_out}.png'
+        path_fn = paths_output['raw_images'] / f'{machine}-{diag_tag_raw}-{pulse}-n{n_ref}{"_nuc"*nuc_out}.png'
         key = 'frame_data_nuc' if nuc_out else 'frame_data'
         image_figures.figure_frame_data(image_data, n=n_ref, key=key, label_outliers=False,
                                             axes_off=True, show=True, save_fn_image=path_fn)
@@ -490,9 +553,11 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                           image_coords=image_coords, meta_data=meta_data)
     if debug.get('movie_data_animation', False):
         save_path_fn = None
-        frame_range = [40, 410]
+        # frame_range = [40, 410]
+        frame_range = [40, None]
         cbar_range = [0, 99.9]  # percentage of range
-        frame_range = np.clip(frame_range, *meta_data['frame_range'])
+        if not None in frame_range:
+            frame_range = np.clip(frame_range, *meta_data['frame_range'])
 
         image_figures.animate_frame_data(image_data, key='frame_data', nth_frame=1, duration=15,
                                          n_start=frame_range[0], n_end=frame_range[1], save_path_fn=save_path_fn,
@@ -503,9 +568,12 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     if debug.get('movie_data_nuc_animation', False):
         save_path_fn = None
-        frame_range = [40, 410]
+        # frame_range = [40, 410]
+        frame_range = [440, 470]  # RIR 29541
+        # frame_range = [40, None]
         cbar_range = [0, 99.9]  # percentage of range
-        frame_range = np.clip(frame_range, *meta_data['frame_range'])
+        if not None in frame_range:
+            frame_range = np.clip(frame_range, *meta_data['frame_range'])
 
         image_figures.animate_frame_data(image_data, key='frame_data_nuc', nth_frame=1, duration=15,
                                          n_start=frame_range[0], n_end=frame_range[1], save_path_fn=save_path_fn,
@@ -518,8 +586,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         debug_plots.debug_movie_data(image_data, key='frame_data_nuc')
 
     if debug.get('specific_frames', False):
-        n_check = 218
-        debug_plots.debug_movie_data(image_data, frame_nos=np.arange(n_check, n_check+4), key='frame_data')
+        n_check = 452  # 218
+        debug_plots.debug_movie_data(image_data, frame_nos=np.arange(n_check, n_check+4), key='frame_data_nuc')
         # frame_data_nuc
 
     if debug.get('calcam_calib_image', False):
@@ -535,7 +603,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         # spatial_res_type = 'y'
         clip_range = [2.5, 20]
         # clip_range = [1.5, 3.0]  # air
-        fn_spatial_res = path_figures / f'spatial_res_{pulse}_{camera}_{spatial_res_type}.png'
+        fn_spatial_res = path_figures / f'spatial_res_{pulse}_{diag_tag_raw}_{spatial_res_type}.png'
         image_figures.figure_spatial_res(image_data, res_type=spatial_res_type, clip_range=clip_range, log_cmap=False,
                                          save_fn=fn_spatial_res, show=True)
 
@@ -631,15 +699,17 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     if debug.get('temperature_im', False):
         debug_plots.debug_temperature_image(image_data)
-        
+
     if debug.get('movie_temperature_animation', False):
-        # save_path_fn = paths_output['gifs'] / f'{machine}-{camera}-{pulse}_temperature_movie.gif'
+        # save_path_fn = paths_output['gifs'] / f'{machine}-{diag_tag_raw}-{pulse}_temperature_movie.gif'
         # save_path_fn = path_figures / f'rit_{pulse}_temperature_movie.gif'
         save_path_fn = None
-        frame_range = [40, 410]
+        frame_range = [40, None]
+        # frame_range = [40, 410]
         cbar_range = [0, 99.9]  # percentage of range
         # cbar_range = None
-        frame_range = np.clip(frame_range, *meta_data['frame_range'])
+        if not None in frame_range:
+            frame_range = np.clip(frame_range, *meta_data['frame_range'])
 
         image_figures.animate_frame_data(image_data, key='temperature_im', nth_frame=1, duration=15,
                                          n_start=frame_range[0], n_end=frame_range[1], save_path_fn=save_path_fn,
@@ -703,6 +773,16 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         path_data_extracted = image_processing.extract_path_data_from_images(image_data, path_data,
                                                                              path_name=analysis_path_key)
         path_data = xr.merge([path_data, path_data_extracted])  # , combine_attrs='no_conflicts')
+
+        if equilibrium:
+            # TODO: Pass efit converged times
+            times = np.array(frame_data['t'])
+            efit_utils.extract_eqm_info_for_path(pulse, path_data, times=times, path_name=analysis_path_key)
+            efit_data = efit_utils.get_efit_data(shot=pulse, calc_bfield=True)
+            t = 0
+
+            ['Br', 'Bz', 'Bphi', 'Bpol', 'Btot']
+            'r', 'z', 't', 'q95', 'psiN', 'lower_xpoint_r', 'lower_xpoint_z', 'lower_xpoint_psin'
 
         # Sort analysis path in order of increasing R to avoid reversing sections of profiles!
         path_data = path_data.sortby('R_in_frame_path0', ascending=True)  # TODO: Detect non-mono and tidy into func?
@@ -811,8 +891,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         if figures.get('heat_flux_vs_R_t-robust', False):
             robust = True
             extend = 'both'
-            fn = f'heat_flux_vs_R_t-robust-{machine}_{camera}_{pulse}.png'
-            save_path_fn = path_figures / 'heat_flux_vs_R_t-robust' / fn
+            fn = f'heat_flux_vs_R_t-robust-{machine}_{diag_tag_analysed}_{pulse}.png'
+            save_path_fn = path_figures / 'heat_flux_vs_R_t-robust'/ diag_tag_analysed / fn
             debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', path_names=analysis_path_key,
                                               extend=extend, robust=robust, meta=meta_data, t_range=None,
                                               num='heat_flux_vs_R_t-robust',  machine_plugins=machine_plugins,
@@ -849,9 +929,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             debug_plots.debug_plot_temporal_profile_1d(path_data_all, params=('heat_flux_R_peak', 'heat_flux_amplitude_peak_global'),
                                                        path_name=analysis_path_key, x_var='t',
                                                        heat_flux_thresh=heat_flux_thresh, meta_data=meta_data)
-        if output.get('strike_point_loc', False):
-            fn = f'strike_point_loc-{machine}-{camera}-{pulse}-{analysis_path_name}.csv'
-            path_fn = Path(paths_output['csv_data']) / fn
+        if output_files.get('strike_point_loc', False):
+            fn = f'strike_point_loc-{machine}-{diag_tag_analysed}-{pulse}-{analysis_path_name}.csv'
+            path_fn = Path(paths_output['csv_data']) / diag_tag_analysed / fn
             io_basic.to_csv(path_fn, path_data, cols=f'heat_flux_R_peak_{path}', index='t', x_range=[0, 0.6],
                             drop_other_coords=True, verbose=True)
 
@@ -872,11 +952,11 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                         aliases=dict(camera_serial_number='serial', detector_resolution='resolution'),
                                                remove_original=False)
 
-    outputs = plugins.plugins_output_format.write_to_output_format(output_plugins, path_data=path_data_all,
-                                                                   image_data=image_data,
-                           path_names=analysis_path_keys, variable_names_path=output_variables['analysis_path'],
-                           variable_names_time=output_variables['time'], variable_names_image=output_variables['image'],
-                           device_info=device_details, header_info=output_header_info, meta_data=meta_data,
+    outputs = plugins.plugins_output_format.write_to_output_format(output_plugins, path_names=analysis_path_keys,
+                    path_data=path_data_all, image_data=image_data,
+                    variable_names_path=output_variables['analysis_path'], variable_names_time=output_variables['time'],
+                    variable_names_image=output_variables['image'],
+                    device_info=device_details, header_info=output_header_info, meta_data=meta_data,
                                                                    raise_on_fail=raise_on_fail, client=client)
     # write_processed_ir_to_netcdf(data, path_fn_out)
 
