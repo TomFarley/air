@@ -7,7 +7,7 @@ Created: Tom Farley, 21-04-21
 """
 
 import logging
-import os
+import os, io
 import pickle
 import re
 import warnings
@@ -142,7 +142,7 @@ def pickle_load(path_fn, path=None, **kwargs):
             with open(path_fn, 'rb') as f:
                 out = pickle.load(f, **kwargs)
         except EOFError as e:
-            logger.error('path "{}" is not a pickle file. {}'.format(path_fn, e))
+            logger.error('path "{}" is not a pickle file. Error="{}"'.format(path_fn, e))
             raise e
         except UnicodeDecodeError as e:
             try:
@@ -151,10 +151,15 @@ def pickle_load(path_fn, path=None, **kwargs):
                     out = pickle.load(f, **kwargs)
                 logger.info('Reading pickle file required encoding="latin": {}'.format(path_fn))
             except Exception as e:
-                logger.error('Failed to read pickle file "{}". Wrong pickle protocol? {}'.format(path_fn, e))
+                logger.error('Failed to read pickle file "{}". Wrong pickle protocol? Error="{}"'.format(path_fn, e))
                 raise e
+        except pickle.UnpicklingError as e:
+            logger.error('Failed to read pickle file "{}". Corrupted file? Error="{}"'.format(path_fn, e))
+            raise e
+        except Exception as e:
+            raise e
 
-    elif isinstance(path_fn, file):
+    elif isinstance(path_fn, io.RawIOBase):
         out = pickle.load(path_fn, **kwargs)
         path_fn.close()
     else:
