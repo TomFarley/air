@@ -12,12 +12,13 @@ from collections import defaultdict, namedtuple
 import numpy as np
 import pandas as pd
 import xarray as xr
-from scipy import interpolate, signal
+from scipy import interpolate, signal, integrate
 
 import matplotlib.pyplot as plt
 
 from fire.geometry.geometry import (calc_horizontal_path_anulus_areas, calc_tile_tilt_area_correction_factors,
     calc_divertor_area_integrated_param)
+from fire.misc import data_structures, utils
 from fire.misc.data_structures import attach_standard_meta_attrs, get_reduce_coord_axis_keep, reduce_2d_data_array
 from fire.misc.utils import make_iterable
 from fire.plotting import debug_plots, plot_tools
@@ -105,13 +106,13 @@ def find_peaks_info(profile, x=None, peak_kwargs=(('width', 3),), add_boundary_l
     amplitude_peaks = profile[ind_peaks]
 
     # Order peaks in decreasing order
-    peak_order = np.argsort(amplitude_peaks)[::-1]
+    peak_order = np.argsort(np.array(amplitude_peaks))[::-1]
     # ind_peaks = make_iterable(ind_peaks[np.array(peak_order)], cast_to=np.ndarray)
-    n_peaks = len(ind_peaks)
+    n_peaks = len(ind_peaks)  # Update now added edge local maxima
 
     # Global maxima
     if n_peaks > 0:
-        i_peak_global = ind_peaks[0]
+        i_peak_global = ind_peaks[peak_order][0]
         amplitude_peak_global = profile[i_peak_global]
     else:
         i_peak_global = np.nan
@@ -432,7 +433,7 @@ def sp_select_old():
     #         peak = np.array(values)[i_peak_global] if n_peaks > 0 else np.nan
     #         peaks_info[f'{key}_peak'].append(peak)
 
-def locate_strike_points(param_values, dim='t', coords=None, peak_kwargs=(('width', 3),),
+def locate_strike_points(param_values, dim='t', coords=None, peak_kwargs=(('width', 3),), n_strike_points=1,
                          strike_point_assumptions='continuous'):
     """Return value and location of global peak value, and sorted indices of other peaks.
 
@@ -444,7 +445,7 @@ def locate_strike_points(param_values, dim='t', coords=None, peak_kwargs=(('widt
     Returns: Dict of peak info
 
     """
-    logger.info('Calculating strike point locations')
+    logger.info(f'Calculating strike point locations using {param_values.name}')
     if isinstance(peak_kwargs, tuple):
         peak_kwargs = dict(peak_kwargs)
     if 'n' in param_values.dims:
@@ -457,22 +458,23 @@ def locate_strike_points(param_values, dim='t', coords=None, peak_kwargs=(('widt
     #     for key in coords.keys():
     #         peak_info[f'{key}_peaks'] = []
 
-    # n_strike_points = 4
-    n_strike_points = 0
-
-
 
     # strike_point_ind = defaultdict(list)
     # strike_point_value = defaultdict(list)
     # cols = list(itertools.chain(*[[f'strike_point_{i}_ind', f'strike_point_{i}_peak']
     #                               for i in np.arange(n_strike_points)]))
-    cols = [np.arange(n_strike_points), ['ind', 'R', 's_global', 'amplitude', 'fom']]
-    cols = pd.MultiIndex.from_product(cols, names=['strike_point', 'param'])
-    strike_points = pd.DataFrame(columns=cols, dtype=float)
-    strike_points.index.name = 't'
+    if n_strike_points > 0:
+        cols = [np.arange(n_strike_points), ['ind', 'R', 's_global', 'amplitude', 'fom']]
+        cols = pd.MultiIndex.from_product(cols, names=['strike_point', 'param'])
+        strike_points_df = pd.DataFrame(columns=cols, dtype=float)
+        strike_points_df.index.name = 't'
+    else:
+        strike_points_df = None
 
     roll = param_values.rolling({dim: 1})  # Roll over single time slices
     for i_coord, (coord, profile) in enumerate(roll):
+        # TODO: Start at time in middle of pulse when primary strike point is well established and work forward and
+        # backwards from there? Or just look at slice through middle to re-assign ordering of strikepoints ie find prima
         profile = profile.sel({dim: coord}).values  # Make 1D
         coord = float(coord.values)
 
@@ -481,22 +483,32 @@ def locate_strike_points(param_values, dim='t', coords=None, peak_kwargs=(('widt
         fom_threshold = 1e5
         for strike_point_index in np.arange(n_strike_points):
             # TODO: Pass in weightings from input file
-            foms = calc_strike_point_continutity_rating(peaks_info_i, strike_points, strike_point_index, t=coord,
+            foms = calc_strike_point_continutity_rating(peaks_info_i, strike_points_df, strike_point_index, t=coord,
                                                         fom_threshold=fom_threshold)
-            strike_points = select_next_strike_point_peak(peaks_info_i, strike_points, strike_point_index, foms,
+            strike_points_df = select_next_strike_point_peak(peaks_info_i, strike_points_df, strike_point_index, foms,
                                                           t=coord, fom_threshold=fom_threshold)
             pass
 
         i_peak = peaks_info_i[f'ind_peak_global']
         n_peaks = peaks_info_i[f'n_peaks']
 
+        # debug_peak = i_peak < 100 and coord > 0.2 and coord < 0.4
+        debug_peak = False
+        if debug_peak:
+            fig, ax = plt.subplots()
+            ax.plot(param_values['R_path0'], profile)
+            ax.plot(peaks_info_i['R_peak_global'], peaks_info_i['amplitude_peak_global'])
+            plt.show()
+
+        peak_info[f'ind_peak_global'].append(i_peak)
         peak_info[f'amplitude_peak_global'].append(peaks_info_i[f'amplitude_peak_global'])
-        peak_info[f'ind_peak_global'].append(peaks_info_i[f'ind_peak_global'])
-        peak_info[f'n_peaks'].append(peaks_info_i[f'n_peaks'])
+        peak_info[f'n_peaks'].append(n_peaks)
         peak_info[f'ind_peaks'].append(peaks_info_i[f'ind_peaks'])
         peak_info[f'amplitude_peaks'].append(peaks_info_i[f'amplitude_peaks'])
         peak_info[f'peak_properties'][coord] = peaks_info_i[f'properties']
-        peak_info[f'strike_points'] = strike_points
+        peak_info[f'strike_points'] = strike_points_df
+        peak_info[f'n_strike_points'] = n_strike_points
+
         if coords is not None:
             for key, values in coords.items():
                 if n_peaks > 0:
@@ -517,8 +529,10 @@ def locate_strike_points(param_values, dim='t', coords=None, peak_kwargs=(('widt
 
 def calc_2d_profile_param_stats(data, stats=('min', ('percentile', 1), 'mean', 'std', ('percentile', 99), 'max'),
                                 coords_reduce='t', path=None, roll_width=None, roll_center=True,
-                                roll_reduce_func='mean'):
+                                roll_reduce_func='mean', kwargs=(('skipna', True),),
+                                stat_format_str='{param}{roll_str}_{stat}({coord_keep_str}){path_str}'):
     stats = make_iterable(stats)
+    kwargs = dict(kwargs)
     logger.info(f'Calculating temporal stats (roll={roll_width}): {stats}')
     out = xr.Dataset({})
     labels = {}
@@ -535,13 +549,14 @@ def calc_2d_profile_param_stats(data, stats=('min', ('percentile', 1), 'mean', '
         data_in = data
         len_axis_keep = len(data[axis_keep])
         roll_width = roll_width if (len_axis_keep > roll_width) else len_axis_keep
-        roll = data.rolling({coord_keep: roll_width}, center=True)
+        roll = data.rolling({coord_keep: roll_width}, center=roll_center)
         coord_roll = coord_keep+'_win'
         data = roll.construct(coord_roll)
         # coords_reduce_rolled = (coord_keep, coord_roll)
         roll_str = f'_roll{roll_width:d}'
         # This opperation can be slow!
-        data = getattr(data, roll_reduce_func)(dim=coord_roll)
+        data = getattr(data, roll_reduce_func)(dim=coord_roll, skipna=False)
+        # TODO: Deal with sections of nans coming back as 0 rather than nan?
     else:
         roll_str = ''
         data_rolled = data
@@ -551,29 +566,48 @@ def calc_2d_profile_param_stats(data, stats=('min', ('percentile', 1), 'mean', '
         if '%' in stat:
             n_percent = float(stat.replace('%', ''))
             stat = ('percentile', n_percent)
+        if isinstance(stat, tuple):
+            stat, args = stat
+        else:
+            args = ()
 
-        if stat == 'min':
-            key = f'{param}{roll_str}_min({coord_keep_str}){path_str}'
-            out[key] = data.min(dim=coords_reduce)
-            labels['min'] = key
-        elif stat == 'mean':
-            key = f'{param}{roll_str}_mean({coord_keep_str}){path_str}'
-            out[key] = data.mean(dim=coords_reduce)
-            labels['mean'] = key
-        elif stat == 'std':
-            key = f'{param}{roll_str}_std({coord_keep_str}){path_str}'
-            out[key] = data.std(dim=coords_reduce)
-            labels['std'] = key
-        elif stat == 'max':
-            key = f'{param}{roll_str}_max({coord_keep_str}){path_str}'
-            out[key] = data.max(dim=coords_reduce)
-            labels['max'] = key
-        elif isinstance(stat, tuple) and stat[0] == 'percentile':
-            key = f'{param}{roll_str}_{stat[1]}percentile({coord_keep_str}){path_str}'
+        if hasattr(data, stat):
+            try:
+                key = stat_format_str.format(param=param, stat=stat, roll_str=roll_str, coord_keep_str=coord_keep_str,
+                                          path_str=path_str)
+                out[key] = getattr(data, stat)(dim=coords_reduce, **kwargs)
+                labels[stat] = key
+            except Exception as e:
+                logger.exception(e)
+            else:
+                continue
+        if stat == 'percentile':
+            key = f'{param}{roll_str}_{args}percentile({coord_keep_str}){path_str}'
             # out[f'{param}_{stat[1]}percentile({coord_keep_str}){path_str}'] = reduce_2d_data_array(data, np.nanpercentile,
             #                                                                                     coords_reduce, stat[1])
-            out[key] = data.quantile(stat[1]/100, dim=coords_reduce).drop_vars('quantile')
-            labels[f'{stat[1]:0.1f}%'] = key
+            out[key] = data.quantile(args / 100, dim=coords_reduce, **kwargs).drop_vars('quantile')
+            labels[f'{args:0.0f}%'] = key
+        elif stat == 'ptp':
+            key = f'{param}{roll_str}_{stat}({coord_keep_str}){path_str}'
+            out[key] = data.max(dim=coords_reduce, **kwargs) - data.min(dim=coords_reduce, **kwargs)
+            labels[stat] = key
+        # Options below should now be redundant due to using hasattr
+        # elif stat == 'min':
+        #     key = f'{param}{roll_str}_min({coord_keep_str}){path_str}'
+        #     out[key] = data.min(dim=coords_reduce)
+        #     labels['min'] = key
+        # elif stat == 'mean':
+        #     key = f'{param}{roll_str}_mean({coord_keep_str}){path_str}'
+        #     out[key] = data.mean(dim=coords_reduce)
+        #     labels['mean'] = key
+        # elif stat == 'std':
+        #     key = f'{param}{roll_str}_std({coord_keep_str}){path_str}'
+        #     out[key] = data.std(dim=coords_reduce)
+        #     labels['std'] = key
+        # elif stat == 'max':
+        #     key = f'{param}{roll_str}_max({coord_keep_str}){path_str}'
+        #     out[key] = data.max(dim=coords_reduce)
+        #     labels['max'] = key
         else:
             raise ValueError(stat)
 
@@ -635,7 +669,7 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
       ;print - set flag for output to PS
     """
     if params is None:
-        params = ['heat_flux', 'temperature', 'frame_data_nuc', 'frame_data']
+        params = ['heat_flux', 'temperature']  # , 'frame_data_nuc', 'frame_data']
         # params = ['heat_flux', 'temperature', 'frame_data_nuc']
     if meta_data is None:
         meta_data = {}
@@ -684,38 +718,42 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
         try:
             param_values = path_data[f'{param}_{path}']
             param_total = calc_divertor_area_integrated_param(param_values, annulus_areas_corrected)
+            param_total_cumulative = integrate.cumtrapz(param_total, x=param_total['t'])  # Cumulative energy
+            param_total_cumulative = np.concatenate([[0], param_total_cumulative])  # Make same legth as time axis
             prominence = (np.percentile(np.array(param_values), 99.9) - np.percentile(np.array(param_values), 2)) / 2e3
             # prominence = np.ptp(np.array(param_values)) / 2e2
             peak_kwargs = dict(width=1, height=np.mean(param_values.values), prominence=prominence)
             # print(f'Using peak detection window settings: {peak_kwargs}')
             param_stats, labels = calc_2d_profile_param_stats(param_values, path=path)
 
-            if param == 'heat_flux':
-                peak_info = locate_strike_points(param_values, dim='t', coords=dict(s_global=s_path, R=r_path),
-                                                 peak_kwargs=peak_kwargs)
-                # TODO: Use new strike point info in output
-                # debug = True
-                debug = False
-                if debug and (param == 'heat_flux'):
-                    ax, data, artist = debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', t_range=None,
-                                                                         show=False, robust_percentiles=(40, 99.8))
-                    r = path_data['R_path0']
-                    t = path_data['t']
-                    i_global = peak_info['ind_global_peak']
-                    nan_mask = ~np.isnan(i_global)
-                    strike_points = peak_info['strike_points']
+            # If n_strike_points > 0 will apply sp tracking algorithm to data (more expensive than global max)
+            n_strike_points = 4 if param == 'heat_flux' else 0
 
-                    colors = ('k', 'b', 'orange', 'g')
-                    lw = 2.5
-                    for i, color in zip(np.arange(4), colors):
-                        ax.plot(strike_points.loc[:, (i, 'R')], t, color=color, lw=lw, marker='o', markersize=2,
-                                alpha=0.4)
-                        lw *= 0.5
+            peak_info = locate_strike_points(param_values, dim='t', coords=dict(s_global=s_path, R=r_path),
+                                             n_strike_points=n_strike_points, peak_kwargs=peak_kwargs)
+            # TODO: Use new strike point info in output
+            # debug = True
+            debug = False
+            if debug and (param == 'heat_flux'):
+                ax, data, artist = debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', t_range=None,
+                                                                     show=False, robust_percentiles=(40, 99.8))
+                r = path_data['R_path0']
+                t = path_data['t']
+                i_global = peak_info['ind_global_peak']
+                nan_mask = ~np.isnan(i_global)
+                strike_points = peak_info['strike_points']
 
-                    # for t, i_peaks_t in zip(path_data['t'], peak_info['ind_peaks']):
-                    #     ax.plot(r[i_peaks_t], np.repeat(t.item(), len(i_peaks_t)), 'gx', ms=2, alpha=0.4)
-                    # ax.plot(r[i_global[nan_mask].astype(int)], path_data['t'][nan_mask], 'kx', ms=2, alpha=0.4)
-                    plt.show()
+                colors = ('k', 'b', 'orange', 'g')
+                lw = 2.5
+                for i, color in zip(np.arange(n_strike_points), colors):
+                    ax.plot(strike_points.loc[:, (i, 'R')], t, color=color, lw=lw, marker='o', markersize=2,
+                            alpha=0.4)
+                    lw *= 0.5
+
+                # for t, i_peaks_t in zip(path_data['t'], peak_info['ind_peaks']):
+                #     ax.plot(r[i_peaks_t], np.repeat(t.item(), len(i_peaks_t)), 'gx', ms=2, alpha=0.4)
+                # ax.plot(r[i_global[nan_mask].astype(int)], path_data['t'][nan_mask], 'kx', ms=2, alpha=0.4)
+                plt.show()
 
         except Exception as e:
             logger.warning(f'Failed to calculate physics summary for param "{param}":\n{e}')
@@ -723,9 +761,19 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
         else:
             data_out = data_out.merge(param_stats)
 
+            # TODO: Stop using meta data for output parameters from fire_config.json and make data_structures meta
+            # data to separate input file
             key = f'{param}_total_{path}'
             data_out[key] = (('t',), np.array(param_total))
             data_out[key].attrs.update(meta_data.get(f'{param}_total', {}))
+            # data_out = data_structures.attach_standard_meta_attrs(data_out, varname=key, replace=True)
+            if 'description' in data_out[key].attrs:
+                data_out[key].attrs['label'] = data_out[key].attrs['description']
+
+            key = f'{param}_total_cumulative_{path}'
+            data_out[key] = (('t',), np.array(param_total_cumulative))
+            data_out[key].attrs.update(meta_data.get(f'{param}_total_cumulative', {}))
+            # data_out = data_structures.attach_standard_meta_attrs(data_out, varname=key, replace=True)
             if 'description' in data_out[key].attrs:
                 data_out[key].attrs['label'] = data_out[key].attrs['description']
 
