@@ -36,6 +36,7 @@ def get_fig_ax(ax=None, num=None, ax_grid_dims=(1, 1), dimensions=2, axes_flatte
         num: Name of new figure window (if ax=None)
         ax_grid_dims: Dimensions of new figure axis grid (nrows, ncols) (if ax=None)
         dimensions: Number of dimensions axes for axis (2/3)
+        axes_flatten: Return axes instances in a flattened 1d ndarray (irrespective of grid dims)
         **kwargs: Additional kwargs passed to plt.subplots
 
     Returns: fig (figure instance), ax (axis instance), ax_passed (bool specifying if ax was passed or generated here)
@@ -52,7 +53,8 @@ def get_fig_ax(ax=None, num=None, ax_grid_dims=(1, 1), dimensions=2, axes_flatte
         else:
             fig, ax = plt.subplots(*ax_grid_dims, num=num, constrained_layout=True,
                                    sharex=sharex, sharey=sharey, **kwargs)
-            if axes_flatten and isinstance(ax, (np.ndarray)):
+            if axes_flatten:  #  and isinstance(ax, (np.ndarray)):
+                ax = make_iterable(ax, ndarray=True)
                 ax = ax.flatten()
 
         ax_passed = False
@@ -183,10 +185,13 @@ def annotate_providence(ax, label='{machine} {pulse} {diag_tag_analysed}\n({path
         return
 
     backup_labels = [
-        '{machine} {pulse} {diag_tag_raw}\n({path_label})'
-        '{machine} {pulse} {diag_tag_raw} {path_label}',
+        '{machine} {pulse} {diag_tag_analysed}\n({path_label})'
+        '{machine} {pulse} {diag_tag_analysed} {path_label}',
+        '{machine} {pulse} {diag_tag_analysed}',
         '{machine} {pulse} {diag_tag_raw}',
+        '{pulse} {diag_tag_analysed}',
         '{pulse} {diag_tag_raw}',
+        '{pulse}',
     ]
 
     # TODO: split into meta prep function
@@ -234,7 +239,8 @@ def annotate_providence(ax, label='{machine} {pulse} {diag_tag_analysed}\n({path
 
     return label, artist
 
-def legend(ax, handles=None, labels=None, legend=True, only_multiple_artists=True, box=True, zorder=None, **kwargs):
+def legend(ax, handles=None, labels=None, legend=True, only_multiple_artists=True, box=True, zorder=None,
+           n_handles_reformat=8, max_col_chars=15, **kwargs):
     """Finalise legends of each axes"""
     if legend:
         kws = {'loc': 'best'}  #'fontsize': 14,
@@ -253,6 +259,15 @@ def legend(ax, handles=None, labels=None, legend=True, only_multiple_artists=Tru
 
             handles = handles_current if (handles is None) else handles
             labels = labels_current if (labels is None) else labels
+
+            n_handles = len(handles)
+
+            if n_handles >= n_handles_reformat:
+                if len(labels[0]) <= max_col_chars:
+                    kws['ncol'] = int(np.ceil(n_handles / n_handles_reformat))
+                    kws['fontsize'] = kws.get('fontsize', 12) * 0.8
+                else:
+                    kws['fontsize'] = kws.get('fontsize', 12) * 0.6
 
             # Only produce legend if more than one  artist has a label
             if ((not only_multiple_artists) or (len(handles_current) > 1) or modify_elements):
@@ -311,7 +326,7 @@ def save_fig(path_fn, fig=None, paths=None, transparent=True, bbox_inches='tight
     if paths is not None:
         paths = [Path(str(path).format(**meta_dict)) for path in make_iterable(paths)]
     else:
-        paths = [Path(path_fn.parent)]
+        paths = [Path(Path(path_fn).expanduser().resolve().parent)]
 
     fn = Path(str(path_fn).format(**meta_dict)).name
 
@@ -322,7 +337,7 @@ def save_fig(path_fn, fig=None, paths=None, transparent=True, bbox_inches='tight
             mkdir(path, depth=mkdir_depth, start_dir=mkdir_start)
 
         if image_formats is None:
-            ext = fn.suffix
+            ext = path_fn.suffix
             path_fns = {ext: path_fn}
         else:
             # Handle file names without extension with periods in
@@ -341,6 +356,8 @@ def save_fig(path_fn, fig=None, paths=None, transparent=True, bbox_inches='tight
                 fig.savefig(path_fn, bbox_inches=bbox_inches, transparent=transparent, dpi=dpi)
             except RuntimeError as e:
                 logger.exception('Failed to save plot to: {}'.format(path_fn))
+                raise e
+            except Exception as e:
                 raise e
         if verbose:
             logger.info('Saved {} plot to:\n{}'.format(description, path_fns))
@@ -456,14 +473,13 @@ def setup_xarray_colorbar_ax(ax, data_plot=None, robust=True, cbar_label=None, c
     from matplotlib import ticker
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    kws = {}
+    kws = dict(robust=robust)
     if add_colorbar:
         # Force xarray generated colorbar to only be hieght of image axes and thinner
         divider = make_axes_locatable(ax)
         ax_cbar = divider.append_axes(position=position, size=size, pad=pad)
-        kws.update(dict(cbar_kwargs=dict(cax=ax_cbar),  # , extend='both'
-                        robust=robust))
-        kws.update(kwargs)
+        kws.update(dict(cbar_kwargs=dict(cax=ax_cbar)))  # , extend='both'
+
         if position in ('top', 'bottom'):
             tick_locator = ticker.MaxNLocator(nbins=5)
             kws['cbar_kwargs']['orientation'] = 'horizontal'
@@ -475,23 +491,26 @@ def setup_xarray_colorbar_ax(ax, data_plot=None, robust=True, cbar_label=None, c
         if cbar_label is not None:
             kws['cbar_kwargs']['label'] = cbar_label  # If not passed xarray auto generates from dataarray name/attrs
 
-        if log_cmap:
-            kws['norm'] = matplotlib.colors.LogNorm()
+    kws.update(kwargs)
 
-        if (data_plot is not None) and np.issubdtype(data_plot.dtype, np.int64) and (np.max(data_plot.values) < 20):
-            # Integer/quantitative data
-            bad_value = -1
-            data_plot = xr.where(data_plot == bad_value, np.nan, data_plot)
+    if log_cmap:
+        kws['norm'] = matplotlib.colors.LogNorm()
 
-            values = data_plot.values.flatten()
-            values = set(list(values[~np.isnan(values)]))
-            ticks = np.sort(list(values))
-            kws['cbar_kwargs']['ticks'] = ticks
-            kws['vmin'] = np.min(ticks)
-            kws['vmax'] = np.max(ticks)
-            if cmap is None:
-                cmap = 'jet'
-            cmap = mpl.cm.get_cmap(cmap, (ticks[-1]-ticks[0])+1)
+    if (data_plot is not None) and np.issubdtype(data_plot.dtype, np.int64) and (np.max(data_plot.values) < 20):
+        # Integer/quantitative data
+        bad_value = -1
+        data_plot = xr.where(data_plot == bad_value, np.nan, data_plot)
+
+        values = data_plot.values.flatten()
+        values = set(list(values[~np.isnan(values)]))
+        ticks = np.sort(list(values))
+        kws['cbar_kwargs']['ticks'] = ticks
+        kws['vmin'] = np.min(ticks)
+        kws['vmax'] = np.max(ticks)
+        if cmap is None:
+            cmap = 'jet'
+        cmap = mpl.cm.get_cmap(cmap, (ticks[-1]-ticks[0])+1)
+
     kws['cmap'] = cmap
     kws['add_colorbar'] = add_colorbar
 
