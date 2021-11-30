@@ -44,7 +44,7 @@ cbar_label_defaults = {
                       'ray_lengths_im': r'Distance from camera [m]',
                       }
 
-def figure_xarray_imshow(data, key='data', slice_=None, ax=None,
+def figure_xarray_imshow(data, key=None, slice_=None, ax=None,
                          add_colorbar=True, cbar_label=None, robust=True,
                          scale_factor=None, clip_range=(None, None),
                          cmap=None, log_cmap=False, nan_color=('red', 0.2),
@@ -53,6 +53,8 @@ def figure_xarray_imshow(data, key='data', slice_=None, ax=None,
     # TODO: Move non-xarray specific functionality to function that can be called with numpy arrays
     fig, ax, ax_passed = get_fig_ax(ax, num=key)
     data = data_structures.to_image_dataset(data, key=key)
+    if (key is None) and (len(data.keys()) == 1):
+        key = list(data.keys())[0]
     data_plot = data[key]
     kws = {}
     if (data_plot.ndim > 2) and (slice_ is None):
@@ -177,7 +179,7 @@ def plot_outlier_pixels(data, key='frame_data', ax=None, n=None, color='r', ms=2
     else:
         frame_data = data
 
-    hot_pixels, frame_data = find_outlier_pixels(frame_data, tol=3.5)
+    hot_pixels, frame_data = find_outlier_pixels(frame_data, n_sigma_tol=3.5)
     ax.plot(hot_pixels[1], hot_pixels[0], ls='', marker='o', color=color, ms=ms, alpha=0.35, **kwargs)
 
 def plot_rzphi_points(calcam_calib, points_rzphi, ax=None, angle_units='degrees', image_coords='Display',
@@ -556,6 +558,20 @@ def plot_frame(data_frame, frame_label=np.nan, cmap_percentiles=(1, 99)):
     plt.colorbar()
     plt.tight_layout()
     plt.show()
+
+def plot_data_top_down(image_data, key, divertor_mask, coords=('x', 'y'), ax=None, meta_data=(), show=True):
+    meta_data = dict(meta_data)
+    pulse = meta_data.get('pulse', '')
+
+    fig, ax, ax_passed = plot_tools.get_fig_ax(ax, num=f'Top down {key}, {pulse}')
+
+    data_plot = image_data[key].where(divertor_mask, drop=True)
+    data_plot = data_structures.swap_xarray_dim(data_structures, coords)
+
+    data_plot.plot.tricontourf(ax=ax)
+    x, y = (data_plot[coord] for coord in coords)
+    z = np.array(image_data)
+    ax.tricontourf(x, y, z)
 
 
 if __name__ == '__main__':
