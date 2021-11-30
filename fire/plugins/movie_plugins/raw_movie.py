@@ -65,7 +65,7 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True) -> di
     movie_meta['left'] += 1
     movie_meta['top'] += 1
 
-    check_ipx_detector_window_meta_data(movie_meta, plugin='raw', fn=path_fn, modify=True)  # Complete missing fields
+    check_ipx_detector_window_meta_data(movie_meta, plugin='raw', fn=path_fn, modify_inplace=True)  # Complete missing fields
     movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
 
     if 'date_time' not in movie_meta:

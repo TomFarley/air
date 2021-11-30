@@ -92,7 +92,7 @@ def read_movie_meta(path: Union[str, Path], transforms: Iterable[str]=()) -> dic
     # TODO: Check ipx field 'top' follows image/calcam conventions
     movie_meta['width'] = image_shape[1]
     movie_meta['height'] = image_shape[0]
-    check_ipx_detector_window_meta_data(movie_meta, plugin='imstack', modify=True)  # Complete missing fields
+    check_ipx_detector_window_meta_data(movie_meta, plugin='imstack', modify_inplace=True)  # Complete missing fields
     movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
 
     imstack_header['imstack_filenames'] = vid.file_list

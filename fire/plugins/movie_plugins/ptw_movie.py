@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 MovieData = namedtuple('movie_plugin_frame_data', ['frame_numbers', 'frame_times', 'frame_data'])
 
 movie_plugin_name = 'ats_movie'
-plugin_info = {'description': "This plugin reads ats movie files output by the FLIR ResearchIR software"}
+plugin_info = {'description': "This plugin reads ptw movie files output by the FLIR Altair software"}
 
 def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbose=True) -> dict:
-    """Read meta data for ats movie file (eg exported from the FLIR ResearchIR software).
+    """Read meta data for ptw movie file (eg exported from the FLIR Altair software).
 
     :param path_fn: Path to ats movie file
     :type path_fn: str, Path
@@ -51,7 +51,7 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbo
     # movie_dict = read_ats_file_header(path_fn.parent, path_fn.name)
     movie_dict = ats_to_dict(path_fn.parent, path_fn.name, n_frames=2)
 
-    movie_meta = dict(movie_format='.ats')
+    movie_meta = dict(movie_format='.ptw')
 
     # If present, also read meta data from json file with movie file
     path_fn = Path(path_fn)
@@ -68,7 +68,7 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbo
     if isinstance(movie_meta_json, dict):
         movie_meta.update(movie_meta_json)
     else:
-        message = f'FLIR .ats movie does not have a meta data json file: {path}'
+        message = f'FLIR .ptw movie does not have a meta data json file: {path}'
         if raise_on_missing_meta:
             raise IOError(message)
         else:
@@ -115,7 +115,7 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbo
 
     movie_meta['t_range'] = np.array([np.min(movie_meta['frame_times']), np.max(movie_meta['frame_times'])])
 
-    check_ipx_detector_window_meta_data(movie_meta, plugin='ats', fn=path_fn, modify=True)  # Complete missing fields
+    check_ipx_detector_window_meta_data(movie_meta, plugin='ats', fn=path_fn, modify_inplace=True)  # Complete missing fields
     movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
 
     # TODO: Rename meta data fields to standard
@@ -127,14 +127,14 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbo
 
 
 def read_movie_data(path_fn: Union[str, Path], write_ipx=False, raise_on_missing_meta=True) -> MovieData:
-    """Read frame data for ats movie file (eg exported from the FLIR ResearchIR software).
+    """Read frame data for ptw movie file (eg exported from the FLIR Altair software).
 
     :param path_fn: Path to ats movie file
     :type path_fn: str, Path
     :return: Dictionary of meta data from accompanying json meta data file information
     :type: dict
     """
-    from fire.interfaces.ats_flir_movie_reader import ats_to_dict
+    from fire.interfaces.ptw_flir_movie_reader import ptw_to_dict
 
     t0 = datetime.now()
     print(f'{t0}: Reading ats movie data: {path_fn}')
@@ -142,7 +142,7 @@ def read_movie_data(path_fn: Union[str, Path], write_ipx=False, raise_on_missing
     movie_meta = read_movie_meta(path_fn=path_fn, raise_on_missing_meta=raise_on_missing_meta, verbose=False)
 
     path_fn = Path(path_fn)
-    movie_dict = ats_to_dict(path_fn.parent, path_fn.name)
+    movie_dict = ptw_to_dict(path_fn)
 
     frame_data = movie_dict['data']
     frame_times = movie_meta['frame_times']

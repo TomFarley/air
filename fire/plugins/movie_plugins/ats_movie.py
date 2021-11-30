@@ -39,7 +39,7 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbo
     :return: Dictionary of meta data from accompanying json meta data file information
     :type: dict
     """
-    from fire.interfaces.flir_ats_movie_reader import ats_to_dict, read_ats_file_header
+    from fire.interfaces.ats_flir_movie_reader import ats_to_dict, read_ats_file_header
     from fire.plugins.movie_plugins.ipx_standard import (get_detector_window_from_ipx_header,
                                                          check_ipx_detector_window_meta_data)
 
@@ -115,7 +115,7 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbo
 
     movie_meta['t_range'] = np.array([np.min(movie_meta['frame_times']), np.max(movie_meta['frame_times'])])
 
-    check_ipx_detector_window_meta_data(movie_meta, plugin='ats', fn=path_fn, modify=True)  # Complete missing fields
+    check_ipx_detector_window_meta_data(movie_meta, plugin='ats', fn=path_fn, modify_inplace=True)  # Complete missing fields
     movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
 
     # TODO: Rename meta data fields to standard
@@ -134,7 +134,7 @@ def read_movie_data(path_fn: Union[str, Path], write_ipx=False, raise_on_missing
     :return: Dictionary of meta data from accompanying json meta data file information
     :type: dict
     """
-    from fire.interfaces.flir_ats_movie_reader import ats_to_dict
+    from fire.interfaces.ats_flir_movie_reader import ats_to_dict
 
     t0 = datetime.now()
     print(f'{t0}: Reading ats movie data: {path_fn}')

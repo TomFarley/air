@@ -155,7 +155,7 @@ def plot_passed_temporal_stats(stat_profiles, stat_labels, stats=None, t=None, n
     return fig, ax, ax_n
 
 def plot_temporal_stats(data_2d, t=None, ax=None, t_axis=0,
-                        stats=('max', '99.0%', 'mean', '1.0%', 'min'),
+                        stats=('max', '99%', 'mean', '1%', 'min'),
                         ls=(':', '--', '-', '--', ':', (0, (2, 5)), (0, (2, 9))),
                         bit_depth=None, meta_data=None, times_of_interest=None, y_label=None, num=None,
                         show=True, save_fn=None, roll_width=None, roll_reduce_func='mean', roll_center=True):

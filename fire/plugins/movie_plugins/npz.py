@@ -142,7 +142,7 @@ def read_movie_meta(path_fn: Union[str, Path], transforms: Iterable[str]=()) -> 
         movie_meta['width'] = image_shape[1]
         movie_meta['height'] = image_shape[0]
 
-    check_ipx_detector_window_meta_data(movie_meta, plugin='raw', fn=path_fn, modify=True)  # Complete missing fields
+    check_ipx_detector_window_meta_data(movie_meta, plugin='raw', fn=path_fn, modify_inplace=True)  # Complete missing fields
     movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
 
     meta_keys = ['n_frames', 'frame_range', 't_range', 'image_shape', 'fps', 'exposure', 'bit_depth', 'lens',
