@@ -32,13 +32,17 @@ UDA_IPX_HEADER_FIELDS = ('board_temp', 'camera', 'ccd_temp', 'codex', 'date_time
 # uda_ipx_header_fields += ('ID', 'size', 'codec', 'date_time', 'trigger', 'orient', 'color', 'hBin',
 #                           'right', 'vBin', 'bottom', 'offset_0', 'offset_1', 'gain_0', 'gain_1', 'preExp', 'strobe')
 
-def check_ipx_detector_window_meta_data(ipx_header, plugin=None, fn=None, modify=True, verbose=True):
+def check_ipx_detector_window_meta_data(ipx_header, plugin=None, fn=None, modify_inplace=True,
+                                        missing_value=np.nan, verbose=True):
     # TODO: Move to generic movie plugin functions module
     log = logger.warning if verbose else logger.debug
     problems = 0
 
     # TODO: apply abs to each value so don't have negative 'bottom' value etc?
-    left, top, width, height, right, bottom = [np.abs(utils.str_to_number(ipx_header.get(key, np.nan), cast=int))
+    left, top, width, height, right, bottom = [np.abs(
+                                               utils.str_to_number(ipx_header.get(key, missing_value), cast=int,
+                                                        if_not_numeric='return_default', default_non_numeric=np.nan)
+                                                     )
                                                       for key in ('left', 'top', 'width', 'height', 'right', 'bottom')]
 
     left_top = np.array([left, top])
@@ -94,7 +98,7 @@ def check_ipx_detector_window_meta_data(ipx_header, plugin=None, fn=None, modify
         if not np.all(image_resolution == np.array([height, width])):
             raise ValueError('Image_resolution field doesnt match other header meta data')
 
-    if modify:
+    if modify_inplace:
         for key, value in zip(('left', 'top', 'width', 'height', 'right', 'bottom'),
                               (left, top, width, height, right, bottom)):
             ipx_header[key] = int(value)
@@ -145,7 +149,7 @@ def convert_ipx_header_to_uda_conventions(header: dict) -> dict:
                 missing.append(old_key)
     if len(missing) > 0:
         missing = {k: key_map[k] for k in missing}
-        logger.warning(f'Could not rename {len(missing)} ipx header parameters as original keys missing: '
+        logger.debug(f'Could not rename {len(missing)} ipx header parameters as original keys missing: '
                        f'{missing}')
 
     missing_scalar_keys = []
