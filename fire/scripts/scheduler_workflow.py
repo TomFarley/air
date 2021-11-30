@@ -785,7 +785,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             'r', 'z', 't', 'q95', 'psiN', 'lower_xpoint_r', 'lower_xpoint_z', 'lower_xpoint_psin'
 
         # Sort analysis path in order of increasing R to avoid reversing sections of profiles!
-        path_data = path_data.sortby('R_in_frame_path0', ascending=True)  # TODO: Detect non-mono and tidy into func?
+        path_data = path_data.sortby(f'R_in_frame_path{i_path}', ascending=True)  # TODO: Detect non-mono and tidy into func?
         # path_data = path_data.sortby('s_global_in_frame_path0', ascending=True)  # TODO: Detect non-mono and tidy into
         # func?
 
