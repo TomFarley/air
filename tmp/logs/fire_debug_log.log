@@ -1,236 +1,100 @@
-2021-09-28 16:47:13,148 - WARNING - fire.physics.heat_flux - calc_heatflux:195:
-   Transposed THEODOR temperature input data to start with spatial dimension (t,s) -> (s,t)
-2021-09-28 16:47:15,557 - INFO - fire.physics.heat_flux - calc_heatflux:240:
-   Calling THEODOR with kwargs: {'d_target': 0.028, 'alpha_bot': 250.0, 'alpha_top_org': array([70000.]), 'diff': array([8.0e-05, 2.1e-05, 1.5e-05]), 'lam': array([115.,  63.,  49.]), 'aniso': 1.0, 'ti_pr': 'null', 'x_Tb': array([0.01, 0.01, 0.01]), 'y_Tb': array([1.22743, 1.16518, 1.08106]), 'anim': 'null', 'dstar': 0.35}
-2021-09-28 16:47:16,629 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "heat_flux_path0" (replace=False)
-2021-09-28 16:47:16,631 - WARNING - fire.physics.physics_parameters - calc_physics_params:674:
-   Using incorrect annulus areas for integrated/total quantities
-2021-09-28 16:47:16,648 - INFO - fire.physics.physics_parameters - calc_2d_profile_param_stats:522:
-   Calculating temporal stats (roll=None): ('min', ('percentile', 1), 'mean', 'std', ('percentile', 99), 'max')
-2021-09-28 16:47:16,748 - INFO - fire.physics.physics_parameters - locate_strike_points:447:
-   Calculating strike point locations
-2021-09-28 16:47:18,453 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "heat_flux_amplitude_peak_global_path0" (replace=False)
-2021-09-28 16:47:18,558 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "heat_flux_n_peaks_path0" (replace=False)
-2021-09-28 16:47:18,568 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "heat_flux_s_global_peak_path0" (replace=False)
-2021-09-28 16:47:18,577 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "heat_flux_R_peak_path0" (replace=False)
-2021-09-28 16:47:18,597 - INFO - fire.physics.physics_parameters - calc_2d_profile_param_stats:522:
-   Calculating temporal stats (roll=None): ('min', ('percentile', 1), 'mean', 'std', ('percentile', 99), 'max')
-2021-09-28 16:47:18,733 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "temperature_amplitude_peak_global_path0" (replace=False)
-2021-09-28 16:47:18,739 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "temperature_n_peaks_path0" (replace=False)
-2021-09-28 16:47:18,744 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:212:
-   Using s_global meta data for temperature_s_global_peak
-2021-09-28 16:47:18,744 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "temperature_s_global_peak_path0" (replace=False)
-2021-09-28 16:47:18,750 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "temperature_R_peak_path0" (replace=False)
-2021-09-28 16:47:18,763 - INFO - fire.physics.physics_parameters - calc_2d_profile_param_stats:522:
-   Calculating temporal stats (roll=None): ('min', ('percentile', 1), 'mean', 'std', ('percentile', 99), 'max')
-2021-09-28 16:47:18,864 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:212:
-   Using frame_data meta data for frame_data_nuc_amplitude_peak_global
-2021-09-28 16:47:18,864 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "frame_data_nuc_amplitude_peak_global_path0" (replace=False)
-2021-09-28 16:47:18,870 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:212:
-   Using frame_data meta data for frame_data_nuc_n_peaks
-2021-09-28 16:47:18,870 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "frame_data_nuc_n_peaks_path0" (replace=False)
-2021-09-28 16:47:18,876 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:212:
-   Using s_global meta data for frame_data_nuc_s_global_peak
-2021-09-28 16:47:18,876 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "frame_data_nuc_s_global_peak_path0" (replace=False)
-2021-09-28 16:47:18,883 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:212:
-   Using frame_data meta data for frame_data_nuc_R_peak
-2021-09-28 16:47:18,883 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "frame_data_nuc_R_peak_path0" (replace=False)
-2021-09-28 16:47:18,895 - INFO - fire.physics.physics_parameters - calc_2d_profile_param_stats:522:
-   Calculating temporal stats (roll=None): ('min', ('percentile', 1), 'mean', 'std', ('percentile', 99), 'max')
-2021-09-28 16:47:18,998 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:212:
-   Using frame_data meta data for frame_data_amplitude_peak_global
-2021-09-28 16:47:18,999 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "frame_data_amplitude_peak_global_path0" (replace=False)
-2021-09-28 16:47:19,005 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:212:
-   Using frame_data meta data for frame_data_n_peaks
-2021-09-28 16:47:19,006 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "frame_data_n_peaks_path0" (replace=False)
-2021-09-28 16:47:19,013 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:212:
-   Using s_global meta data for frame_data_s_global_peak
-2021-09-28 16:47:19,013 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "frame_data_s_global_peak_path0" (replace=False)
-2021-09-28 16:47:19,019 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:212:
-   Using frame_data meta data for frame_data_R_peak
-2021-09-28 16:47:19,019 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "frame_data_R_peak_path0" (replace=False)
-2021-09-28 16:47:19,772 - INFO - fire.plotting.debug_plots - debug_plot_profile_2d:684:
-   heat_flux(path0): min=-0.07761, mean=0.01228, 99%=0.1403, max=3.372
-2021-09-28 16:47:23,748 - INFO - fire.plotting.debug_plots - debug_plot_profile_2d:684:
-   heat_flux(path0): min=-0.07761, mean=0.01228, 99%=0.1403, max=3.372
-2021-09-28 16:47:24,239 - INFO - fire.plotting.plot_tools - save_fig:345:
+2021-11-26 16:05:08,409 - INFO - fire.plotting.plot_tools - save_fig:363:
    Saved  plot to:
-{'png': PosixPath('/home/tfarley/.fire/figures/heat_flux_vs_R_t-robust/heat_flux_vs_R_t-robust-mast_u_rit_44677.png')}
-2021-09-28 16:47:31,401 - INFO - fire.interfaces.io_basic - to_csv:341:
-   Wrote data to file: ~/.fire/csvs/strike_point_loc-mast_u-rit-44677-MASTU_lower_T2T3T4T5_radial_3.csv
-2021-09-28 16:47:36,566 - INFO - fire.pickle_output - write_processed_ir_to_pickle_output_file:88:
-   Pickle output file written to: /home/tfarley/home/tfarley/.fire/pickle_output_archive/rit/rit044677.p
-2021-09-28 16:47:36,584 - DEBUG - fire.interfaces.uda_utils - putdata_create:686:
-   Created uda output netcdf file handle for /home/tfarley/repos/air/ait044677.nc
-2021-09-28 16:47:36,586 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:795:
-   Successfully wrote attribute to group "devices/ait/": "bit_depth"=14
-2021-09-28 16:47:36,587 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:795:
-   Successfully wrote attribute to group "devices/ait/": "pixel_pitch"=3e-05
-2021-09-28 16:47:36,587 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:795:
-   Successfully wrote attribute to group "devices/ait/": "aperture"=f/2
-2021-09-28 16:47:36,588 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:795:
-   Successfully wrote attribute to group "devices/ait/": "unfiltered_wavelength_range"=[7.7e-06, 9.4e-06]
-2021-09-28 16:47:36,589 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:795:
-   Successfully wrote attribute to group "devices/ait/": "available_lenses"=[0.025, 0.05]
-2021-09-28 16:47:36,590 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:795:
-   Successfully wrote attribute to group "devices/ait//neutral_density_filters": "0"=??
-2021-09-28 16:47:36,591 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:795:
-   Successfully wrote attribute to group "devices/ait//window_locations": "0"=HL04-B
-2021-09-28 16:47:36,592 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:795:
-   Successfully wrote attribute to group "devices/ait/": "manufacturer"=IRCAM
-2021-09-28 16:47:36,592 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:795:
-   Successfully wrote attribute to group "devices/ait/": "description"=Long-wavelength infra-red camera
-2021-09-28 16:47:36,593 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:795:
-   Successfully wrote attribute to group "devices/ait//aliases": "0"=ircam_1
-2021-09-28 16:47:36,594 - DEBUG - fire.interfaces.uda_utils - putdata_attribute:795:
-   Successfully wrote attribute to group "devices/ait/": "year_of_purchase"=2017
-2021-09-28 16:47:36,601 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "i_path0" (replace=True)
-2021-09-28 16:47:36,604 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:913:
-   Successfully wrote dimension to group "/ait/path0": "i"
-2021-09-28 16:47:36,622 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:941:
-   Successfully wrote coordinate to group "/ait/path0":  "i_path0"
-2021-09-28 16:47:36,623 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "n" (replace=True)
-2021-09-28 16:47:36,625 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:913:
-   Successfully wrote dimension to group "/ait/path0": "n"
-2021-09-28 16:47:36,626 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:941:
-   Successfully wrote coordinate to group "/ait/path0":  "n"
-2021-09-28 16:47:36,627 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "t" (replace=True)
-2021-09-28 16:47:36,628 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:913:
-   Successfully wrote dimension to group "/ait/path0": "t"
-2021-09-28 16:47:36,630 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:941:
-   Successfully wrote coordinate to group "/ait/path0":  "t"
-2021-09-28 16:47:36,630 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "R_path0" (replace=True)
-2021-09-28 16:47:36,632 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:913:
-   Successfully wrote dimension to group "/ait/path0": "R"
-2021-09-28 16:47:36,633 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:941:
-   Successfully wrote coordinate to group "/ait/path0":  "R_path0"
-2021-09-28 16:47:36,634 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "phi_path0" (replace=True)
-2021-09-28 16:47:36,635 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:913:
-   Successfully wrote dimension to group "/ait/path0": "phi"
-2021-09-28 16:47:36,637 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:941:
-   Successfully wrote coordinate to group "/ait/path0":  "phi_path0"
-2021-09-28 16:47:36,637 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "s_global_path0" (replace=True)
-2021-09-28 16:47:36,639 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:913:
-   Successfully wrote dimension to group "/ait/path0": "s_global"
-2021-09-28 16:47:36,640 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:941:
-   Successfully wrote coordinate to group "/ait/path0":  "s_global_path0"
-2021-09-28 16:47:36,641 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "s_local_path0" (replace=True)
-2021-09-28 16:47:36,642 - DEBUG - fire.interfaces.uda_utils - putdata_dimension:913:
-   Successfully wrote dimension to group "/ait/path0": "s_local"
-2021-09-28 16:47:36,644 - DEBUG - fire.interfaces.uda_utils - putdata_coordinate:941:
-   Successfully wrote coordinate to group "/ait/path0":  "s_local_path0"
-2021-09-28 16:47:36,653 - DEBUG - fire.interfaces.uda_utils - putdata_variable:968:
-   Successfully wrote data to group "/ait/path0" for "heat_flux"
-2021-09-28 16:47:36,654 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "i_path0" (replace=True)
-2021-09-28 16:47:36,654 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "n" (replace=True)
-2021-09-28 16:47:36,654 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "t" (replace=True)
-2021-09-28 16:47:36,655 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "R_path0" (replace=True)
-2021-09-28 16:47:36,655 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "phi_path0" (replace=True)
-2021-09-28 16:47:36,655 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "s_global_path0" (replace=True)
-2021-09-28 16:47:36,656 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "s_local_path0" (replace=True)
-2021-09-28 16:47:36,674 - DEBUG - fire.interfaces.uda_utils - putdata_variable:968:
-   Successfully wrote data to group "/ait/path0" for "temperature"
-2021-09-28 16:47:36,675 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "i_path0" (replace=True)
-2021-09-28 16:47:36,675 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "R_path0" (replace=True)
-2021-09-28 16:47:36,675 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "phi_path0" (replace=True)
-2021-09-28 16:47:36,675 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "s_global_path0" (replace=True)
-2021-09-28 16:47:36,676 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "s_local_path0" (replace=True)
-2021-09-28 16:47:36,679 - DEBUG - fire.interfaces.uda_utils - putdata_variable:968:
-   Successfully wrote data to group "/ait/path0" for "surface_id"
-2021-09-28 16:47:36,679 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "i_path0" (replace=True)
-2021-09-28 16:47:36,679 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "R_path0" (replace=True)
-2021-09-28 16:47:36,680 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "phi_path0" (replace=True)
-2021-09-28 16:47:36,680 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "s_global_path0" (replace=True)
-2021-09-28 16:47:36,680 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "s_local_path0" (replace=True)
-2021-09-28 16:47:36,682 - DEBUG - fire.interfaces.uda_utils - putdata_variable:968:
-   Successfully wrote data to group "/ait/path0" for "sector"
-2021-09-28 16:47:36,682 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "n" (replace=True)
-2021-09-28 16:47:36,682 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "t" (replace=True)
-2021-09-28 16:47:36,684 - DEBUG - fire.interfaces.uda_utils - putdata_variable:968:
-   Successfully wrote data to group "/ait/path0" for "heat_flux_total"
-2021-09-28 16:47:36,684 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "n" (replace=True)
-2021-09-28 16:47:36,684 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "t" (replace=True)
-2021-09-28 16:47:36,686 - DEBUG - fire.interfaces.uda_utils - putdata_variable:968:
-   Successfully wrote data to group "/ait/path0" for "heat_flux_amplitude_peak_global"
-2021-09-28 16:47:36,686 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "n" (replace=True)
-2021-09-28 16:47:36,687 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "t" (replace=True)
-2021-09-28 16:47:36,688 - DEBUG - fire.interfaces.uda_utils - putdata_variable:968:
-   Successfully wrote data to group "/ait/path0" for "heat_flux_s_global_peak"
-2021-09-28 16:47:36,688 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "n" (replace=True)
-2021-09-28 16:47:36,689 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "t" (replace=True)
-2021-09-28 16:47:36,690 - DEBUG - fire.interfaces.uda_utils - putdata_variable:968:
-   Successfully wrote data to group "/ait/path0" for "heat_flux_R_peak"
-2021-09-28 16:47:36,691 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "n" (replace=True)
-2021-09-28 16:47:36,691 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "t" (replace=True)
-2021-09-28 16:47:36,693 - DEBUG - fire.interfaces.uda_utils - putdata_variable:968:
-   Successfully wrote data to group "/ait/path0" for "temperature_amplitude_peak_global"
-2021-09-28 16:47:36,693 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "n" (replace=True)
-2021-09-28 16:47:36,693 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "t" (replace=True)
-2021-09-28 16:47:36,695 - DEBUG - fire.interfaces.uda_utils - putdata_variable:968:
-   Successfully wrote data to group "/ait/path0" for "temperature_s_global_peak"
-2021-09-28 16:47:36,695 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "n" (replace=True)
-2021-09-28 16:47:36,695 - DEBUG - fire.misc.data_structures - attach_standard_meta_attrs:236:
-   Added standard meta data for "t" (replace=True)
-2021-09-28 16:47:36,697 - DEBUG - fire.interfaces.uda_utils - putdata_variable:968:
-   Successfully wrote data to group "/ait/path0" for "temperature_R_peak"
-2021-09-28 16:47:36,697 - INFO - fire.interfaces.uda_utils - putdata_variables_from_datasets:891:
-   Wrote variables to file: 
-   ['heat_flux', 'temperature', 'surface_id', 'sector', 'heat_flux_total', 'heat_flux_amplitude_peak_global', 'heat_flux_s_global_peak', 'heat_flux_R_peak', 'temperature_amplitude_peak_global', 'temperature_s_global_peak', 'temperature_R_peak']
-2021-09-28 16:47:39,035 - INFO - fire.interfaces.interfaces - archive_netcdf_output:418:
-   Copied netcdf output file "/home/tfarley/home/tfarley/.fire/archive_netcdf_output/rit/ait044677.nc" from "/home/tfarley/repos/air/ait044677.nc"
-2021-09-28 16:47:39,036 - INFO - fire.scheduler_workflow - scheduler_workflow:889:
-   Finished scheduler workflow
+{'png': PosixPath('/home/tfarley/repos/ir_analysis/ir_analysis/mu01/mastu_kpi/figures/heat_flux_radial_profiles/rit_43610_T2T5_vs_s_peak_logy.png'), 'svg': '/home/tfarley/repos/ir_analysis/ir_analysis/mu01/mastu_kpi/figures/heat_flux_radial_profiles/svg/rit_43610_T2T5_vs_s_peak_logy.svg'}
+2021-11-26 16:05:11,558 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2021-11-26 16:05:11,561 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "get_camera_external_clock_info"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2021-11-26 16:05:11,561 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "get_frame_time_correction"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2021-11-26 16:05:11,561 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "label_tiles"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2021-11-26 16:05:11,561 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "pulse_meta_data"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2021-11-26 16:05:11,572 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "get_tile_louvre_label"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:11,573 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "get_tile_louvre_index"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:11,573 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:11,573 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "get_camera_external_clock_info"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:11,573 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "get_frame_time_correction"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:11,573 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "plot_vessel_outline"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:11,573 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "plot_vessel_top_down"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:11,573 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "label_tiles"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:11,573 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "pulse_meta_data"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:11,576 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/mast_u.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast_u.py'>
+2021-11-26 16:05:11,577 - INFO - fire.plugins.plugins - get_compatible_plugins:149:
+   Located machine plugins for: mast, jet, mast_u (filter: None)
+2021-11-26 16:05:11,588 - INFO - fire.plotting.debug_plots - debug_plot_profile_2d:692:
+   heat_flux(path0): min=-0.05682, mean=0.01598, 99%=0.174, max=3.269
+2021-11-26 16:05:12,491 - INFO - fire.plotting.plot_tools - save_fig:363:
+   Saved  plot to:
+{'png': PosixPath('/home/tfarley/repos/ir_analysis/ir_analysis/mu01/mastu_kpi/figures/heat_flux_map/rit_43610_heatmap.png'), 'svg': '/home/tfarley/repos/ir_analysis/ir_analysis/mu01/mastu_kpi/figures/heat_flux_map/svg/rit_43610_heatmap.svg'}
+2021-11-26 16:05:49,891 - INFO - fire.scheduler_workflow - scheduler_workflow:84:
+   Starting scheduler workflow run for inputs: mast_u, rit, 43583, 0
+2021-11-26 16:05:49,897 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2021-11-26 16:05:49,897 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "get_camera_external_clock_info"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2021-11-26 16:05:49,897 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "get_frame_time_correction"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2021-11-26 16:05:49,897 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "label_tiles"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2021-11-26 16:05:49,897 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "pulse_meta_data"" not found in module <module 'machine_plugins/mast.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast.py'>
+2021-11-26 16:05:49,899 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "get_tile_louvre_label"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:49,899 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "get_tile_louvre_index"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:49,899 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:49,899 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "get_camera_external_clock_info"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:49,899 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "get_frame_time_correction"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:49,899 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "plot_vessel_outline"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:49,899 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "plot_vessel_top_down"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:49,899 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "label_tiles"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:49,899 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "pulse_meta_data"" not found in module <module 'machine_plugins/jet.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/jet.py'>
+2021-11-26 16:05:49,903 - DEBUG - fire.plugins.plugins - get_plugins:103:
+   Optional plugin "location_labels"" not found in module <module 'machine_plugins/mast_u.py' from '/home/tfarley/repos/air/fire/plugins/machine_plugins/mast_u.py'>
+2021-11-26 16:05:49,904 - INFO - fire.plugins.plugins - get_compatible_plugins:149:
+   Located machine plugins for: mast, jet, mast_u (filter: None)
+2021-11-26 16:05:50,314 - INFO - fire.plugins.plugins - get_compatible_plugins:149:
+   Located output_format plugins for: pickle_output, uda_putdata (filter: ['pickle_output', 'uda_putdata'])
+2021-11-26 16:05:50,714 - INFO - fire.plugins.plugins - get_compatible_plugins:149:
+   Located movie plugins for: raw_movie, imstack, ipx, ats_movie, npz, uda (filter: ['ipx', 'uda', 'raw_movie', 'npz', 'imstack'])
+2021-11-26 16:05:50,727 - WARNING - fire.plugins.machine_plugins.mast_u - pulse_meta_data:426:
+   Failed to perform CPF query for 43583, exp_date
+2021-11-26 16:05:50,738 - INFO - fire.plugins.machine_plugins.mast_u - pulse_meta_data:434:
+   Successfully retrieved shot time with UDA: ('2021-02-27', '12:10:50.996174')
+2021-11-26 16:05:56,861 - DEBUG - fire.plugins.plugins_movie - try_movie_plugins_dicts:419:
+   Failed to call "read_movie_meta_with_mastmovie" from "movie_plugins/ipx.py" with args {'transforms': (), 'path_fn': PosixPath('/home/tfarley/data/movies/mast_u/43583/rit/rit_43583.raw')}: incorrect magic
+2021-11-26 16:05:56,863 - DEBUG - fire.plugins.plugins_movie - try_movie_plugins_dicts:419:
+   Failed to call "read_movie_meta_with_mastmovie" from "movie_plugins/ipx.py" with args {'transforms': (), 'path_fn': PosixPath('/home/tfarley/data/movies/mast_u/43583/rit/rit_43583.raw')}: incorrect magic
+2021-11-26 16:05:56,867 - DEBUG - fire.plugins.plugins_movie - try_movie_plugins_dicts:430:
+   Failed to call "read_movie_meta" from "movie_plugins/uda.py" with args {'camera': 'rit', 'pulse': 43583, 'n_start': None, 'n_end': None, 'stride': 1}
+2021-11-26 16:05:56,901 - WARNING - fire.plugins.machine_plugins.mast_u - pulse_meta_data:426:
+   Failed to perform CPF query for 43583, exp_time
+2021-11-26 16:05:56,912 - INFO - fire.plugins.machine_plugins.mast_u - pulse_meta_data:434:
+   Successfully retrieved shot time with UDA: ('2021-02-27', '12:10:50.996174')
+2021-11-26 16:05:56,927 - WARNING - fire.plugins.machine_plugins.mast_u - pulse_meta_data:426:
+   Failed to perform CPF query for 43583, exp_date
+2021-11-26 16:05:56,937 - INFO - fire.plugins.machine_plugins.mast_u - pulse_meta_data:434:
+   Successfully retrieved shot time with UDA: ('2021-02-27', '12:10:50.996174')
+2021-11-26 16:05:56,938 - INFO - fire.plugins.plugins_movie - try_movie_plugins_dicts:445:
+   Read movie "meta" for (mast_u, rit, 43583) using plugin "raw_movie": path="/home/tfarley/data/movies/mast_u/43583/rit", fn="rit_43583.raw"
+2021-11-26 16:05:57,049 - INFO - fire.scheduler_workflow - scheduler_workflow:222:
+   Located input files for analysis: {'camera_settings_lookup': PosixPath('/home/tfarley/repos/air/fire/input_files/mast_u/camera_settings-mast_u-rit.csv'), 'calcam_calibs_lookup': PosixPath('/home/tfarley/repos/air/fire/input_files/mast_u/calcam_calibs-mast_u-rit-defaults.csv'), 'analysis_paths_lookup': PosixPath('/home/tfarley/repos/air/fire/input_files/mast_u/analysis_paths-mast_u-rit-defaults.csv'), 'temperature_coefs_lookup': PosixPath('/home/tfarley/repos/air/fire/input_files/mast_u/temperature_coefs-mast_u-rit.csv'), 'calcam_calib': PosixPath('/home/tfarley/calcam2/calibrations/rit_43141_218_nuc_eq_glob-v1.ccc'), 'analysis_path_dfns': PosixPath('/home/tfarley/repos/air/fire/input_files/mast_u/analysis_path_dfns-mast_u-rit-defaults.json'), 'structure_coords': PosixPath('/home/tfarley/repos/air/fire/input_files/mast_u/structure_coords-mast_u-default.csv'), 'material_props': PosixPath('/home/tfarley/repos/air/fire/input_files/mast_u/material_props-mast_u-defaults.json'), 'checkpoint_path': PosixPath('/home/tfarley/.fire/checkpoints'), 'raycast_checkpoint': PosixPath('/home/tfarley/.fire/checkpoints/raycast/raycast_rit_43141_218_nuc_eq_glob-v1-256_320-Display.nf')}

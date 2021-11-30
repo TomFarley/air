@@ -41,7 +41,7 @@ def get_dark_level_drift(image_data, plot=False):
 
     stat = 'mean'
     dark_level_stats, stat_keys = calc_2d_profile_param_stats(frame_data.where(mask_dark), stats=(stat,),
-                                             coords_reduce=('y_pix', 'x_pix'),
+                                             coords_reduce=('y_pix', 'x_pix'), kwargs=(),
                                          roll_width=51, roll_reduce_func='median', roll_center=False)
     dark_level = dark_level_stats[stat_keys[stat]]
     dark_level.name = 'dark_level'
