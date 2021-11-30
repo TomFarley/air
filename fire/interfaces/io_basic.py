@@ -156,6 +156,9 @@ def pickle_load(path_fn, path=None, **kwargs):
         except pickle.UnpicklingError as e:
             logger.error('Failed to read pickle file "{}". Corrupted file? Error="{}"'.format(path_fn, e))
             raise e
+        except FileNotFoundError as e:
+            logger.error('Requested pickle file "{}" doesn\'t exist. Error="{}"'.format(path_fn, e))
+            raise e
         except Exception as e:
             raise e
 
