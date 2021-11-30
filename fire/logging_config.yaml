@@ -32,5 +32,5 @@ loggers:
     handlers: [console, file_timed]
     propagate: no
 root:
-  level: WARNING
+  level: DEBUG
   handlers: [console]
