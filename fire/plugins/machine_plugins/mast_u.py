@@ -434,10 +434,21 @@ def pulse_meta_data(shot, keys=
                         logger.info(f'Successfully retrieved shot time with UDA: {out["exp_date"], out["exp_time"]}')
     return out
 
-def get_shot_date_time(shot):
+def get_shot_date_time(shot, datetime_format='{date} {time}'):
+    """Return datetime string for shot
+    UDA uses: '{date}T{time}' ?
+    Args:
+        shot: Shot number
+        datetime_format: Format string
+
+    Returns:
+
+    """
     meta_cpf = pulse_meta_data(shot, keys=['exp_time'])
     date = get_shot_date(shot)
-    date_time = (f'{date} {meta_cpf["exp_time"][:8]}' if 'exp_date' in meta_cpf.keys() else
+    time = meta_cpf["exp_time"][0].strip("'")
+    print(meta_cpf, date)
+    date_time = (datetime_format.format(date=date, time=time[:8]) if 'exp_time' in meta_cpf.keys() else
                 '<placeholder>')
     return date_time
 
