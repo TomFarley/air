@@ -155,8 +155,6 @@ def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:O
     if len(ipx_header) == 0:
         raise ValueError(f'UDA video object does not contain any of the required meta data fields: '
                          f'{UDA_IPX_HEADER_FIELDS}')
-    ipx_header['bottom'] = ipx_header['top'] - ipx_header['height']  # TODO: check - not +
-    ipx_header['right'] = ipx_header['left'] + ipx_header['width']
 
     last_frame = video.n_frames - 1
     if n_start is None:
@@ -177,7 +175,22 @@ def read_movie_meta(pulse: int, camera: str, n_start:Optional[int]=None, n_end:O
     movie_meta['bit_depth'] = ipx_header['depth']
     # TODO: Add filter name?
 
-    check_ipx_detector_window_meta_data(movie_meta, plugin='uda', fn=path_fn, modify=True)  # Complete missing fields
+    movie_meta['bad_pixels_frame'] = None
+    ref_frames = ()  # TODO: Read IPX2 ref frames when available through UDA
+    for i, ref_frame in enumerate(ref_frames):
+        movie_meta[f'ref_frame_{i}'] = ref_frame
+        if i == 0:
+            movie_meta[f'nuc_frame'] = ref_frame
+        elif i == 1:
+            movie_meta[f'nuc_frame_2'] = ref_frame
+
+    movie_meta.update(ipx_header)
+    # TODO : Confirm UDA returns left and top starting at 0 not 1 as for ipx standard? Increment both here?
+    movie_meta['left'] = movie_meta.get('left', 0) + 1
+    movie_meta['top'] = movie_meta.get('top', 0) + 1
+
+    # Complete missing fields
+    check_ipx_detector_window_meta_data(movie_meta, plugin='uda', modify_inplace=True, missing_value=np.nan)
     movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
 
     movie_meta['ipx_header'] = ipx_header

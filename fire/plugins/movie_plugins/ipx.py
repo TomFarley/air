@@ -100,7 +100,7 @@ def read_movie_meta_with_pyipx(path_fn: Union[str, Path], transforms: Iterable[s
 
     # TODO: Move derived fields to common function for all movie plugins: image_shape, fps, t_range
     # TODO: Check ipx field 'top' follows image/calcam conventions
-    check_ipx_detector_window_meta_data(movie_meta, plugin='ipx', fn=path_fn, modify=True)  # Complete missing fields
+    check_ipx_detector_window_meta_data(movie_meta, plugin='ipx', fn=path_fn, modify_inplace=True)  # Complete missing fields
     movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
     movie_meta['ipx_header'] = ipx_header
     return movie_meta
@@ -241,6 +241,10 @@ def read_movie_meta_with_mastmovie(path_fn: Union[str, Path], transforms: Iterab
 
     for i, ref_frame in enumerate(ref_frames):
         movie_meta[f'ref_frame_{i}'] = ref_frame
+        if i == 0:
+            movie_meta[f'nuc_frame'] = ref_frame
+        elif i == 1:
+            movie_meta[f'nuc_frame_2'] = ref_frame
 
     movie_meta['bad_pixels_frame'] = bad_pixels
 
@@ -259,7 +263,7 @@ def read_movie_meta_with_mastmovie(path_fn: Union[str, Path], transforms: Iterab
                      'window_top': 'top'
                       }
     # TODO: Rename meta data window fields to window_<> for all plugins/pass through reformat function
-    movie_meta.update({name: getattr(ipx.sensor, key) for key, name in sensor_fields.items()})
+    movie_meta.update({name: getattr(ipx.sensor, key, None) for key, name in sensor_fields.items()})
 
 
     movie_meta['frame_range'] = np.array([0, movie_meta['n_frames']])
@@ -267,7 +271,7 @@ def read_movie_meta_with_mastmovie(path_fn: Union[str, Path], transforms: Iterab
     movie_meta['image_shape'] = np.array([movie_meta['height'], movie_meta['width']])
     movie_meta['fps'] = movie_meta['n_frames'] / (movie_meta['t_range'][1] - movie_meta['t_range'][0])
 
-    check_ipx_detector_window_meta_data(movie_meta, plugin='raw', fn=path_fn, modify=True)  # Complete missing fields
+    check_ipx_detector_window_meta_data(movie_meta, plugin='raw', fn=path_fn, modify_inplace=True)  # Complete missing fields
     movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
 
     frame_times = np.array([frame.time for frame in ipx.frames])
@@ -363,7 +367,7 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
                               trigger=trigger, exposure=exposure,
                               num_frames=n_frames, depth=depth,
                               frame_width=width, frame_height=height,
-                              # orientation=0, filter= 'None', pre_exposure=0,
+                              # orientation=0, pre_exposure=0,
                               # board_temperature=0, sensor_temperature=0, strobe=0,
                         # Other fields are in Sensor object
                               # codec='JP2',
@@ -373,8 +377,9 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
 
     sensor_dict = dict(
         window_left=left, window_right=right, window_top=top, window_bottom=bottom,
-        binning_h=0, binning_v=0,
-        taps=None, gain=None, offset=None)  # taps=Number of digitizer channels
+        binning_h=0, binning_v=0,  # 0 = no binning
+        taps=1,   # taps=Number of digitizer channels
+        gain=None, offset=None)
 
     if image_shape == (256, 320):
         # header_dict_subset['top'] = 0
@@ -473,10 +478,10 @@ def download_ipx_via_http_request(camera, pulse, path_out='~/data/movies/{machin
 
     return fn_out
 
-read_movie_meta = read_movie_meta_with_pyipx
-# read_movie_meta = read_movie_meta_with_mastmovie
-read_movie_data = read_movie_data_with_pyipx
-# read_movie_data = read_movie_data_with_mastmovie
+# read_movie_meta = read_movie_meta_with_pyipx
+read_movie_meta = read_movie_meta_with_mastmovie
+# read_movie_data = read_movie_data_with_pyipx
+read_movie_data = read_movie_data_with_mastmovie
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
