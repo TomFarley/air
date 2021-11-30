@@ -74,9 +74,12 @@ meta_defaults_default = {
     'heat_flux_s_global_peak': {'label': 's coordinate of target peak heat flux', 'units': 'm', 'symbol': '$s_{q,max}$',
                          'description': 'Divertor surface "s" coordinate location of peak target heat flux'},
     'heat_flux_total': {'label': 'Heat flux integrated over divertor surface area', 'units': 'MW',
-                        'symbol': '$q_{total}$',
+                        'symbol': '$P_{total, div}$',
                         'description': 'Heat flux integrated over divertor surface area (for this divertor). Wetted '
                                        'area correction applied.'},
+    'heat_flux_total_cumulative' : {'label': 'Integrated energy to the (single) divertor from beginning of shot',
+                                    'units': 'MJ', 'symbol': '$E_{total,cum}$',
+                        'description': 'Accumulated energy to the divertor surfaces since the beginning of the shot'},
     'heat_flux_n_peaks': {'label': 'Number of local peaks in heat flux for each time point', 'units': 'count',
                         'symbol': '$n_{q, peaks}$',
                         'description': 'Number of local peaks in heat flux for each time point'},
@@ -89,10 +92,17 @@ meta_defaults_default = {
     '/xpx/clock/MWIR-1': {'label': 'MWIR 1 trigger signal', 'units': 'V', 'symbol': '$V_{MWIR1, trig}$',
                          'description': 'Voltage of FLIR1 MWIR HL04 datac loop trigger signal (xpx/clock/MWIR-1)',},
     'V':                {'label': 'Voltage', 'units': 'V', 'symbol': '$V$', 'description': 'Signal voltage', },
-                        }
+    'ne_bar': {'label': 'Line averaged volumentric density', 'units': 'm$^-3$', 'symbol': r'$\bar{n}_{e}$',
+                       'description': 'Line averaged volumentric density', },
+    'greenwald_density': {'label': 'Greenwald density', 'units': 'm$^{-3}$', 'symbol': '$n_{GW}$',
+                          'description': 'Greenwald density limit', },
+    'greenwald_frac': {'label': 'Greenwald fraction', 'units': '', 'symbol': '$f_{GW}$',
+                          'description': 'Greenwald density fraction', },
+    }
 
 # TODO: Add dict of alternative names for each variable in meta_defaults_default eg 'S', 's_global'
 param_aliases = {
+    'time': 't',
     'temperature': 'T',
     'heat_flux': 'q',
     's_global': 'S',
@@ -141,10 +151,10 @@ def movie_data_to_dataarray(frame_data, frame_times=None, frame_nos=None, meta_d
     if frame_times is None:
         frame_times = copy(frame_nos)
     if meta_data is None:
-        meta_data = {}
+        meta_data = meta_defaults_default
 
     frame_data = xr.DataArray(frame_data, dims=['t', 'y_pix', 'x_pix'],
-                              coords={'t': frame_times, 'n': ('t', frame_nos),
+                              coords={'t': np.array(frame_times), 'n': ('t', np.array(frame_nos)),
                                       'y_pix': np.arange(frame_data.shape[1]),
                                       'x_pix': np.arange(frame_data.shape[2])},
                               name=name)
@@ -332,6 +342,8 @@ def get_reduce_coord_axis_keep(data, coords_reduce):
         data = data.obj
 
     ndim = data.values.ndim
+
+    data = swap_xarray_dim(data, new_active_dims=coords_reduce)
 
     if ndim == 3:
         axes_reduce = [list(data.dims).index(coord_reduce) for coord_reduce in make_iterable(coords_reduce)]
