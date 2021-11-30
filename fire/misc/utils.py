@@ -148,10 +148,11 @@ def is_numeric(value):
             numeric = False
     return numeric
 
-def str_to_number(string, cast=None, expect_numeric=False):
+def str_to_number(string, cast=None, if_not_numeric='raise', default_non_numeric=np.nan):
     """ Convert string to int if integer, else float. If cannot be converted to number just return original string
     :param string: string to convert number
     :param cast: type to cast output to eg always float
+    :param if_not_numeric: How to handle values that can't be cast to numbers: 'raise'|'return_input'|'return_default'
     :return: number
     """
     if isinstance(string, (int, float)):
@@ -168,10 +169,23 @@ def str_to_number(string, cast=None, expect_numeric=False):
                 out = float(string)
             except ValueError as e:
                 out = string
+        except TypeError as e:   # eg None
+            if (if_not_numeric == 'return_input'):
+                out = string
+            elif (if_not_numeric == 'return_default'):
+                out = default_non_numeric
+
     if isinstance(cast, type):
-        out = cast(out)
-    if not isinstance(out, (int, float)) and expect_numeric:
+        try:
+            out = cast(out)
+        except TypeError as e:  # eg None
+            out = out
+        except ValueError as e:  # eg np.nan
+            out = out
+
+    if not isinstance(out, (int, float)) and (if_not_numeric == 'raise'):
         raise ValueError('Input {string} could not be converted to a number'.format(string))
+
     return out
 
 def ndarray_0d_to_scalar(array):
@@ -753,7 +767,7 @@ def format_str(string, kwargs, kwarg_aliases=None, kwarg_aliases_key='key_mappin
     separate parameter to many functions.
 
     Args:
-        string: String to be formatted containing format fields eg "{pulse}_{camera}.nc"
+        string: String to be formatted containing format fields eg "{pulse}_{diag_tag_raw}.nc"
         kwargs: Dict of values to substitute into format string
         kwarg_aliases: Dict of alternative key names that may occur in string, mapped to key names in kwargs
         kwarg_aliases_key: Key name in kwargs which if present should be treated as a source of kwarg_aliases
