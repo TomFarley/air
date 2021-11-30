@@ -127,8 +127,12 @@ def debug_calcam_calib_image(calcam_calib, frame_data=None, frame_ref=None, n_fr
 
     if wire_frame is not None:
         ax = axes[i_ax]
+
+        if wire_frame.ndim > 2:
+            wire_frame[:, :, 1:2] = 0  # Zero out green and blue
+
         ax.imshow(frame_display, interpolation='none', cmap='gray', origin='upper')
-        ax.imshow(wire_frame, interpolation='none', origin='upper', alpha=0.8)
+        ax.imshow(wire_frame, interpolation='none', origin='upper', alpha=0.7, cmap='Reds')  # Cmap ignored for RCB(A)
         ax.set_title(f'Wire frame overlaid movie image: {Path(calcam_calib.filename).name}',
                      fontdict={'fontsize': title_size})
         i_ax += 1
@@ -421,8 +425,11 @@ def debug_analysis_path_1d(image_data, path_data=None, path_names='path0', image
                 for path in path_names:
                     key = key_format.format(path=path)
                     # figure_path_1d(path_data, key, ax=ax, plot_kwargs=plot_kwargs)
-                    spatial_figures.figure_spatial_profile_1d(path_data, key, path_name=path, ax=ax,
+                    if key in path_data:
+                        spatial_figures.figure_spatial_profile_1d(path_data, key, path_name=path, ax=ax,
                                                               plot_kwargs=plot_kwargs, legend=(nlines > 1), show=False)
+                    else:
+                        logger.warning(f'Cannot plot spatial profile for missing data: "{key}"')
 
             # Move y axis label to annotation
             ax.get_yaxis().label.set_visible(False)
@@ -559,9 +566,10 @@ def debug_plot_spatial_2d_unwrapped(image_data, key='frame_data', spatial_dims=(
     raise NotImplementedError
 
 
-def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', robust=True, extend=None,
+def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', coord_path='R_{path_name}',
+                          robust=True, extend=None,
                           annotate=True, mark_peak=True, label_tiles=True, meta=None, ax=None, t_range=(0.0, 0.6),
-                          r_range=None, t_wins=None, machine_plugins=None, add_colorbar=True, colorbar_kwargs=None,
+                          x_range=None, t_wins=None, machine_plugins=None, add_colorbar=True, colorbar_kwargs=None,
                           set_data_coord_lims_with_ranges=True, robust_percentiles=(2, 98), num=None,
                           show=True, save_path_fn=None, image_formats=('png'), verbose=True):
     # TODO: Move general code to plot_tools.py func
@@ -574,7 +582,7 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
 
         data = data_paths[f'{param}_{path_name}']
 
-        coord_path = f'R_{path_name}'
+        coord_path = coord_path.format(path_name=path_name)
         # coord_path = f's_{path_name}'
         data = data_structures.swap_xarray_dim(data, new_active_dims=['t', coord_path])
         data_masked = copy(data)
@@ -589,17 +597,17 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
                 data_masked = data.where(mask)
                 # data = data.sel({'t': slice(*t_range)})
             ax_i.set_ylim(*t_range)
-        if r_range is not None:
-            r_range = np.array(r_range)
-            r_range[0] = np.max([r_range[0], data[coord_path].values.min()]) if (r_range[0] is not None) else (data[
+        if x_range is not None:
+            x_range = np.array(x_range)
+            x_range[0] = np.max([x_range[0], data[coord_path].values.min()]) if (x_range[0] is not None) else (data[
                                                                                             coord_path].values.min())
-            r_range[1] = np.min([r_range[1], data[coord_path].values.max()])
+            x_range[1] = np.min([x_range[1], data[coord_path].values.max()])
             if set_data_coord_lims_with_ranges:  # set data ranges to get full range from colorbar
                 # TODO: Make general purpose function for slicing coords since pandas bug or update packages? https://github.com/pydata/xarray/issues/4370
                 # mask = (r_range[0] <= data[coord_path]) & (data[coord_path] <= r_range[1])
                 # data_masked = data[mask]
-                data_masked = data.sel({coord_path: slice(*r_range)})
-            ax_i.set_xlim(*r_range)
+                data_masked = data.sel({coord_path: slice(*x_range)})
+            ax_i.set_xlim(*x_range)
 
         # Configure colorbar axis
         if robust:
@@ -643,7 +651,7 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
             data_r_peak = data_paths[param_r_peak]
             mask_low = data_peak < (np.nanmin(data_peak) + 0.01 * (np.nanmax(data_peak)-np.nanmin(data_peak)))
             data_r_peak = data_r_peak.where(~mask_low, np.nan)
-            ax_i.plot(data_r_peak.values, data_r_peak[data.dims[0]], ls='', marker='.', ms=2, color='c',  # 'g'
+            ax_i.plot(data_r_peak.values, data_r_peak[data.dims[0]], ls='', marker='x', ms=2, color='g',  # 'g'
                       lw=2.5, alpha=0.4, label='peak')  # ms=1.5
 
         if annotate and (meta is not None):
@@ -657,8 +665,8 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', r
 
         if t_range is not None:
             ax_i.set_ylim(*t_range)
-        if r_range is not None:
-            ax_i.set_xlim(*r_range)
+        if x_range is not None:
+            ax_i.set_xlim(*x_range)
         else:
             ax_i.set_xlim(data[coord_path].values.min(), data[coord_path].values.max())
 
@@ -1105,6 +1113,49 @@ def plot_mixed_fire_uda_signals(signals, pulses=None, path_data=None, meta_data=
             ax.title.set_visible(False)
     plt.tight_layout()
 
+def plot_bad_pixels(mask_bad_pixels, frame_data=None, frame_data_corrected=None, alpha=0.8, cmap='Reds_r'):
+
+    n_ax = 1 + (frame_data is not None) + (frame_data_corrected is not None)
+    fig, axes, ax_passed = plot_tools.get_fig_ax(ax_grid_dims=(2, n_ax), num='bad pixels', axes_flatten=True,
+                                                 sharex=True, sharey=True)
+
+    ax = axes[0]
+    ax.imshow(mask_bad_pixels)
+    ax.set_title(f'Bad pixel mask ({np.sum(mask_bad_pixels)})')
+
+    if frame_data is not None:
+        ax = axes[1]
+        image_figures.figure_xarray_imshow(frame_data, ax=ax)
+        # overplot_image(mask_bad_pixels, ax, alpha=alpha, cmap=cmap, nan_threshold=0)
+        ax.set_title(f'Raw image')
+
+    if frame_data_corrected is not None:
+        ax = axes[2]
+        image_figures.figure_xarray_imshow(frame_data_corrected, ax=ax)
+        # overplot_image(mask_bad_pixels, ax, alpha=alpha, cmap=cmap, nan_threshold=0)
+        ax.set_title(f'BPR corrected image')
+
+    ax = axes[n_ax]
+    ax.imshow(mask_bad_pixels)
+    overplot_image(mask_bad_pixels, ax, alpha=alpha, cmap=cmap, nan_threshold=0)
+
+    if frame_data is not None:
+        ax = axes[n_ax+1]
+        image_figures.figure_xarray_imshow(frame_data, ax=ax)
+        overplot_image(mask_bad_pixels, ax, alpha=alpha, cmap=cmap, nan_threshold=0)
+
+    if frame_data_corrected is not None:
+        ax = axes[n_ax+2]
+        image_figures.figure_xarray_imshow(frame_data_corrected, ax=ax)
+        overplot_image(mask_bad_pixels, ax, alpha=alpha, cmap=cmap, nan_threshold=0)
+
+    plot_tools.show_if(tight_layout=True)
+
+def overplot_image(image, ax, alpha=0.7, cmap=None, nan_threshold=None):
+    if nan_threshold is not None:
+        # Set values to nan so transparent
+        image = np.where(image, image > nan_threshold, np.nan)
+    ax.imshow(image, interpolation='none', origin='upper', alpha=alpha, cmap=cmap)
 
 def identify_profile_time_highlights(profile_2d):
     raise NotImplementedError
