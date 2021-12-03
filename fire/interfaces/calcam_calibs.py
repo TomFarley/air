@@ -541,6 +541,7 @@ def join_analysis_path_control_points(analysis_path_control_points, path_name, m
     coords_i_key = f'i_{path}'  # xarray index coordinate along analysis path
 
     coords_if_key = f'i_in_frame_{path}'  # xarray index coordinate for in frame points along analysis path
+    # NOTE: switch back to using 'i_path0' currently made after unknown surface material filter
     coords = {coords_if_key: (coords_if_key, np.arange(len(xpix_path)))}
     coords_oof_key = f'i_out_of_frame_{path}'
     coords_oof = {coords_oof_key: (coords_oof_key, np.arange(len(xpix_out_of_frame)))}

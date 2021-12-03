@@ -476,6 +476,7 @@ def extract_path_data_from_images(image_data: xr.Dataset, path_data: xr.Dataset,
 def filter_unknown_materials_from_analysis_path(path_data, path_name, missing_material_key=-1):
     path = path_name
 
+    # TODO: Move renaming of coords (eg 'i_in_frame_path0' -> 'i_path0') to dedicated function
     in_frame_str = '_in_frame'
     material_id_key = f'material_id{in_frame_str}_{path}'
     if material_id_key not in path_data.data_vars:
