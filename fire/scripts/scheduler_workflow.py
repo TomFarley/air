@@ -742,6 +742,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # path_data_all = xr.Dataset()
     for i_path, (analysis_path_key, analysis_path_name) in enumerate(analysis_path_names.items()):
+        # TODO: Create separate dataset for each path to keep coord name simple, then combine into single dataset
+        # with complicated coord names at end ie Dataset.rename()
+        # TODO: Create functions to combine and split datasets by path
         path = analysis_path_key
 
         path_coord = f'i_{analysis_path_key}'
@@ -786,8 +789,17 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
         # Sort analysis path in order of increasing R to avoid reversing sections of profiles!
         path_data = path_data.sortby(f'R_in_frame_path{i_path}', ascending=True)  # TODO: Detect non-mono and tidy into func?
-        # path_data = path_data.sortby('s_global_in_frame_path0', ascending=True)  # TODO: Detect non-mono and tidy into
-        # func?
+        path_data[f'i_in_frame_path{i_path}'] = np.sort(np.array(path_data[f'i_in_frame_path{i_path}']))
+
+        #  TODO: Detect non-mono and tidy into func?
+        path_data, path_data_non_mono = data_quality.filter_non_monotonic(path_data, coord=f'R_in_frame_path{i_path}')
+        path_data, path_data_non_mono = data_quality.filter_non_monotonic(path_data,
+                                        coord=f's_global_in_frame_path{i_path}', non_monotonic_prev=path_data_non_mono)
+        # TODO: Understand missing ~3 values at end of path
+        n_non_monotonic = len(path_data_non_mono)
+        if n_non_monotonic > 0:
+            logger.warning(f'Removed {n_non_monotonic} non-monotonic elements from analysis path {i_path}: '
+                           f'{path_data_non_mono.coords}')
 
         # TODO: itteratively remove negative and zero increments in R along path. Enables use of dataarray.sel(
         # method='nearest')
