@@ -240,41 +240,44 @@ def cylindrical_to_cartesian(r, phi, z=None, angles_units='radians'):
     y = r * np.sin(phi)
     return x, y
 
-def calc_horizontal_path_anulus_areas(r_path):
-    """Return areas of horizontal annuli around machine at each point along the analysis path.
+def calc_path_anulus_areas_fully_wet(r_path, s_path):
+    """Return areas of annuli around machine at each point along the analysis path, not acounting for wetted fraction.
 
-    Calculates the toroidal sum of horizontal surface area of tile around the machine between each radial point
+    Calculates the toroidal sum of the surface area of tile around the machine between each point along the tile surface
     around the machine.
-    Post processing corrections are required to account for the fact that the tiles surfaces are not actually
-    horizontal due to both tilt in poloidal plane and toroidal tilt of tile (i.e. tile surface hight is func of
-    toroidal angle z(phi))
-     R1  R2  R3  R4  R.  Rn
+    Post processing corrections are required to account for:
+    - Shadowed fraction of tile leadin to smaller wetted areas
+    - The toroidal tilt of the tiles implemented for edge shadowing (i.e. tile surface height is func of toroidal
+      angle z(phi))
+     s1  s2  s3  s4  s.  sn
     -|_._|_._|_._|_._|_._|-
     <-> <-> <-> <-> <-> <->
-    dRf dRi ...         dRl
+    dsf dsi ...         dsl
 
     Except for first/last boundaries:
-        dR_i = [R_(i+1) - R_(i-1)] / 2
+        ds_i = [s_(i+1) - s_(i-1)] / 2
 
     The area of each horizontal annulus is:
-        dA_i = 2 * pi * R * dR_i
+        dA_i = 2 * pi * R * ds_i
 
     In MAST the horizontal divertor simplified the final area calculation to:
         2 * pi * R * dR
 
     Args:
-        r_path: Radial coordinates of each point along the analysis path
+        r_path: Radial coordinates of each point along the analysis path [m]
+        s_path: Tile surface (poloidal) coordinates of each point along the analysis path [m]
 
     Returns: Areas of horizontal annuli around machine at each point along the analysis path.
 
     """
-    r_path = np.array(r_path)
-    dr = (r_path[2:] - r_path[0:-2]) / 2
+    s_path = np.array(s_path)
+    ds = (s_path[2:] - s_path[0:-2]) / 2
     # As missing boundaries, set end differences to be one sided
-    dr_first = [r_path[1]-r_path[0]]
-    dr_last = [r_path[-1]-r_path[-2]]
-    dr = np.abs(np.concatenate([dr_first, dr, dr_last]))
-    annulus_areas = 2 * np.pi * r_path * dr
+    ds_first = [s_path[1] - s_path[0]]
+    ds_last = [s_path[-1] - s_path[-2]]
+    ds = np.abs(np.concatenate([ds_first, ds, ds_last]))
+    # TODO: Consider using non differential form for higher precision? pi * (R^2 - r^2)
+    annulus_areas = 2 * np.pi * r_path * ds
     # IDL comment: why not 1 / 2 as one Rib group only?
     # TF: not sure what Rib is?
     return annulus_areas
@@ -407,18 +410,20 @@ def calc_divertor_area_integrated_param(values, annulus_areas):
         values: 1D (R) or 2D (R, t) array of parameter values
         annulus_areas: Annulus areas for each radial (R) coordinate
 
-    Returns: Integrated parameter value (for each time point if 2D input)
+    Returns: Values multiplied by areas
 
     """
     # TODO: Check for 1/2D input
     if (isinstance(values, xr.DataArray) and isinstance(annulus_areas, xr.DataArray)):
         # Integrate along labeled axis
         spatial_dim = annulus_areas.dims[-1]
-        value_times_area = values * annulus_areas
-        total = value_times_area.sum(spatial_dim)
+        value_for_annulus = values * annulus_areas
+        # value_for_whole_divertor = value_for_annulus.sum(spatial_dim)
     else:
-        total = np.sum(values * annulus_areas, axis=0)
-    return total
+        # Sum first axis
+        value_for_annulus = values * annulus_areas
+        # value_for_whole_divertor = np.sum(value_for_annulus, axis=0)
+    return value_for_annulus
 
 if __name__ == '__main__':
     pass
