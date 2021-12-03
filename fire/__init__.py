@@ -68,7 +68,12 @@ def configure_libarary_defaults():
     _pd.options.display.max_rows = 60
     _pd.options.display.max_columns = 500
 
+    # Update xarray display settings
     _xr.set_options(**{'cmap_sequential': 'gray'})
+    _xr.set_options(display_max_rows=100)
+    _xr.set_options(display_width=100)  # Default 80
+    _xr.set_options(keep_attrs=True)
+    _xr.set_options(display_expand_coords='default')
 
     # Use custom mpl style
     _plt.style.use(f'{PATH_FIRE_SOURCE}/plotting/fire.mplstyle')
