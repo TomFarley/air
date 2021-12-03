@@ -83,6 +83,25 @@ meta_defaults_default = {
     'heat_flux_n_peaks': {'label': 'Number of local peaks in heat flux for each time point', 'units': 'count',
                         'symbol': '$n_{q, peaks}$',
                         'description': 'Number of local peaks in heat flux for each time point'},
+    'power_annuluses': {'label': 'Power to annular ring of divertor', 'units': 'MW',
+                        'symbol': '$P_{annulus}$',
+                        'description': 'Power to annular rings of divertor between each step along analysis path'},
+    'power_total_vs_t': {'label': 'Total power to visible portion of divertor', 'units': 'MW',
+                         'symbol': '$P_{tot, div}$',
+                         'description': 'Total integrated power to visible portion of divertor'},
+    'energy_total_vs_R': {'label': 'Total energy to visible portion of divertor as function of radius', 'units': 'MJ',
+                         'symbol': '$E_{tot, div}(R)$',
+                         'description': 'Total energy to visible portion of divertor as function of radius'},
+    'cumulative_energy_vs_R': {'label': 'Total cumulative energy to visible portion of divertor as function of radius',
+                               'units': 'MJ',
+                          'symbol': '$E_{cum, div}(R)$',
+                          'description': 'Total cumulative energy to visible portion of divertor as function of radius'},
+    'cumulative_energy_vs_t': {'label': 'Total cumulative energy to visible portion of divertor as function of time',
+                               'units': 'MJ',
+                               'symbol': '$E_{cum, div}(t)$',
+                               'description': 'Total cumulative energy to visible portion of divertor as function of '
+                                              'time'},
+
     'temperature_R_peak': {'label': 'Radius of target peak temperature', 'units': 'm', 'symbol': '$R_{T,max}$',
                       'description': 'Radial location of peak target temperature'},
     'xpx/clock/lwir-1': {'label': 'LWIR 1 trigger signal', 'units': 'V', 'symbol': '$V_{LWIR1, trig}$',  # TODO: move to uda_utils
@@ -177,6 +196,7 @@ def movie_data_to_dataarray(frame_data, frame_times=None, frame_nos=None, meta_d
 
     return frame_data
 
+
 def attach_standard_meta_attrs(data, varname='all', replace=False, key=None, substitutions=None):
     """
 
@@ -243,6 +263,11 @@ def attach_standard_meta_attrs(data, varname='all', replace=False, key=None, sub
             new_attrs.update(data_array.attrs)
 
         data_array.attrs.update(new_attrs)
+
+        # TODO: Remove, redundant?
+        if 'description' in data_array.attrs:
+            data_array.attrs['label'] = data_array.attrs['description']  # Label is UDA name for description
+
         logger.debug(f'Added standard meta data for "{varname}" (replace={replace})')
     else:
         logger.debug(f'No standard meta data for "{varname}" ("{key}"). '
@@ -411,8 +436,32 @@ def reduce_2d_data_array(data_array, func_reduce, coord_reduce, func_args=(), ra
     return data_array_reduced
 
 
+def select_variable_from_dataset(dataset, variable_name, path_name='_path{i_path}', i_path=0, **kwargs):
+
+    path_name = path_name.format(i_path=i_path, **kwargs)
+    var_name_with_path = add_path_suffix(variable_name, path_suffix=path_name)
+
+    if variable_name in dataset:
+        data_array = dataset[variable_name]
+    elif var_name_with_path in dataset:
+        data_array = dataset[var_name_with_path]
+        variable_name = var_name_with_path
+    else:
+        raise KeyError(f'No variable named "{variable_name}"/"{var_name_with_path}" in dataset: {dataset.keys()}')
+
+    return data_array, variable_name
+
 def remove_path_suffix(string, pattern='_path\d+', replacement=''):
     sufix = re.search(pattern, string)
     sufix = sufix.group() if (sufix is not None) else ''
     string_out = re.sub(pattern, replacement, string)
     return string_out, sufix
+
+def add_path_suffix(variable_name, path_suffix='_path0'):
+    if path_suffix[0] != '_':
+        path_suffix = '_' + path_suffix
+
+    if path_suffix not in variable_name:
+        variable_name += path_suffix
+
+    return variable_name
