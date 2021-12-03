@@ -30,6 +30,7 @@ from fire.plugins import plugins_machine
 from fire.misc import utils, data_structures
 from fire.misc.utils import make_iterable
 from fire.interfaces import uda_utils
+from fire.misc.data_structures import select_variable_from_dataset
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -697,7 +698,7 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', c
 
     return ax, data, artist
 
-def debug_plot_spatial_profile_1d(data_paths, param='temperature', path_names='path0', t=None):
+def debug_plot_spatial_profile_1d(data_paths, param='temperature', path_names='path0', t=None, ax=None):
     raise NotImplementedError
     for path_name in make_iterable(path_names):
         # TODO: Move general code to plot_tools.py func
@@ -724,26 +725,30 @@ def debug_plot_spatial_profile_1d(data_paths, param='temperature', path_names='p
         plt.show()
 
 def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_R_peak', 'heat_flux_amplitude_peak_global'), path_name='path0',
-                                   x_var='t', heat_flux_thresh=-0.0, meta_data=None, machine_plugins=None):
+                                   x_var='t', heat_flux_thresh=-0.0, meta_data=None, machine_plugins=None, ax=None):
     # TODO: Move general code to plot_tools.py func
     colors = ('tab:blue', 'tab:orange', 'tab:green', 'tab:red')
     path = path_name if isinstance(path_name, str) else path_name[0]
 
-    fig, ax1, ax_passed = plot_tools.get_fig_ax(num=f'{params} temporal profile {path}')
+    fig, ax1, ax_passed = plot_tools.get_fig_ax(num=f'{params} temporal profile {path}', ax=ax)
     ax = ax1
     ax.tick_params(axis='y', labelcolor=colors[0])
 
     if heat_flux_thresh not in (None, False):
-        peak_heat_flux = data_paths[f'heat_flux_amplitude_peak_global_{path}']
+        peak_heat_flux, key = select_variable_from_dataset(data_paths, 'heat_flux_amplitude_peak_global',
+                                                      path_name=path_name)
         mask_pos_heat_flux = peak_heat_flux > heat_flux_thresh
         peak_heat_flux_pos = peak_heat_flux[mask_pos_heat_flux]
+    else:
+        mask_pos_heat_flux = np.ones_like(data_paths['t'].data, dtype=bool)
 
     for i, (param, color) in enumerate(zip(make_iterable(params), colors)):
         if i == 1:
             ax = ax1.twinx()
             ax.tick_params(axis='y', labelcolor=color)
-        key = f'{param}_{path}'
-        data = data_paths[key]
+
+        data, key = select_variable_from_dataset(data_paths, param, path_name=path_name)
+
         if x_var not in data.dims:
             data = data.swap_dims({data.dims[0]: x_var})
         y_var = data.name
@@ -768,6 +773,7 @@ def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_R_peak', 'heat
             label_tiles = machine_plugins.get('label_tiles')
             if label_tiles is not None:
                 label_tiles(ax, coords=data, coords_axes=(data.dims[0],))
+
     if heat_flux_thresh not in (None, False):
         ax.axhline(heat_flux_thresh, ls='--', color='k')
         ax.set_xlim([peak_heat_flux_pos['t'].min(), peak_heat_flux_pos['t'].max()])
@@ -777,6 +783,28 @@ def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_R_peak', 'heat
     plot_tools.show_if(show=True, tight_layout=True)
 
     return fig, ax
+
+def plot_energy_to_target(data_paths, params=('heat_flux_R_peak', 'heat_flux_amplitude_peak_global'), path_name='path0',
+                          meta_data=None, machine_plugins=None):
+    path = path_name if isinstance(path_name, str) else path_name[0]
+    params = make_iterable(params)
+    n_params = len(params)
+
+    ax_grid_dims = plot_tools.get_ax_grid_dims(n_ax=n_params, n_max_ax_per_row=3)
+
+    fig, axes, ax_passed = plot_tools.get_fig_ax(num=f'{params} temporal profile {path}', ax_grid_dims=ax_grid_dims,
+                                                axes_flatten=True)
+    for i_ax, param in enumerate(params):
+        ax = axes[i_ax]
+
+        if param in ('power_total_vs_t', 'cumulative_energy_vs_t'):
+            debug_plot_temporal_profile_1d(data_paths, ax=ax)
+        elif param in ('energy_total_vs_R', 'cumulative_energy_vs_R'):
+            debug_plot_spatial_profile_1d(data_paths)
+        else:
+            raise NotImplementedError
+
+    return fig, axes
 
 def debug_plot_timings(data_profiles, pulse, params=('heat_flux_amplitude_peak_global_{path}',
                                                      'temperature_amplitude_peak_global_{path}',),

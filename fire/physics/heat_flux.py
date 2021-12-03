@@ -172,7 +172,7 @@ def calc_heatflux(t, temperatures, path_data, path_name, theo_kwargs, force_mate
         raise NotImplementedError(f'Multiple materials along analysis path')
     # TODO: Loop over sections of path with different material properties or tile gaps etc
     xpix_path, ypix_path = path_data[f'x_pix_{path}'], path_data[f'y_pix_{path}']
-    temperature_path = np.array(temperatures[:, ypix_path, xpix_path])
+    temperature_path = np.array(temperatures[:, ypix_path.astype(int), xpix_path.astype(int)])
 
     s_path = np.array(path_data[f's_global_{path}'])  # spatial coordinate along tile surface
     if np.any(np.isnan(s_path)):
