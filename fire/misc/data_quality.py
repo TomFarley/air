@@ -409,5 +409,33 @@ def remove_bad_frames(frame_data, bad_frames, remove_opening_closing=True, inter
 
     return frame_data, info
 
+def filter_non_monotonic(dataset, coord, recursive=True, non_monotonic_prev=None):
+    dim = dataset[coord].dims[0]
+
+    # Use 'lower' label so that value at start of negative diff is removed rather than at end. Intended effect:
+    #  eg keep point on T5 while dropping preceeding point on T4 cutting under T5
+    mask_monotonic = dataset[coord].diff(dim=dim, label='lower') > 0  # mask_monotonic.shift(shifts={dim: -1})
+    mask_non_monotonic = ~mask_monotonic
+
+    if np.any(mask_non_monotonic):
+
+        data_non_monotonic = dataset.where(mask_non_monotonic, drop=True)
+        if non_monotonic_prev is not None:
+            data_non_monotonic = xr.concat([data_non_monotonic, non_monotonic_prev], dim=dim).sortby(dim)
+
+        dataset_monotonic = dataset.where(mask_monotonic, drop=True)
+
+        if recursive:
+            dataset_monotonic, data_non_monotonic = filter_non_monotonic(dataset_monotonic, coord, recursive=True,
+                                                                         non_monotonic_prev=data_non_monotonic)
+    else:
+        # Break recursion when already monotonic
+        dataset_monotonic = dataset
+        data_non_monotonic = non_monotonic_prev
+        if data_non_monotonic is None:
+            data_non_monotonic = xr.Dataset()
+
+    return dataset_monotonic, data_non_monotonic
+
 if __name__ == '__main__':
     pass
