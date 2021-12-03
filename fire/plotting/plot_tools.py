@@ -63,6 +63,13 @@ def get_fig_ax(ax=None, num=None, ax_grid_dims=(1, 1), dimensions=2, axes_flatte
         ax_passed = True
     return fig, ax, ax_passed
 
+def get_ax_grid_dims(n_ax, n_max_ax_per_row=3):
+
+    n_rows = int(np.ceil(n_ax / n_max_ax_per_row))
+    n_cols = n_ax if n_rows == 1 else int(np.ceil(n_ax/n_rows))
+    ax_grid_dims = (n_rows, n_cols)
+    return ax_grid_dims
+
 def add_second_x_scale(ax, x_axis_values, y_values=None, label=None, x_map_func=None, ax_kwargs=None):
     """Add a second x axis at top of plot axes
 
