@@ -16,8 +16,8 @@ from scipy import interpolate, signal, integrate
 
 import matplotlib.pyplot as plt
 
-from fire.geometry.geometry import (calc_horizontal_path_anulus_areas, calc_tile_tilt_area_correction_factors,
-    calc_divertor_area_integrated_param)
+from fire.geometry.geometry import (calc_path_anulus_areas_fully_wet, calc_tile_tilt_area_correction_factors,
+                                    calc_divertor_area_integrated_param)
 from fire.misc import data_structures, utils
 from fire.misc.data_structures import attach_standard_meta_attrs, get_reduce_coord_axis_keep, reduce_2d_data_array
 from fire.misc.utils import make_iterable
@@ -37,7 +37,7 @@ params_dict_default = {'required':
                        }
 
 param_funcs = {
-    'annulus_areas_horizontal_path': calc_horizontal_path_anulus_areas,
+    'annulus_areas_horizontal_path': calc_path_anulus_areas_fully_wet,
 }
 
 legacy_values = {23586:
@@ -675,12 +675,16 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
         meta_data = {}
 
     path = path_name  # abbreviation for format strings
-
     data_out = path_data
+    path_coord = f'i_{path_name}'  # This is correct coord. 'i_in_frame_path0' is for before unknown material filter
 
-    r_path = path_data[f'R_{path}']
-    s_path = path_data[f's_global_{path}']
-    annulus_areas_horizontal = calc_horizontal_path_anulus_areas(r_path)
+    # Calculate annulus areas at each step along analysis path to calculate area integrated quantities
+    r_coord = f'R_{path}'
+    s_coord = f's_global_{path}'
+    r_path = path_data[r_coord]
+    s_path = path_data[s_coord]
+    t = path_data['t']
+    annulus_areas_fully_wet = calc_path_anulus_areas_fully_wet(r_path, s_path)
     if False:
         # TODO: Collect tile angles from structure definition file
         # TODO: Move calc_tile_tilt_area_coorection_factors fucntion to mast_u machine plugins
@@ -702,24 +706,75 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
         tile_tilt_area_factors[:, :] = 1
 
 
-        annulus_areas_corrected = annulus_areas_horizontal * tile_tilt_area_factors
+        annulus_areas_wet_frac_corrected = annulus_areas_fully_wet * tile_tilt_area_factors
     else:
-        logger.warning(f'Using incorrect annulus areas for integrated/total quantities')
-        annulus_areas_corrected = np.tile(annulus_areas_horizontal, (len(data_out['t']), 1))
+        logger.warning(f'Not accounting for divertor wetted fraction in integrated/total quantities')
+        annulus_areas_wet_frac_corrected = np.tile(annulus_areas_fully_wet, (len(data_out['t']), 1))
         # tile_tilt_area_factors = np.ones((len(data_out['t']), len(annulus_areas_horizontal)))
-        tile_tilt_area_factors = np.ones_like(annulus_areas_corrected)
+        tile_tilt_area_factors = np.ones_like(annulus_areas_wet_frac_corrected)
 
-    data_out[f'tile_tilt_area_factors_{path}'] = (('t', f'i_{path}',), tile_tilt_area_factors)
-    data_out[f'annulus_areas_{path}'] = (('t', f'i_{path}',), annulus_areas_corrected)
-    annulus_areas_corrected = data_out[f'annulus_areas_{path}']
+    data_out[f'tile_tilt_area_factors_{path}'] = (('t', path_coord,), np.array(tile_tilt_area_factors))
+    data_out[f'annulus_areas_all_{path}'] = ((path_coord,), np.array(annulus_areas_fully_wet))
+    data_out[f'annulus_areas_wet_{path}'] = (('t', path_coord,), np.array(annulus_areas_wet_frac_corrected))
+    annulus_areas_wet_frac_corrected = data_out[f'annulus_areas_wet_{path}']
 
     for param in params:
+        param_values = path_data[f'{param}_{path}']
+
+        if param == 'heat_flux':
+            spatial_dim = param_values.dims[-1]
+            # TODO: Stop using meta data for output parameters from fire_config.json and make data_structures meta
+            # data into separate input file
+
+            param_values = param_values.clip(min=0, max=None)  # Remove negative heat fluxes
+
+            # Calculate integrated powers and energies
+            power_to_annuluses = calc_divertor_area_integrated_param(param_values, annulus_areas_wet_frac_corrected)
+            power_to_annuluses = power_to_annuluses.clip(min=0, max=None)
+
+            key = f'power_annuluses_{path}'
+            data_out[key] = (('t', spatial_dim,), np.array(power_to_annuluses))
+            data_out = data_structures.attach_standard_meta_attrs(data_out, varname=key, replace=True)
+
+            power_whole_divertor_vs_t = power_to_annuluses.sum(spatial_dim)
+            key = f'power_total_vs_t_{path}'
+            data_out[key] = (('t',), np.array(power_whole_divertor_vs_t))
+            data_out = data_structures.attach_standard_meta_attrs(data_out, varname=key, replace=True)
+
+            energy_whole_divertor_vs_r = power_to_annuluses.sum('t')
+            key = f'energy_total_vs_R_{path}'
+            data_out[key] = ((spatial_dim,), np.array(energy_whole_divertor_vs_r))
+            data_out = data_structures.attach_standard_meta_attrs(data_out, varname=key, replace=True)
+
+            # TODO: Sum by energy to tile
+            # energy_per_tile_vs_t = power_to_annuluses.sum(f'surface_id_path0')
+
+            cumulative_energy_vs_r = integrate.cumtrapz(energy_whole_divertor_vs_r, x=r_path)
+            cumulative_energy_vs_r = np.concatenate([[0], cumulative_energy_vs_r])  # Make same length as time axis
+            key = f'cumulative_energy_vs_R_{path}'
+            data_out[key] = ((spatial_dim,), np.array(cumulative_energy_vs_r))
+            data_out = data_structures.attach_standard_meta_attrs(data_out, varname=key, replace=True)
+
+            cumulative_energy_vs_t = integrate.cumtrapz(power_whole_divertor_vs_t, x=t)
+            cumulative_energy_vs_t = np.concatenate([[0], cumulative_energy_vs_t])  # Make same length as R axis
+            key = f'cumulative_energy_vs_t_{path}'
+            data_out[key] = (('t',), np.array(cumulative_energy_vs_t))
+            data_out = data_structures.attach_standard_meta_attrs(data_out, varname=key, replace=True)
+
+
+
+            # key = f'{param}_total_cumulative_{path}'
+            # data_out[key] = (('t',), np.array(cumulative_energy_vs_r))
+            # data_out[key].attrs.update(meta_data.get(f'{param}_total_cumulative', {}))
+            # # data_out = data_structures.attach_standard_meta_attrs(data_out, varname=key, replace=True)
+            # if 'description' in data_out[key].attrs:
+            #     data_out[key].attrs['label'] = data_out[key].attrs['description']
+
+        # Peak/Strike point values
         info_numeric = ['amplitude_peak_global', 'n_peaks', 's_global_peak', 'R_peak']
         try:
-            param_values = path_data[f'{param}_{path}']
-            param_total = calc_divertor_area_integrated_param(param_values, annulus_areas_corrected)
-            param_total_cumulative = integrate.cumtrapz(param_total, x=param_total['t'])  # Cumulative energy
-            param_total_cumulative = np.concatenate([[0], param_total_cumulative])  # Make same legth as time axis
+
+
             prominence = (np.percentile(np.array(param_values), 99.9) - np.percentile(np.array(param_values), 2)) / 2e3
             # prominence = np.ptp(np.array(param_values)) / 2e2
             peak_kwargs = dict(width=1, height=np.mean(param_values.values), prominence=prominence)
@@ -738,7 +793,7 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
                 ax, data, artist = debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', t_range=None,
                                                                      show=False, robust_percentiles=(40, 99.8))
                 r = path_data['R_path0']
-                t = path_data['t']
+                t_values = path_data['t']
                 i_global = peak_info['ind_global_peak']
                 nan_mask = ~np.isnan(i_global)
                 strike_points = peak_info['strike_points']
@@ -746,7 +801,7 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
                 colors = ('k', 'b', 'orange', 'g')
                 lw = 2.5
                 for i, color in zip(np.arange(n_strike_points), colors):
-                    ax.plot(strike_points.loc[:, (i, 'R')], t, color=color, lw=lw, marker='o', markersize=2,
+                    ax.plot(strike_points.loc[:, (i, 'R')], t_values, color=color, lw=lw, marker='o', markersize=2,
                             alpha=0.4)
                     lw *= 0.5
 
@@ -761,21 +816,7 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
         else:
             data_out = data_out.merge(param_stats)
 
-            # TODO: Stop using meta data for output parameters from fire_config.json and make data_structures meta
-            # data to separate input file
-            key = f'{param}_total_{path}'
-            data_out[key] = (('t',), np.array(param_total))
-            data_out[key].attrs.update(meta_data.get(f'{param}_total', {}))
-            # data_out = data_structures.attach_standard_meta_attrs(data_out, varname=key, replace=True)
-            if 'description' in data_out[key].attrs:
-                data_out[key].attrs['label'] = data_out[key].attrs['description']
 
-            key = f'{param}_total_cumulative_{path}'
-            data_out[key] = (('t',), np.array(param_total_cumulative))
-            data_out[key].attrs.update(meta_data.get(f'{param}_total_cumulative', {}))
-            # data_out = data_structures.attach_standard_meta_attrs(data_out, varname=key, replace=True)
-            if 'description' in data_out[key].attrs:
-                data_out[key].attrs['label'] = data_out[key].attrs['description']
 
             for info in info_numeric:
                 key = f'{param}_{info}_{path}'
