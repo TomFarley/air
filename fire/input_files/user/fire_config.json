@@ -389,9 +389,9 @@
                 "sector"
             ],
             "time": [
-                "heat_flux_total",
+                "power_total_vs_t",
                 "heat_flux_total_cumulative",
-                "heat_flux_amplitude_peak_global",
+                "heat_flux_amplitude_global_peak",
                 "heat_flux_s_global_peak",
                 "heat_flux_R_peak",
                 "temperature_amplitude_peak_global",
@@ -445,7 +445,7 @@
             "units": "m^2",
             "description": "Surface area of tile annulus between two radial points (i.e. torroidal area over which radial measurement can be integrated"
         },
-        "heat_flux_total": {
+        "power_total_vs_t": {
             "long_name": "$P_{total, div}$",
             "units": "MW",
             "description": "Total heat flux to the divetor, integrated over the radial extent of the IR analysis path, assuming toroidal symmetry"
