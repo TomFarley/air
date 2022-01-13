@@ -41,9 +41,10 @@ false_rz_surface_boxes_default = []
 s_start_coord_default = (0, 0)
 
 # Use same plugin funcs for machine sector and s_path coordinate as for MAST
-from fire.plugins.machine_plugins.mast import get_s_coord_path
-from fire.plugins.machine_plugins.mast import get_machine_sector as get_machine_sector_mast
+from fire.plugins.machine_plugins.tokamak_utils import get_machine_sector as get_machine_sector_mast
+from fire.plugins.machine_plugins.tokamak_utils import get_s_coord_path
 from fire.plugins.machine_plugins.jet_tools.scoord import get_s_definition
+
 def get_machine_sector(*args, **kwargs):
     return get_machine_sector_mast(*args, n_sectors=n_sectors, **kwargs)
 # See bottom of file for function aliases
