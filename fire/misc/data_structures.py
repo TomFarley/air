@@ -67,13 +67,13 @@ meta_defaults_default = {
                       'description': 'Integer ID specifying what machine sector is visible at that pixel'},
     'temperature_peak': {'label': 'Peak temperature', 'units': '$^\circ$C', 'symbol': '$T_{peak}$',
                   'description': 'Peak target temperature along analysis path as a function of time'},
-    'heat_flux_amplitude_peak_global': {'label': 'Peak heat flux', 'units': 'MWm$^{-2}$', 'symbol': '$q_{\perp,peak}$',
+    'heat_flux_amplitude_global_peak': {'label': 'Peak heat flux', 'units': 'MWm$^{-2}$', 'symbol': '$q_{\perp,peak}$',
                   'description': 'Peak target heat flux along analysis path as a function of time'},
     'heat_flux_R_peak': {'label': 'Radius of target peak heat flux', 'units': 'm', 'symbol': '$R_{q,max}$',
                   'description': 'Radial location of peak target heat flux'},
     'heat_flux_s_global_peak': {'label': 's coordinate of target peak heat flux', 'units': 'm', 'symbol': '$s_{q,max}$',
                          'description': 'Divertor surface "s" coordinate location of peak target heat flux'},
-    'heat_flux_total': {'label': 'Heat flux integrated over divertor surface area', 'units': 'MW',
+    'power_total_vs_t': {'label': 'Heat flux integrated over divertor surface area', 'units': 'MW',
                         'symbol': '$P_{total, div}$',
                         'description': 'Heat flux integrated over divertor surface area (for this divertor). Wetted '
                                        'area correction applied.'},
@@ -275,7 +275,8 @@ def attach_standard_meta_attrs(data, varname='all', replace=False, key=None, sub
 
     return data
 
-def swap_xarray_dim(data_array, new_active_dims, old_active_dims=None, alternative_new_dims=None, raise_on_fail=True):
+def swap_xarray_dim(data_array, new_active_dims, old_active_dims=None, alternative_new_dims=None,
+                    coord_suffixes=None, raise_on_fail=True):
     """Wrapper for data_array.swap_dims() used to set active coordinate(s) for dimension(s)
     eg. switch between equivalent coordinates like time and frame number.
 
@@ -321,6 +322,16 @@ def swap_xarray_dim(data_array, new_active_dims, old_active_dims=None, alternati
             if alternative_new_dims is not None:
                 for dim in make_iterable(alternative_new_dims):
                     data_array = swap_xarray_dim(data_array, dim)
+            elif coord_suffixes is not None:
+                for suffix in make_iterable(coord_suffixes):
+                    try:
+                        new_active_dim_with_suffix = add_path_suffix(new_active_dim, path_suffix=suffix)
+                        data_array = swap_xarray_dim(data_array, new_active_dim_with_suffix)
+                    except Exception as e:
+                        pass
+                    else:
+                        break
+
             else:
                 if raise_on_fail:
                     raise
