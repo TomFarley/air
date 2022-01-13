@@ -42,26 +42,47 @@ def get_fig_ax(ax=None, num=None, ax_grid_dims=(1, 1), dimensions=2, axes_flatte
     Returns: fig (figure instance), ax (axis instance), ax_passed (bool specifying if ax was passed or generated here)
 
     """
-
+    ax_grid_dims = np.array(ax_grid_dims)
     if ax is None:
         if dimensions == 3:
             if np.sum(ax_grid_dims) > 2:
                 raise NotImplementedError
             from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
             fig = plt.figure(num=num)
-            ax = fig.add_subplot(1, 1, 1, projection='3d')
+            axes = fig.add_subplot(1, 1, 1, projection='3d')
         else:
-            fig, ax = plt.subplots(*ax_grid_dims, num=num, constrained_layout=True,
+            n_rows, n_cols = ax_grid_dims
+
+            # subplots_adjust doesn't work with constrained_layout?
+            constrained_layout = (sharex is 'none') and (sharey is 'none')
+
+            fig, axes = plt.subplots(*ax_grid_dims, num=num, constrained_layout=constrained_layout,
                                    sharex=sharex, sharey=sharey, **kwargs)
+
+            if np.any(ax_grid_dims > 1):
+                for i_row in np.arange(n_rows):
+                    for i_col in np.arange(n_cols):
+                        ax = axes[i_row, i_col]
+                        if (sharex in ('col', True)) and (i_row != n_rows-1):
+                            ax.xaxis.label.set_visible(False)  # x axis labels only on bottom row
+                            fig.subplots_adjust(hspace=0.03)  # reduce axes vertical height spacing
+                            fig.tight_layout_off = True
+                        elif (sharey in ('row', True)) and (i_col != 0):
+                            ax.yaxis.label.set_visible(False)  # y axis labels only on left col
+                            fig.subplots_adjust(wspace=0.03)  # reduce axes horizontal width spacing
+                            fig.tight_layout_off = True
+
             if axes_flatten:  #  and isinstance(ax, (np.ndarray)):
-                ax = make_iterable(ax, ndarray=True)
-                ax = ax.flatten()
+                axes = make_iterable(axes, ndarray=True)
+                axes = axes.flatten()
 
         ax_passed = False
     else:
         fig = ax.figure
+        axes = ax
         ax_passed = True
-    return fig, ax, ax_passed
+        
+    return fig, axes, ax_passed
 
 def get_ax_grid_dims(n_ax, n_max_ax_per_row=3):
 
@@ -69,6 +90,42 @@ def get_ax_grid_dims(n_ax, n_max_ax_per_row=3):
     n_cols = n_ax if n_rows == 1 else int(np.ceil(n_ax/n_rows))
     ax_grid_dims = (n_rows, n_cols)
     return ax_grid_dims
+
+def add_second_y_scale(ax_left, color_left='tab:blue', color_right='tab:orange', label_right=None, dummy_values=None,
+                       apply=True, ax_kwargs=None):
+    """Add a second y axis at right of plot axes
+
+    Args:
+        ax: mpl axis instance to add y axis to
+        y_values: New y axis values corresponding to original x axis values
+        y_map_func:
+        ax_kwargs:
+
+    Returns:
+
+    """
+    # colors = ('tab:blue', 'tab:orange', 'tab:green', 'tab:red')
+
+    if not apply:
+        return ax_left, None
+
+    ax_right = ax_left.twinx()
+
+    if dummy_values is not None:
+        line, = ax_right.plot(dummy_values[0], dummy_values[1], label=None)  # Create a dummy plot
+        line.set_visible(False)
+        # ax2.cla()
+
+    ax_right.set_xlabel(label_right)
+
+    ax_left.tick_params(axis='y', labelcolor=color_left)
+    ax_right.tick_params(axis='y', labelcolor=color_right)
+
+    if ax_kwargs is not None:
+        # Format axis ticks etc
+        raise NotImplementedError
+
+    return ax_right, ax_left
 
 def add_second_x_scale(ax, x_axis_values, y_values=None, label=None, x_map_func=None, ax_kwargs=None):
     """Add a second x axis at top of plot axes
@@ -185,9 +242,10 @@ def annotate_axis(ax, string, loc='top_right', x=0.85, y=0.955, fontsize=14, coo
             **kwargs)
     return artist
 
-def annotate_providence(ax, label='{machine} {pulse} {diag_tag_analysed}\n({path_label})', loc='top_right', meta_data=None,
-                        aliases=None, fontsize=12, upper_case=('machine', 'camera'), replace_chars=(('_', '-'), ),
-                        cut_strings='_path0', annotate=True, **kwargs):
+def annotate_providence(ax, label='{machine} {pulse} {diag_tag_analysed}', loc='top_right',
+                        meta_data=None, aliases=None, fontsize=12,
+                        upper_case=('machine', 'diag_tag_analysed', 'diag_tag_raw'),
+                        replace_chars=(('_', '-'), ),cut_strings='_path0', annotate=True, **kwargs):
     if not annotate:
         return
 
@@ -200,6 +258,9 @@ def annotate_providence(ax, label='{machine} {pulse} {diag_tag_analysed}\n({path
         '{pulse} {diag_tag_raw}',
         '{pulse}',
     ]
+
+    if isinstance(ax, (np.ndarray, list, tuple)):
+        ax = np.array(ax).flatten()[0]  # Only annotate first (top left) axis
 
     # TODO: split into meta prep function
     if meta_data is not None:
@@ -292,6 +353,11 @@ def legend(ax, handles=None, labels=None, legend=True, only_multiple_artists=Tru
         leg.remove()
     return leg
 
+def format_label(string, substitutions=[('_', ' ')]):
+    for old, new in substitutions:
+        string = string.replace(old, new)
+    return string
+
 def close_all_mpl_plots(close_all=True, verbose=True):
     """Close all existing figure windows"""
     if close_all:
@@ -316,7 +382,10 @@ def show_if(show=True, close_all=False, tight_layout=True, save_fig_fn=None, sav
 
     if show:
         if tight_layout:
-            plt.tight_layout()
+            fig = plt.gcf()
+            if not hasattr(fig, 'tight_layout_off') or fig.tight_layout_off is False:
+                # Some functions will set fig.tight_layout_off = True if layout has been manually customised
+                fig.tight_layout()
         plt.show()
 
 def save_fig(path_fn, fig=None, paths=None, transparent=True, bbox_inches='tight', dpi=90, save=True,
