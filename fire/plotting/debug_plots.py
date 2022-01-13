@@ -26,7 +26,7 @@ from fire.plotting.spatial_figures import figure_poloidal_cross_section, figure_
 from fire.plotting.path_figures import figure_path_1d, figure_path_2d
 from fire.plotting.plot_tools import annotate_axis, repeat_color
 from fire.camera_tools.image_processing import find_outlier_pixels
-from fire.plugins import plugins_machine
+from fire.plugins import plugins, plugins_machine
 from fire.misc import utils, data_structures
 from fire.misc.utils import make_iterable
 from fire.interfaces import uda_utils
@@ -671,15 +671,10 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', c
         else:
             ax_i.set_xlim(data[coord_path].values.min(), data[coord_path].values.max())
 
-        if machine_plugins is not None:
-            if label_tiles:
-                if isinstance(machine_plugins, str):
-                    machine_plugins = plugins_machine.get_machine_plugins(machine=machine_plugins)
-                label_tiles_func = machine_plugins.get('label_tiles')
-                try:
-                    label_tiles_func(ax_i, data.coords, coords_axes=data.dims, coord_2_pos=0.01)
-                except Exception as e:
-                    logger.warning(f'Failed to call machine plugin to label tiles: {e}')
+        if label_tiles:
+            plugins.get_and_call_plugin_func('label_tiles', plugins_dict=machine_plugins, plugin_type='machine',
+                                             plugin_defaults=dict(machine='mast_u'),
+                                             kwargs_plugin=dict(ax=ax, coords=data.coords, path_no=0))
 
         if t_wins is not None:  # Add horizontal lines labeling times
             plot_tools.label_axis_windows(windows=t_wins, labels=t_wins, ax=ax_i, axis='y', line_kwargs=None)
@@ -698,51 +693,62 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', c
 
     return ax, data, artist
 
-def debug_plot_spatial_profile_1d(data_paths, param='temperature', path_names='path0', t=None, ax=None):
-    raise NotImplementedError
-    for path_name in make_iterable(path_names):
-        # TODO: Move general code to plot_tools.py func
-        plt.figure(f'{param}_profile_2d {path_name}')
-        data = data_paths[f'{param}_{path_name}']
-        if 'n' in data.dims:
-            data = data.swap_dims({'n': 't'})
-        if t is None:
-            t_slices = identify_profile_time_highlights()
-        else:
-            t_slices = t
+def debug_plot_spatial_profile_1d(data_paths, params='temperature', path_name='path0', ax=None,
+                                  label_tiles=True, meta_data=None, machine_plutings=None, show=True, plot_kwargs=()):
+    params = make_iterable(params)
+    plot_kwargs = dict(plot_kwargs)
+    kws = {'alpha': 0.8}
+    kws.update(plot_kwargs)
 
-        # data = data.swap_dims({f'i_{path_name}': f's_global_{path_name}'})
-        data = data.swap_dims({f'i_{path_name}': f'R_{path_name}'})
-        try:
-            data.plot(robust=True, center=False, cmap='coolwarm')
-        except ValueError as e:
-            # R data not monotonic - switch back to index or s_path
-            # data = data.sortby('')
-            # data = data.swap_dims({f'R_{path_name}': f's_path_{path_name}'})
-            data = data.swap_dims({f'R_{path_name}': f'i_{path_name}'})
-            data.plot(robust=True, center=False, cmap='coolwarm')
-        plt.tight_layout()
-        plt.show()
+    fig, ax, ax_passed = plot_tools.get_fig_ax(ax, num=f'spatial profiles {params} {path_name}')
 
-def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_R_peak', 'heat_flux_amplitude_peak_global'), path_name='path0',
-                                   x_var='t', heat_flux_thresh=-0.0, meta_data=None, machine_plugins=None, ax=None):
+    for i_param, param in enumerate(params):
+        ax_active, ax_other = plot_tools.add_second_y_scale(ax_left=ax, apply=(i_param == 1))
+
+        data, param = data_structures.select_variable_from_dataset(data_paths, variable_name=param,
+                                                                   path_name=path_name, i_path=0)
+
+        data = data_structures.swap_xarray_dim(data, ('t', f'R_{path_name}'), raise_on_fail=False)
+
+        # t_slices = identify_profile_time_highlights() if t is None else t
+
+        data.plot(ax=ax_active, **kws)
+
+    if meta_data is not None:
+        plot_tools.annotate_providence(ax, meta_data=meta_data)
+
+    if label_tiles:
+        plugins.get_and_call_plugin_func('label_tiles', plugin_type='machine',
+                        kwargs_plugin=dict(ax=ax, coords=data.coords, path_no=0))
+
+    plot_tools.show_if(show=show, tight_layout=True)
+
+    return fig, ax
+
+def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_R_peak', 'heat_flux_amplitude_global_peak'), path_name='path0',
+                                   x_var='t', heat_flux_thresh=-0.0, meta_data=None, machine_plugins=None, ax=None,
+                                   show=True):
     # TODO: Move general code to plot_tools.py func
+    # TODO: Move multi-signal plotting on same axis to general function for multiaxes etc
     colors = ('tab:blue', 'tab:orange', 'tab:green', 'tab:red')
     path = path_name if isinstance(path_name, str) else path_name[0]
+    params = make_iterable(params)
+    n_params = len(params)
 
     fig, ax1, ax_passed = plot_tools.get_fig_ax(num=f'{params} temporal profile {path}', ax=ax)
     ax = ax1
-    ax.tick_params(axis='y', labelcolor=colors[0])
+    if n_params > 1:
+        ax.tick_params(axis='y', labelcolor=colors[0])
 
     if heat_flux_thresh not in (None, False):
-        peak_heat_flux, key = select_variable_from_dataset(data_paths, 'heat_flux_amplitude_peak_global',
+        peak_heat_flux, key = select_variable_from_dataset(data_paths, 'heat_flux_amplitude_global_peak',
                                                       path_name=path_name)
         mask_pos_heat_flux = peak_heat_flux > heat_flux_thresh
         peak_heat_flux_pos = peak_heat_flux[mask_pos_heat_flux]
     else:
         mask_pos_heat_flux = np.ones_like(data_paths['t'].data, dtype=bool)
 
-    for i, (param, color) in enumerate(zip(make_iterable(params), colors)):
+    for i, (param, color) in enumerate(zip(params, colors)):
         if i == 1:
             ax = ax1.twinx()
             ax.tick_params(axis='y', labelcolor=color)
@@ -757,9 +763,14 @@ def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_R_peak', 'heat
         data_pos_q[~mask_pos_heat_flux] = np.nan
 
         try:
-            data.plot(label=f'{param} (all)', ax=ax, ls=':', alpha=0.3, color=color)
-            temporal_figures.plot_temporal_profile(data_paths, key, path_name=path, mask=mask_pos_heat_flux,
-                                                                 label=f'{param} (pos q)', ax=ax, ls='-', alpha=0.6, color=color, show=False)
+            if heat_flux_thresh is not None:
+                data.plot(label=f'{param} (all)', ax=ax, ls=':', alpha=0.8, color=color)
+                temporal_figures.plot_temporal_profile(data_paths, key, path_name=path, mask=mask_pos_heat_flux,
+                                        label=f'{param} (pos q)', ax=ax, ls='-', alpha=0.6, color=color, show=False)
+            else:
+                label = plot_tools.format_label(param)
+                temporal_figures.plot_temporal_profile(data_paths, key, path_name=path, mask=mask_pos_heat_flux,
+                                        label=label, ax=ax, ls='-', alpha=0.6, color=color, show=False)
         except ValueError as e:
             raise NotImplementedError
             # R data not monotonic - switch back to index or s_path
@@ -778,13 +789,14 @@ def debug_plot_temporal_profile_1d(data_paths, params=('heat_flux_R_peak', 'heat
         ax.axhline(heat_flux_thresh, ls='--', color='k')
         ax.set_xlim([peak_heat_flux_pos['t'].min(), peak_heat_flux_pos['t'].max()])
 
-    plot_tools.annotate_providence(ax, meta_data=meta_data)
+    if meta_data is not None:
+        plot_tools.annotate_providence(ax, meta_data=meta_data)
 
-    plot_tools.show_if(show=True, tight_layout=True)
+    plot_tools.show_if(show=show, tight_layout=True)
 
     return fig, ax
 
-def plot_energy_to_target(data_paths, params=('heat_flux_R_peak', 'heat_flux_amplitude_peak_global'), path_name='path0',
+def plot_energy_to_target(data_paths, params=('heat_flux_R_peak', 'heat_flux_amplitude_global_peak'), path_name='path0',
                           meta_data=None, machine_plugins=None):
     path = path_name if isinstance(path_name, str) else path_name[0]
     params = make_iterable(params)
@@ -793,20 +805,28 @@ def plot_energy_to_target(data_paths, params=('heat_flux_R_peak', 'heat_flux_amp
     ax_grid_dims = plot_tools.get_ax_grid_dims(n_ax=n_params, n_max_ax_per_row=3)
 
     fig, axes, ax_passed = plot_tools.get_fig_ax(num=f'{params} temporal profile {path}', ax_grid_dims=ax_grid_dims,
-                                                axes_flatten=True)
+                                                axes_flatten=True, sharex='col')
     for i_ax, param in enumerate(params):
         ax = axes[i_ax]
+        if i_ax == 0:
+            plot_tools.annotate_providence(ax, meta_data=meta_data)
 
-        if param in ('power_total_vs_t', 'cumulative_energy_vs_t'):
-            debug_plot_temporal_profile_1d(data_paths, ax=ax)
+        if param in ('power_total_vs_t', 'cumulative_energy_vs_t'):  # TODO: Check dim instead of hard list
+            debug_plot_temporal_profile_1d(data_paths, params=param, ax=ax, heat_flux_thresh=None,
+                                           meta_data=None, show=False)
         elif param in ('energy_total_vs_R', 'cumulative_energy_vs_R'):
-            debug_plot_spatial_profile_1d(data_paths)
+            debug_plot_spatial_profile_1d(data_paths, params=param, ax=ax, path_name=path_name, meta_data=None,
+                                                                                                   show=False)
         else:
             raise NotImplementedError
 
+    plot_tools.annotate_providence(ax, meta_data=meta_data)
+
+    plot_tools.show_if(show=True, tight_layout=True)
+
     return fig, axes
 
-def debug_plot_timings(data_profiles, pulse, params=('heat_flux_amplitude_peak_global_{path}',
+def debug_plot_timings(data_profiles, pulse, params=('heat_flux_amplitude_global_peak_{path}',
                                                      'temperature_amplitude_peak_global_{path}',),
                        path_name='path0', comparison_signals=(('xim/da/hm10/t', 'xim/da/hm10/r'),
                                                                'xpx/clock/lwir-1'), separate_axes=True,

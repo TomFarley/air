@@ -20,6 +20,8 @@ from fire.misc.utils import make_iterable
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
+plugin_defaults_default = dict(machine='mast_u')
+
 def search_for_plugins(plugin_paths, attributes_requried, attributes_optional=None):
     plugins_all = {}
     info_all = {}
@@ -163,13 +165,41 @@ def get_compatible_plugins(plugin_paths: PathList,
         info = OrderedDict([(key, info[key]) for key in plugin_filter if key in info.keys()])
     return plugins, info
 
-def call_plugin_func(pluggins, name, args, kwargs=(), dummy_ouput=None, verbose_dummy_func=True):
+def call_plugin_func(plugins_dict, plugin_func_name, args=(), kwargs=(), dummy_ouput=None,
+                     verbose_dummy_func=True, raise_on_fail=True):
     args = make_iterable(args)
     kwargs = dict(kwargs)
-    dummy_func = dummy_function(name, dummy_ouput, verbose=verbose_dummy_func)
-    func = pluggins.get(name, dummy_func)
+
+    dummy_func = dummy_function(plugin_func_name, dummy_ouput, verbose=verbose_dummy_func)
+
+    func = plugins_dict.get(plugin_func_name, dummy_func)
+
+    if func is dummy_func:
+        message = f'Could not find plugin "{plugin_func_name}" in plugin dict: {list(plugins_dict.keys())}'
+        if raise_on_fail:
+            raise ValueError(message)
+        else:
+            logger.warning(message)
+
     out = func(*args, **kwargs)
     return out
+
+def get_and_call_plugin_func(plugin_func_name, plugins_dict=None, plugin_type='machine', plugin_defaults=None,
+                             kwargs_plugin=(), raise_on_fail=True):
+    from fire.plugins.plugins_machine import get_machine_plugins
+
+    kwargs_plugin = dict(kwargs_plugin)
+
+    if plugins_dict is None:
+        if plugin_type == 'machine':
+            plugin_defaults = plugin_defaults_default if plugin_defaults is None else plugin_defaults
+            machine = plugin_defaults.get('machine', 'mast_u')
+            plugins_dict = get_machine_plugins(machine=machine)
+
+    output = call_plugin_func(plugins_dict=plugins_dict, plugin_func_name=plugin_func_name, kwargs=kwargs_plugin,
+                              raise_on_fail=raise_on_fail)
+
+    return output
 
 def dummy_function(name, dummy_ouput, verbose=True):
     def _dummy_func(*args, **kwargs):
