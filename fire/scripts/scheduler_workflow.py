@@ -936,9 +936,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             debug_plots.debug_plot_timings(path_data_all, pulse=pulse, meta_data=meta_data)
 
         if debug.get('strike_point_loc', False):
-            heat_flux = path_data[f'heat_flux_amplitude_peak_global_{path}'].values
+            heat_flux = path_data[f'heat_flux_amplitude_global_peak_{path}'].values
             heat_flux_thresh = np.nanmin(heat_flux) + 0.03 * (np.nanmax(heat_flux) - np.nanargmin(heat_flux))
-            debug_plots.debug_plot_temporal_profile_1d(path_data_all, params=('heat_flux_R_peak', 'heat_flux_amplitude_peak_global'),
+            debug_plots.debug_plot_temporal_profile_1d(path_data_all, params=('heat_flux_R_peak', 'heat_flux_amplitude_global_peak'),
                                                        path_name=analysis_path_key, x_var='t',
                                                        heat_flux_thresh=heat_flux_thresh, meta_data=meta_data)
         if output_files.get('strike_point_loc', False):
