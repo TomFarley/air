@@ -17,12 +17,10 @@ import xarray as xr
 import matplotlib.pyplot as plt
 from fire.geometry.geometry import cartesian_to_toroidal
 from fire.misc.utils import make_iterable
-from fire.plugins.machine_plugins.mast import n_sectors, first_sector_start_angle, sectors_clockwise, \
-    n_louvres_per_sector, get_wall_rz_coords, s_start_coord_default, surface_radii, logger
-from numpy import __init__ as np
+# from fire.plugins.machine_plugins.mast import n_sectors, first_sector_start_angle, sectors_clockwise, \
+#     n_louvres_per_sector, get_wall_rz_coords, s_start_coord_default, surface_radii, logger
 
 logger = logging.getLogger(__name__)
-
 
 def get_machine_sector(x, y, z=None, n_sectors=n_sectors, first_sector_start_angle=first_sector_start_angle,
                        clockwise=sectors_clockwise, **kwargs):

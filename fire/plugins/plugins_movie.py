@@ -21,7 +21,6 @@ from fire.misc import utils
 from fire.misc.utils import dirs_exist, locate_files
 from fire.plugins import plugins
 from fire.interfaces.user_config import get_user_fire_config
-from fire.plugins.machine_plugins import mast_u
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -109,6 +108,7 @@ class MovieReader:
                                                                                                Dict[str, str]]:
         meta = dict(meta)  # Parameters used to locate movie files eg date
         if 'mast' in machine:
+            from fire.plugins.machine_plugins import mast_u
             meta['date'] = mast_u.get_shot_date(shot=pulse)
 
         plugin_names = list(self.plugins.keys())
