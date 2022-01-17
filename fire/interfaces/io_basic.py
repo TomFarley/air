@@ -493,7 +493,7 @@ def rm_files(paths, pattern, verbose=True, match=True, ignore_exceptions=()):
 
 
 def check_safe_path_string(path):
-    return bool(re.match('^[a-z0-9\.\/_]+$', path))
+    return bool(re.match('^[a-zA-Z0-9\.\/_]+$', path))
 
 
 def is_possible_filename(fn, ext_whitelist=('py', 'txt', 'png', 'p', 'npz', 'csv',), ext_blacklist=(),
