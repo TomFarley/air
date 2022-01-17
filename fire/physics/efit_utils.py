@@ -1,9 +1,26 @@
 #!/usr/bin/env python
 
-"""
+"""Tools for extracting efit information
 
+Summary of external libraries for using efit data:
+    - mastu_exhaust.read_efit() - Read efit data from uda, epm or efit out files
+                                  efit_data = read_uda(shot)
+                                  read_epm(filename, calc_bfield = True)
+                                  read_efitout(filename, calc_bfield = True)
+    - mastu_exhaust.mastu_equilibrium.mastu_equilibrium() - Inherits from pyEquilibrium, adds functionality
+                                                            equil = mastu_equilibrium()
+                                                            equil.load_efitpp('../data/epm044442.nc', time=0.5)
+                                                            print(equil.get_baffle_clearance())
+    - mastu_exhaust.divertor_geometry.divertor_geometry() - Class for (over)plotting and calculating equilibrium props
+                                             div_geom = divertor_geometry(filename='../data/epm044442.nc', time=0.55)
+                                             div_geom.plot(annotate = True, mark_oxpts = True)
+                                             div_geom2 = divertor_geometry(filename='../data/epm044442.nc', time=0.65)
+                                             div_geom.plot(equils=div_geom2)
+    - fluxsurface_tracer.fsurface() - class used for tracing field lines and calculating intersection points etc
+                        fsurface1, fsurface2 = trace_flux_surface(efit_data, i, start_r, start_z, cut_surface=True)
+                        intr_x, intr_y = furface1.find_intersection(r_start, r_end, z_start, z_end)
 
-Created: 
+Created: Tom Farley, Nov 2021
 """
 
 import logging, datetime
@@ -14,12 +31,11 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
+from scipy.interpolate import RectBivariateSpline, interp1d,  Rbf, LinearNDInterpolator
 
 from fire.interfaces.uda_utils import get_uda_client
 from fire.misc.utils import make_iterable
 
-from pyEquilibrium.equilibrium import equilibrium
-from mastu_exhaust_analysis import mastu_equilibrium
 
 logger = logging.getLogger(__name__)
 logger.propagate = False
@@ -42,10 +58,33 @@ def get_efit_data(shot, calc_bfield=False, filename=None):
         raise e
     return efit_data
 
+
+def get_equilibrium_obj(shot, time, with_bfield=True, filename=None):
+    """Efit reading method used by JRH"""
+    machine = 'MASTU'
+    try:
+        from mastu_exhaust_analysis.mastu_equilibrium import mastu_equilibrium
+        if filename is not None:
+            equilibrium = mastu_equilibrium(gfile=filename, time=time, device=machine,
+                                            with_bfield=with_bfield)
+        elif shot < 44849:
+            path_uda_scratch = '/common/uda-scratch/lkogan/efitpp_eshed/epm0' + str(shot) + '.nc'
+            equilibrium = mastu_equilibrium(efitpp_file=path_uda_scratch, time=time, device=machine,
+                                            with_bfield=with_bfield)
+        else:
+            equilibrium = mastu_equilibrium(shot=shot, time=time, device=machine, with_bfield=with_bfield)
+    except ImportError as e:
+        raise e
+    except Exception as e:
+        raise e
+    return equilibrium
+
 def extract_eqm_info_for_path(shot, path_data, times, path_name='path0'):
+    from pyEquilibrium.equilibrium import equilibrium
+
     path = path_name
 
-    efit_path = get_efit_path(shot=shot)
+    efit_path = get_efit_file_path(shot=shot)
     efit_times = get_efit_converted_times(shot)
 
     in_frame_str = '_in_frame'
@@ -62,7 +101,7 @@ def extract_eqm_info_for_path(shot, path_data, times, path_name='path0'):
 
     raise NotImplementedError
 
-def get_efit_path(shot):
+def get_efit_file_path(shot):
     import os
     path = None
     if os.path.isfile('/common/uda-scratch/shenders/efit/mastu/{}/efit_shenders_01/efitOut.nc'.format(shot)):
@@ -79,7 +118,7 @@ def read_equilibrium_signal(shot, signal='/epm/equilibriumStatusInteger', machin
         data = client.get(signal, shot)
     except Exception as e:
         if isinstance(shot, (int, float)):
-            epm_fn = get_efit_path(shot)
+            epm_fn = get_efit_file_path(shot)
         else:
             epm_fn = shot.format(shot=shot, pulse=shot)
         epm_times = client.get('/epm/time', epm_fn).data
@@ -295,13 +334,102 @@ def efit_reconstruction_to_separatrix_on_foil(efit_reconstruction,refinement=100
         # sep_z = [left_up_z,right_up_z,left_low_z,right_low_z]
         all_time_sep_r.append([left_up,right_up,left_low,right_low])
         all_time_sep_z.append([left_up_z,right_up_z,left_low_z,right_low_z])
-    return all_time_sep_r,all_time_sep_z,r_fine,z_fine
+    return all_time_sep_r, all_time_sep_z, r_fine,z_fine
+
+def get_3d_field_interpolator(efit_data, field='psiN'):
+
+    z_grid = efit_data[field]
+    z_grid_transposed = np.swapaxes(z_grid, 1, 2)
+    points = np.array(list(zip(ttt.ravel(), rrr.ravel(), zzz.ravel())))
+    z_flat = z_grid_transposed.ravel()
+    interp_linear_3d = LinearNDInterpolator(points, z_flat)
+
+    return interp_linear_3d
+
+def get_2d_spline_interpolator(efit_data, tind, field='psiN'):
+    data = efit_data[field][tind, :, :]
+    interp_t = RectBivariateSpline(efit_data['r'], efit_data['z'], np.transpose(data))
+    return interp_t
+
+def get_nearest_efit_t(efit_data, t):
+
+    t_efit = efit_data['t']
+    t_ind = np.argmin(np.abs(t_efit-t))
+    t_nearest = t_efit[t_ind]
+
+    return t_ind, t_nearest
+
+def interp_3d_field_loop(efit_data, r, z, times, field='psiN'):
+
+    # data_grid = efit_data[field]
+
+    out = np.zeros((len(times), len(r), len(z)))
+
+    data_t_unique = []
+    t_unique = []
+
+    # get values at closest unique efit times at given r and z
+    t_ind_prev = -1
+    for i_t, t in enumerate(times):
+        t_ind, t_efit = get_nearest_efit_t(efit_data, t)
+        if t_ind == t_ind_prev:
+            continue
+        interp_t = get_2d_spline_interpolator(efit_data, t_ind, field=field)
+        data_t = interp_t(r, z)
+
+        data_t_unique.append(data_t)
+        t_unique.append(t_efit)
+
+    data_t_unique = np.array(data_t_unique)
+    shape = data_t_unique.shape
+
+    # Interpolate to actual requested times
+    for i_r, r in enumerate(efit_data['r']):
+        for i_z, z in enumerate(efit_data['z']):
+            data_at_point = data_t_unique[:, i_r, i_z]
+            out[:, i_r, i_z] = interp1d(t_unique, data_at_point)
+
+    return out
+
+def interp_3d_field_direct(efit_data, r, z, times, field='psiN'):
+
+    f_interp = get_3d_field_interpolator(efit_data, field=field)
+    out = f_interp(list(zip(times, r, z)))
+
+    return out
+
+
+
 
 if __name__ == '__main__':
     shot = 44345
+    time = 0.5
+
+    efit_data = get_efit_data(shot=shot, calc_bfield=True)
+    # Mask off points in the EFIT++ grid that are outside the wall
+    rr, zz = np.meshgrid(efit_data['r'], efit_data['z'])
+    ttt, rrr, zzz = np.meshgrid(efit_data['t'], efit_data['r'], efit_data['z'])
+    tindx = 1
+    psiN_interp_t = RectBivariateSpline(efit_data['r'], efit_data['z'], np.transpose(efit_data['psiN'][tindx, :, :]))
+    psiN = psiN_interp_t(1, 1)
+
     r = np.linspace(1, 1.3, 31)
     z = np.linspace(-1.3, -1.5, 21)
     t = np.linspace(0.05, 0.3, 26)
+
+    psiNs_loop = interp_3d_field_loop(efit_data, r, z, t, field='psiN')
+
+    psiN_interp = get_3d_field_interpolator(efit_data, field='psiN')
+    psiNs_direct = interp_3d_field_direct(efit_data, field='psiN')
+
+    psiN_grid = np.swapaxes(efit_data['psiN'], 1, 2)
+    points = np.array(list(zip(ttt.ravel(), rrr.ravel(), zzz.ravel())))
+    psiN_flat = psiN_grid.ravel()
+    psiN_interp = LinearNDInterpolator(points, psiN_flat)
+    psiNs = psiN_interp(list(zip(t, r, z)))
+
+    equilibrium = get_equilibrium_obj(shot=shot, time=time, with_bfield=True)
+
     b = read_bfield_data(shot, r, z, t)
 
     print(b)
