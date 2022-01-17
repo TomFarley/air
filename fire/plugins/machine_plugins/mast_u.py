@@ -53,6 +53,11 @@ s_start_coord_default = (0.260841, 0)
 # Use same plugin funcs for machine sector and s_path coordinate as for MAST
 from fire.plugins.machine_plugins.tokamak_utils import (get_machine_sector, get_s_coord_path, get_tile_louvre_label,
     get_tile_louvre_index, plot_vessel_outline, plot_vessel_top_down, format_coord)
+try:
+    from mastu_exhaust_analysis.mastu_wall import (mastu_wall, mastu_wall_simplified,
+                                                   mastu_wall_simplified_no_sxd_subdivertor)
+except ImportError as e:
+    logger.warning(e)
 
 # See bottom of file for function aliases
 # ====================================================================
