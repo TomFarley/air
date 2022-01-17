@@ -280,8 +280,7 @@ def json_load(path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None,
 
 
 def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, allow_overlaping_ranges: bool=False,
-                            raise_: bool=True, **kwargs_csv
-    ) -> Union[pd.Series, Exception]:
+                            raise_exceptions: bool=True, **kwargs_csv) -> Union[pd.Series, Exception]:
     """Return row from csv file containing information for pulse range containing supplied pulse number
 
     :param path_fn: path to csv file containing pulse range information
@@ -289,30 +288,39 @@ def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, allow_overlap
     :return: Pandas Series containing pulse information / Exception if unsuccessful
     """
     table = read_csv(path_fn, python_types_kwargs=dict(list_delimiters=(',', ' ')), **kwargs_csv)
+
     if isinstance(table, Exception):
         pulse_info = table
     else:
-        if not np.all([col in list(table.columns) for col in ['pulse_start', 'pulse_end']]):
-            pulse_info = IOError(f'Unsupported pulse row CSV file format - '
-                          f'must contain "pulse_start", "pulse_end" columns: {path_fn}')
-        else:
-            # TODO: Allow None for eg end of pulse range if current value
-            table = table.astype({'pulse_start': int, 'pulse_end': int})
-            row_mask = np.logical_and(table['pulse_start'] <= pulse, table['pulse_end'] >= pulse)
-            if (np.sum(row_mask) > 1) and (not allow_overlaping_ranges):
-                pulse_info = ValueError(f'Lookup file {path_fn} contains overlapping ranges. Please fix: \n'
-                                        f'{table.loc[row_mask]}')
-            elif np.sum(row_mask) == 0:
-                pulse_ranges = list(zip(table['pulse_start'], table['pulse_end']))
-                pulse_info = ValueError(f'Pulse {pulse} does not fall in any pulse range {pulse_ranges} in {path_fn}')
-            else:
-                pulse_info = table.loc[row_mask]
-                if np.sum(row_mask) == 1:
-                    pulse_info = pulse_info.iloc[0]
-    if isinstance(pulse_info, Exception) and raise_:
+        pulse_info = lookup_pulse_row_in_df(table, pulse=pulse, allow_overlaping_ranges=allow_overlaping_ranges,
+                                            raise_=raise_exceptions)
+    if isinstance(pulse_info, Exception) and raise_exceptions:
         raise pulse_info
     else:
         return pulse_info
+
+def lookup_pulse_row_in_df(df: pd.DataFrame, pulse: int, allow_overlaping_ranges: bool=False,
+                            raise_: bool=True, **kwargs_csv) -> Union[pd.Series, Exception]:
+
+    if not np.all([col in list(df.columns) for col in ['pulse_start', 'pulse_end']]):
+        pulse_info = IOError(f'Unsupported pulse row CSV file format - '
+                      f'must contain "pulse_start", "pulse_end" columns: {path_fn}')
+    else:
+        # TODO: Allow None for eg end of pulse range if current value
+        table = df.astype({'pulse_start': int, 'pulse_end': int})
+        row_mask = np.logical_and(table['pulse_start'] <= pulse, table['pulse_end'] >= pulse)
+        if (np.sum(row_mask) > 1) and (not allow_overlaping_ranges):
+            pulse_info = ValueError(f'Lookup file {path_fn} contains overlapping ranges. Please fix: \n'
+                                    f'{table.loc[row_mask]}')
+        elif np.sum(row_mask) == 0:
+            pulse_ranges = list(zip(table['pulse_start'], table['pulse_end']))
+            pulse_info = ValueError(f'Pulse {pulse} does not fall in any pulse range {pulse_ranges} in {path_fn}')
+        else:
+            pulse_info = table.loc[row_mask]
+            if np.sum(row_mask) == 1:
+                pulse_info = pulse_info.iloc[0]
+    return pulse_info
+
 
 
 def lookup_pulse_info(pulse: Union[int, str], diag_tag_raw: str, machine: str, search_paths: PathList,
@@ -346,7 +354,7 @@ def lookup_pulse_info(pulse: Union[int, str], diag_tag_raw: str, machine: str, s
             raise FileNotFoundError(message)
         else:
             return None, None, message
-    info = lookup_pulse_row_in_csv(path/fn, pulse, raise_=False, **csv_kwargs)
+    info = lookup_pulse_row_in_csv(path / fn, pulse, raise_exceptions=False, **csv_kwargs)
     if raise_ and isinstance(info, Exception):
         raise info
     return path, fn, info
