@@ -161,7 +161,8 @@ def figure_poloidal_cross_section(image_data=None, path_data=None, path_names='p
     if fire.active_machine_plugin is not None:
         (machine_plugins, machine_plugins_info) = fire.active_machine_plugin
         plugin_module = machine_plugins_info['module']
-        plot_vessel_outline = getattr(plugin_module, 'plot_vessel_outline')
+        # plot_vessel_outline = getattr(plugin_module, 'plot_vessel_outline')
+        plot_vessel_outline = getattr(plugin_module, 'plot_wall')
         get_wall_rz_coords = getattr(plugin_module, 'get_wall_rz_coords')
     else:
         (machine_plugins, machine_plugins_info) = {}, {}

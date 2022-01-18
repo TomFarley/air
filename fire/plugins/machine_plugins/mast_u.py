@@ -42,8 +42,11 @@ location_labels_im = ['sector', 's_global']  # Parameters used to label coordina
 
 # Optional/other
 n_sectors = 12  # Used internally in funcs below
+first_sector_start_angle = 90.0
+sectors_clockwise = True
 # Machine specific
-None
+n_louvres_per_sector = 2  # For T1-4, 4 on T5
+
 
 # Boxes to pass to fire.s_coordinate.remove_false_rz_surfaces
 false_rz_surface_boxes_default = [((1.512, 1.6), (-0.81789, 0.81789)),]
@@ -51,7 +54,7 @@ false_rz_surface_boxes_default = [((1.512, 1.6), (-0.81789, 0.81789)),]
 s_start_coord_default = (0.260841, 0)
 
 # Use same plugin funcs for machine sector and s_path coordinate as for MAST
-from fire.plugins.machine_plugins.tokamak_utils import (get_machine_sector, get_s_coord_path, get_tile_louvre_label,
+from fire.plugins.machine_plugins.tokamak_utils import (get_s_coord_path, get_tile_louvre_label,
     get_tile_louvre_index, plot_vessel_outline, plot_vessel_top_down, format_coord)
 try:
     from mastu_exhaust_analysis.mastu_wall import (mastu_wall, mastu_wall_simplified,
@@ -315,6 +318,58 @@ def plot_vessel_outline(ax=None, top=True, bottom=True, shot=50000, no_cal=False
                                 axes_off=axes_off, show=show)
 
     return fig, ax
+
+def plot_wall(ax, top=True, bottom=True, shot=50000, no_cal=False, aspect='equal', ax_labels=True,
+                              axes_off=False, show=True, **kwargs):
+    """Coppied from mastu_exhuast_analysis.divertor_geometry
+
+    """
+    from matplotlib.patches import Polygon
+    from matplotlib.collections import PatchCollection
+    from matplotlib.lines import Line2D
+
+    copper_color = [0.8, 0.6, 0.4]
+
+    # Load the poloidal field coils
+    pf_coils = np.load('mastu_tools/mastu_pf_coils.npz', allow_pickle=True)
+    pf_names = pf_coils['name']
+    pf_vertices = pf_coils['vertices']
+    pf_coils.close()
+
+    # Load the passive structures
+    passives = np.load('mastu_tools/mastu_passive.npz', allow_pickle=True)
+    passive_names = passives['name']
+    passive_vertices = passives['vertices']
+    passives.close()
+
+    # TODO: Modify for plotting only upper/lower divertor/half of machine. Use separate_rz_points_top_bottom()?
+    passive_patches = []
+    for j in np.arange(len(passive_vertices)):
+        for k in np.arange(len(passive_vertices[j])):
+            ply = Polygon(xy=passive_vertices[j][k, :, :], fill=True, linewidth=0.2, color=[1.0, 1.0, 1.0])
+            passive_patches.append(ply)
+
+    passive_collection = PatchCollection(passive_patches)
+    passive_collection.set_color([0.3, 0.3, 0.3])
+    ax.add_collection(passive_collection)
+
+    pf_patches = []
+    for j in np.arange(len(pf_vertices)):
+        for k in np.arange(len(pf_vertices[j])):
+            ply = Polygon(xy=pf_vertices[j][k, :, :], fill=True, edgecolor='k')
+            pf_patches.append(ply)
+
+    pf_collection = PatchCollection(pf_patches)
+    pf_collection.set_color(copper_color)
+    ax.add_collection(pf_collection)
+
+    if ax_labels:
+        ax.set_xlabel('R (m)')
+        ax.set_ylabel('Z (m)')
+    ax.set_xlim(0.0, 2.2)
+    ax.set_ylim(-2.25, 2.25)
+    if aspect == 'equal':
+        ax.set_aspect(1.0)
 
 def plot_vessel_top_down(ax=None, keys_plot=('R_T1', 'R_T2', 'R_T3', 'R_T4', 'R_T5', 'R_T5_top', 'R_HL04'),
                          keys_plot_strong=('R_T1', 'R_T4', 'R_T5', 'R_T5_top'),
@@ -739,6 +794,12 @@ def get_frame_time_correction(frame_times_camera, frame_times_clock=None, clock_
                            fps_clock=fps_clock, fps_camera=fps_camera)
     return time_correction
 
+def get_machine_sector(x, y, z=None):
+    from fire.plugins.machine_plugins.tokamak_utils import (get_machine_sector)
+
+    out = get_machine_sector(x, y, z=z, n_sectors=n_sectors, first_sector_start_angle=first_sector_start_angle,
+                       clockwise=sectors_clockwise)
+    return out
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt

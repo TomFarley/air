@@ -33,20 +33,19 @@ location_labels_im = ['sector', 's_global']  # Parameters used to label coordina
 
 # Optional/other
 n_sectors = 8  # Used internally in funcs below
+first_sector_start_angle = 90  # TODO: Check
+sectors_clockwise = True  # TODO: Check
 # Machine specific
-None
+n_louvres_per_sector = 1  # TODO: Check
 
 # Boxes to pass to fire.s_coordinate.remove_false_rz_surfaces
 false_rz_surface_boxes_default = []
 s_start_coord_default = (0, 0)
 
 # Use same plugin funcs for machine sector and s_path coordinate as for MAST
-from fire.plugins.machine_plugins.tokamak_utils import get_machine_sector as get_machine_sector_mast
 from fire.plugins.machine_plugins.tokamak_utils import get_s_coord_path
 from fire.plugins.machine_plugins.jet_tools.scoord import get_s_definition
 
-def get_machine_sector(*args, **kwargs):
-    return get_machine_sector_mast(*args, n_sectors=n_sectors, **kwargs)
 # See bottom of file for function aliases
 # ====================================================================
 
@@ -155,6 +154,13 @@ def format_coord(coord, **kwargs):
     formatted_coord = formatted_coord + '\n Sector {:.0f}'.format(sector)
 
     return formatted_coord
+
+def get_machine_sector(x, y, z=None):
+    from fire.plugins.machine_plugins.tokamak_utils import (get_machine_sector)
+
+    out = get_machine_sector(x, y, z=z, n_sectors=n_sectors, first_sector_start_angle=first_sector_start_angle,
+                             clockwise=sectors_clockwise)
+    return out
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt

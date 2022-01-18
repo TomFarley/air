@@ -22,6 +22,12 @@ from fire.misc.utils import make_iterable
 
 logger = logging.getLogger(__name__)
 
+# Used internally in funcs below
+n_sectors = 12
+first_sector_start_angle = 90.0
+sectors_clockwise = True
+n_louvres_per_sector = 2
+
 def get_machine_sector(x, y, z=None, n_sectors=n_sectors, first_sector_start_angle=first_sector_start_angle,
                        clockwise=sectors_clockwise, **kwargs):
     """Return sector number for supplied cartesian coordinates

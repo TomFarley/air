@@ -21,7 +21,6 @@ from fire.geometry.geometry import (calc_path_anulus_areas_fully_wet, calc_tile_
 from fire.misc import data_structures, utils
 from fire.misc.data_structures import attach_standard_meta_attrs, get_reduce_coord_axis_keep, reduce_2d_data_array
 from fire.misc.utils import make_iterable
-from fire.plotting import debug_plots, plot_tools
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -790,6 +789,7 @@ def calc_physics_params(path_data, path_name, params=None, meta_data=None):
             # debug = True
             debug = False
             if debug and (param == 'heat_flux'):
+                from fire.plotting import debug_plots, plot_tools
                 ax, data, artist = debug_plots.debug_plot_profile_2d(path_data, param='heat_flux', t_range=None,
                                                                      show=False, robust_percentiles=(40, 99.8))
                 r = path_data['R_path0']
@@ -912,6 +912,7 @@ def get_t_end_shot(heat_flux, t=None, plot=True, t_end_pad=0.03, t_end_min=0.1):
         t_end = 2
 
     if plot:
+        from fire.plotting import plot_tools
         fig, ax, ax_passed = plot_tools.get_fig_ax()
         heat_flux.plot(ax=ax)
         ax.plot(t[i_max], heat_flux[i_max], ls='', marker='x')
