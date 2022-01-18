@@ -55,7 +55,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                        path_out=None, path_calib=None, path_user=None,
                        movie_plugins_filter=None,
                        image_coords='Display',
-                       debug:Optional[dict]=None, figures:Optional[dict]=None, output_files: Optional[dict]=None):
+                       debug: Optional[dict]=None, figures: Optional[dict]=None, output_files: Optional[dict]=None):
     """ Primary analysis workflow for MAST-U/JET IR scheduler analysis.
     Called from the command line with run_fire.py.
 

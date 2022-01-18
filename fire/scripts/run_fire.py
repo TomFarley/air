@@ -45,6 +45,8 @@ if __name__ == '__main__':
     parser.add_argument("-f", "--movie_plugins_filter",
                         help="Which movie plugin formats to use to attempt to read movie data",
                         type=pathlib.Path, default=None)  # If None will use value from user's fire_config.json file
+    parser.add_argument("-s", "--scheduler", help="Whether the analysis is being run of the scheduler machine",
+                        action="store_true", default=True)
 
     args = vars(parser.parse_args())
     print(args)
