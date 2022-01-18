@@ -30,7 +30,7 @@ MovieData = namedtuple('movie_plugin_frame_data', ['frame_numbers', 'frame_times
 movie_plugin_name = 'ipx'
 plugin_info = {'description': 'This plugin reads IPX1/2 format MAST movie files'}
 
-def get_freia_ipx_path(pulse, camera):
+def get_freia_ipx_path(pulse, diag_tag_raw):
     """Return path to ipx file on UKAEA freia cluster
 
     :param pulse: Shot/pulse number or string name for synthetic movie data
@@ -213,28 +213,31 @@ def read_movie_meta_with_mastmovie(path_fn: Union[str, Path], transforms: Iterab
 
     movie_meta = dict(movie_format='.ipx')
 
-    header_fields = {'num_frames': 'n_frames',
+    header_fields = {  # mastvideo name to ipx/uda convention
+                     'num_frames': 'n_frames',
                      'exposure': 'exposure',
                      'depth': 'bit_depth',
                      'lens': 'lens',
-                     'board_temperature': 'board_temperature',
-                     'bytes_per_decoded_frame': 'bytes_per_decoded_frame',
+                     'board_temperature': 'board_temp',
+                     # 'bytes_per_decoded_frame': 'bytes_per_decoded_frame',
                      'camera': 'camera',
-                     'count': 'count',
+                     # 'count': 'count',
                      'date_time': 'date_time',
                      'filter': 'filter',
                      'frame_height': 'height',
                      'frame_width': 'width',
-                     'index': 'index',
+                     # 'index': 'index',
                      'orientation': 'orientation',
-                     'pil_image_mode': 'pil_image_mode',
-                     'pixels_per_frame': 'pixels_per_frame',
-                     'pre_exposure': 'pre_exposure',
-                     'sensor_temperature': 'sensor_temperature',
+                     # 'pil_image_mode': 'pil_image_mode',
+                     # 'pixels_per_frame': 'pixels_per_frame',
+                     'pre_exposure': 'pre_exp',
+                     'sensor_temperature': 'ccd_temp',
                      'shot': 'shot',
                      'strobe': 'strobe',
                      'trigger': 'trigger',
                      'view': 'view',
+                    # 'codex': 'codec',
+                    # 'file_format': 'ID'
     }
 
     movie_meta.update({name: getattr(ipx.header, key) for key, name in header_fields.items()})
@@ -249,24 +252,25 @@ def read_movie_meta_with_mastmovie(path_fn: Union[str, Path], transforms: Iterab
     movie_meta['bad_pixels_frame'] = bad_pixels
 
     sensor_fields = {
-                     'binning_h': 'binning_h',
-                     'binning_v': 'binning_v',
-                     'count': 'count',
-                     'gain': 'sensor_gain',
-                     'index': 'index',
+                     'binning_h': 'hbin',
+                     'binning_v': 'vbin',
+                     # 'count': 'count',
+                     'sensor_gain': 'gain',
+                     # 'index': 'index',
                      'offset': 'offset',
                      'taps': 'taps',
-                     'type': 'sensor_type',
+                     # 'type': 'sensor_type',
                      'window_bottom': 'bottom',
                      'window_left': 'left',
                      'window_right': 'right',
-                     'window_top': 'top'
+                     'window_top': 'top',
+                     # 'is_color': 'color'
                       }
     # TODO: Rename meta data window fields to window_<> for all plugins/pass through reformat function
     movie_meta.update({name: getattr(ipx.sensor, key, None) for key, name in sensor_fields.items()})
+    # movie_meta['sensor_type'] = movie_meta['sensor_type'].value  # Keep string not class
 
-
-    movie_meta['frame_range'] = np.array([0, movie_meta['n_frames']])
+    movie_meta['frame_range'] = np.array([0, movie_meta['n_frames']-1])
     movie_meta['t_range'] = np.array([ipx.frames[0].time, ipx.frames[-1].time])  # TODO: Refine
     movie_meta['image_shape'] = np.array([movie_meta['height'], movie_meta['width']])
     movie_meta['fps'] = movie_meta['n_frames'] / (movie_meta['t_range'][1] - movie_meta['t_range'][0])
@@ -276,6 +280,7 @@ def read_movie_meta_with_mastmovie(path_fn: Union[str, Path], transforms: Iterab
 
     frame_times = np.array([frame.time for frame in ipx.frames])
     movie_meta['fps'] = 1 / np.median(np.diff(frame_times))
+    # movie_meta['fps'] = (video.n_frames - 1) / np.ptp(times)  # sucestible to errors in start/end frame times
 
     # raise NotImplementedError
     return movie_meta
@@ -288,6 +293,7 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
                                    transforms: Optional[Iterable[str]] = (),
                                    verbose: bool = True) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     from mastvideo import load_ipx_file
+    from fire.misc.utils import make_iterable
 
     if not Path(path_fn).is_file():
         raise FileNotFoundError(f'IPX file does not exist: {path_fn}')
@@ -298,16 +304,30 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
     # video = VideoDecoder(ipx)  # convert to 8bit (interpolate to RGB, if valid for sensor) for conversion to mpeg video
     # frames = list(video.frames())
 
-    n_frames = ipx.header.num_frames
     bit_depth = ipx.header.depth
+    n_frames_movie = ipx.header.num_frames
 
-    frame_data = np.zeros((n_frames, ipx.header.frame_height, ipx.header.frame_width))
+    frame_times_all = np.array([frame.time for frame in ipx.frames])
 
-    n_start = 0 if (n_start is None) else n_start
-    n_end = n_frames-1 if (n_end is None) else n_end
-    frame_numbers = np.arange(n_start, n_end+1, stride)
+    if frame_numbers is None:
+        n_start = 0 if (n_start is None) else n_start
+        n_end = n_frames_movie-1 if (n_end is None) else n_end
+        frame_numbers = np.arange(n_start, n_end+1, stride)
+    else:
+        frame_numbers = make_iterable(frame_numbers, ndarray=True)
 
-    frame_times = np.array([frame.time for frame in ipx.frames])
+    n_frames_read = len(frame_numbers)
+
+    if any((frame_numbers >= n_frames_movie)):
+        raise ValueError(f'Requested frame numbers outside of movie range: '
+                         f'{frame_nos[(frame_nos >= vid.file_header["numFrames"])]}')
+    if any(np.fmod(frame_numbers, 1) > 1e-5):
+        raise ValueError(f'Fractional frame numbers requested from ipx file: {frame_numbers}')
+
+    frame_numbers = frame_numbers.astype(int)
+    frame_times_all = frame_times_all[frame_numbers]
+
+    frame_data = np.zeros((n_frames_read, ipx.header.frame_height, ipx.header.frame_width))
 
     # TODO: Deal with non n=0 first frame?
     # iterate over frames converting to numpy array
@@ -317,7 +337,8 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
             image = ipx.decode_frame(frame.data)  # 'I;16'
             frame_data[i] = np.array(image).astype(np.uint16)
             i += 1
-    assert i == n_frames, f"i != n_frames: {i} != {n_frames}"
+    if i != n_frames_read:
+        raise AssertionError(f"i != n_frames: {i} != {n_frames_read}")
 
     # IPX files need to be written and read with x4 factor applied
     pil_depth_correction = 2 ** (16 - bit_depth)
@@ -328,7 +349,7 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
     if verbose:
         print(message)
 
-    return frame_numbers, frame_times, frame_data
+    return frame_numbers, frame_times_all, frame_data
 
 def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarray, header_dict: dict,
                              apply_nuc=False, create_path=False, verbose: bool=True):

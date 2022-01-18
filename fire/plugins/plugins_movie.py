@@ -77,7 +77,7 @@ class MovieReader:
         plugin_dicts, plugin_info = plugins.get_compatible_plugins(self.plugin_paths,
                                self.plugin_attributes['required'],
                                attributes_optional=self.plugin_attributes['optional'],
-                               plugin_filter=plugin_filter, plugin_type='movie')
+                               plugin_filter=plugin_filter, plugin_type='movie', base_paths=self.base_paths)
         self._plugin_dicts = plugin_dicts
         self._plugin_info = plugin_info
         self._plugins = {}
@@ -208,7 +208,7 @@ class MovieReader:
     @base_paths.setter
     def base_paths(self, base_paths):
         # NOTE: Functionality duplicated in plugins.py?
-        if base_paths is not None and (len(base_paths) > 0):
+        if (base_paths is not None) and (len(base_paths) > 0):
             self._base_paths = dict(base_paths)
 
 class MoviePlugin:

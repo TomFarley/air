@@ -36,7 +36,7 @@ if pyuda:
 
 # suite.addTests(loader.loadTestsFromModule(test_io_uda))
 suite.addTests(loader.loadTestsFromModule(test_calcam))
-suite.addTests(loader.loadTestsFromModule(test_camera_shake))
+# suite.addTests(loader.loadTestsFromModule(test_camera_shake))
 suite.addTests(loader.loadTestsFromModule(test_interfaces))
 suite.addTests(loader.loadTestsFromModule(test_movie_reader))
 suite.addTests(loader.loadTestsFromTestCase(test_io_ipx.TestIoIpxFast))

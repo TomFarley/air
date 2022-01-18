@@ -7,14 +7,14 @@ from fire.interfaces.interfaces import (lookup_pulse_row_in_csv, lookup_pulse_in
                                         generate_pulse_id_strings, generate_camera_id_strings,
                                         generate_frame_id_strings, get_module_from_path_fn)
 from fire.interfaces.io_basic import json_dump, json_load
-
+from fire import PATH_FIRE_SOURCE
 
 pwd = Path(__file__).parent
 
 class TestInterfaces(unittest.TestCase):
 
     def setUp(self):
-        path_fn = fire_paths['root'] / 'input_files/user/fire_config.json.tmp'
+        path_fn = (PATH_FIRE_SOURCE / 'input_files/user/fire_config.json.tmp').expanduser().resolve()
         self.json_path_fn = path_fn
         if path_fn.exists():
             path_fn.unlink()
@@ -46,7 +46,7 @@ class TestInterfaces(unittest.TestCase):
             path_fn = json_dump(obj, path_fn)
 
     def test_json_load(self):
-        path_fn = fire_paths['root'] / 'input_files/user/fire_config.json'
+        path_fn = (PATH_FIRE_SOURCE / 'input_files/user/fire_config.json').expanduser().resolve()
 
         config = json_load(path_fn)
         default_params = config['user']['default_params']
@@ -69,32 +69,32 @@ class TestInterfaces(unittest.TestCase):
             out = json_load('my_path')
 
     def test_lookup_pulse_row_in_csv(self):
-        path = pwd / '../test_data/mast/'
+        path = (pwd / '../test_data/mast/').expanduser().resolve()
         fn = 'calcam_calibs-mast-rit-defaults.csv'
         path_fn = path/fn
         out = lookup_pulse_row_in_csv(path_fn, 20378)
         self.assertTrue(isinstance(out, pd.Series))
 
-        out = lookup_pulse_row_in_csv(path_fn, -100, raise_=False)
+        out = lookup_pulse_row_in_csv(path_fn, -100, raise_exceptions=False)
         self.assertTrue(isinstance(out, ValueError))
 
         with self.assertRaises(ValueError):
-            out = lookup_pulse_row_in_csv(path_fn, -100, raise_=True)
+            out = lookup_pulse_row_in_csv(path_fn, -100, raise_exceptions=True)
 
-        out = lookup_pulse_row_in_csv(path / 'bad_fn.csv', 20737, raise_=False)
+        out = lookup_pulse_row_in_csv(path / 'bad_fn.csv', 20737, raise_exceptions=False)
         self.assertTrue(isinstance(out, FileNotFoundError))
 
     def test_lookup_pulse_info(self):
-        path_search = (pwd / '../test_data/mast/').resolve()
+        path_search = (pwd / '../test_data/mast/').expanduser().resolve()
         fn_pattern = "calcam_calibs-{machine}-{diag_tag_raw}-defaults.csv"
-        kwargs = {'pulse': 20378, 'machine': 'mast', 'camera': 'rit'}
+        kwargs = {'pulse': 20378, 'machine': 'mast', 'diag_tag_raw': 'rit'}
         path, fn, info = lookup_pulse_info(search_paths=path_search, filename_patterns=fn_pattern, **kwargs)
         self.assertEqual(path, path_search)
         self.assertEqual(fn, 'calcam_calibs-mast-rit-defaults.csv')
         self.assertTrue(isinstance(info, pd.Series))
 
     def test_get_module_from_path_fn(self):
-        path = fire_paths['root'] / 'misc' / 'utils.py'
+        path = (PATH_FIRE_SOURCE / 'misc' / 'utils.py').expanduser().resolve()
         out = get_module_from_path_fn(path)
         self.assertEqual(out.__name__, 'misc/utils.py')
         self.assertEqual(str(type(out)), "<class 'module'>")
@@ -104,11 +104,11 @@ class TestInterfaces(unittest.TestCase):
     #     raise NotImplementedError
 
     def test_id_strings(self):
-        values = {'machine': 'MAST', 'camera': 'rit', 'pass_no': 1, 'pulse': 23586, 'lens': '25mm', 't_int': 2.7e-5,
-                  'frame_no': 1234, 'frame_time': 0.5123}
+        values = {'machine': 'MAST', 'diag_tag_raw': 'rit', 'pass_no': 1, 'pulse': 23586, 'lens': '25mm',
+                  't_int': 2.7e-5, 'frame_no': 1234, 'frame_time': 0.5123}
 
         id_strings = {}
-        kwargs = {key: values[key] for key in ['pulse', 'camera', 'machine', 'pass_no']}
+        kwargs = {key: values[key] for key in ['pulse', 'diag_tag_raw', 'machine', 'pass_no']}
         id_strings = generate_pulse_id_strings(id_strings, **kwargs)
         expected = {'pulse_id': 'MAST-23586', 'camera_id': 'MAST-23586-rit', 'pass_id': 'MAST-23586-1'}
         self.assertDictEqual(id_strings, expected)

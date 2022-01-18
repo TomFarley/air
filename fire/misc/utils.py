@@ -436,7 +436,7 @@ def mkdir(dirs, start_dir=None, depth=None, accept_files=True, info=None, verbos
                 logger.info('Directory "' + d + '" already exists')
     return 0
 
-def dirs_exist(paths: Iterable[Union[str, Path]], path_kws: Optional[dict]=None
+def dirs_exist(paths: Iterable[Union[str, Path]], path_kws: Optional[dict]=None, raise_on_missing_kws=True,
                ) -> Tuple[List[Path], List[str], List[str]]:
     paths = make_iterable(paths)
     if path_kws is None:
@@ -449,10 +449,18 @@ def dirs_exist(paths: Iterable[Union[str, Path]], path_kws: Optional[dict]=None
     for path_raw in paths:
         # Insert missing info into format strings
         path_raw = str(path_raw)
+
         try:
             path = path_raw.format(**path_kws)
         except KeyError as e:
-            raise ValueError(f'Cannot locate file without value for "{e.args[0]}": "{path_raw}", {path_kws}"')
+            message = f'Cannot locate file without value for "{e.args[0]}": "{path_raw}", {path_kws}"'
+            if raise_on_missing_kws:
+                ValueError(message)
+            else:
+                logger.warning(message)
+                paths_raw_not_exist.append(path_raw)
+                continue
+
         try:
             path = Path(path).expanduser().resolve(strict=False)
         except RuntimeError as e:
@@ -474,8 +482,8 @@ def dirs_exist(paths: Iterable[Union[str, Path]], path_kws: Optional[dict]=None
 def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
                 path_kws: Optional[dict]=None, fn_kws: Optional[dict]=None,
                 return_raw_path: bool=False, return_raw_fn: bool=False,
-                raise_: bool=True, verbose: Union[bool, int]=False) \
-                -> Union[Tuple[Path, str], Tuple[str, str], Tuple[None, None]]:
+                raise_: bool=True, raise_on_missing_kws=True,
+                verbose: Union[bool, int]=False) -> Union[Tuple[Path, str], Tuple[str, str], Tuple[None, None]]:
     """Return path to file given number of possible paths
 
     Args:
@@ -500,7 +508,8 @@ def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
 
     located = False
     paths_dont_exist = []
-    paths_exist, paths_raw_exist, paths_raw_not_exist = dirs_exist(paths, path_kws=path_kws)
+    paths_exist, paths_raw_exist, paths_raw_not_exist = dirs_exist(paths, path_kws=path_kws,
+                                                                   raise_on_missing_kws=raise_on_missing_kws)
     for path, path_raw in zip(paths_exist, paths_raw_exist):
         for fn_raw in fns:
             try:
@@ -563,7 +572,7 @@ def locate_files(paths: Iterable[Union[str, Path]], fns: Iterable[str],
     for path in paths:
         for fn in fns:
             p, f = locate_file(path, fn, path_kws=path_kws, fn_kws=fn_kws, return_raw_path=return_raw_path,
-                               return_raw_fn=return_raw_fn, raise_=raise_, verbose=verbose)
+                               return_raw_fn=return_raw_fn, raise_=raise_, raise_on_missing_kws=False, verbose=verbose)
             if isinstance(f, (Path, str)):
                 files_located.append(Path(p)/f)
     return files_located
@@ -1000,6 +1009,9 @@ def compare_dict(dict1, dict2, tol=1e-12, top=True):
     """
     assert(isinstance(dict1, dict) and isinstance(dict2, dict))
     from collections import Counter
+
+    # array_types = (np.ndarray, list, tuple, pd.Series)
+
     if Counter(dict1.keys()) != Counter(dict2.keys()):  # Use counter to ignore order (if objects are hashable)
         keys_unique_1 = [k for k in dict1 if k not in dict2]
         keys_unique_2 = [k for k in dict2 if k not in dict1]
@@ -1012,19 +1024,29 @@ def compare_dict(dict1, dict2, tol=1e-12, top=True):
         if isinstance(dict1[key], dict) or isinstance(dict2[key], dict):
 
             if not (isinstance(dict1[key], dict) and isinstance(dict2[key], dict)):
-                logger.debug('Dictionaries are different - One value is a dict while the other is not')
+                logger.warning('Dictionaries are different - One value is a dict while the other is not')
                 return False
             if compare_dict(dict1[key], dict2[key], top=False) is False:
+                logger.warning(f'dict1[{key}] != dict2[{key}], {dict1[key]} != {dict2[key]}')
                 return False
         # elif isinstance(dict2[key], dict):
         #     if compare_numeric_dict(dict1, dict2[key], top=False) is False:
         #         return False
+        # elif isinstance(dict1[key], array_types) or isinstance(dict2[key], array_types):
+        #     try:
+        #         if np.any(dict1[key] - dict2[key]) > tol:  # numerical
+        #             return False
+        #     except TypeError:
+        #         if dict1[key] != dict2[key]:  # string etc
+        #             return False
         else:
             try:
-                if np.abs(dict1[key]-dict2[key]) > tol:  # numerical
+                if np.any(np.abs(dict1[key]-dict2[key]) > tol):  # numerical
+                    logger.warning(f'dict1[{key}] != dict2[{key}], {dict1[key]} != {dict2[key]}')
                     return False
             except TypeError:
                 if dict1[key] != dict2[key]:  # string etc
+                    logger.warning(f'dict1[{key}] != dict2[{key}], {dict1[key]} != {dict2[key]}')
                     return False
     return True
 

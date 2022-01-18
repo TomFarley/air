@@ -293,14 +293,14 @@ def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, allow_overlap
         pulse_info = table
     else:
         pulse_info = lookup_pulse_row_in_df(table, pulse=pulse, allow_overlaping_ranges=allow_overlaping_ranges,
-                                            raise_=raise_exceptions)
+                                            description=path_fn, raise_=raise_exceptions)
     if isinstance(pulse_info, Exception) and raise_exceptions:
         raise pulse_info
     else:
         return pulse_info
 
 def lookup_pulse_row_in_df(df: pd.DataFrame, pulse: int, allow_overlaping_ranges: bool=False,
-                            raise_: bool=True, **kwargs_csv) -> Union[pd.Series, Exception]:
+                            description=None, raise_: bool=True, **kwargs_csv) -> Union[pd.Series, Exception]:
 
     if not np.all([col in list(df.columns) for col in ['pulse_start', 'pulse_end']]):
         pulse_info = IOError(f'Unsupported pulse row CSV file format - '
@@ -314,7 +314,7 @@ def lookup_pulse_row_in_df(df: pd.DataFrame, pulse: int, allow_overlaping_ranges
                                     f'{table.loc[row_mask]}')
         elif np.sum(row_mask) == 0:
             pulse_ranges = list(zip(table['pulse_start'], table['pulse_end']))
-            pulse_info = ValueError(f'Pulse {pulse} does not fall in any pulse range {pulse_ranges} in {path_fn}')
+            pulse_info = ValueError(f'Pulse {pulse} does not fall in any pulse range {pulse_ranges} in {description}')
         else:
             pulse_info = table.loc[row_mask]
             if np.sum(row_mask) == 1:

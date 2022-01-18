@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 
 from fire.plugins.movie_plugins.ipx import get_freia_ipx_path, read_movie_meta, read_movie_data
+from fire.misc.utils import compare_dict
 
 pwd = Path(__file__).parent
 ipx_path = (pwd / '../test_data/mast/').resolve()
@@ -32,22 +33,38 @@ class TestIoIpxFast(unittest.TestCase):
         ipx_meta_data = read_movie_meta(ipx_path_fn)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
-        self.assertEqual(len(ipx_meta_data), 12)
+        self.assertEqual(len(ipx_meta_data), 33)
 
         self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 3749])))
         self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
         np.testing.assert_array_equal(ipx_meta_data['image_shape'], (8, 320))
-        self.assertAlmostEqual(ipx_meta_data['fps'], 5000.006668453812)
+        self.assertAlmostEqual(ipx_meta_data['fps'], 5000.00000000003)
 
-        ipx_header_expected = {'date_time': '23/09/2013 15:22:20', 'shot': 30378, 'trigger': -0.10000000149011612,
-                               'lens': '50mm', 'filter': 'LP4500nm', 'view': 'Lower divertor view#6',
-                               'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu',
-                               'width': 320, 'height': 8, 'depth': 14, 'taps': 4, 'left': 1, 'right': 320, 'top': 185,
-                               'bottom': 192, 'exposure': 28, 'strobe': 0, 'board_temp': 50.5,
-                               'ccd_temp': 73.47895050048828, 'n_frames': 3750, 'codex': 'JP2', 'is_color': 0,
-                               'hbin': 0, 'vbin': 0, 'pre_exp': 28, 'file_format': 'IPX 01', 'orientation': 0,
-                               'gain': [2.0, 2.0], 'offset': [170, 170]}
-        self.assertEqual(ipx_meta_data['ipx_header'], ipx_header_expected)
+        # ipx_meta_expected = {'date_time': '23/09/2013 15:22:20', 'shot': 30378, 'trigger': -0.10000000149011612,
+        #                        'lens': '50mm', 'filter': 'LP4500nm', 'view': 'Lower divertor view#6',
+        #                        'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu',
+        #                        'width': 320, 'height': 8, 'depth': 14, 'taps': 4, 'left': 1, 'right': 320, 'top': 185,
+        #                        'bottom': 192, 'exposure': 28, 'strobe': 0, 'board_temp': 50.5,
+        #                        'ccd_temp': 73.47895050048828, 'n_frames': 3750, 'codex': 'JP2', 'is_color': 0,
+        #                        'hbin': 0, 'vbin': 0, 'pre_exp': 28, 'file_format': 'IPX 01', 'orientation': 0,
+        #                        'gain': [2.0, 2.0], 'offset': [170, 170]}
+        ipx_meta_expected = {'movie_format': '.ipx', 'n_frames': 3750, 'exposure': 28.0, 'bit_depth': 14,
+                             'lens': '50mm', 'board_temp': 50.5, #'bytes_per_decoded_frame': 5120,
+                             'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu',
+                             'date_time': '23/09/2013 15:22:20', 'filter': 'LP4500nm', 'height': 8, 'width': 320,
+                             'orientation': None,
+                             # 'pil_image_mode': 'I;16', 'pixels_per_frame': 2560,
+                             'pre_exp': 28.0, 'ccd_temp': 73.47895050048828, 'shot': 30378,
+                             'strobe': None, 'trigger': -0.10000000149011612, 'view': 'Lower divertor view#6',
+                             'bad_pixels_frame': None, 'hbin': None, 'vbin': None, 'gain': None,
+                             'offset': [170.0, 170.0], 'taps': 4, #'sensor_type': 'mono',
+                             'bottom': 192, 'left': 1,
+                             'right': 320, 'top': 185, 'frame_range': np.array([   0, 3749]),
+                             't_range': np.array([-0.049971,  0.699828]), 'image_shape': np.array([  8, 320]),
+                             'fps': 5000.00000000003, 'detector_window': np.array([  0, 184, 320,   8])}
+        self.assertEqual(len(ipx_meta_data), len(ipx_meta_expected))
+        self.assertEqual(sorted(ipx_meta_data), sorted(ipx_meta_expected))  # compare keys
+        self.assertTrue(compare_dict(ipx_meta_data, ipx_meta_expected))
 
     def test_get_ipx_meta_data_rit030378(self):
         ipx_fn = 'rit030378.ipx'
@@ -55,20 +72,31 @@ class TestIoIpxFast(unittest.TestCase):
         ipx_meta_data = read_movie_meta(ipx_path_fn)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
-        self.assertEqual(len(ipx_meta_data), 12)
+        self.assertEqual(len(ipx_meta_data), 35)
 
-        self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 623])))
-        self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.048749,  0.69885 ])))
+        self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 624])))
+        self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.049949,  0.69645 ])))
         np.testing.assert_array_equal(ipx_meta_data['image_shape'], (32, 256))
-        self.assertAlmostEqual(ipx_meta_data['fps'], 833.3344480129053)
+        self.assertAlmostEqual(ipx_meta_data['fps'], 833.3333333333384)
 
-        ipx_header_expected = {'width': 256, 'height': 32, 'depth': 14, 'shot': 30378, 'trigger': -0.5,
-                               'view': 'HL01 Upper divertor view#1', 'camera': 'Thermosensorik CMT 256 SM HS',
-                               'top': 153, 'bottom': 184, 'offset': 0.0, 'exposure': 50.0, 'ccdtemp': 59.0,
-                               'frames': 625, 'n_frames': 625, 'codex': 'jp2', 'date_time': '2013-09-23T15:37:29',
-                               'file_format': 'IPX 02'}
+        ipx_meta_expected = {'movie_format': '.ipx', 'n_frames': 625, 'exposure': 50.0, 'bit_depth': 14, 'lens': '',
+                             'board_temp': None, # 'bytes_per_decoded_frame': 16384,
+                             'camera': '"Thermosensorik CMT 256 SM HS"', 'date_time': '2013-09-23T15:37:29',
+                             'filter': None, 'height': 32, 'width': 256, 'orientation': None,
+                             #'pil_image_mode': 'I;16', 'pixels_per_frame': 8192,
+                             'pre_exp': None, 'ccd_temp': 59.0, 'shot': 30378,
+                             'strobe': None, 'trigger': -0.5, 'view': '"HL01 Upper divertor view#1"', 'hbin': None,
+                             'vbin': None, 'gain': None, 'offset': [0.0], 'taps': None,
+                             # 'sensor_type': 'mono',
+                             'bottom': 184, 'left': 1, 'right': 257, 'top': 153,
+                             'frame_range': np.array([  0, 624]), 't_range': np.array([-0.049949,  0.69645 ]),
+                             'image_shape': np.array([ 32, 256]), 'fps': 833.3333333333384,
+                             'detector_window': np.array([  0, 152, 256,  32])}
 
-        self.assertEqual(ipx_meta_data['ipx_header'], ipx_header_expected)
+        for key in ('ref_frame_0', 'bad_pixels_frame', 'nuc_frame'):
+            ipx_meta_data.pop(key)
+
+        self.assertTrue(compare_dict(ipx_meta_data, ipx_meta_expected))
 
     def test_get_ipx_movie_data_rir030378(self):
         # Ipx 1 file

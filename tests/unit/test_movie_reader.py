@@ -3,8 +3,8 @@ from pathlib import Path
 
 import numpy as np
 
-
 from fire.plugins.plugins_movie import MovieReader, MoviePlugin
+from fire import PATH_FIRE_SOURCE
 
 pwd = Path(__file__).parent
 ipx_path = (pwd / 'test_data/mast/').resolve()
@@ -32,14 +32,17 @@ else:
 # 	cc=45
 # 	return [aa,bb,cc]
 
+# from fire.interfaces.user_config import get_user_fire_config, get_fire_user_config_path_fn
+# config = get_user_fire_config()
+
+
 class TestMovieReader(unittest.TestCase):
 
     def setUp(self):
         self.maxDiff = None
-        fire_path = fire_paths['root']
         machine = 'mast'
         fn = 'rir030378.ipx'
-        path_test_data = Path(f'{fire_source_dir}/../tests/test_data/{machine}/{fn}').resolve()
+        path_test_data = Path(f'{PATH_FIRE_SOURCE}/../tests/test_data/{machine}/{fn}').expanduser().resolve()
         self.assertTrue(path_test_data.exists(), msg=f'{path_test_data} does not exist')
 
     def test_init(self):
@@ -59,13 +62,15 @@ class TestMovieReader(unittest.TestCase):
             pulse = 30378
             camera = 'rir'
             machine = 'MAST'
+            date = '2013-09-23'
 
-            meta_data, origin = movie_reader.read_movie_meta_data(pulse=pulse, camera=camera, machine=machine)
+            meta_data, origin = movie_reader.read_movie_meta_data(pulse=pulse, diag_tag_raw=camera, machine=machine,
+                                                                  meta=dict(date=date))
 
             if plugin == 'ipx':
                 origin_expected = {'fn': 'rir030378.ipx',
-                                   'path': Path('/net/fuslsc/data/MAST_Data/030/30378/LATEST/'),
-                                   'path_fn': Path('/net/fuslsc/data/MAST_Data/030/30378/LATEST/rir030378.ipx'),
+                                   'path': Path('/net/fuslsc.mast.l/data/MAST_IMAGES/030/30378'),
+                                   'path_fn': Path('/net/fuslsc.mast.l/data/MAST_IMAGES/030/30378/rir030378.ipx'),
                                    # 'path': Path('/net/fuslsc.mast.l/data/MAST_IMAGES/030/30378'),
                                    # 'path_fn': Path('/net/fuslsc.mast.l/data/MAST_IMAGES/030/30378/rir030378.ipx'),
                                    'plugin': 'ipx'}
@@ -74,32 +79,38 @@ class TestMovieReader(unittest.TestCase):
             self.assertEqual(origin, origin_expected)
 
             self.assertTrue(isinstance(meta_data, dict))
-            self.assertEqual(len(meta_data), 14, msg=f'plugin="{plugin}" from {plugin_precedence_mast}')
+
+            for key in (['board_temp', 't_before_pulse', 'codex', 'depth', 'file_format', 'frame_times',
+                         'gain', 'is_color', 'ipx_header'] +  # Not present in IPX output
+                        ['bad_pixels_frame', 'bytes_per_decoded_frame', 'pil_image_mode', 'pixels_per_frame',
+                         'sensor_gain', 'sensor_type']):  # Not present in UDA output
+                if key in meta_data:
+                    value = meta_data.pop(key)
+                    print(f'Removed key: {key} = {value}')
+            n_items_expected = 32
+            n_items = len(meta_data)
+
+            meta_data = {key: meta_data[key] for key in sorted(meta_data.keys())}
+            print(f'{plugin} meta_data:\n{meta_data}')
+            self.assertEqual(n_items, n_items_expected, msg=f'plugin="{plugin}" from {plugin_precedence_mast}')
 
             self.assertTrue(np.all(meta_data['frame_range'] == np.array([0, 3749])))
             self.assertTrue(np.all(meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
             np.testing.assert_array_equal(meta_data['image_shape'], (8, 320))
-            self.assertAlmostEqual(meta_data['fps'], 5000.006668453812)
+            self.assertAlmostEqual(meta_data['fps'], 5000.00000000003, delta=0.01)
 
             if 'ipx_header' in meta_data:
                 ipx_header = meta_data['ipx_header']
-                ipx_header_expected = {
-                    'board_temp': 50.5, 'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu',
-                    'ccd_temp': 73.47895050048828,
-                    'codex': 'JP1', 'file_format': 'IPX-1',
-                    'date_time': '2013-10-23T15:22:20Z',
-                    'depth': 14, 'exposure': 28.0,
-                    'filter': 'LP4500nm', 'gain': np.array([2., 2.]), 'hbin': 0, 'height': 8, 'is_color': 0,
-                    'lens': '50mm', 'n_frames': 3750, 'offset': np.array([170., 170.]),
-                    'orientation': 0,
-                    'pre_exp': 28.0,
-                    'shot': 30378,
-                    'strobe': 0,
-                    'taps': 4,
-                    'trigger': -0.10000000149011612,
-                    'top': 185, 'bottom': 177, 'left': 1, 'right': 321,
-                    'vbin': 0, 'view': 'Lower divertor view#6', 'width': 320
-                }
+                ipx_header_expected = {'board_temp': 50.5,
+                                        'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu',
+                                       'ccd_temp': 73.47895050048828, 'codex': 'JP2',
+                                       'date_time': '2013-09-23T15:22:20Z', 'depth': 14, 'exposure': 28.0,
+                                       'file_format': 'IPX-1', 'filter': 'LP4500nm', 'gain': np.array([2., 2.]),
+                                       'hbin': 0, 'height': 8, 'is_color': 0, 'left': 1, 'lens': '50mm',
+                                       'n_frames': 3750, 'offset': np.array([170., 170.]), 'orientation': 0,
+                                       'pre_exp': 28.0, 'shot': 30378, 'strobe': 0, 'taps': 4, 'top': 185,
+                                       'trigger': -0.10000000149011612, 'vbin': 0, 'view': 'Lower divertor view#6',
+                                       'width': 320}
                 uda_altered_formats = ('date_time', 'codex', 'file_format', 'right', 'bottom')
                 keys_compare = [k for k in ipx_header_expected.keys() if k not in uda_altered_formats]
                 if 'frame_times' in meta_data['ipx_header']:  # Only in header from UDA?
@@ -140,7 +151,7 @@ class TestMovieReader(unittest.TestCase):
             frames = [2678]
             nframes = 1
             (frame_nos, frame_times, frame_data), origin = movie_reader.read_movie_data(pulse, camera, machine=machine,
-                                                                              n_start=n_start, n_end=n_end)
+                                                    n_start=n_start, n_end=n_end, meta=dict(date='2013-09-23'))
             self.assertTrue(isinstance(frame_data, np.ndarray))
             self.assertTrue(isinstance(frame_nos, np.ndarray))
             self.assertTrue(isinstance(frame_times, np.ndarray))

@@ -48,12 +48,12 @@ class TestIoUdaFast(unittest.TestCase):
         meta_data = read_movie_meta(pulse, camera)
 
         self.assertTrue(isinstance(meta_data, dict))
-        self.assertEqual(len(meta_data), 12)
+        self.assertEqual(len(meta_data), 40)
 
         self.assertTrue(np.all(meta_data['frame_range'] == np.array([0, 3749])))
         self.assertTrue(np.all(meta_data['t_range'] == np.array([-0.049970999999999995, 0.699828])))
         np.testing.assert_array_equal(meta_data['image_shape'], (8, 320))
-        self.assertAlmostEqual(meta_data['fps'], 5000.006668453812)
+        self.assertAlmostEqual(meta_data['fps'], 5000.00000000003)
 
         ipx_header_expected = {
             'board_temp': 50.5, 'camera': 'SBF125 InSb FPA 320x256 format with SBF1134 4Chan Rev6 (1 outpu',
@@ -69,7 +69,8 @@ class TestIoUdaFast(unittest.TestCase):
             'strobe': 0,
             'taps': 4,
             'trigger': -0.10000000149011612,
-            'top': 185, 'vbin': 0, 'view': 'Lower divertor view#6', 'width': 320, 'bottom': 177, 'right': 321
+            'top': 185, 'vbin': 0, 'view': 'Lower divertor view#6', 'width': 320,
+            # 'bottom': 177, 'right': 321
         }
         meta_data['ipx_header'].pop('frame_times')
         # Check keys are identical
@@ -82,12 +83,12 @@ class TestIoUdaFast(unittest.TestCase):
         meta_data = read_movie_meta(pulse, camera, n_start, n_end)
 
         self.assertTrue(isinstance(meta_data, dict))
-        self.assertEqual(len(meta_data), 12)
+        self.assertEqual(len(meta_data), 40)
 
         self.assertTrue(np.all(meta_data['frame_range'] == np.array([n_start, n_end])))
         np.testing.assert_almost_equal(meta_data['t_range'], np.array([-0.029971, -0.027971]))
         np.testing.assert_array_equal(meta_data['image_shape'], (8, 320))
-        self.assertAlmostEqual(meta_data['fps'], 5000.006668453812)
+        self.assertAlmostEqual(meta_data['fps'], 5000.00000000003)
 
         meta_data['ipx_header'].pop('frame_times')
         self.assertTrue(np.all([np.all(meta_data['ipx_header'][key] == ipx_header_expected[key])
@@ -128,12 +129,12 @@ class TestIoUdaFast(unittest.TestCase):
         ipx_meta_data = read_movie_meta(pulse, camera)
 
         self.assertTrue(isinstance(ipx_meta_data, dict))
-        self.assertEqual(len(ipx_meta_data), 12)
+        self.assertEqual(len(ipx_meta_data), 40)
 
         self.assertTrue(np.all(ipx_meta_data['frame_range'] == np.array([0, 624])))
         self.assertTrue(np.all(ipx_meta_data['t_range'] == np.array([-0.049949,  0.69885])))
         np.testing.assert_array_equal(ipx_meta_data['image_shape'], (32, 256))
-        self.assertAlmostEqual(ipx_meta_data['fps'], 833.3344480129053, places=5)
+        self.assertAlmostEqual(ipx_meta_data['fps'], 833.3333333333384, places=5)
 
         # ipx_header_expected = {'ID': 'IPX 02', 'width': 256, 'height': 32, 'depth': 14, 'codec': 'jp2',
         #                        'datetime': '2013-09-23T15:37:29', 'shot': 30378, 'trigger': -0.5,
@@ -141,15 +142,28 @@ class TestIoUdaFast(unittest.TestCase):
         #                        'top': 153, 'bottom': 184, 'offset': 0.0, 'exposure': 50.0, 'ccdtemp': 59.0,
         #                        'frames': 625, 'size': 239, 'n_frames': 625}
         # TODO: Understand why datetime and preexp fields no longer read
+        # ipx_header_expected = {'board_temp': 0.0, 'camera': 'Thermosensorik CMT 256 SM HS', 'ccd_temp': 59.0,
+        #                        'codex': 'JP2', 'date_time': '2013-09-23T15:37:29Z', 'depth': 14, 'exposure': 50.0,
+        #                        'file_format': 'IPX-2', 'filter': '', 'gain': np.array([0., 0.]), 'hbin': 0,
+        #                        'height': 32, 'is_color': 0, 'left': 0, 'lens': '', 'n_frames': 625,
+        #                        'offset': np.array([0., 0.]), 'orientation': 0, 'pre_exp': 0.0, 'shot': 30378,
+        #                        'strobe': 0, 'taps': 0, 'top': 153, 'trigger': -0.5, 'vbin': 0,
+        #                        'view': 'HL01 Upper divertor view#1', 'width': 256, 'bottom': 121, 'right': 256}
         ipx_header_expected = {'board_temp': 0.0, 'camera': 'Thermosensorik CMT 256 SM HS', 'ccd_temp': 59.0,
                                'codex': 'JP2', 'date_time': '2013-09-23T15:37:29Z', 'depth': 14, 'exposure': 50.0,
                                'file_format': 'IPX-2', 'filter': '', 'gain': np.array([0., 0.]), 'hbin': 0,
                                'height': 32, 'is_color': 0, 'left': 0, 'lens': '', 'n_frames': 625,
-                               'offset': np.array([0., 0.]), 'orientation': 0, 'pre_exp': 0.0, 'shot': 30378,
+                               'offset': np.array([0., 0.]),  'orientation': 0, 'pre_exp': 0.0, 'shot': 30378,
                                'strobe': 0, 'taps': 0, 'top': 153, 'trigger': -0.5, 'vbin': 0,
-                               'view': 'HL01 Upper divertor view#1', 'width': 256, 'bottom': 121, 'right': 256}
+                               'view': 'HL01 Upper divertor view#1', 'width': 256}
 
-        ipx_meta_data['ipx_header'].pop('frame_times')
+        items_pop = ['frame_times']  # , 'bad_pixels_frame']
+        for key in items_pop:
+            ipx_meta_data['ipx_header'].pop(key)
+
+        # ipx_header_expected = {key: ipx_header_expected[key] for key in sorted(ipx_header_expected)}
+        # ipx_meta_data = {key: ipx_meta_data[key] for key in sorted(ipx_meta_data)}
+
         # Check keys are identical
         self.assertEqual(sorted(ipx_meta_data['ipx_header']), sorted(ipx_header_expected))
         # Check values match

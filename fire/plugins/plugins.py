@@ -60,7 +60,7 @@ def get_plugins(path: Union[Path, str], attributes_requried: Dict[str, str],
               ...]
 
     """
-    path = Path(path).expanduser()
+    path = Path(path).expanduser().resolve()
     plugins, pulgins_info = defaultdict(dict), defaultdict(dict)
     attributes_requried = make_iterable(attributes_requried)
     attributes_optional = make_iterable(attributes_optional) if attributes_optional is not None else []

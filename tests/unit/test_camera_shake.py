@@ -11,14 +11,14 @@ from pathlib import Path
 import numpy as np
 
 from fire.camera_tools.camera_shake import (calc_camera_shake_displacements, remove_camera_shake)
-
+from fire import PATH_FIRE_SOURCE
 
 pwd = Path(__file__).parent
 
 class TestCamShake(unittest.TestCase):
 
     def setUp(self):
-        path_fn = fire_paths['root'] / '../tests/test_data/frames_with_shake.p'
+        path_fn = (PATH_FIRE_SOURCE / '../tests/test_data/frames_with_shake.p').expanduser().resolve()
         with open(path_fn, 'rb') as f:
             self.shaky_frames = pickle.load(f)
         self.expected_displacements = {
