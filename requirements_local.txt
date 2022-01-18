@@ -1,0 +1,83 @@
+anyio==2.2.0
+argon2-cffi==20.1.0
+-e git+https://github.com/euratom-software/calcam.git@32f2852b16e14473c14cbd461be734c21868adf4#egg=Calcam
+-e git+git@git.ccfe.ac.uk:tfarley/ccfepyutils.git@9f7ba1deedda875c1a502c4340206df5de1cf09e#egg=ccfepyutils
+-e git+git@github.com:cherab/core.git@d58c8c26470209be9643a8c23b9dc9385bbe30e9#egg=cherab
+-e git+git@github.com:cherab/mastu.git@ff968e3ee221ca685fc5606fd743ebabab2f991b#egg=cherab_mastu
+-e git+git@github.com:cherab/omfit.git@0e7caf8aaeb99fe9693b00a69dccb1dc05eadf5c#egg=cherab_omfit
+-e git+git@github.com:cherab/solps.git@d5ff05891940c2c065839d02948a76a783ca6fc5#egg=cherab_solps
+cherab-storm==1.0.0
+click-plugins==1.1.1
+cligj==0.7.2
+coverage==4.5.4
+deprecation==2.1.0
+descartes==1.1.0
+distlib==0.3.4
+filelock==3.4.2
+Fiona==1.8.20
+-e git+git@git.ccfe.ac.uk:MAST-U_Scheduler/air.git@9aa542751fd178dede680cd6fd0954575d608844#egg=fire
+flake8==3.9.1
+flirpy==0.2.3
+fonttools==4.27.0
+freetype-py==2.2.0
+future==0.17.1
+future-fstrings==1.2.0
+importlib-metadata==4.10.1
+-e git+git@git.ccfe.ac.uk:tfarley/ir_analysis.git@4355ac0d6cab722c467dc32919d974797c25a8d3#egg=ir_analysis
+json5==0.9.5
+jsonschema==3.2.0
+jupyter-client==6.2.0
+jupyter-packaging==0.9.2
+jupyter-server==1.6.2
+jupyterlab==3.0.14
+jupyterlab-server==2.4.0
+-e git+git@git.ccfe.ac.uk:jrh/mastu_exhaust_analysis.git@bf9c682ccd5c22cedb4ca03995b5fb685e78bc4c#egg=mastu_exhaust_analysis
+mastvideo==0.2
+matplotlib==3.5.0
+munch==2.5.0
+nbclassic==0.2.7
+nest-asyncio==1.5.1
+numexpr==2.7.3
+numpy==1.20.1
+opencv-python-headless==4.5.3.56
+openpyxl==3.0.9
+packaging==21.3
+pandas==1.3.1
+Pillow==8.3.0
+pipenv==2022.1.8
+platformdirs==2.4.1
+psutil==5.8.0
+pycallgraph==1.0.1
+pycodestyle==2.7.0
+-e git+git@git.ccfe.ac.uk:SOL_Transport/pyEquilibrium.git@daecc3b5f1059d2523ea18f63e4fd0368b8cb030#egg=pyEquilibrium
+pyflakes==2.3.1
+pyftdi==0.51.2
+-e git+https://tfarley@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@00ad8e891ce14969963bb14c269905851495f7f9#egg=pyIpx
+PyQt5==5.12
+PyQt5-sip==4.19.14
+pyrsistent==0.17.3
+pyserial==3.5
+pytest-cov==2.8.1
+pyudev==0.22.0
+pyusb==1.2.1
+PyWavelets==1.1.1
+-e git+https://github.com/raysect/source.git@4f68105892ae410052f1e1338e025f376f79e2ce#egg=raysect
+scikit-image==0.14.2
+-e git+git@git.ccfe.ac.uk:tfarley/setpy.git@593f2cc9ed791282dcb6d8017e7df8a2e32cb3e0#egg=setpy
+setuptools-scm==6.3.2
+sip==4.19.8
+sniffio==1.2.0
+stevedore==3.5.0
+terminado==0.9.4
+tifffile==2021.3.5
+tomli==1.2.2
+tomlkit==0.7.0
+tornado==6.1
+tqdm==4.61.2
+virtualenv==20.13.0
+virtualenv-clone==0.5.7
+virtualenvwrapper==4.8.4
+vtk==8.1.2
+xarray==0.19.0
+yolk3k==0.9
+zipp==3.7.0
