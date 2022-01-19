@@ -46,10 +46,11 @@ setup(
         "git+https://github.com/euratom-software/calcam.git",
         # "git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@master"  # Requires ukaea github access
         ],
-    python_requires='>=3',
+    # extras_require=['pyuda', 'mastvideo', 'pyIpx', 'pyEquilibrium', 'mastu_exhaust_analysis', 'ir_tools'],
     setup_requires=['pytest-runner'],
-    test_suite='tests.test_suite_fast',  # 'tests.test_suite_slow'
     tests_require=['pytest-cov'],
+    python_requires='>=3',
+    test_suite='tests.test_suite_fast',  # 'tests.test_suite_slow'
     zip_safe=False,
 long_description=open('README.md').read()
 )
