@@ -97,4 +97,5 @@ PATH_AIR_REPO = substritute_tilde_for_home(PATH_AIR_REPO)
 # Import FIRE sub-modules
 # from .interfaces import interfaces
 from .misc import utils
-from .interfaces.user_config import get_user_fire_config
+from .interfaces import user_config
+from .interfaces.user_config import get_user_fire_config, get_fire_user_directory
