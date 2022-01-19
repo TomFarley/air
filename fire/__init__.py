@@ -34,13 +34,16 @@ def setup_fire_logger():
 
     fn = (PATH_FIRE_SOURCE / 'logging_config.yaml').expanduser()
 
+
     with open(fn, 'r') as f:
         _logging_config = _yaml.safe_load(f.read())
         # Make sure relative paths are relative to fire root directory
         for handler in _logging_config['handlers']:
             if 'filename' in _logging_config['handlers'][handler]:
-                _logging_config['handlers'][handler]['filename'] = _logging_config['handlers'][handler][
-                    'filename'].format(fire=PATH_FIRE_SOURCE.expanduser())
+                fn_log = _Path(_logging_config['handlers'][handler]['filename'].format(
+                    fire=PATH_FIRE_SOURCE.expanduser())).expanduser().resolve()
+                fn_log.parent.mkdir(exist_ok=True)  # create tmp/log dir which is otherwise in .gitignore
+                _logging_config['handlers'][handler]['filename'] = fn_log
         _logging.config.dictConfig(_logging_config)
 
     # Set logging level for console output handler propagated throughout fire package
