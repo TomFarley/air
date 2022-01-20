@@ -78,7 +78,7 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
 
     # Get filenames referenced from lookup files: Calcam calibration file
     lookup_references = [
-                            ['calcam_calib', 'calcam_calibs', 'calcam_calibration_file'],
+                            ['calcam_calib', 'calcam_calibs', 'calcam_calibration_file'],  # name, file_type, column
                         ]
     # ['analysis_path_dfn', 'analysis_path_dfns', 'analysis_path_name']]
     for name, file_type, column in lookup_references:
