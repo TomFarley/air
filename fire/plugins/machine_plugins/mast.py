@@ -14,8 +14,9 @@ import logging
 
 import numpy as np
 
-# Required: Name of plugin module (typically name of machine == name of file), needed to be located as a plugin module
+logger = logging.getLogger(__name__)
 
+# Required: Name of plugin module (typically name of machine == name of file), needed to be located as a plugin module
 machine_plugin_name = 'mast'
 # Recommended
 machine_name = 'MAST'  # Will be cast to lower case in FIRE
@@ -59,11 +60,12 @@ wall_rz_coords = {'R': np.array([1.9, 1.555104, 1.555104, 1.407931, 1.407931, 1.
                  0.405])}
 
 # Use same plugin funcs for machine sector and s_path coordinate as for MAST-U
-from fire.plugins.machine_plugins.tokamak_utils import (get_machine_sector, get_s_coord_path, get_tile_louvre_label,
+try:
+    from fire.plugins.machine_plugins.tokamak_utils import (get_machine_sector, get_s_coord_path, get_tile_louvre_label,
     get_tile_louvre_index, plot_vessel_outline, plot_vessel_top_down, format_coord)
-
-logger = logging.getLogger(__name__)
-
+    from fire.plugins.machine_plugins.mast_u import pulse_meta_data, get_camera_external_clock_info
+except ImportError as e:
+    logger.warning(e)
 
 def get_s_coord_global(x_im, y_im, z_im, **kwargs):
     """Return MAST tile s coordinates for all pixels in image
