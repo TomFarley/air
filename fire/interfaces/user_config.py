@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 
 _FIRE_CONFIG_TEMPLATE_PATH_FN = PATH_FIRE_SOURCE / 'input_files' / 'user' / 'fire_config.json'
 _FIRE_USER_DIR_ENV_VAR = 'FIRE_USER_DIR'
-_FIRE_USER_DIR_DEFAULT = "~/.fire/"
-_FIRE_USER_CONFIG_FN_DEFAULT = '.fire_config.json'
+_FIRE_USER_DIR_DEFAULT = "~/fire/"
+_FIRE_USER_CONFIG_FN_DEFAULT = 'fire_config.json'
 
 _FIRE_USER_DIR_KEY = 'fire_user_dir'
 
@@ -137,7 +137,7 @@ def copy_default_user_settings(path=None, fn=None, replace_existing=False):
     if (not path_fn.is_file()) or replace_existing:
         path_fn.write_text(_FIRE_CONFIG_TEMPLATE_PATH_FN.expanduser().read_text())
         logger.info(f'Copied template fire config file to "{path_fn}" from '
-                    f'"{_FIRE_CONFIG_TEMPLATE_PATH_FN}"')
+                    f'"{_FIRE_CONFIG_TEMPLATE_PATH_FN}" (replace_existing={replace_existing})')
 
 # Return same fire config data from previous call - dones't work with dict args
 # @lru_cache(maxsize=2, typed=False)
@@ -152,14 +152,15 @@ def get_user_fire_config(path=None, fn=None, base_paths=(), use_global=True):
     Returns: (fire_config, config_groups, path_fn)
 
     """
+    logger.info(f'path={path}, fn={fn}, base_paths={base_paths}, use_global={use_global}')
     if (fire.config is None) or (not use_global):
 
         base_paths = dict(base_paths)
         config_groups = {}
 
-        fire_user_path = get_fire_user_directory(base_paths.get(_FIRE_USER_DIR_KEY, path))
+        fire_user_path = get_fire_user_directory(fire_user_dir=base_paths.get(_FIRE_USER_DIR_KEY, path))
 
-        path_fn = get_fire_user_config_path_fn(base_paths.get(_FIRE_USER_DIR_KEY), fn)
+        path_fn = get_fire_user_config_path_fn(path=base_paths.get(_FIRE_USER_DIR_KEY), fn=fn)
 
         base_paths.setdefault(_FIRE_USER_DIR_KEY, fire_user_path)
 
