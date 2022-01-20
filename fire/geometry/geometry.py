@@ -20,7 +20,6 @@ import fire.interfaces.io_basic
 import fire.interfaces.user_config
 from fire.misc import utils
 from fire.misc.utils import ndarray_0d_to_scalar
-from pyEquilibrium.equilibrium import equilibrium
 import pyuda
 client = pyuda.Client()
 import time as clock
@@ -311,6 +310,8 @@ def calc_tile_tilt_area_correction_factors(path_data, poloidal_plane_tilt, nlouv
     Returns: Multiplicative factors for annulus areas
 
     """
+    from pyEquilibrium.equilibrium import equilibrium
+
     tile_numbers = path_data[f'surface_id_in_frame_{path}']
     #correction_factor = np.full_like(tile_numbers, np.nan, dtype=float)
     n_pixels = path_data[f'i_{path}']
