@@ -29,6 +29,7 @@ setup(
         "pandas>=1.3.1",
         "xarray>=0.19.0",
         "scikit-image>=0.14.2",
+        "dask>=2022.1.0",   # Required to avoid errors pickling xarray datasets
         "netCDF4>=1.4.2",
         "matplotlib>=3.0.2",
         "natsort==5.5.0",
