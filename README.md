@@ -33,19 +33,25 @@ $ cd <path_to_air_reposintory>  # location of git clone
 $ python -m pip install -r requirements.txt
 $ pip install --user -e .
 ```
-The following ukaea gitlab require ukaea credentials and are most easily installed from cloned repositories (assuming [ssh keys](https://docs.gitlab.com/ee/ssh/#generate-an-ssh-key-pair) already set up).
+The following ukaea gitlab require ukaea credentials and are most easily installed from cloning and pip installing the repositories or pip installing them directory from the urls as shown below:
 ```bash
-$ cd <path_to_clone_repos_to>
-$ git clone git@git.ccfe.ac.uk:MAST-U_Scheduler/air_calib.git  # Calibration data
+$ pip install git+https://github.com:euratom-software/calcam.git  # Spatial calibration classes (should be installed by by setup.py?)
+$ pip install git+https://git.ccfe.ac.uk:jrh/mastu_exhaust_analysis.git  # Used for efit equilibria amongst other things
+$ pip install git+https://git.ccfe.ac.uk:MAST-U/mastvideo.git  # Required for reading local IPX files
+$ pip install git+https://git.ccfe.ac.uk:SOL_Transport/pyEquilibrium.git # Used for efit equilibria
 # Optional dependecies:
-$ git clone git@git.ccfe.ac.uk:MAST-U/mastvideo.git  # Required for reading local IPX files
-$ git clone git@git.ccfe.ac.uk:tfarley/ir_analysis.git  # Scripts for performing analysis with fire
-$ git clone git@git.ccfe.ac.uk:jrh/mastu_exhaust_analysis.git  # Used for efit equilibria amongst other things
-$ git clone git@git.ccfe.ac.uk:SOL_Transport/pyEquilibrium.git # Used for efit equilibria
-$ git clone git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git  # Older alternative to mastvideo library
+$ pip install git+https://git.ccfe.ac.uk:SOL_Transport/pyIpx.git  # Older alternative to mastvideo library
+```
+
+Several other ukaea repos also complement workign with FIRE and are also recommended. These can be cloned and installed as shown bellow (assuming [ssh keys](https://docs.gitlab.com/ee/ssh/#generate-an-ssh-key-pair) already set up)
+```bash
+$ cd <directory_to_clone_repos>
+$ git clone git@git.ccfe.ac.uk:MAST-U_Scheduler/air_calib.git  # Calibration data
+$ git clone git@git.ccfe.ac.uk:tfarley/ir_analysis.git  # Scripts for performing analysis runs with FIRE
+$ pip install git+https://git.ccfe.ac.uk:tfarley/ir_tools.git  # Scripts for working with IR data, producing calcam calibration images etc
 
 $ cd ..
-$ pip install -e ir_tools mastvideo pyIpx ir_analysis mastu_exhaust_analysis
+$ pip install -e ir_tools ir_analysis
 
 ```
 Run tests to confirm installation is successful:
@@ -64,8 +70,13 @@ $ source /usr/local/bin/virtualenvwrapper.sh  # Add this to .bashrc for future
 ```
 
 ## Configuring FIRE
-Your user FIRE configuration is set up by default to be `~/.fire/.fire_config.json`
-Instruction for configuring this coming soon...
+When FIRE is run for the first time, if it doesn't find user settings in the default location (`~/fire/) it will default to creating this directory and populating it with a default user configuration file `fire_config.json`.
+If you would like your fire user directory (location for user settings and output figures and files etc) then your alternative path can either be passed to schduler_workflow(user_path=...) each time or it can be set more permanently be settings the `FIRE_USER_DIR` enviroment variable in your .bashrc:
+```bash
+export FIRE_USER_DIR=<my_fire_user_directory_path>
+```
+
+Instruction for configuring your `fire_config.json` coming soon...
 
 Summary for running on the scheduler
 ------------------------------------
