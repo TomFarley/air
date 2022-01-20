@@ -29,7 +29,6 @@ import numpy as np
 import scipy as sp
 import pandas as pd
 import xarray as xr
-import skimage
 
 import calcam
 
@@ -473,6 +472,8 @@ def convert_pixel_path_definition_array_to_dict(points_coords, path_name, dict_o
     return dict_out
 
 def join_analysis_path_control_points(analysis_path_control_points, path_name, masks, image_shape):
+    from skimage import draw
+
     pos_key = 'position'
     path = path_name  # abbreviation for format strings
 
@@ -490,7 +491,7 @@ def join_analysis_path_control_points(analysis_path_control_points, path_name, m
         x0, x1, y0, y1 = np.round((*points[f'{path}_dfn_x_pix'].sel({pos_key: slice(start_pos, end_pos)}),
                                    *points[f'{path}_dfn_y_pix'].sel({pos_key: slice(start_pos, end_pos)}))).astype(int)
         # Use Bresenham's line drawing algorithm. npoints = max((dx, dy))
-        xpix_all, ypix_all = skimage.draw.line(x0, y0, x1, y1)
+        xpix_all, ypix_all = draw.line(x0, y0, x1, y1)
 
         # Check if path strays outside image
         mask_in_frame = check_in_frame(xpix_all, ypix_all, image_shape)
