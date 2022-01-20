@@ -10,6 +10,8 @@
         },
         "paths": {
             "calibration_files": [
+                "{fire_source_dir}/../../air_calib/",
+                "{fire_source_dir}/../../calib_release/",
                 "{fire_source_dir}/input_files/",
                 "{fire_source_dir}/input_files/calcam_calibrations/",
                 "~/calcam2",
@@ -305,7 +307,7 @@
             "{calib_dir}/",
             "{calib_dir}/{machine}/",
             "{calib_dir}/{machine}/{diag_tag_raw}/",
-            "{calib_dir}/{machine}/calcam_calibs/",
+            "{calib_dir}/{machine}/calcam/calibrations/",
             "~/input_files/{machine}/",
             "~/input_files/",
             "~/calcam/calibrations/",
@@ -390,8 +392,8 @@
             ],
             "time": [
                 "power_total_vs_t",
-                "heat_flux_total_cumulative",
-                "heat_flux_amplitude_global_peak",
+                "cumulative_energy_vs_t",
+                "heat_flux_amplitude_peak_global",
                 "heat_flux_s_global_peak",
                 "heat_flux_R_peak",
                 "temperature_amplitude_peak_global",
