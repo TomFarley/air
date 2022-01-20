@@ -49,7 +49,8 @@ cwd = Path(__file__).parent
 # path_figures = (fire_paths['user'] / 'figures/').resolve()
 # logger.info(f'Scheduler workflow: Figures will be output to: {path_figures}')
 
-def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, machine:str='MAST', scheduler:bool=False,
+def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, machine:str='MAST-U',
+                       scheduler:bool=False,
                        equilibrium:bool=False, update_checkpoints:bool=False, analysis_steps: Optional[list]=None,
                        n_cores=1,
                        path_out=None, path_calib=None, path_user=None,
@@ -82,6 +83,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     """
     logger.info(f'Starting scheduler workflow run for inputs: {machine}, {camera}, {pulse}, {pass_no}')
+    logger.info(f'update_checkpoints={update_checkpoints}, scheduler={scheduler}')
+    logger.info(f'path_user={path_user}, path_calib={path_calib}, path_out={path_out}')
 
     if analysis_steps is None:
         # TODO: Properly set up top level control of analysis steps
@@ -113,8 +116,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     settings, files, image_data, path_data_all, meta_data, meta_runtime = data_structures.init_data_structures()
     meta_data_extra = {}
 
-    config, config_groups, config_path_fn = user_config.get_user_fire_config(base_paths=dict(
-                                            fire_user_dir=path_user, path_uda_output=path_out, calib_dir=path_calib))
+    base_paths = dict(fire_user_dir=path_user, path_uda_output=path_out, calib_dir=path_calib)
+    config, config_groups, config_path_fn = user_config.get_user_fire_config(base_paths=base_paths)
+    logger.info(f'config_groups={config_groups}')
 
     settings['config'] = config
     fire_paths = config_groups['fire_paths']
