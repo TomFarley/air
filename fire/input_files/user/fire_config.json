@@ -316,6 +316,7 @@
             "/home/tfarley/calcam2/calibrations/"
         ],
         "movie_files": [
+            "/projects/SOL/Data/Cameras/IR/ipx/0{pulse_prefix}/{pulse}/",
             "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
             "/net/fuslsc/data/MAST_Data/{pulse}/LATEST/",
             "~/data/movies/{machine}/{pulse}/{diag_tag_raw}/",
