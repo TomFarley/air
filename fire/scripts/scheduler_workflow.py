@@ -283,6 +283,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
         if raycast_checkpoint_path_fn.exists():
             raycast_checkpoint_path_fn.unlink()  # Avoid error overwriting existing file
+        io_basic.mkdir(raycast_checkpoint_path_fn, depth=3)
         data_raycast.to_netcdf(raycast_checkpoint_path_fn)
         logger.info(f'Wrote raycast data to: {raycast_checkpoint_path_fn}')
     image_data = xr.merge([image_data, data_raycast])  # , combine_attrs='no_conflicts')
@@ -307,16 +308,22 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     #  window = (Left,Top,Width,Height)
     detector_window = movie_meta['detector_window']
+    # update_detector_window MUST be called with ‘original’ detector coords (i.e. before any image rotation, flips etc).
     detector_window_info = calcam_calibs.update_detector_window(calcam_calib, frame_data=frame_data,
                                                                 detector_window=detector_window, coords='Original')
     calcam_calib_image_windowed = calcam_calib.get_image(coords=image_coords)  # Before detector_window applied
 
     # Apply transformations (rotate, flip etc.) to get images "right way up" if requested.
     # Must be applied after detector_window
+    meta_data['image_shape_original'] = meta_data['image_shape']
     frame_data = calcam_calibs.apply_frame_display_transformations(frame_data, calcam_calib, image_coords)
+    image_shape = frame_data.shape[-2:]
+    meta_data['image_shape'] = image_shape  # Current shape of the data
+    if image_coords.capitalize() == 'Display':
+        meta_data['image_shape_display'] = image_shape
 
     frame_data = data_structures.movie_data_to_dataarray(frame_data, frame_times, frame_nos,
-                                                         meta_data=meta_data['variables'])
+                                                         meta_data=meta_data)
     image_data = xr.merge([image_data, frame_data])  # , combine_attrs='no_conflicts')
 
     image_shape = np.array(frame_data.shape[1:])  # NOTE: meta_data['image_shape'] and ipx header info is without image
