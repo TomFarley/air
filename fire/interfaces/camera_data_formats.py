@@ -89,7 +89,7 @@ def get_ircam_raw_int_nframes_and_shape(path_fn, shape=(256, 320), flip_y=True):
     data_raw = open(str(path_fn), 'rb').read()
     data_hex = data_raw.hex()
     n_bytes_file = len(data_hex)
-    width, height = shape
+    height, width = shape
     n_pixels = width * height
     bytes_per_frame = digital_level_bytes * n_pixels
     n_frames_movie = int(n_bytes_file / bytes_per_frame)
