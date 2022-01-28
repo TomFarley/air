@@ -36,21 +36,34 @@ _FIRE_USER_DIR_KEY = 'fire_user_dir'
 
 @lru_cache(maxsize=8, typed=False)
 def get_fire_user_directory(fire_user_dir=None):
+
     if (fire_user_dir is not None) and (Path(fire_user_dir).expanduser().is_dir()):
-        logger.info(f'Using user supplied FIRE user directory: "{fire_user_dir}"')
+        if Path(fire_user_dir) != fire.user_path:
+            logger.info(f'Using user supplied FIRE user directory: "{fire_user_dir}"')
     else:
         fire_user_dir = os.environ.get(_FIRE_USER_DIR_ENV_VAR, None)
-        if fire_user_dir is None:
-            fire_user_dir = _FIRE_USER_DIR_DEFAULT
-            print(f'- Environment variable "{_FIRE_USER_DIR_ENV_VAR}" has not been set. Using default path '
-                  f'"{_FIRE_USER_DIR_DEFAULT}" for configuration file and user outputs.\n'
-                  f'- To set your "{_FIRE_USER_DIR_ENV_VAR}" environment variable (on linux) do:\n'
-                  f'- $ export {_FIRE_USER_DIR_ENV_VAR}="<my_path>"  # It is recommended to add this to your .bashrc')
-            os.environ[_FIRE_USER_DIR_ENV_VAR] = str(fire_user_dir)  # visible in this process + all children
+        if (fire_user_dir is None):
+            if fire.user_path is not None:
+                fire_user_dir = fire.user_path
+            else:
+                fire_user_dir = _FIRE_USER_DIR_DEFAULT
+                print(f'- Environment variable "{_FIRE_USER_DIR_ENV_VAR}" has not been set. Using default path '
+                      f'"{_FIRE_USER_DIR_DEFAULT}" for configuration file and user outputs.\n'
+                      f'- To set your "{_FIRE_USER_DIR_ENV_VAR}" environment variable (on linux) do:\n'
+                      f'- $ export {_FIRE_USER_DIR_ENV_VAR}="<my_path>"  # It is recommended to add this to your .bashrc')
+                os.environ[_FIRE_USER_DIR_ENV_VAR] = str(fire_user_dir)  # visible in this process + all children
         else:
-            logging.info(f'Using FIRE user directory "{fire_user_dir}" from env var '
+            if Path(fire_user_dir) != fire.user_path:
+                logger.info(f'Using FIRE user directory "{fire_user_dir}" from env var '
                          f'{_FIRE_USER_DIR_ENV_VAR}="{fire_user_dir}"')
     fire_user_dir = Path(fire_user_dir)
+
+    if not fire_user_dir.is_dir():
+        fire_user_dir.mkdir()
+        logger.info(f'Created FIRE user directory at: {fire_user_dir}')
+
+    fire.user_path = Path(fire_user_dir)
+
     return fire_user_dir
 
 @lru_cache(maxsize=2)
@@ -152,7 +165,7 @@ def get_user_fire_config(path=None, fn=None, base_paths=(), use_global=True):
     Returns: (fire_config, config_groups, path_fn)
 
     """
-    logger.info(f'path={path}, fn={fn}, base_paths={base_paths}, use_global={use_global}')
+    logger.debug(f'path={path}, fn={fn}, base_paths={base_paths}, use_global={use_global}')
     if (fire.config is None) or (not use_global):
 
         base_paths = dict(base_paths)

@@ -293,32 +293,46 @@ def lookup_pulse_row_in_csv(path_fn: Union[str, Path], pulse: int, allow_overlap
         pulse_info = table
     else:
         pulse_info = lookup_pulse_row_in_df(table, pulse=pulse, allow_overlaping_ranges=allow_overlaping_ranges,
-                                            description=path_fn, raise_=raise_exceptions)
+                                            description=path_fn, require_pulse_end=True, raise_=raise_exceptions)
     if isinstance(pulse_info, Exception) and raise_exceptions:
         raise pulse_info
     else:
         return pulse_info
 
 def lookup_pulse_row_in_df(df: pd.DataFrame, pulse: int, allow_overlaping_ranges: bool=False,
-                            description=None, raise_: bool=True, **kwargs_csv) -> Union[pd.Series, Exception]:
-
-    if not np.all([col in list(df.columns) for col in ['pulse_start', 'pulse_end']]):
-        pulse_info = IOError(f'Unsupported pulse row CSV file format - '
-                      f'must contain "pulse_start", "pulse_end" columns: {path_fn}')
+                            description=None, require_pulse_end=False, n_end_valid=5000,
+                           raise_: bool=True, pulse_name='pulse', **kwargs_csv) -> Union[pd.Series, Exception]:
+    if f'{pulse_name}_start' in df.columns:
+        df = df.astype({f'{pulse_name}_start': int})
+        pulse_start_col = df[f'{pulse_name}_start']
+    elif f'{pulse_name}' in df.columns:
+        df = df.astype({f'{pulse_name}': int})
+        pulse_start_col = df[f'{pulse_name}']
     else:
-        # TODO: Allow None for eg end of pulse range if current value
-        table = df.astype({'pulse_start': int, 'pulse_end': int})
-        row_mask = np.logical_and(table['pulse_start'] <= pulse, table['pulse_end'] >= pulse)
-        if (np.sum(row_mask) > 1) and (not allow_overlaping_ranges):
-            pulse_info = ValueError(f'Lookup file {path_fn} contains overlapping ranges. Please fix: \n'
-                                    f'{table.loc[row_mask]}')
-        elif np.sum(row_mask) == 0:
-            pulse_ranges = list(zip(table['pulse_start'], table['pulse_end']))
-            pulse_info = ValueError(f'Pulse {pulse} does not fall in any pulse range {pulse_ranges} in {description}')
-        else:
-            pulse_info = table.loc[row_mask]
-            if np.sum(row_mask) == 1:
-                pulse_info = pulse_info.iloc[0]
+        return IOError(f'Unsupported pulse row look up table format - '
+                             f'must contain "pulse_start" or "pulse", column: {description}')
+    if f'{pulse_name}_end' in df.columns:
+        df = df.astype({f'{pulse_name}_end': int})
+        pulse_end_col = df[f'{pulse_name}_end']
+    elif not require_pulse_end:
+        pulse_end_col = np.array(pulse_start_col[1:]) - 1
+        pulse_end_col = np.concatenate([pulse_end_col, [pulse_end_col[-1]+n_end_valid]])  # Assume last value valid for next pulses
+    else:
+        return IOError(f'Unsupported pulse row look up table format - '
+                       f'must contain "pulse_end" column: {description}')
+
+    row_mask = np.logical_and(pulse_start_col <= pulse, pulse_end_col >= pulse)
+    if (np.sum(row_mask) > 1) and (not allow_overlaping_ranges):
+        pulse_info = ValueError(f'Lookup file {path_fn} contains overlapping ranges. Please fix: \n'
+                                f'{df.loc[row_mask]}')
+    elif np.sum(row_mask) == 0:
+        pulse_ranges = list(zip(pulse_start_col, pulse_end_col))
+        pulse_info = ValueError(f'{pulse_name} {pulse} does not fall in any pulse range {pulse_ranges} in {description}')
+    else:
+        pulse_info = df.loc[row_mask]
+        if np.sum(row_mask) == 1:
+            pulse_info = pulse_info.iloc[0]
+
     return pulse_info
 
 

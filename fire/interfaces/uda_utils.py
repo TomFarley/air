@@ -18,7 +18,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 # import pyuda, cpyuda
-from fire.misc.data_structures import meta_defaults_default
+from fire.misc.data_structures import variables_meta_defaults
 from fire.misc.utils import increment_figlabel, format_str
 from fire.plotting import plot_tools
 
@@ -407,9 +407,9 @@ def get_uda_meta_dict(uda_obj, key_map, defaults=module_defaults, predefined_val
 
     if (defaults is module_defaults) or (defaults == 'default'):
         for name in [dim_name, signal, label]:
-            defaults = meta_defaults_default.get(name, {})
+            defaults = variables_meta_defaults.get(name, {})
             if len(defaults) == 0 and (isinstance(name, str)):
-                defaults = meta_defaults_default.get(name.lower(), {})
+                defaults = variables_meta_defaults.get(name.lower(), {})
             if len(defaults) > 0:
                 break
         else:

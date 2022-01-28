@@ -203,7 +203,8 @@ def json_dump(obj, path_fn, path=None, indent=4, overwrite=True, raise_on_fail=T
 
 def json_load(path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None,
               key_paths_keep: Optional[Sequence[Sequence]]=None, key_paths_drop=('README',),
-              compress_key_paths=True, lists_to_arrays: bool=False, raise_on_filenotfound: bool=True):
+              compress_key_paths=True, lists_to_arrays: bool=False,
+              raise_on_filenotfound: bool=True, raise_on_decode_error: bool=True):
     """Read json file with optional indexing
 
     Args:
@@ -232,7 +233,12 @@ def json_load(path_fn: Union[str, Path], path: Optional[Union[str, Path]]=None,
             contents = json.load(f)
     except json.decoder.JSONDecodeError as e:
         # raise InputFileException(original_exception=e, info={'fn': path_fn})
-        raise InputFileException(f'Invalid json formatting in input file "{path_fn}"', e)
+        message = f'Invalid json formatting in input file "{path_fn}"'
+        logger.warning(message)
+        if raise_on_decode_error:
+            raise InputFileException(message, e)
+        else:
+            return InputFileException(message, e)
 
     # Return indexed subset of file
     out = utils.filter_nested_dict_key_paths(contents, key_paths_keep=key_paths_keep,
