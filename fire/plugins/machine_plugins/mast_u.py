@@ -608,15 +608,15 @@ def pulse_meta_data(shot, keys=
                 out[key] = pycpf.query([key], filters=['exp_number = {}'.format(shot)])[key]   # [0]
                 out['erc'] = 0
             except Exception as e:
-                logger.warning(f'Failed to perform CPF query for {shot}, {key}')
+                logger.debug(f'Failed to perform CPF query for {shot}, {key}')
                 if key in ('exp_date', 'exp_time'):
                     try:
                         uda_module, client = uda_utils.get_uda_client()
                         out['exp_date'], out['exp_time'] = client.get_shot_date_time(shot=shot)
                     except Exception as e:
-                        logger.warning('Also failed to retrieve date and time from UDA')
+                        logger.warning('Failed to retrieve date and time from pyCPF or pyUDA')
                     else:
-                        logger.info(f'Successfully retrieved shot time with UDA: {out["exp_date"], out["exp_time"]}')
+                        logger.debug(f'Successfully retrieved shot time with UDA: {out["exp_date"], out["exp_time"]}')
     return out
 
 def get_shot_date_time(shot, datetime_format='{date} {time}'):
@@ -631,8 +631,11 @@ def get_shot_date_time(shot, datetime_format='{date} {time}'):
     """
     meta_cpf = pulse_meta_data(shot, keys=['exp_time'])
     date = get_shot_date(shot)
-    time = meta_cpf["exp_time"][0].strip("'")
-    print(meta_cpf, date)
+    time = meta_cpf["exp_time"]
+    if not isinstance(time, str):
+        time = time[0]  # List/tuple?
+    time = time.strip("'")
+    # print(meta_cpf, date)
     date_time = (datetime_format.format(date=date, time=time[:8]) if 'exp_time' in meta_cpf.keys() else
                 '<placeholder>')
     return date_time
@@ -696,7 +699,7 @@ def get_shot_date(shot):
     #     ax.set_ylabel(r'y [m]')
     #     # plt.tight_layout()
 
-def get_camera_external_clock_info(camera, pulse):
+def get_camera_external_clock_info(camera, pulse, n_frames=None, frame_numbers=None, dropped_frames=None):
     if camera.lower() in ['rit', 'ait']:
         signal_clock = 'xpx/clock/lwir-1'
     elif camera.lower() in ['rir', 'air']:
@@ -721,9 +724,9 @@ def get_camera_external_clock_info(camera, pulse):
     signal_ptp = np.ptp(np.array(data))
     signal_dv = np.concatenate([[0], np.diff(data)])
 
-    frame_times = t[signal_dv > 1e-5]  # rising edges
+    clock_rise_times = t[signal_dv > 1e-5]  # rising edges
 
-    dt_frame = utils.mode_simple(np.diff(frame_times))  # time between frame acquisitions
+    dt_frame = utils.mode_simple(np.diff(clock_rise_times))  # time between frame acquisitions
     clock_freq = 1/dt_frame
 
     if (signal_ptp == 0) or (np.isnan(dt_frame)):
@@ -751,9 +754,23 @@ def get_camera_external_clock_info(camera, pulse):
 
     clock_freq_fft = freq[np.argmax(power_abs)]  # TODO: Convert freq to int?
 
-    info_out['clock_frame_times'] = frame_times  # rising edges
-    info_out['clock_t_window'] = np.array([frame_times[0], frame_times[-1]])
-    info_out['clock_nframes'] = len(frame_times)
+    t_signal_end = np.max(clock_rise_times)
+
+    # rising edges stop after 1s in signal trace, but really continue for several mins?
+    n_extra = n_frames - len(clock_rise_times) if n_frames is not None else 1e4
+    clock_rise_times_extended = np.concatenate([clock_rise_times,
+                                        np.arange(t_signal_end+dt_frame, t_signal_end+(n_extra+1)*dt_frame, dt_frame)])
+
+    if frame_numbers is not None:
+        frame_times = float(clock_rise_times[0]) + np.array(frame_numbers) * dt_frame
+    else:
+        frame_times = clock_rise_times_extended
+
+    info_out['clock_frame_times'] = frame_times  # Using clock period (not dropped) frame numbers
+    info_out['clock_rise_times'] = clock_rise_times  # rising edges
+    info_out['clock_rise_times_extended'] = clock_rise_times_extended  # continuing after 1s
+    info_out['clock_t_window'] = np.array([clock_rise_times[0], clock_rise_times[-1]])
+    info_out['clock_nframes'] = len(clock_rise_times)
     info_out['clock_frequency'] = clock_freq
     info_out['clock_inter_frame'] = dt_frame
     info_out['clock_square_wave_width'] = clock_peak_width
