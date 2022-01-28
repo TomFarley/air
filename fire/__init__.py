@@ -16,6 +16,7 @@ PATH_FIRE_SOURCE = _Path(__file__).parent
 PATH_AIR_REPO = PATH_FIRE_SOURCE.parent
 
 # Instantiate a few global variables that will be set in fire func calls (only use these 4!)
+user_path = None  # Path to users fire directory, set in call to fire.interfaces.user_config.get_fire_user_directory()
 config = None  # Set by call to fire.interfaces.user_config.get_user_fire_config()
 config_groups = None  # Set by call to fire.interfaces.user_config.get_user_fire_config()
 config_path_fn = None  # Set by call to fire.interfaces.user_config.get_user_fire_config()

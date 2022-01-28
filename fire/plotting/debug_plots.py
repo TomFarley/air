@@ -547,7 +547,7 @@ def debug_analysis_path_cross_sections(path_data=None, image_data=None, path_nam
                     legend=False, show=False)
 
     plot_tools.show_if(show)
-    plot_tools.save_fig(path_fn_save)
+    plot_tools.save_fig(path_fn_save, mkdir_depth=3)
     return fig
 
 
@@ -688,7 +688,7 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', c
             logger.info(f'{param}({path_name}): min={data.min().values:0.4g}, mean={data.mean().values:0.4g}, '
                         f'99%={np.percentile(data.values,99):0.4g}, max={data.max().values:0.4g}')
 
-        plot_tools.save_fig(save_path_fn, image_formats=image_formats, fig=fig, mkdir_depth=2)
+        plot_tools.save_fig(save_path_fn, image_formats=image_formats, fig=fig, mkdir_depth=3)
         plot_tools.show_if(show=show, tight_layout=True)
 
     return ax, data, artist
