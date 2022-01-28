@@ -40,7 +40,7 @@ def theo_kwargs_for_path(material_ids, visible_materials, material_properties,
     return material_name, theo_kwargs
 
 def scan_alpha_param(temperature_path, t, s_path, theo_kwargs, alpha_values, test=True, meta=(), verbose=True):
-    from fire import theodor
+    from fire import theodor, base_paths
     from fire.plotting import plot_tools
     print(f'Performing alpha scan with values: {alpha_values}')
     pulse, camera, machine = dict(meta).get('pulse'), dict(meta).get('camera'), dict(meta).get('machine')
@@ -82,8 +82,8 @@ def scan_alpha_param(temperature_path, t, s_path, theo_kwargs, alpha_values, tes
         plt.tight_layout()
     ax.axvline(x=alpha_passed, ls='--', color='k')
     plot_tools.annotate_providence(ax, meta_data=meta)
-    plot_tools.save_fig(fire_paths['figures'] / f'alpha_scan/heatmaps/'
-                                                f'alpha_scan_heatmaps-{machine}-{diag_tag_analysed}-{pulse}.png', mkdir_depth=2)
+    plot_tools.save_fig(base_paths / 'figures/alpha_scan/heatmaps/'
+                                f'alpha_scan_heatmaps-{machine}-{diag_tag_analysed}-{pulse}.png', mkdir_depth=3)
     plot_tools.show_if(True)
 
     fig, ax, ax_passed = plot_tools.get_fig_ax(num=f'alpha_scan_q_stats, {machine} {diag_tag_analysed} {pulse}',
@@ -98,8 +98,8 @@ def scan_alpha_param(temperature_path, t, s_path, theo_kwargs, alpha_values, tes
     plot_tools.legend(ax)
     ax.set_xlabel(r'$\alpha$ [W/(m$^2$•K)]')
     ax.set_ylabel(r'$q_\perp$ [MW]')
-    plot_tools.save_fig(fire_paths['figures'] / f'alpha_scan/q_stats/alpha_scan_q_stats-{machine}-{diag_tag_analysed}-{pulse}.png',
-                        mkdir_depth=2)
+    plot_tools.save_fig(base_paths / 'figures/alpha_scan/q_stats/'
+                                     'alpha_scan_q_stats-{machine}-{diag_tag_analysed}-{pulse}.png', mkdir_depth=2)
     plot_tools.show_if(show=True, tight_layout=True)
 
     fig, axes, ax_passed = plot_tools.get_fig_ax(num=f'alpha_scan_radial_av, {machine} {diag_tag_analysed} {pulse}',
@@ -122,8 +122,8 @@ def scan_alpha_param(temperature_path, t, s_path, theo_kwargs, alpha_values, tes
 
     ax.set_xlabel('$t$ [s]')
     ax.set_ylabel('$T$ [$^\circ$C]')
-    plot_tools.save_fig(fire_paths['figures'] / f'alpha_scan/radial_av/'
-                                                f'alpha_scan_radial_av-{machine}-{diag_tag_analysed}-{pulse}.png',mkdir_depth=2)
+    plot_tools.save_fig(base_paths / 'figures/alpha_scan/radial_av/'
+                                      f'alpha_scan_radial_av-{machine}-{diag_tag_analysed}-{pulse}.png',mkdir_depth=2)
     plot_tools.show_if(show=True, tight_layout=True)
 
 

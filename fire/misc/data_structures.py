@@ -22,7 +22,7 @@ from fire.misc.utils import make_iterable
 logger = logging.getLogger(__name__)
 
 # TODO: Move meta data defaults to json file
-meta_defaults_default = {
+variables_meta_defaults = {
     't': {'label': 'Time', 'units': 's', 'symbol': '$t$', 'class': 'time',
           'description': 'Camera frame time from start of discharge'},
     'S': {'label': 'Divertor tile S coordinate', 'units': 'm', 'symbol': '$S$',
@@ -119,7 +119,7 @@ meta_defaults_default = {
                           'description': 'Greenwald density fraction', },
     }
 
-# TODO: Add dict of alternative names for each variable in meta_defaults_default eg 'S', 's_global'
+# TODO: Add dict of alternative names for each variable in variable_meta_defaults eg 'S', 's_global'
 param_aliases = {
     'time': 't',
     'temperature': 'T',
@@ -134,8 +134,8 @@ param_aliases = {
     'i_path2': 'i_path'  # TODO: Generalise to other path numbers etc
 }
 
-for key in meta_defaults_default:
-    meta_defaults_default[key]['long_name'] = meta_defaults_default[key]['symbol']  # Set longname for xarray plots
+for key in variables_meta_defaults:
+    variables_meta_defaults[key]['long_name'] = variables_meta_defaults[key]['symbol']  # Set longname for xarray plots
 
 def init_data_structures() -> Tuple[dict, dict, xr.Dataset, xr.Dataset, dict, dict]:
     """Return empty data structures for population by and use in fire code
@@ -169,26 +169,34 @@ def movie_data_to_dataarray(frame_data, frame_times=None, frame_nos=None, meta_d
         frame_nos = np.arange(frame_data.shape[0])
     if frame_times is None:
         frame_times = copy(frame_nos)
-    if meta_data is None:
-        meta_data = meta_defaults_default
 
-    frame_data = xr.DataArray(frame_data, dims=['t', 'y_pix', 'x_pix'],
+    if meta_data is not None:
+        variables_meta = meta_data.get('variables', variables_meta_defaults)
+    else:
+        variables_meta = variables_meta_defaults
+
+    left = meta_data['left'] - 1  # IPX window coords are indexed from 1
+    top = meta_data['top'] - 1  # Top < Bottom, origin at top
+    height, width = frame_data.shape[-2:]
+    xpix = np.arange(left, left + width)
+    ypix = np.arange(top, top + height)
+
+    frame_data = xr.DataArray(frame_data, dims=['t', 'y_pix', 'x_pix'], name=name,
                               coords={'t': np.array(frame_times), 'n': ('t', np.array(frame_nos)),
-                                      'y_pix': np.arange(frame_data.shape[1]),
-                                      'x_pix': np.arange(frame_data.shape[2])},
-                              name=name)
+                                      'y_pix': ypix, 'x_pix': xpix})
+
     # Default to indexing by frame number
     frame_data = frame_data.swap_dims({'t': 'n'})
-    if 'frame_data' in meta_data:
-        frame_data.attrs.update(meta_data['frame_data'])
+    if 'frame_data' in variables_meta:
+        frame_data.attrs.update(variables_meta['frame_data'])
         frame_data.attrs['label'] = frame_data.attrs['description']
     else:
         logger.warning(f'No meta data supplied for coordinate: {"frame_data"}')
 
     coords = ['n', 't', 'x_pix', 'y_pix']
     for coord in coords:
-        if coord in meta_data:
-            frame_data[coord].attrs.update(meta_data[coord])
+        if coord in variables_meta:
+            frame_data[coord].attrs.update(variables_meta[coord])
             # UDA requires 'label' while xarray uses description
             frame_data[coord].attrs['label'] = frame_data[coord].attrs['description']
         else:
@@ -224,33 +232,33 @@ def attach_standard_meta_attrs(data, varname='all', replace=False, key=None, sub
 
     key_short, suffix = remove_path_suffix(key)
 
-    key = key_short if key_short in meta_defaults_default else key  # Try removing training path suffix
+    key = key_short if key_short in variables_meta_defaults else key  # Try removing training path suffix
 
-    key = key[:-1] if key[:-1] in meta_defaults_default else key  # Try removing training path number
+    key = key[:-1] if key[:-1] in variables_meta_defaults else key  # Try removing training path number
 
-    if (key not in meta_defaults_default) and (substitutions is not None):
+    if (key not in variables_meta_defaults) and (substitutions is not None):
         key_short = key
         for substitution in substitutions:
             key_short.replace(substitution[0], substitution[1])
-        if key_short in meta_defaults_default:
+        if key_short in variables_meta_defaults:
             key = key_short
 
-    if key not in meta_defaults_default:
-        for key_short in reversed(list(meta_defaults_default.keys())):  # reverse as longer names generally come later
+    if key not in variables_meta_defaults:
+        for key_short in reversed(list(variables_meta_defaults.keys())):  # reverse as longer names generally come later
         #  in dict defn
             if (key_short in key) and (len(key_short) > 1):  # Avoid matching eg 't' if contains letter 't'
                 logger.debug(f'Using {key_short} meta data for {key}')
                 key = key_short
                 break
-    if key not in meta_defaults_default:
+    if key not in variables_meta_defaults:
         for key_short, value_short in param_aliases.items():
             if (key_short in key) and (len(key_short) > 1):
                 key = value_short
                 break
         pass
 
-    if (key in meta_defaults_default):
-        new_attrs = copy(meta_defaults_default[key])
+    if (key in variables_meta_defaults):
+        new_attrs = copy(variables_meta_defaults[key])
 
         if isinstance(data, xr.Dataset):
             data_array = data[varname]
@@ -271,7 +279,7 @@ def attach_standard_meta_attrs(data, varname='all', replace=False, key=None, sub
         logger.debug(f'Added standard meta data for "{varname}" (replace={replace})')
     else:
         logger.debug(f'No standard meta data for "{varname}" ("{key}"). '
-                       f'Defaults for: {[k for k in meta_defaults_default.keys()]}')
+                       f'Defaults for: {[k for k in variables_meta_defaults.keys()]}')
 
     return data
 

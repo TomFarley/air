@@ -18,7 +18,7 @@ class TestUtils(unittest.TestCase):
         frame_nos = np.arange(115, 115+n_frames)
         frame_data = np.ones((n_frames, *frame_shape))
 
-        # TODO: use meta data dict from data_structures meta_defaults_default
+        # TODO: use meta data dict from data_structures variable_meta_defaults
         meta_data = {'n': {'long_name': '$n_{frame}$',
               'units': 'count',
               'description': 'Camera frame number (integer)'},
