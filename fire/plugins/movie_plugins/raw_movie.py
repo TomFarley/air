@@ -26,7 +26,7 @@ plugin_info = {'description': "This plugin reads raw movie files output by the I
                               "supplied from a json file in the same directory"}
 
 
-def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True) -> dict:
+def read_movie_meta(path_fn: Union[str, Path], path_fn_meta=None, raise_on_missing_meta=True) -> dict:
     """Read meta data for raw movie file (eg exported from the IRCAM Works software) from accompanying json file.
 
     :param path_fn: Path to raw movie file or json file
@@ -39,9 +39,13 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True) -> di
     # If present, also read meta data from json file with movie file
     path_fn = Path(path_fn)
     path = path_fn.parent if path_fn.is_file() else path_fn
-    path_fn_meta = path / 'movie_meta_data.json'
+
+    if path_fn_meta is None:
+        path_fn_meta = path / 'movie_meta_data.json'
     if not path_fn_meta.exists() and path_fn.is_file():
         path_fn_meta = path / (str(path_fn.stem) + '_meta.json')
+    if not path_fn_meta.exists() and path_fn.is_file():
+        path_fn_meta = path / (str(path_fn.stem) + '-meta.json')
 
     movie_meta_json = json_load(path_fn_meta, raise_on_filenotfound=False, lists_to_arrays=True)
 
@@ -62,8 +66,8 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True) -> di
 
     for i, key in enumerate(['left', 'top', 'width', 'height']):
         movie_meta[key] = movie_meta['detector_window'][i]
-    movie_meta['left'] += 1
-    movie_meta['top'] += 1
+    # movie_meta['left'] += 1
+    # movie_meta['top'] += 1
 
     check_ipx_detector_window_meta_data(movie_meta, plugin='raw', fn=path_fn, modify_inplace=True)  # Complete missing fields
     movie_meta['detector_window'] = get_detector_window_from_ipx_header(movie_meta)  # left, top, width, height
@@ -79,7 +83,7 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True) -> di
 
 def read_movie_data(path_fn: Union[str, Path],
                     n_start:Optional[int]=None, n_end:Optional[int]=None, stride:Optional[int]=1,
-                    frame_numbers: Optional[Union[Iterable, int]]=None,
+                    frame_numbers: Optional[Union[Iterable, int]]=None, path_fn_meta=None,
                     transforms: Optional[Iterable[str]]=(), grayscale: bool=True) -> Tuple[np.ndarray, np.ndarray,
                                                                                      np.ndarray]:
     """Read frame data for raw movie file (eg exported from the IRCAM Works software).
@@ -110,7 +114,7 @@ def read_movie_data(path_fn: Union[str, Path],
     if frame_data.ndim == 2:
         frame_data = frame_data[np.newaxis, :, :]
 
-    meta_data = read_movie_meta(path_fn)
+    meta_data = read_movie_meta(path_fn, path_fn_meta=path_fn_meta)
 
     if 'frame_numbers' in meta_data:
         frame_numbers_all = meta_data['frame_numbers']

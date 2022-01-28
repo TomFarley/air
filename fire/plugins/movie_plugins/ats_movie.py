@@ -6,7 +6,7 @@
 Created: Tom Farley & Fabio Federici, 27-04-2021
 """
 
-import logging
+import logging, re
 from typing import Union, Iterable, Sequence, Tuple, Optional, Any, Dict
 from pathlib import Path
 from collections import namedtuple
@@ -31,7 +31,7 @@ MovieData = namedtuple('movie_plugin_frame_data', ['frame_numbers', 'frame_times
 movie_plugin_name = 'ats_movie'
 plugin_info = {'description': "This plugin reads ats movie files output by the FLIR ResearchIR software"}
 
-def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbose=True) -> dict:
+def read_movie_meta(path_fn: Union[str, Path], path_fn_meta=None, raise_on_missing_meta=True, verbose=True) -> dict:
     """Read meta data for ats movie file (eg exported from the FLIR ResearchIR software).
 
     :param path_fn: Path to ats movie file
@@ -49,18 +49,26 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbo
     path_fn = Path(path_fn)
     # TODO: Make more efficient by not reading in frame data here
     # movie_dict = read_ats_file_header(path_fn.parent, path_fn.name)
-    movie_dict = ats_to_dict(path_fn.parent, path_fn.name, n_frames=2)
+    movie_dict = ats_to_dict(path_fn.parent, path_fn.name, n_frames_read=2)  # , digital_level_bytes=8)
+    movie_dict['IntegrationTime'] *= 1e-3  # ns -> us? (IPX standard uses us)
 
     movie_meta = dict(movie_format='.ats')
 
     # If present, also read meta data from json file with movie file
     path_fn = Path(path_fn)
     path = path_fn.parent if path_fn.is_file() else path_fn
-    path_fn_meta = path / 'rir_meta.json'  # TODO: Remove hardcoded rir
+    if path_fn_meta is None:
+        path_fn_meta = path / 'rir_meta.json'  # TODO: Remove hardcoded rir
     if not path_fn_meta.exists() and path_fn.is_file():
         path_fn_meta = path / (str(path_fn.stem) + '_meta.json')
+    if not path_fn_meta.exists() and path_fn.is_file():
+        path_fn_meta = path / (str(path_fn.stem) + '-meta.json')
+    if not path_fn_meta.exists() and path_fn.is_file():
+        shot = int(re.match('.*(\d{5}).*', str(path_fn.name)).groups()[0])
+        path_fn_meta = path / f'rir0{shot}_meta.json'
 
-    movie_meta_json = json_load(path_fn_meta, raise_on_filenotfound=False, lists_to_arrays=True)
+
+    movie_meta_json = json_load(path_fn_meta, raise_on_filenotfound=False, raise_on_decode_error=False, lists_to_arrays=True)
 
     if isinstance(movie_meta_json, list):
         movie_meta_json = dict(movie_meta_json)  # Saved as json list in order to save ints, floats etc
@@ -77,7 +85,7 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbo
 
 
     header_fields = {'digitizer_ID': 'digitizer_ID',
-                     'time_of_measurement': 'time_of_measurement',
+                     'time_of_measurement': 'time_of_measurement',  # int64
                      'IntegrationTime': 'exposure',
                      'FrameRate': 'fps',
                      'ExternalTrigger': 'ExternalTrigger',
@@ -91,27 +99,38 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbo
 
     movie_meta.update({name: movie_dict[key] for key, name in header_fields.items()})
 
-    if len(set(np.diff(movie_dict['frame_counter']))) > 1:
+    frame_counter = movie_dict['frame_counter']
+    counter_diff = np.diff(frame_counter)
+    if len(set(counter_diff)) > 1:
         # TODO: Remove end frames with frame count jumps?
+        missing_frames, = np.nonzero(counter_diff > 1)
+        movie_meta['dropped_frames'] = missing_frames
         if verbose:
-            logger.warning(f'Frame counter misses frames: {set(np.diff(movie_dict["frame_counter"]))}')
+            logger.warning(f'Frame counter misses frames: {missing_frames}')
     movie_meta['n_frames'] = len(movie_dict['frame_counter'])
 
-    movie_meta['frame_range'] = np.array([0, movie_meta['n_frames']-1])
-    movie_meta['frame_numbers'] = np.arange(movie_meta['frame_range'][0], movie_meta['frame_range'][1]+1)
+    movie_meta['frame_numbers'] = frame_counter - np.min(frame_counter)  # Skips missed frame numbers
+    movie_meta['frame_range'] = np.array([0, np.max(movie_meta['frame_numbers'])])  # np.array([0, movie_meta['n_frames']-1])
 
     movie_meta['image_shape'] = np.array([movie_meta['height'], movie_meta['width']])
 
     if 'clock_period' in movie_meta:
         movie_meta['fps'] = 1 / movie_meta['clock_period']
+    elif 'frame_times' in movie_meta:
+        movie_meta['movie_duration'] = (np.max(movie_meta['frame_times']) - np.min(movie_meta['frame_times']))
+        if movie_meta['movie_duration'] > 0:
+            movie_meta['fps'] = movie_meta['n_frames'] / movie_meta['movie_duration']
+        else:
+            movie_meta['fps'] = np.nan
     else:
-        movie_meta['fps'] = movie_meta['n_frames'] / (np.max(movie_meta['frame_times'])
-                                                      - np.min(movie_meta['frame_times']))
+        assert 'fps' in movie_meta
+
     if 'clock_start' in movie_meta:
         movie_meta['frame_times'] = movie_meta['clock_start'] + 1/movie_meta['fps'] * movie_meta['frame_numbers']
     else:
         # time_of_measurement is int not float
-        movie_meta['frame_times'] = movie_dict['time_of_measurement']  # TODO: Refine
+        movie_meta['frame_times'] = np.full_like(movie_meta['frame_numbers'], np.nan, dtype=float)
+        # movie_meta['frame_times'] = movie_dict['time_of_measurement']  # TODO: Refine
 
     movie_meta['t_range'] = np.array([np.min(movie_meta['frame_times']), np.max(movie_meta['frame_times'])])
 

@@ -49,7 +49,7 @@ def read_movie_meta(path_fn: Union[str, Path], raise_on_missing_meta=True, verbo
     path_fn = Path(path_fn)
     # TODO: Make more efficient by not reading in frame data here
     # movie_dict = read_ats_file_header(path_fn.parent, path_fn.name)
-    movie_dict = ats_to_dict(path_fn.parent, path_fn.name, n_frames=2)
+    movie_dict = ats_to_dict(path_fn.parent, path_fn.name, n_frames_read=2)
 
     movie_meta = dict(movie_format='.ptw')
 

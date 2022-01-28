@@ -366,13 +366,22 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
                                                         for key in ('left', 'top', 'right', 'bottom')])
 
     pulse = int(header_dict.get('shot', header_dict.get('pulse')))
-    camera = header_dict.get('camera', 'IRCAM_Velox81kL_0102')
+    camera =     header_dict.get('camera', 'IRCAM Velox_81kL_0102A18CH_FAST')
+    # fps =     header_dict['fps']
+    exposure =     int(header_dict.get('exposure', 0.25e-3)* 1e6)
+    lens =     str(header_dict.get('lens', 25e-3))
+    view =     header_dict.get('view', 'HL04_A-tangential')
+    t_before_pulse =     header_dict['t_before_pulse']  # 1e-1
+    # period =     header_dict.get('frame_period', 1/fps)
+    orient =     int(header_dict.get('orient', 90))  # Rotation to apply to data to get correct orientation
+    filter =     str(header_dict.get('filter', 'None'))  # nd filter etc
+    taps =     int(header_dict.get('taps', 1))  # nd filter etc
+    depth = int(header_dict.get('bit_depth', header_dict.get('depth', 14)))
+    date_time =     header_dict.get('date_time', mast_u.get_shot_date_time(pulse))
+    taps =     header_dict.get('taps', None)
+
     times = header_dict['frame_times']
-    view = header_dict.get('view', 'HL04_A-tangential')
-    lens = f'{header_dict["lens"]*1e3}mm'  # 25mm  # TODO: Handle diff lens formats?
-    filter = header_dict.get('filter', 'None')
-    exposure = int(header_dict['exposure'] * 1e6)
-    depth = header_dict.get('bit_depth', header_dict.get('depth', 14))
+
     ipx_version = int(header_dict.get('ID', '1')[-1])
 
     shot = interfaces.digest_shot_file_name(fn=path_fn_ipx)['shot']
@@ -387,7 +396,7 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
                               camera=camera, view=view, lens=lens, filter=filter,
                               trigger=trigger, exposure=exposure,
                               num_frames=n_frames, depth=depth,
-                              frame_width=width, frame_height=height,
+                              frame_width=width, frame_height=height, orientation=orient,
                               # orientation=0, pre_exposure=0,
                               # board_temperature=0, sensor_temperature=0, strobe=0,
                         # Other fields are in Sensor object
@@ -399,7 +408,7 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
     sensor_dict = dict(
         window_left=left, window_right=right, window_top=top, window_bottom=bottom,
         binning_h=0, binning_v=0,  # 0 = no binning
-        taps=1,   # taps=Number of digitizer channels
+        taps=taps,   # taps=Number of digitizer channels
         gain=None, offset=None)
 
     if image_shape == (256, 320):
@@ -429,7 +438,7 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
     # mastmovie downscales images before writing - compensate before write to reverse effect
     bit_depth_factor = 2**(16-depth)
 
-    nuc_frame = copy(movie_data[1])
+    nuc_frame = copy(movie_data[1]) if (n_frames > 1) else copy(movie_data[0])
     if not apply_nuc:
         nuc_frame *= 0
         frames_ndarray = [frame for frame in movie_data*bit_depth_factor]  # for plotting with matplotlib

@@ -115,6 +115,9 @@ def get_detector_window_from_ipx_header(ipx_header):
 
     # From IPX1 documentation: left: offset=244, length=2, type=unsigned; Window position (leftmost=1); 0 – not defined.
     # Therefore subtract 1 to get zero indexed pixel coordinate
+    # Switch to Calcam conventions:
+    #  Order: (Left,Top,Width,Height)
+    #  Index: Start from 0 (as opposed to 1 for IPX index conventions)
     detector_window = np.array([left-1, top-1, width, height])
 
     if not np.any(np.isnan(detector_window)):
