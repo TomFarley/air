@@ -282,7 +282,6 @@ def read_movie_meta_with_mastmovie(path_fn: Union[str, Path], transforms: Iterab
     movie_meta['fps'] = 1 / np.median(np.diff(frame_times))
     # movie_meta['fps'] = (video.n_frames - 1) / np.ptp(times)  # sucestible to errors in start/end frame times
 
-    # raise NotImplementedError
     return movie_meta
 
 
@@ -366,10 +365,10 @@ def write_ipx_with_mastmovie(path_fn_ipx: Union[Path, str], movie_data: np.ndarr
                                                         for key in ('left', 'top', 'right', 'bottom')])
 
     pulse = int(header_dict.get('shot', header_dict.get('pulse')))
-    camera =     header_dict.get('camera', 'IRCAM Velox_81kL_0102A18CH_FAST')
+    camera =     header_dict['camera']
     # fps =     header_dict['fps']
-    exposure =     int(header_dict.get('exposure', 0.25e-3)* 1e6)
-    lens =     str(header_dict.get('lens', 25e-3))
+    exposure =     int(header_dict.get('exposure', 250))
+    lens =     str(header_dict.get('lens', '25mm'))
     view =     header_dict.get('view', 'HL04_A-tangential')
     t_before_pulse =     header_dict['t_before_pulse']  # 1e-1
     # period =     header_dict.get('frame_period', 1/fps)

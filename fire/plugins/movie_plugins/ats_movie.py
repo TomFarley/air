@@ -76,7 +76,7 @@ def read_movie_meta(path_fn: Union[str, Path], path_fn_meta=None, raise_on_missi
     if isinstance(movie_meta_json, dict):
         movie_meta.update(movie_meta_json)
     else:
-        message = f'FLIR .ats movie does not have a meta data json file: {path}'
+        message = f'FLIR .ats movie does not have a (valid) meta data json file: {path}. {movie_meta_json}'
         if raise_on_missing_meta:
             raise IOError(message)
         else:
@@ -125,8 +125,11 @@ def read_movie_meta(path_fn: Union[str, Path], path_fn_meta=None, raise_on_missi
     else:
         assert 'fps' in movie_meta
 
-    if 'clock_start' in movie_meta:
-        movie_meta['frame_times'] = movie_meta['clock_start'] + 1/movie_meta['fps'] * movie_meta['frame_numbers']
+    if 'trigger' in movie_meta:
+        if len(movie_meta['frame_numbers']) > 1:
+            movie_meta['frame_times'] = movie_meta['trigger'] + 1/movie_meta['fps'] * movie_meta['frame_numbers']
+        else:
+            movie_meta['frame_times'] = np.array([movie_meta['trigger']])
     else:
         # time_of_measurement is int not float
         movie_meta['frame_times'] = np.full_like(movie_meta['frame_numbers'], np.nan, dtype=float)

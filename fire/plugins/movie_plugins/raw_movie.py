@@ -5,7 +5,7 @@
 This module defines functions for interfacing raw movie files exported from the IRCAM Works software.
 """
 
-import logging
+import logging, re
 from typing import Union, Iterable, Tuple, Optional
 from pathlib import Path
 
@@ -46,6 +46,9 @@ def read_movie_meta(path_fn: Union[str, Path], path_fn_meta=None, raise_on_missi
         path_fn_meta = path / (str(path_fn.stem) + '_meta.json')
     if not path_fn_meta.exists() and path_fn.is_file():
         path_fn_meta = path / (str(path_fn.stem) + '-meta.json')
+    if not path_fn_meta.exists() and path_fn.is_file():
+        shot = int(re.match('.*(\d{5}).*', str(path_fn.name)).groups()[0])
+        path_fn_meta = path / f'rit0{shot}_meta.json'
 
     movie_meta_json = json_load(path_fn_meta, raise_on_filenotfound=False, lists_to_arrays=True)
 
@@ -64,8 +67,14 @@ def read_movie_meta(path_fn: Union[str, Path], path_fn_meta=None, raise_on_missi
         else:
             logger.warning(message)
 
-    for i, key in enumerate(['left', 'top', 'width', 'height']):
-        movie_meta[key] = movie_meta['detector_window'][i]
+    # for i, key in enumerate(['left', 'top', 'width', 'height']):
+    #     movie_meta[key] = movie_meta['detector_window'][i]
+
+    movie_meta['left'] = movie_meta.get('left', movie_meta['detector_window'][0]+1)
+    movie_meta['top'] = movie_meta.get('top', movie_meta['detector_window'][1]+1)
+    movie_meta['width'] = movie_meta.get('width', movie_meta['detector_window'][2]+1)
+    movie_meta['height'] = movie_meta.get('height', movie_meta['detector_window'][3]+1)
+
     # movie_meta['left'] += 1
     # movie_meta['top'] += 1
 
