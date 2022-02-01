@@ -571,6 +571,7 @@ def locate_files(paths: Iterable[Union[str, Path]], fns: Iterable[str],
     fns = make_iterable(fns)
     for path in paths:
         for fn in fns:
+            # Pass one pair of paths and fns at a time as locate_files returns only first match it finds
             p, f = locate_file(path, fn, path_kws=path_kws, fn_kws=fn_kws, return_raw_path=return_raw_path,
                                return_raw_fn=return_raw_fn, raise_=raise_, raise_on_missing_kws=False, verbose=verbose)
             if isinstance(f, (Path, str)):
@@ -700,6 +701,54 @@ def add_aliases_to_dict(dict_in, aliases, remove_original=False):
             dict_in.pop(key)
     return dict_in
 
+def get_func_args(func):
+    if isinstance(func, type):
+        # If a class look at it's __init__ method
+        signature = list(inspect.signature(func.__init__).parameters.keys())
+    else:
+        signature = list(inspect.signature(func).parameters.keys())
+    return signature
+
+def pop_func_args(kwargs, func):
+    for key in utils.get_func_args(func):
+        if key in kwargs:
+            kwargs.pop(key)
+    return kwargs
+
+def args_for(func, kwargs, include=(), exclude=(), match_signature=True, named_dict=True, remove=True):
+    """Return filtered dict of args from kwargs that match input for func.
+    :param - Effectively filters kwargs to return those arguments
+    :param - func            - function(s) to provide compatible arguments for
+    :param - kwargs          - list of kwargs to filter for supplied function
+    :param - exclude         - list of kwargs to exclude from filtering
+    :param - match_signature - apply filtering to kwargs based on func call signature
+    :param - named_dict      - if kwargs contains a dict under key '<func_name>_args' return its contents (+ filtered kwargs)
+    :param - remove          - remove filtered kwargs from original kwargs
+    """
+    #TODO: Include positional arguments!
+    func = make_iterable(func)  # Nest lone function in list for itteration, TODO: Handle itterable classes
+    kws = {}
+    keep = []  # list of argument names
+    name_args = []
+    for func in func:
+        # Add arguments for each function to list of arguments to keep
+        if isinstance(func, type):
+            # If a class look at it's __init__ method
+            keep += list(inspect.signature(func.__init__).parameters.keys())
+        else:
+            keep += list(inspect.signature(func).parameters.keys())
+        name_args += ['{name}_args'.format(name=func.__name__)]
+    if match_signature:
+        matches = {k: v for k, v in kwargs.items() if (((k in keep) and (k not in exclude)) or (k in include))}
+        kws.update(matches)
+    if named_dict:  # Look for arguments <function>_args={dict of keyword arguments}
+        keep_names = {k: v for k, v in kwargs.items() if (k in name_args)}
+        kws.update(keep_names)
+    if remove:  # Remove key value pairs from kwargs that were transferred to kws
+        for key in kws:
+            kwargs.pop(key)
+    return kws
+
 def filter_kwargs(kwargs, funcs=None, include=(), exclude=(), required=None, kwarg_aliases=None,
                   extract_func_dict=True, remove_from_input=False):
     """Return filtered dict of kwargs that match input call signature for supplied function.
@@ -724,14 +773,10 @@ def filter_kwargs(kwargs, funcs=None, include=(), exclude=(), required=None, kwa
     func_name_args = []  # Keys for dists of kwargs specific to supplied function(s)
 
     if funcs is not None:
-        for f in make_iterable(funcs):
+        for func in make_iterable(funcs):
             # Add arguments for each function to list of arguments to keep
-            if isinstance(f, type):
-                # If a class look at it's __init__ method
-                sig_matches += list(inspect.signature(f.__init__).parameters.keys())
-            else:
-                sig_matches += list(inspect.signature(f).parameters.keys())
-            func_name_arg = '{name}_args'.format(name=f.__name__)
+            sig_matches += get_func_args(func)
+            func_name_arg = '{name}_args'.format(name=func.__name__)
             if func_name_arg in kwargs:
                 func_name_args += [func_name_arg]
 
@@ -1055,41 +1100,6 @@ def is_subset(subset, full_set):
     """Return True if all elements of subset are in fullset"""
     return set(subset).issubset(set(full_set))
 
-def args_for(func, kwargs, include=(), exclude=(), match_signature=True, named_dict=True, remove=True):
-    """Return filtered dict of args from kwargs that match input for func.
-    :param - Effectively filters kwargs to return those arguments
-    :param - func            - function(s) to provide compatible arguments for
-    :param - kwargs          - list of kwargs to filter for supplied function
-    :param - exclude         - list of kwargs to exclude from filtering
-    :param - match_signature - apply filtering to kwargs based on func call signature
-    :param - named_dict      - if kwargs contains a dict under key '<func_name>_args' return its contents (+ filtered kwargs)
-    :param - remove          - remove filtered kwargs from original kwargs
-    """
-    #TODO: Include positional arguments!
-    func = make_iterable(func)  # Nest lone function in list for itteration, TODO: Handle itterable classes
-    kws = {}
-    keep = []  # list of argument names
-    name_args = []
-    for f in func:
-        # Add arguments for each function to list of arguments to keep
-        if isinstance(f, type):
-            # If a class look at it's __init__ method
-            keep += list(inspect.signature(f.__init__).parameters.keys())
-        else:
-            keep += list(inspect.signature(f).parameters.keys())
-        name_args += ['{name}_args'.format(name=f.__name__)]
-    if match_signature:
-        matches = {k: v for k, v in kwargs.items() if (((k in keep) and (k not in exclude)) or (k in include))}
-        kws.update(matches)
-    if named_dict:  # Look for arguments <function>_args={dict of keyword arguments}
-        keep_names = {k: v for k, v in kwargs.items() if (k in name_args)}
-        kws.update(keep_names)
-    if remove:  # Remove key value pairs from kwargs that were transferred to kws
-        for key in kws:
-            kwargs.pop(key)
-    return kws
-
-
 def argsort(itterable):
     #http://stackoverflow.com/questions/3382352/equivalent-of-numpy-argsort-in-basic-python/3382369#3382369
     #by unutbu
@@ -1099,40 +1109,6 @@ def argsort(itterable):
         itterable = [str(val) for val in itterable]
         out = sorted(range(len(itterable)), key=itterable.__getitem__)
     return out
-
-def args_for(func, kwargs, include=(), exclude=(), match_signature=True, named_dict=True, remove=True):
-    """Return filtered dict of args from kwargs that match input for func.
-    :param - Effectively filters kwargs to return those arguments
-    :param - func            - function(s) to provide compatible arguments for
-    :param - kwargs          - list of kwargs to filter for supplied function
-    :param - exclude         - list of kwargs to exclude from filtering
-    :param - match_signature - apply filtering to kwargs based on func call signature
-    :param - named_dict      - if kwargs contains a dict under key '<func_name>_args' return its contents (+ filtered kwargs)
-    :param - remove          - remove filtered kwargs from original kwargs
-    """
-    #TODO: Include positional arguments!
-    func = make_iterable(func)  # Nest lone function in list for itteration, TODO: Handle itterable classes
-    kws = {}
-    keep = []  # list of argument names
-    name_args = []
-    for f in func:
-        # Add arguments for each function to list of arguments to keep
-        if isinstance(f, type):
-            # If a class look at it's __init__ method
-            keep += list(inspect.signature(f.__init__).parameters.keys())
-        else:
-            keep += list(inspect.signature(f).parameters.keys())
-        name_args += ['{name}_args'.format(name=f.__name__)]
-    if match_signature:
-        matches = {k: v for k, v in kwargs.items() if (((k in keep) and (k not in exclude)) or (k in include))}
-        kws.update(matches)
-    if named_dict:  # Look for arguments <function>_args={dict of keyword arguments}
-        keep_names = {k: v for k, v in kwargs.items() if (k in name_args)}
-        kws.update(keep_names)
-    if remove:  # Remove key value pairs from kwargs that were transferred to kws
-        for key in kws:
-            kwargs.pop(key)
-    return kws
 
 def mode_simple(data):
     data = make_iterable(data, ndarray=True)

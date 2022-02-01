@@ -144,7 +144,7 @@ def update_detector_window(calcam_calib: calcam.Calibration, detector_window: Op
         else:
             raise e
     else:
-        logger.info('Detector sub-window set to: %s (Left,Top,Width,Height)', detector_window)
+        logger.info('Calcam detector sub-window set to: %s (Left,Top,Width,Height) (zero-indexed)', detector_window)
 
     # NOTE: Calls to calcam_calib.geometry.get_original_shape() now return the windowed detector size
 
