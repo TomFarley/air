@@ -62,7 +62,12 @@ def get_fig_ax(ax=None, num=None, ax_grid_dims=(1, 1), dimensions=2, axes_flatte
             if np.any(ax_grid_dims > 1):
                 for i_row in np.arange(n_rows):
                     for i_col in np.arange(n_cols):
-                        ax = axes[i_row, i_col]
+                        if n_rows == 1:
+                            ax = axes[i_col]
+                        elif n_cols == 1:
+                            ax = axes[i_row]
+                        else:
+                            ax = axes[i_row, i_col]
                         if (sharex in ('col', True)) and (i_row != n_rows-1):
                             ax.xaxis.label.set_visible(False)  # x axis labels only on bottom row
                             fig.subplots_adjust(hspace=0.03)  # reduce axes vertical height spacing
@@ -385,7 +390,10 @@ def show_if(show=True, close_all=False, tight_layout=True, save_fig_fn=None, sav
             fig = plt.gcf()
             if not hasattr(fig, 'tight_layout_off') or fig.tight_layout_off is False:
                 # Some functions will set fig.tight_layout_off = True if layout has been manually customised
-                fig.tight_layout()
+                try:
+                    fig.tight_layout()
+                except AttributeError as e:  # mpl version error?
+                    logger.exception('fig.tight_layout() failed')
         plt.show()
 
 def save_fig(path_fn, fig=None, paths=None, transparent=True, bbox_inches='tight', dpi=90, save=True,
@@ -430,9 +438,9 @@ def save_fig(path_fn, fig=None, paths=None, transparent=True, bbox_inches='tight
         for ext, path_fn in path_fns.items():
             try:
                 fig.savefig(path_fn, bbox_inches=bbox_inches, transparent=transparent, dpi=dpi)
-            except RuntimeError as e:
+            except (RuntimeError, AttributeError) as e:
                 logger.exception('Failed to save plot to: {}'.format(path_fn))
-                raise e
+                # raise e
             except Exception as e:
                 raise e
         if verbose:
