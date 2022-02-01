@@ -25,18 +25,19 @@ client = pyuda.Client()
 import time as clock
 
 from fire import PATH_FIRE_SOURCE
-from fire.interfaces import interfaces, io_utils
+from fire.interfaces import interfaces, io_utils, user_config
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
 def locate_structure_coords_file(machine='mast_u', paths=None, fns=None):
     if (paths is None) or (fns is None):
-        config = fire.interfaces.user_config._read_user_fire_config()
-        paths = config['paths_input']['input_files']
-        fns = config['filenames_input']['structure_coords']
+        fire_config, config_groups, path_fn = user_config.get_user_fire_config()
+        fire_paths = config_groups['fire_paths']
+        paths = fire_config['paths_input']['input_files']
+        fns = fire_config['filenames_input']['structure_coords']
 
-    kws = dict(machine=machine, fire_source_dir=PATH_FIRE_SOURCE)
+    kws = dict(machine=machine, **fire_paths)
     path_fn = io_utils.locate_file(paths, fns=fns, path_kws=kws, fn_kws=kws)
     # print(path_fn)
     path_fn = path_fn[0] / path_fn[1]
