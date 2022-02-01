@@ -107,6 +107,7 @@ class MovieReader:
                          check_output: bool=True, substitute_unknown_values: bool=False) -> Tuple[Dict[str, Any],
                                                                                                Dict[str, str]]:
         meta = dict(meta)  # Parameters used to locate movie files eg date
+
         if 'mast' in machine:
             from fire.plugins.machine_plugins import mast_u
             meta['date'] = mast_u.get_shot_date(shot=pulse)
@@ -115,11 +116,14 @@ class MovieReader:
         exceptions = []
         for name, plugin in self.plugins.items():
             # TODO: Fix hanging on some UDA calls for inexistent pulse numbers
+            meta_filtered = copy(meta)
+            duplicate_kwargs = utils.filter_kwargs(meta_filtered, funcs=plugin.read_movie_meta_data,
+                                                   remove_from_input=True)
             try:
                 meta_data, origin = plugin.read_movie_meta_data(pulse=pulse, diag_tag_raw=diag_tag_raw, machine=machine,
                                                   movie_paths=self.movie_paths,
                                         movie_fns=self.movie_fns, check_output=check_output,
-                                        substitute_unknown_values=substitute_unknown_values, **meta)
+                                        substitute_unknown_values=substitute_unknown_values, **meta_filtered)
             except IOError as e:
                 exceptions.append(e)
                 continue
@@ -152,12 +156,15 @@ class MovieReader:
         exceptions = []
         meta = dict(meta)
         for name, plugin in self.plugins.items():
+            meta_filtered = copy(meta)
+            duplicate_kwargs = utils.filter_kwargs(meta_filtered, funcs=plugin.read_movie_data,
+                                                   remove_from_input=True)
             try:
                 movie_data, origin = plugin.read_movie_data(pulse=pulse, diag_tag_raw=diag_tag_raw, machine=machine,
                                                     n_start=n_start, n_end=n_end, stride=stride,
                                                     frame_numbers=frame_numbers,
                                                     movie_paths=self.movie_paths, movie_fns=self.movie_fns,
-                                                    transforms=transforms, **meta
+                                                    transforms=transforms, **meta_filtered
                                                            # check_output=check_output,
                                                     )
             except IOError as e:
@@ -285,7 +292,7 @@ class MoviePlugin:
         return movie_data, origin
 
 
-def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movie_plugins: dict,
+def read_movie_meta_data(pulse: Union[int, str], diag_tag_raw: str, machine: str, movie_plugins: dict,
                          movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
                          check_output: bool=True,
                          substitute_unknown_values: bool=False, base_paths: Union[dict, tuple]=(),
@@ -294,7 +301,7 @@ def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movi
 
     Args:
         pulse           : Shot/pulse number or string name for synthetic movie data
-        camera          : Camera diagnostic id/tag string
+        diag_tag_raw    : Camera diagnostic id/tag string
         machine         : Tokamak that the data originates from
         movie_plugins   : Dict of plugin functions for reading movie data
         movie_paths     : Search directories containing movie files
@@ -309,7 +316,7 @@ def read_movie_meta_data(pulse: Union[int, str], camera: str, machine: str, movi
     movie_meta_required_fields = ['n_frames', 'frame_range', 't_range', 'fps', 'lens', 'exposure',
                                   'bit_depth', 'image_shape', 'detector_window']
     plugin_key = 'meta'
-    meta_data, origin = try_movie_plugins_dicts(plugin_key, pulse, camera, machine, movie_plugins,
+    meta_data, origin = try_movie_plugins_dicts(plugin_key, pulse, diag_tag_raw, machine, movie_plugins,
                                                 movie_paths=movie_paths, movie_fns=movie_fns,
                                                 base_paths=base_paths, **meta)
 
