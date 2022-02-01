@@ -70,8 +70,8 @@ $ source /usr/local/bin/virtualenvwrapper.sh  # Add this to .bashrc for future
 ```
 
 ## Configuring FIRE
-When FIRE is run for the first time, if it doesn't find user settings in the default location (`~/fire/) it will default to creating this directory and populating it with a default user configuration file `fire_config.json`.
-If you would like your fire user directory (location for user settings and output figures and files etc) then your alternative path can either be passed to schduler_workflow(user_path=...) each time or it can be set more permanently be settings the `FIRE_USER_DIR` enviroment variable in your .bashrc:
+When FIRE is run for the first time, if it doesn't find user settings in the default location (`~/fire/`) it will default to creating this directory and populating it with a default user configuration file `fire_config.json`.
+If you would like your fire user directory (location for user settings and output figures and files etc) then your alternative path can either be passed to schduler_workflow(user_path=...) each time or it can be set more permanently by settings the `FIRE_USER_DIR` enviroment variable in your .bashrc:
 ```bash
 export FIRE_USER_DIR=<my_fire_user_directory_path>
 ```
@@ -86,7 +86,8 @@ Summary for running on the scheduler
     - Hard: None
     - Soft: Efit (in future)
 * Command(s) for running the code (from the air repository directory):
-    - `$ python fire/scripts/run_scheduler_workflow.py <camera_tag> <shot_number>, -pass <pass_number>`
+    - `$ python fire/scripts/run_fire.py <camera_tag> <shot_number>, -pass <pass_number>`
+        - eg `$ python fire/scripts/run_fire.py rit 44628`
     - See `$ python fire/scripts/run_fire.py --help` for the full call signature
     - No scheudler flag is currently requireed in the call
 * Freia module dependencies:
