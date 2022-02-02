@@ -21,9 +21,8 @@ Installing FIRE
 ---------------
 It is recommended to create a virtual environment for FIRE to isolate it's
 package dependencies from the rest of your system, while using the system
-packages as a base:
+packages as a base (for instructions on installing the virtualenv and virtualenvwrapper packages see the [section below](#Installing-venv-packages)):
 ```bash
-# See below for installing venv packages if you don't already have them (pip show virtualenv)
 $ mkvirtualenv fire --system-site-packages  # venv named 'fire'
 $ workon fire  # This should put (fire) at start of terminal prompt. Use deactivate to revert to central python enviroment
 ```
@@ -60,7 +59,7 @@ $ python setup.py test
 ```
 
 #### Installing venv packages
-If you don't already have virtualenv and virtualenvwrapper installed follow the steps below before starting the installation process described above
+If you don't already have virtualenv and virtualenvwrapper installed (check with `pip show virtualenv`) follow the steps below before starting the installation process described above. You can also work with a plain virtualenv if you would prefer not to use virtualenvwrapper.
 ```bash
 $ module unload python
 $ module load python/3.7  # Use python3.7 as base
