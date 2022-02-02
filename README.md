@@ -3,25 +3,13 @@ FIRE
 [![pipeline status](https://git.ccfe.ac.uk/MAST-U_Scheduler/air/badges/ci/pipeline.svg)](https://git.ccfe.ac.uk/MAST-U_Scheduler/air/commits/ci)
 [![coverage report](https://git.ccfe.ac.uk/MAST-U_Scheduler/air/badges/ci/coverage.svg)](https://git.ccfe.ac.uk/MAST-U_Scheduler/air/commits/ci)
 
-Analysis code called by the MAST-U and JET schedulers after each discharge to process infra-red camera data.
-
-Documentation
---------------
-If you are on the ukaea network, the full FIRE documentation can be found
-[here](https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/docs/sphinx/build/html) at:
-[https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/](https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/)
-
-Alternatively open [``docs/sphinx/build/html/index.html``](docs/sphinx/build/html/index.html) from this repository.
-
-Gitlab pages path should be: https://mast-u_scheduler.gitpages.ccfe.ac.uk/air?
-
-For authorship information see AUTHORS.txt, and for details of how to cite the code in academic publications see CITE.txt.
+FIRE (Fusion Infra Red Experiments) is the analysis code called by the MAST-U schedulers after each discharge to process infra-red camera data.
 
 Installing FIRE
 ---------------
 It is recommended to create a virtual environment for FIRE to isolate it's
 package dependencies from the rest of your system, while using the system
-packages as a base (for instructions on installing the virtualenv and virtualenvwrapper packages see the [section below](#Installing-venv-packages)):
+packages as a base (for instructions on installing the virtualenv and virtualenvwrapper packages see the [section below](#installing-venv-packages)):
 ```bash
 $ mkvirtualenv fire --system-site-packages  # venv named 'fire'
 $ workon fire  # This should put (fire) at start of terminal prompt. Use deactivate to revert to central python enviroment
@@ -77,8 +65,8 @@ export FIRE_USER_DIR=<my_fire_user_directory_path>
 
 Instruction for configuring your `fire_config.json` coming soon...
 
-Summary for running on the scheduler
-------------------------------------
+Summary for running the scheduler code
+--------------------------------------
 
 * Languge: Python 3.6+
 * Scheduler signal dependencies:
@@ -97,3 +85,15 @@ Summary for running on the scheduler
     - tom.farley@ukaea.uk
 * Contact for advice using FIRE code:
     - Tom Farley, tom.farley@ukaea.uk (RO for IR cameras)
+
+Documentation
+--------------
+If you are on the ukaea network, the full FIRE documentation can be found
+[here](https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/docs/sphinx/build/html) at:
+[https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/](https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/)
+
+Alternatively open [``docs/sphinx/build/html/index.html``](docs/sphinx/build/html/index.html) from this repository.
+
+Gitlab pages path should be: https://mast-u_scheduler.gitpages.ccfe.ac.uk/air?
+
+For authorship information see AUTHORS.txt, and for details of how to cite the code in academic publications see CITE.txt.
