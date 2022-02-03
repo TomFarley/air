@@ -43,7 +43,8 @@ $ pip install -e ir_tools ir_analysis
 ```
 Run tests to confirm installation is successful:
 ```bash
-$ python setup.py test
+$ pytest tests/test_suite_fast.py  # Fast
+$ python setup.py test  # Slow
 ```
 
 #### Installing venv packages
