@@ -32,6 +32,7 @@ class TestUtils(unittest.TestCase):
              'frame_data': {'long_name': 'DL',
               'units': 'count',
               'description': 'Digit level (DL) intensity counts recorded by camera sensor, dependent on photon flux'},
+              'left': 0, 'top': 0
                 }
 
         frame_data = movie_data_to_dataarray(frame_data, frame_times, frame_nos, meta_data=meta_data)
