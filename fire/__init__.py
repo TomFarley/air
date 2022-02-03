@@ -43,7 +43,7 @@ def setup_fire_logger():
             if 'filename' in _logging_config['handlers'][handler]:
                 fn_log = _Path(_logging_config['handlers'][handler]['filename'].format(
                     fire=PATH_FIRE_SOURCE.expanduser())).expanduser().resolve()
-                fn_log.parent.mkdir(exist_ok=True)  # create tmp/log dir which is otherwise in .gitignore
+                fn_log.parent.mkdir(exist_ok=True, parents=True)  # create tmp/log dir which is otherwise in .gitignore
                 _logging_config['handlers'][handler]['filename'] = fn_log
         _logging.config.dictConfig(_logging_config)
 
