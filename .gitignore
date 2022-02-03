@@ -23,7 +23,8 @@ tests/htmlcov
 !test/*.p
 *.nc
 
-docs/sphinx/build
+# docs/sphinx/build
+
 settings/user/*
 fire/scripts/calibration_images/
 fire/input_files/mast/legacy_air
