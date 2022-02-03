@@ -58,7 +58,7 @@ if __name__ == '__main__':
                 path_calib='~/repos/air_calib/',
                 # movie_plugins_filter=['uda'],
                 )
-    print(args)
+    print(f'run_fire_example.py called with args: {args}')
 
     from fire.scripts.scheduler_workflow import scheduler_workflow
     scheduler_workflow(**args)

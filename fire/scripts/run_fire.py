@@ -49,7 +49,7 @@ if __name__ == '__main__':
                         action="store_true", default=True)
 
     args = vars(parser.parse_args())
-    print(args)
+    print(f'run_fire.py called with args: {args}')
 
     from fire.scripts.scheduler_workflow import scheduler_workflow
     scheduler_workflow(**args)

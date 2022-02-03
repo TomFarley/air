@@ -20,7 +20,7 @@ $ cd <path_to_air_reposintory>  # location of git clone
 $ python -m pip install -r requirements.txt
 $ pip install --user -e .
 ```
-The following ukaea gitlab require ukaea credentials and are most easily installed from cloning and pip installing the repositories or pip installing them directory from the urls as shown below:
+The following ukaea gitlab repositories require ukaea credentials and are most easily installed from cloning and pip installing the repositories or pip installing them directory from the urls as shown below:
 ```bash
 $ pip install git+https://github.com:euratom-software/calcam.git  # Spatial calibration classes (should be installed by by setup.py?)
 $ pip install git+https://git.ccfe.ac.uk:jrh/mastu_exhaust_analysis.git  # Used for efit equilibria amongst other things
@@ -34,17 +34,16 @@ Several other ukaea repos also complement workign with FIRE and are also recomme
 ```bash
 $ cd <directory_to_clone_repos>
 $ git clone git@git.ccfe.ac.uk:MAST-U_Scheduler/air_calib.git  # Calibration data
-$ git clone git@git.ccfe.ac.uk:tfarley/ir_analysis.git  # Scripts for performing analysis runs with FIRE
+$ git clone git@git.ccfe.ac.uk:tfarley/ir_analysis.git  # Scripts for performing analysis runs with FIRE, provenance capture etc.
 $ pip install git+https://git.ccfe.ac.uk:tfarley/ir_tools.git  # Scripts for working with IR data, producing calcam calibration images etc
-
 $ cd ..
 $ pip install -e ir_tools ir_analysis
-
 ```
 Run tests to confirm installation is successful:
 ```bash
 $ pytest tests/test_suite_fast.py  # Fast
 $ python setup.py test  # Slow
+$ python fire/scripts/run_fire_example.py  # Example run
 ```
 
 #### Installing venv packages
