@@ -438,8 +438,8 @@ def save_fig(path_fn, fig=None, paths=None, transparent=True, bbox_inches='tight
         for ext, path_fn in path_fns.items():
             try:
                 fig.savefig(path_fn, bbox_inches=bbox_inches, transparent=transparent, dpi=dpi)
-            except (RuntimeError, AttributeError) as e:
-                logger.exception('Failed to save plot to: {}'.format(path_fn))
+            except (RuntimeError, AttributeError, ValueError) as e:
+                logger.exception('Failed to save plot to: {}, {}'.format(path_fn, e))
                 # raise e
             except Exception as e:
                 raise e
