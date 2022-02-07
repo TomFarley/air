@@ -49,7 +49,11 @@ $ git clone git@git.ccfe.ac.uk:SOL_Transport/pyEquilibrium.git # Used for efit e
 # Optional dependecies:
 $ git clone git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git  # Older alternative to mastvideo library
 
-$ pip install -e calcam mastu_exhaust_analysis mastvideo pyEquilibrium pyIpx
+# Install the packages in developer mode
+$ pip install -e calcam
+$ pip install -e mastu_exhaust_analysis
+$ pip install -e mastvideo
+$ pip install -e pyEquilibrium pyIpx
 ```
 
 Several other ukaea repos also complement working with FIRE and are also recommended. These can be cloned and installed as shown bellow
@@ -60,9 +64,24 @@ $ git clone git@git.ccfe.ac.uk:MAST-U_Scheduler/air_calib.git  # Calibration dat
 $ git clone git@git.ccfe.ac.uk:tfarley/ir_analysis.git  # Scripts for performing analysis runs with FIRE, provenance capture etc.
 $ git clone git@git.ccfe.ac.uk:tfarley/ir_tools.git  # Scripts for working with IR data, producing calcam calibration images etc
 
-$ pip install -e ir_tools ir_analysis
+$ pip install -e ir_tools
+$ pip install -e ir_analysis
 ```
-Run tests to confirm installation is successful:
+If working on Freia you may need to configure several settings. It is recommended these commands are added to your ~/.bashrc so you don't have to manually run them every time you want to work with FIRE. Alternatively you can source the example bashrc file in this repository.
+```bash
+module purge
+module load FUN
+moudle swap python/3.7
+module load vtk7/3.5.1  # Needed for Calcam renders to work
+export FIRE_USER_DIR="<path_to_my_chosen_directory>"  # Only necessary if you don't want to use the default "~/fire" directory
+
+# If using virtualenvwrapper (see below):
+export WORKON_HOME=~/Envs
+source ~/.local/bin/virtualenvwrapper.sh
+
+```
+
+Run tests to confirm installation of FIRE is successful:
 ```bash
 $ pytest tests/test_suite_fast.py  # Fast
 
@@ -130,3 +149,17 @@ Alternatively open [``docs/sphinx/build/html/index.html``](docs/sphinx/build/htm
 Gitlab pages path should be: https://mast-u_scheduler.gitpages.ccfe.ac.uk/air?
 
 For authorship information see AUTHORS.txt, and for details of how to cite the code in academic publications see CITE.txt.
+
+Troubleshooting
+---------------
+- skimage ImportError
+    - Details: Sometimes the installation results in a more recent version of scikit-image being installed which causes issues.
+    - Solution:
+        - With FIRE venv active:
+        `$ pip install --upgrade scikit-image==0.18.3`
+- Calcam CAD error
+    - Solution: Configure Calcam with CAD location
+        - `$ python`
+        - `>>> import calcam`
+        - `>>> calcam.start_gui()`
+        - Click 'Settings' and add path to .ccm CAD files in e.g. air_calib/cad
