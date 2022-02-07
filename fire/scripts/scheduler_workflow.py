@@ -140,8 +140,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     diag_tag_raw = camera_info.get('diag_tag_raw', camera)
     diag_tag_analysed = camera_info.get('diag_tag_analysed', uda_utils.get_analysed_diagnostic_tag(diag_tag_raw))
 
-    meta_data.update(dict(pulse=pulse, shot=pulse, camera=camera, machine=machine, pass_no=pass_no,
-                          diag_tag_raw=diag_tag_raw, diag_tag_analysed=diag_tag_analysed,  status=1,
+    meta_data.update(dict(pulse=pulse, shot=pulse, camera=camera, machine=machine, pass_no=pass_no, status=1,
+                          diag_tag_raw=diag_tag_raw, diag_tag_analysed=diag_tag_analysed,
+                          diag_tag_raw_upper=diag_tag_raw.upper(), diag_tag_analysed_upper=diag_tag_analysed.upper(),
                           fire_source_dir=fire_paths['fire_source_dir'], fire_user_dir=fire_paths['fire_user_dir']))
     # Get paths for inserting into path format string (format strings from fire_config.json and elsewhere)
     meta_data.update()
@@ -168,6 +169,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     meta_data.update(meta_pulse)
 
     date = meta_data.get('exp_date', None)
+    meta_data['date'] = date
 
     # Load movie plugins compatible with camera
     # TODO: Move movie reader config information to separate json config file
@@ -197,7 +199,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                  plugin_precedence=None, movie_plugin_definition_file=None, base_paths=fire_paths)
     movie_meta, movie_origin = movie_reader.read_movie_meta_data(pulse=pulse, diag_tag_raw=diag_tag_raw, machine=machine,
                                                          check_output=True, substitute_unknown_values=(not scheduler),
-                                                                 meta=dict(date=date))
+                                                                 meta=meta_data)
 
     # movie_meta, movie_origin = plugins.plugins_movie.read_movie_meta_data(pulse, camera, machine, movie_plugins,
     #                                                 movie_paths=movie_paths, movie_fns=movie_fns,
@@ -296,7 +298,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # Load raw frame data
     movie_data, movie_origin = movie_reader.read_movie_data(pulse=pulse, diag_tag_raw=camera, machine=machine,
                                                             n_start=None, n_end=None, stride=1, transforms=None,
-                                                            meta=dict(date=date))
+                                                            meta=meta_data)
     (frame_nos, frame_times, frame_data) = movie_data
 
     logger.info("Movie time period [%g, %g]" % (np.nanmin(frame_times), np.nanmax(frame_times)))
@@ -307,10 +309,13 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     calcam_calib_im_pre_transforms = copy(calcam_calib.get_image(coords='Original'))
 
     #  window = (Left,Top,Width,Height)
-    detector_window = movie_meta['detector_window']
+    detector_window_original = movie_meta['detector_window']
+    # Get transformed detector window before detector subwindow is applied
+    detector_window_display = calcam_calibs.tramsform_detector_window(calcam_calib, detector_window_original,
+                                                                      image_coords)
     # update_detector_window MUST be called with ‘original’ detector coords (i.e. before any image rotation, flips etc).
     detector_window_info = calcam_calibs.update_detector_window(calcam_calib, frame_data=frame_data,
-                                                                detector_window=detector_window, coords='Original')
+                                                                detector_window=detector_window_original, coords='Original')
     calcam_calib_image_windowed = calcam_calib.get_image(coords=image_coords)  # Before detector_window applied
 
     # Apply transformations (rotate, flip etc.) to get images "right way up" if requested.
@@ -321,6 +326,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     meta_data['image_shape'] = image_shape  # Current shape of the data
     if image_coords.capitalize() == 'Display':
         meta_data['image_shape_display'] = image_shape
+        meta_data['detector_window_display'] = detector_window_display
 
     frame_data = data_structures.movie_data_to_dataarray(frame_data, frame_times, frame_nos,
                                                          meta_data=meta_data)
@@ -404,7 +410,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             # TODO: Move to file lookup with calcam calibration etc
             path_fn_bpr = '/home/tfarley/repos/air/fire/input_files/mast_u/badPixel_231864.BPR'
             bad_pixels = io_basic.read_csv(path_fn_bpr, names=('y_pix', 'x_pix'))
-            mask_bad_pixels = image_processing.bpr_list_to_mask(bad_pixels, image_shape)
+            mask_bad_pixels = image_processing.bpr_list_to_mask(bad_pixels, detector_window_display)
             logger.info(f'Read bad pixel coordinate list from file: {path_fn_bpr}')
 
     # remove_bad_pixels = False
@@ -559,7 +565,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                             axes_off=True, show=True, save_fn_image=path_fn)
 
     if debug.get('debug_detector_window', False):  # Need to plot before detector window applied to calibration
-        debug_plots.debug_detector_window(detector_window=detector_window, frame_data=image_data,
+        debug_plots.debug_detector_window(detector_window=detector_window_original, frame_data=image_data,
                                           calcam_calib=calcam_calib,  # image_full_frame=calcam_calib_image_full_frame,
                                           image_coords=image_coords, meta_data=meta_data)
     if debug.get('movie_data_animation', False):
@@ -802,7 +808,6 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         path_data = path_data.sortby(f'R_in_frame_path{i_path}', ascending=True)  # TODO: Detect non-mono and tidy into func?
         path_data[f'i_in_frame_path{i_path}'] = np.sort(np.array(path_data[f'i_in_frame_path{i_path}']))
 
-        #  TODO: Detect non-mono and tidy into func?
         path_data, path_data_non_mono = data_quality.filter_non_monotonic(path_data, coord=f'R_in_frame_path{i_path}')
         path_data, path_data_non_mono = data_quality.filter_non_monotonic(path_data,
                                         coord=f's_global_in_frame_path{i_path}', non_monotonic_prev=path_data_non_mono)
