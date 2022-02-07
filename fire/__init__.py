@@ -35,7 +35,6 @@ def setup_fire_logger():
 
     fn = (PATH_FIRE_SOURCE / 'logging_config.yaml').expanduser()
 
-
     with open(fn, 'r') as f:
         _logging_config = _yaml.safe_load(f.read())
         # Make sure relative paths are relative to fire root directory
