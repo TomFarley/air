@@ -417,7 +417,7 @@ def get_module_from_path_fn(path_fn):
             module = None
     return module
 
-def archive_netcdf_output(path_fn_in, path_archive='~/{fire_user_dir}/archive_netcdf_output/{diag_tag_raw}/',
+def archive_netcdf_output(path_fn_in, path_archive='{fire_user_dir}/archive_netcdf_output/{diag_tag_raw}/',
                           meta_data=None):
     success = False
     if path_fn_in is None:
@@ -432,7 +432,7 @@ def archive_netcdf_output(path_fn_in, path_archive='~/{fire_user_dir}/archive_ne
     fn = path_fn_in.name
 
     path_archive = Path(path_archive).expanduser()  # fire_paths[]
-    mkdir(path_archive, depth=2)
+    mkdir(path_archive, depth=3)
     path_fn_archive = path_archive / fn
 
     if path_fn_in.exists():
