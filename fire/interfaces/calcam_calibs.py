@@ -152,6 +152,30 @@ def update_detector_window(calcam_calib: calcam.Calibration, detector_window: Op
                        sensor_resolution=sensor_resolution, detector_window_applied=detector_window_applied)
     return window_info
 
+def tramsform_detector_window(calcam_calib, detector_window, image_coords):
+    """Apply transformations (rotaions, reflections etc) to map detector window tuple from Original to Display
+    coordinates
+
+    :param calcam_calib:  Calcam calibration object
+    :param detector_window:  Detector window tuple (Left,Top,Width,Height) (zero-indexed)
+    :return: Updated detector window tuple
+    """
+    if image_coords == 'Display':
+        image_shape = calcam_calib.geometry.get_original_shape()
+        left, top, width, height = detector_window
+        right = left+width
+        bottom = top+height
+        left, top = np.array(calcam_calib.geometry.original_to_display_coords(*detector_window[:2])).astype(int)
+        right, bottom = np.array(calcam_calib.geometry.original_to_display_coords(right, bottom)).astype(int)
+        width = np.abs(right - left)
+        height = np.abs(bottom - top)
+        # width, height = calcam_calib.geometry.get_display_shape()
+        detector_window_display = (left, top, width, height)
+    else:
+        if image_coords != 'Original':
+            raise ValueError(f'Unexpected value for "image_coords"="{image_coords}". Options are "Display" or '
+                             f'"Original')
+    return detector_window_display
 
 def apply_frame_display_transformations(frame_data, calcam_calib, image_coords):
     """Apply transformations (rotaions, reflections etc) to map camera frames from Original to Display coordinates
