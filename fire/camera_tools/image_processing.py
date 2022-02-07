@@ -96,14 +96,20 @@ def identify_bad_pixels(frame_data, method='blur_diff', n_sigma_tol=3, n_bad_pix
 
     return bad_pixels, mask_bad_pixels, threshold_hot, detector_bands, images_blured
 
-def bpr_list_to_mask(bpr_list, image_shape):
+def bpr_list_to_mask(bpr_list, detector_window):
     """Convert list of bad pixel coordinates to an image mask which is True where the pixels are bad"""
     bpr_list = np.array(bpr_list)
+
     if bpr_list.shape[-1] == 2:
         bpr_list = bpr_list.T
 
-    mask_bpr = np.zeros(image_shape, dtype=bool)
-    mask_bpr[bpr_list[0], bpr_list[1]] = True
+    # Calcam conventions:
+    #  Order: (Left,Top,Width,Height)
+    #  Index: Left/Top etc start from 0 (as opposed to 1 for IPX index conventions)
+    left, top, width, height = detector_window
+
+    mask_bpr = np.zeros((height, width), dtype=bool)
+    mask_bpr[bpr_list[0]-top, bpr_list[1]-left] = True
 
     return mask_bpr
 
