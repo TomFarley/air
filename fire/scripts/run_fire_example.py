@@ -53,9 +53,9 @@ if __name__ == '__main__':
 
     args = dict(camera='rit', pulse=45132, machine='mast-u', scheduler=True,
                 # path_user='/home/jmeasure/Scheduler/Shed_Mimic/Datac/Mast/scheduler/air/calib_release/user',
-                path_user='~/repos/air_calib/user/',
+                # path_user='~/repos/air_calib/user/',
                 # path_calib='/home/jmeasure/Scheduler/Shed_Mimic/Datac/Mast/scheduler/air/calib_release/',
-                path_calib='~/repos/air_calib/',
+                # path_calib='~/repos/air_calib/',
                 # movie_plugins_filter=['uda'],
                 )
     print(f'run_fire_example.py called with args: {args}')
