@@ -96,7 +96,10 @@ def read_processed_ir_to_pickle_output_file(camera, pulse, machine='mast_u',
 
     if meta_data is None:
         meta_data = {}
-    meta_data.setdefault('fire_user_dir', '~/.fire/')  # TODO: Look up userdir
+        
+    config = fire.get_user_fire_config()
+    meta_data.update(config.config_groups['fire_paths'])
+    # meta_data.setdefault('fire_user_dir', '~/fire/')
 
     diag_tag_raw = camera
     meta_args = dict(camera=camera, pulse=pulse, shot=pulse, machine=machine,

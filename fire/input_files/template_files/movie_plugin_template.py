@@ -5,8 +5,8 @@
 1) Add code for your movie format to the two functions below.
 2) Update "movie_plugin_name" variable (this must be unique)
 3) Update desciription and add any other informations fields to the "plugin_info" variable
-4) Update your .fire_config.json file to include this file in the "paths_input/movie_plugins"
-5) Update your .fire_config.json file to include the name of your plugin under the relevent camera description
+4) Update your fire_config.json file to include this file in the "paths_input/movie_plugins"
+5) Update your fire_config.json file to include the name of your plugin under the relevent camera description
     "machines"/<my_machine>/"cameras"/<my_camera>/"movie_plugins"/[<movie_plugin_name>, ...]
 """
 

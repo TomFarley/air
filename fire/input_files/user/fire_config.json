@@ -332,11 +332,11 @@
         ]
     },
     "paths_output": {
-        "checkpoint_data": "~/.fire/checkpoints/",
-        "csv_data": "~/.fire/csvs/",
-        "figures": "~/.fire/figures/",
-        "gifs": "~/.fire/gifs/",
-        "raw_images": "~/.fire/raw_images/"
+        "checkpoint_data": "{fire_user_dir}/checkpoints/",
+        "csv_data": "{fire_user_dir}/csvs/",
+        "figures": "{fire_user_dir}/figures/",
+        "gifs": "{fire_user_dir}/gifs/",
+        "raw_images": "{fire_user_dir}/raw_images/"
     },
     "filenames_input": {
         "movie_files": [

@@ -81,7 +81,7 @@ def get_fire_user_config_path_fn(path=None, fn=None):
     return path_fn
 
 def _read_user_fire_config(path=None, fn=None):
-    """Read users FIRE configuration file (eg '~/.fire/.fire_config.json')
+    """Read users FIRE configuration file (eg '~/fire/fire_config.json')
 
     Args:
         path: File path to directory containing config file
