@@ -7,12 +7,12 @@ Reading IR movie data
 
 TODO: Complete this documentation
 
-In order to read movie data from a format that is not natively supported, update your `~/.fire.conf` file to include
+In order to read movie data from a format that is not natively supported, update your `fire_config.json` file to include
 the path to a python module containing the functions `read_movie_meta` and `read_movie_data`.
 
 .. code-block:: python
-    :caption: ~/.fire.conf
-    :name: .fire.conf
+    :caption: ~/fire/fire_config.json
+    :name: fire_config.json
     :emphasize-lines: 6
 
     ...

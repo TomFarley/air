@@ -5,7 +5,8 @@
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  
+  <meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
   <title>Introduction to FIRE &mdash; Fusion Infra-Red Experiments v2.0 documentation</title>
@@ -26,6 +27,8 @@
 
   <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Installation" href="installation.html" />
@@ -81,7 +84,7 @@
               
             
             
-              <p class="caption"><span class="caption-text">Introduction</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction to FIRE</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#purpose-of-fire">Purpose of FIRE</a></li>
@@ -91,11 +94,11 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quick_start.html">Quick start</a></li>
 </ul>
-<p class="caption"><span class="caption-text">API User Guide</span></p>
+<p class="caption" role="heading"><span class="caption-text">API User Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../api/io.html">I/O</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Developer Documentation</span></p>
+<p class="caption" role="heading"><span class="caption-text">Developer Documentation</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../development/movie_io.html">Using FIRE with data on other tokamaks</a></li>
 </ul>
@@ -162,9 +165,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="introduction-to-fire">
+  <section id="introduction-to-fire">
 <h1>Introduction to FIRE<a class="headerlink" href="#introduction-to-fire" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="purpose-of-fire">
+<section id="purpose-of-fire">
 <h2>Purpose of FIRE<a class="headerlink" href="#purpose-of-fire" title="Permalink to this headline">¶</a></h2>
 <p>FIRE is designed to be a flexible tool for analysing infra-red camera images of divertor target tiles in tokamaks,
 unsing the THEODOR code to calculate heat fluxes to the tile surfaces.
@@ -172,58 +175,58 @@ The code has initially been written with application in the MAST-Upgrade and JET
 plugin system should make it’s use on other machines straighforward.
 This should make comparisons between different machines easier to interpret, when each machine has been analysed in a
 consistent way.</p>
-</div>
-<div class="section" id="input-files-required-to-run-fire">
+</section>
+<section id="input-files-required-to-run-fire">
 <h2>Input files required to run FIRE<a class="headerlink" href="#input-files-required-to-run-fire" title="Permalink to this headline">¶</a></h2>
 <p>Machine and camera specific variables are stored in a number of input files in human readable json, tsv or csv files.</p>
-<table border="1" class="docutils" id="table-1">
-<caption><span class="caption-text">Input files</span><a class="headerlink" href="#table-1" title="Permalink to this table">¶</a></caption>
+<table class="colwidths-given docutils align-default" id="id1">
+<caption><span class="caption-text">Input files</span><a class="headerlink" href="#id1" title="Permalink to this table">¶</a></caption>
 <colgroup>
-<col width="15%" />
-<col width="5%" />
-<col width="30%" />
-<col width="50%" />
+<col style="width: 15%" />
+<col style="width: 5%" />
+<col style="width: 30%" />
+<col style="width: 50%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">File type</th>
-<th class="head">Description</th>
-<th class="head">Extension</th>
-<th class="head">Default filename format</th>
+<thead>
+<tr class="row-odd"><th class="head"><p>File type</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Extension</p></th>
+<th class="head"><p>Default filename format</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td>machine_plugins</td>
-<td><div class="first last line-block">
+<tbody>
+<tr class="row-even"><td><p>machine_plugins</p></td>
+<td><div class="line-block">
 <div class="line">Functions sepecific to machine (e.g. s-coords, sectors</div>
 <div class="line">etc.). File must be in a plugin search path and contain</div>
 <div class="line">the attribute ‘machine_plugin_name’.</div>
 </div>
 </td>
-<td>py</td>
-<td>{machine}.py  (arb)</td>
+<td><p>py</p></td>
+<td><p>{machine}.py  (arb)</p></td>
 </tr>
-<tr class="row-odd"><td>calcam_calibs</td>
-<td><div class="first last line-block">
+<tr class="row-odd"><td><p>calcam_calibs</p></td>
+<td><div class="line-block">
 <div class="line">Lookup table for which calcam spatial calibration files</div>
 <div class="line">(.ccc) to use for different pulse ranges</div>
 </div>
 </td>
-<td>csv</td>
-<td>calcam_calibs-{machine}-{diag_tag_raw}-defaults.csv</td>
+<td><p>csv</p></td>
+<td><p>calcam_calibs-{machine}-{diag_tag_raw}-defaults.csv</p></td>
 </tr>
-<tr class="row-even"><td>analysis_paths</td>
-<td><div class="first last line-block">
+<tr class="row-even"><td><p>analysis_paths</p></td>
+<td><div class="line-block">
 <div class="line">Spatial coordinates of paths along tile surfaces to</div>
 <div class="line">calculate heat fluxes along</div>
 </div>
 </td>
-<td>csv</td>
-<td>analysis_paths-{machine}-{diag_tag_raw}-defaults.csv</td>
+<td><p>csv</p></td>
+<td><p>analysis_paths-{machine}-{diag_tag_raw}-defaults.csv</p></td>
 </tr>
 </tbody>
 </table>
-</div>
-</div>
+</section>
+</section>
 
 
            </div>
@@ -267,9 +270,10 @@ consistent way.</p>
     
     
       <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
     
 
   
