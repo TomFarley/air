@@ -304,7 +304,8 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
     # frames = list(video.frames())
 
     bit_depth = ipx.header.depth
-    n_frames_movie = ipx.header.num_frames
+    # n_frames_movie = ipx.header.num_frames  # Don't seem to be able to trust this - can be bigger than len(ipx.frames)
+    n_frames_movie = len(ipx.frames)
 
     frame_times_all = np.array([frame.time for frame in ipx.frames])
 
@@ -324,7 +325,7 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
         raise ValueError(f'Fractional frame numbers requested from ipx file: {frame_numbers}')
 
     frame_numbers = frame_numbers.astype(int)
-    frame_times_all = frame_times_all[frame_numbers]
+    frame_times_all = frame_times_all[frame_numbers]  # Is this safe if there are skipped frame numbers?
 
     frame_data = np.zeros((n_frames_read, ipx.header.frame_height, ipx.header.frame_width))
 
@@ -346,7 +347,7 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
     message = f'Read ipx file with mastmovie: "{path_fn}"'
     logger.debug(message)
     if verbose:
-        print(message)
+        logger.info(message)
 
     return frame_numbers, frame_times_all, frame_data
 
