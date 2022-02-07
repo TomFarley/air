@@ -513,11 +513,11 @@ def reformat_movie_meta_data(meta_data):
         try:
             # TODO: Use regex to handle while space before unit
             if 'mm' in value:
-                value_new = float(value.split('mm')[0])*1e-3  # Convert mm to meters
+                value_new = float(value.strip('"').split('mm')[0])*1e-3  # Convert mm to meters
             elif 'cm' in value:
-                value_new = float(value.split('cm')[0])*1e-2  # Convert cm to meters
+                value_new = float(value.strip('"').split('cm')[0])*1e-2  # Convert cm to meters
             else:
-                value_new = float(value)  # assume already in meters
+                value_new = float(value.strip('"'))  # assume already in meters
                 logger.debug(f'Assuming string value of lens focal length already in meters')
         except ValueError as e:
             logger.warning(f'Failed to convert string value for lens "{value}" to float')
