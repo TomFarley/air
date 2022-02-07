@@ -67,7 +67,7 @@ $ git clone git@git.ccfe.ac.uk:tfarley/ir_tools.git  # Scripts for working with 
 $ pip install -e ir_tools
 $ pip install -e ir_analysis
 ```
-If working on Freia you may need to configure several settings. It is recommended these commands are added to your ~/.bashrc so you don't have to manually run them every time you want to work with FIRE. Alternatively you can source the example bashrc file in this repository.
+If working on Freia you may need to configure several settings. It is recommended these commands are added to your ~/.bashrc so you don't have to manually run them every time you want to work with FIRE. Alternatively you can source the example bashrc file in this repository (air/fire/input_files/user/bashrc_fire).
 ```bash
 module purge
 module load FUN

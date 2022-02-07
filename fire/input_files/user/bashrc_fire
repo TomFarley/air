@@ -1,0 +1,63 @@
+# .bashrc
+
+echo 'in bashrc for fire'
+
+# Load global definitions
+if [ -f /etc/bashrc ]; then
+	. /etc/bashrc
+fi
+
+# Load personal set up for Freia nodes
+if echo $HOSTNAME | grep freia > /dev/null
+then
+   :
+   # Fusion Unix-like environment
+   module purge
+   module load FUN
+
+   module unload python
+   module load python/3.7
+
+   module load   vtk7/3.5.1  # Needed for calcam renders to work
+
+fi
+
+
+function pretty_csv {
+    column -t -s, -n "$@" | less -F -S -X -K
+}
+
+
+# FIRE user directory for plots, settings, caches etc
+export FIRE_USER_DIR=~/fire_user_dir
+
+
+# Setup for using virtualenvwrapper
+export WORKON_HOME=~/Envs
+source ~/.local/bin/virtualenvwrapper.sh
+
+
+# Clean up duplicate path entries
+export PYTHONPATH=$(echo $PYTHONPATH | awk -F: '{for (i=1;i<=NF;i++) { if (!x[$i]++ ) printf("%s:",$i); }}')
+
+
+# Add colours to bash prompt line
+PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '  # ubuntu
+
+
+LS_COLORS='rs=0:di=01;34:ln=01;36:mh=00:pi=40;33'  # 20=purple, 38=lightblue,
+export LS_COLORS
+# Colour grep output
+alias grep='grep --color=auto -n'
+
+
+# Aliases
+alias ll='ls -lh'
+alias lld='ll | grep ^d'
+alias rm='rm -i'
+alias ls='ls --color -h --group-directories-first'  # Add colours to ls and display dirs first, kB not blocks
+
+
+# Activate (standard) virtual env (not using virtualenvwrapper)
+cd ~/air/  # Edit this path to your air repo
+source venv/bin/activate
