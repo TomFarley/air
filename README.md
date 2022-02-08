@@ -157,6 +157,12 @@ Troubleshooting
     - Solution:
         - With FIRE venv active:
         `$ pip install --upgrade scikit-image==0.18.3`
+- "TypeError: load() missing 1 required positional argument: 'Loader'":
+    - Details: Not sure if this is due to outdated dask or yaml packages?
+    - Solution: Try each of these steps (with venv active):
+        - `pip install --upgrade dask`
+        - `pip install --upgrade pyyaml==6.0`
+        - `pip install --upgrade distributed`
 - Calcam CAD error
     - Solution: Configure Calcam with CAD location
         - `$ python`
