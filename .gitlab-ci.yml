@@ -11,8 +11,8 @@ before_script:
   - echo MODULE_PATH=$MODULE_PATH
 
 stages:
-  - test
   - documentation
+  - test
 
 .my_template: &PREPARE_TESTING_FREIA
     stage: test
