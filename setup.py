@@ -33,7 +33,7 @@ setup(
         'cloudpickle==2.0.0',
         'coverage==6.2',
         'cycler==0.11.0',
-        'dask==2022.1.0',
+        'dask>=2022.1.0',
         'decorator==5.1.1',
         'docutils==0.17.1',
         'fonttools==4.28.5',
