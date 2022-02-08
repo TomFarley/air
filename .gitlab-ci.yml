@@ -122,12 +122,12 @@ stages:
     stage: documentation
     before_script:
     - pwd
-#    - apt-get update -y
-#    - apt-get install -y git
-#    - apt-get install -y  python3-pip
-#    - pip install --user --upgrade pip setuptools
-#    - apt-get install -y make
-#    - apt-get install -y python3-sphinx
+    - apt-get update -y
+    - apt-get install -y git
+    - apt-get install -y  python3-pip
+    - pip install --user --upgrade pip setuptools
+    - apt-get install -y make
+    - apt-get install -y python3-sphinx
     script:
     - cd docs/sphinx/
     - make html
@@ -181,7 +181,7 @@ test_freia:
       - freia
 
 update_docs:
-    <<: *PREPARE_TESTING_FREIA
+#    <<: *PREPARE_TESTING_FREIA
     <<: *SPHINX
     tags:
       - freia
