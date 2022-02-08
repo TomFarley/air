@@ -182,6 +182,7 @@ test_freia:
 
 update_docs:
     <<: *PREPARE_TESTING_FREIA
+    stage: .post
     <<: *SPHINX
     tags:
       - freia
