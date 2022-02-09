@@ -143,7 +143,7 @@ stages:
     - which pip   # tmp
 #    - pip list   # tmp
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@master
-    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/MAST-U/mastvideo.git@master
+    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/MAST-U/mastvideo.git@main
     - pip install --user git+https://github.com/euratom-software/calcam.git
     - which gcc
     - which cc
