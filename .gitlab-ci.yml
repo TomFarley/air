@@ -11,8 +11,8 @@ before_script:
   - echo MODULE_PATH=$MODULE_PATH
 
 stages:
-  - documentation
-#  - test
+  - pages
+  - test
 
 .my_template: &PREPARE_TESTING_FREIA
     stage: test
@@ -119,7 +119,7 @@ stages:
     - pip install --user .
 
 .my_template: &SPHINX
-    stage: documentation
+    stage: pages
     before_script:
     - git status
     - export USER=root
