@@ -688,7 +688,7 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', c
             logger.info(f'{param}({path_name}): min={data.min().values:0.4g}, mean={data.mean().values:0.4g}, '
                         f'99%={np.percentile(data.values,99):0.4g}, max={data.max().values:0.4g}')
 
-        plot_tools.save_fig(save_path_fn, image_formats=image_formats, fig=fig, mkdir_depth=3)
+        plot_tools.save_fig(save_path_fn, image_formats=image_formats, fig=fig, mkdir_depth=3, meta_dict=meta)
         plot_tools.show_if(show=show, tight_layout=True)
 
     return ax, data, artist
