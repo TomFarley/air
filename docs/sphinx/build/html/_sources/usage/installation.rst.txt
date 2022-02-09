@@ -32,4 +32,4 @@ In order to project lines of sight onto points surfaces in the cameras field of 
 of the appropriate calcam cad ".ccc" files.
 To do this, launch the calcam gui, click "settings" and under CAD definitions click "Add" to direct calcam to the
 folder(s) captaining the .ccc files.
-Make sure the CAD models used in your fire config file (~/.fire_config.json) are known to calcam.
+Make sure the CAD models used in your fire config file (~/fire/fire_config.json) are known to calcam.
