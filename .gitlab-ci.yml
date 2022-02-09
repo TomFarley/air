@@ -139,12 +139,18 @@ stages:
     - pip install --user future-fstrings   # tmp
     - which pip   # tmp
     - python -m pip --version   # tmp
-    - pip install --user --upgrade setuptools pytest-cov
+    - pip install --user --upgrade pip setuptools pytest-cov
     - which pip   # tmp
 #    - pip list   # tmp
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@master
+    - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/MAST-U/mastvideo.git@master
     - pip install --user git+https://github.com/euratom-software/calcam.git
-    - pip install --user -r ./requirements.txt
+    - which gcc
+    - which cc
+    - apt-get install -y gcc g++ make automake gcc-c++ gcc-gfortran
+    - sudo ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install --upgrade numpy  # mac
+    fix?
+#    - pip install --user -r ./requirements.txt
     - pip install --user .
     - pip list
     - python -m pip --version   # tmp
