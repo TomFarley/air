@@ -73,7 +73,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         path_out            : (Optional) User supplied path for (default eg UDA) output file
         path_calib          : (Optional) User supplied path for calibration input files
         path_user           : (Optional) User supplied path for user config file and output (eg figures)
-        movie_plugins_filter       : (Optional) List of movie plugin names to restrict use to
+        movie_plugins_filter: (Optional) List of movie plugin names to restrict use to
         image_coords        : (Optional) Whether to perform analysis in 'Display' or 'Original' coords (see Calcam defn)
         debug               : (Optional) Dict specifying which debug figures to plot
         figures             : (Optional) Dict specifying which output figures to plot/save
@@ -990,7 +990,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     archive_netcdf_output = True
     # archive_netcdf_output = False
-    if archive_netcdf_output:
+    if archive_netcdf_output and not scheduler:
         path_fn_netcdf = outputs.get('uda_putdata', {}).get('path_fn')
         interfaces.archive_netcdf_output(path_fn_netcdf, meta_data=meta_data)
 
