@@ -148,8 +148,7 @@ stages:
     - which gcc
     - which cc
     - apt-get install -y gcc g++ make automake gcc-c++ gcc-gfortran
-    - sudo ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install --upgrade numpy  # mac
-    fix?
+    - sudo ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install --upgrade numpy  # mac fix?
 #    - pip install --user -r ./requirements.txt
     - pip install --user .
     - pip list
