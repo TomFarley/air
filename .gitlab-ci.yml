@@ -140,35 +140,37 @@ stages:
     - which pip   # tmp
     - python -m pip --version   # tmp
     - pip install --user --upgrade pip setuptools pytest-cov
+    - python -m pip --version   # tmp
     - which pip   # tmp
 #    - pip list   # tmp
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/SOL_Transport/pyIpx.git@master
     - pip install --user git+https://oauth2:$AUTH_TOKEN@git.ccfe.ac.uk/MAST-U/mastvideo.git@main
     - pip install --user git+https://github.com/euratom-software/calcam.git
-    # Try to fix issues with numpy install - requires ubuntu image for apt-get
     - which gcc
     - which cc
     - g++ --version
     - cc --version
-    - apt-get install -y gcc g++ cc make automake gcc-c++ gcc-gfortran
+    # Try to fix issues with numpy install - requires ubuntu image for apt-get
+#    - apt-get install -y gcc g++ cc make automake gcc-c++ gcc-gfortran
     - g++ --version
     - cc --version
     - sudo ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install --upgrade numpy  # mac fix?
 #    - pip install --user -r ./requirements.txt
     - pip install --user .
     - pip list
-    - python -m pip --version   # tmp
 #    - python -m pip show vtk   # tmp
     - python -m pip install --user vtk
 
+    - python -m pip install --user sphinx
 
     - pwd
-    - apt-get update -y
-    - apt-get install -y git
-    - apt-get install -y  python3-pip
-    - pip install --user --upgrade pip setuptools
-    - apt-get install -y make
-    - apt-get install -y python3-sphinx
+    # Requires ubuntu image
+#    - apt-get update -y
+#    - apt-get install -y git
+#    - apt-get install -y  python3-pip
+#    - pip install --user --upgrade pip setuptools
+#    - apt-get install -y make
+#    - apt-get install -y python3-sphinx
     script:
     - cd docs/sphinx/
     - make html
@@ -225,4 +227,4 @@ update_docs:
 #    <<: *PREPARE_TESTING_FREIA
     <<: *SPHINX
     tags:
-      - python:3.7-slim
+      - freia  # python:3.7-slim
