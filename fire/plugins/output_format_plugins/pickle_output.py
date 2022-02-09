@@ -121,7 +121,7 @@ def read_processed_ir_to_pickle_output_file(camera, pulse, machine='mast_u',
 
     out = (out, out_unpacked)
 
-    return out
+    return out, path_fn
 
 # ================== PLUGIN MODULE FUNCTION ALIASES ==================
 write_output_file = write_processed_ir_to_pickle_output_file
