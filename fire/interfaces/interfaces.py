@@ -17,7 +17,7 @@ from fire.misc.utils import (locate_file, mkdir, filter_nested_dict_key_paths, d
 from fire.interfaces.exceptions import InputFileException
 
 logger = logging.getLogger(__name__)
-# logger.propagate = False
+# 
 # logger.setLevel(logging.INFO)
 # print(logger_info(logger))
 
@@ -417,7 +417,7 @@ def get_module_from_path_fn(path_fn):
             module = None
     return module
 
-def archive_netcdf_output(path_fn_in, path_archive='{fire_user_dir}/archive_netcdf_output/{diag_tag_raw}/',
+def archive_netcdf_output(path_fn_in, path_archive='{fire_user_dir}/archive_netcdf_output/{diag_tag_analysed}/',
                           meta_data=None):
     success = False
     if path_fn_in is None:

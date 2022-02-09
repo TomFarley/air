@@ -18,7 +18,7 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
+
 
 # TODO: Transfer functionality from FEET repo
 

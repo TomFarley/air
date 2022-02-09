@@ -18,7 +18,6 @@ from fire.misc.utils import make_iterable
 from fire.plugins.output_format_plugins.pickle_output import read_output_file
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
 
 def read_data_for_pulses_pickle(diag_tag_raw: str, pulses: dict, machine:str= 'mast_u', generate=True, recompute=False):
     data = {}
@@ -31,8 +30,7 @@ def read_data_for_pulses_pickle(diag_tag_raw: str, pulses: dict, machine:str= 'm
         pulse = int(pulse)
         if not recompute:
             try:
-                data[pulse] = read_output_file(diag_tag_raw, pulse, machine=machine)
-                success = True
+                data[pulse], fn_pickle = read_output_file(diag_tag_raw, pulse, machine=machine)
             except FileNotFoundError as e:
                 exception = e
                 success = False
@@ -44,6 +42,9 @@ def read_data_for_pulses_pickle(diag_tag_raw: str, pulses: dict, machine:str= 'm
                 recompute = True
                 logger.warning('Pickled object library likely updated? Need to recompute?')
                 logger.warning(e)
+            else:
+                success = True
+                logger.info(f'Restored picked analysed output from: {fn_pickle}')
         if (recompute or ((not success) and generate)):
             # debug = {'movie_intensity_stats': True}
             from fire.scripts import scheduler_workflow
@@ -52,7 +53,7 @@ def read_data_for_pulses_pickle(diag_tag_raw: str, pulses: dict, machine:str= 'm
                                                             scheduler=True, debug=debug)
             scheduler_workflow.copy_output(outputs, copy_to_uda_scrach=True, clean_netcdf=True)
 
-            data[pulse] = read_output_file(diag_tag_raw, pulse, machine=machine)
+            data[pulse], fn_pickle = read_output_file(diag_tag_raw, pulse, machine=machine)
         elif (not success) and (not generate):
             raise exception
 

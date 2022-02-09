@@ -16,7 +16,7 @@ import numpy as np
 from fire.misc import utils
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
+
 
 UDA_IPX_HEADER_FIELDS = ('board_temp', 'camera', 'ccd_temp', 'codex', 'date_time', 'depth', 'exposure', 'file_format',
                          'filter', 'frame_times', 'gain', 'hbin', 'height', 'is_color', 'left', 'lens',

@@ -26,7 +26,7 @@ from fire.misc.utils import (compare_dict, convert_dataframe_values_to_python_ty
     get_traceback_location, make_iterable)
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
+
 
 
 def test_pickle(obj, verbose=True):

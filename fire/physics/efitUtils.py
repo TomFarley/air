@@ -16,7 +16,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
+
 
 import math
 import numpy as np

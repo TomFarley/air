@@ -16,7 +16,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
+
 
 
 # Emails the outsj.dat data to all those listed in the emaillist.txt file.

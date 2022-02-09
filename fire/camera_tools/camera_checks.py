@@ -19,7 +19,7 @@ from fire.physics.physics_parameters import calc_2d_profile_param_stats
 from fire.misc.data_structures import swap_xarray_dim
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
+
 
 def correct_dark_level_drift(frame_data, dark_level_correction_factors):
     dark_level_correction_factors = swap_xarray_dim(dark_level_correction_factors, frame_data.dims[0])

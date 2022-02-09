@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 import vtk
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
 
 
 def get_cell_locator(cad_model):

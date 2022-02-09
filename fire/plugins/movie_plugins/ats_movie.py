@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 from fire.interfaces.io_basic import json_load
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
+
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)

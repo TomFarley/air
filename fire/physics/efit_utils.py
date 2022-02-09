@@ -38,7 +38,7 @@ from fire.misc.utils import make_iterable
 
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
+
 logger.setLevel(logging.DEBUG)
 
 def get_efit_data(shot, calc_bfield=False, filename=None):

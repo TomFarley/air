@@ -16,7 +16,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
+
 
 def ptw_to_dict(path_fn_ptw):
     from fire.interfaces import ryptw
