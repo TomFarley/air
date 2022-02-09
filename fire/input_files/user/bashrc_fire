@@ -12,7 +12,7 @@ if echo $HOSTNAME | grep freia > /dev/null
 then
    :
    # Fusion Unix-like environment
-   module purge
+   # module purge
    module load FUN
 
    module unload python
