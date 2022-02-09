@@ -21,6 +21,8 @@ import pathlib
 MACHINE_DEFAULT = 'MAST_U'
 N_CORES_DEFAULT = 1
 
+from fire.interfaces.user_config import copy_default_user_settings
+
 if __name__ == '__main__':
     # parser = argparse.ArgumentParser(description='Run the Fusion Infra Red Experiments scheduler code')
     # parser.add_argument("camera", help="Raw tag name of camera to analyse e.g. 'rir'", type=str)
@@ -50,6 +52,8 @@ if __name__ == '__main__':
     #
     # args = vars(parser.parse_args())
     # print(args)
+
+    copy_default_user_settings(replace_existing=True)
 
     args = dict(camera='rit', pulse=45132, machine='mast-u', scheduler=True,
                 # path_user='/home/jmeasure/Scheduler/Shed_Mimic/Datac/Mast/scheduler/air/calib_release/user',
