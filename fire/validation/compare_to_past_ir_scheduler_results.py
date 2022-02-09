@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from fire.interfaces import uda_utils
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
+
 
 
 
