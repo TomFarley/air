@@ -1,3 +1,11 @@
+before_script:
+  # - pip3 install dependencies/pyIpx/
+  # - pip3 install dependencies/pyIpx/requirements.txt
+  - export PYTHONPATH=$PWD
+  - export MODULE_PATH=$PWD
+  - export IN_DOCKER=True
+  - echo MODULE_PATH=$MODULE_PATH
+
 stages:
   - build
   - pages
@@ -10,8 +18,15 @@ stages:
       - export LOGNAME=root
       - ls
       - ls /etc/
+      - ls /etc/profile/
       - ls /etc/profile.d/
-      - source /etc/profile.d/modules.sh
+      - ls /usr/
+      - ls /usr/share/
+      - ls /usr/share/Modules
+      - ls /usr/share/Modules/init
+      - ls /usr/share/Modules/init/csh
+      - source /etc/profile.d/modules.sh || true
+      - source /usr/share/Modules/init/csh || true
       - module use /usr/local/modules/default
       - module unload python
       - module load python/3.7
