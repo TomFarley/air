@@ -12,7 +12,7 @@ before_script:
 
 stages:
   - test
-  - deploy
+  - pages
 
 .my_template: &PREPARE_TESTING_FREIA
     stage: test
@@ -119,7 +119,7 @@ stages:
     - pip install --user .
 
 .my_template: &SPHINX
-    stage: deploy
+    stage: pages
     before_script:
     - git status
     - export USER=root
@@ -180,7 +180,8 @@ stages:
     # Docs at: https://MAST-U_Scheduler/.gitpages.ccfe.ac.uk/air
     artifacts:
       paths:
-      - public/
+      - public
+      when: always
       expire_in: 30 days
 
 #    only:
