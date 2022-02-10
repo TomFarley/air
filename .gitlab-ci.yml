@@ -11,8 +11,8 @@ before_script:
   - echo MODULE_PATH=$MODULE_PATH
 
 stages:
-  - documentation
   - test
+  - documentation
 
 .my_template: &PREPARE_TESTING_FREIA
     stage: test
@@ -184,6 +184,8 @@ stages:
     artifacts:
       paths:
       - public/
+      expire_in: 30 days
+
 #    only:
 #    - ci   # Only run CI workfow on 'ci' branch
 
@@ -219,6 +221,7 @@ test_python3.7:
     <<: *TEST
     image: python:3.7-slim
     allow_failure: true
+    needs: []
 
 test_freia:
     <<: *PREPARE_TESTING_FREIA
@@ -227,6 +230,7 @@ test_freia:
     tags:
       - freia
     allow_failure: true
+    needs: []
 
 update_docs:
 #    <<: *PREPARE_TESTING_FREIA
