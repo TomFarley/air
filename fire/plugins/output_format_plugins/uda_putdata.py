@@ -112,8 +112,8 @@ def write_processed_ir_to_uda_netcdf_file(path_data, image_data, path_names,
                                           variable_names_path, variable_names_time, variable_names_image,
                                           header_info, device_info, meta_data,
                                           fn_output='{diag_tag_analysed}{shot:06d}.nc', path_output='./',
-                                          client=None,
-                                          use_mast_client=False):
+                                          client=None, use_mast_client=False,
+                                          verbose=None):
     """
     NETCDF output code from /home/athorn/IR/Latest/sched_air_netcdf/src/netcdfout.pro:
     Returns:
@@ -136,7 +136,7 @@ module load uda/develop              #-fatclient
 
     # Set up output file
     file_id, path_fn = putdata_create(fn=fn_output, path=path_output, close=False,
-                                      client=client, use_mast_client=use_mast_client,
+                                      client=client, use_mast_client=use_mast_client, verbose=verbose,
                                       **{**header_info, **meta_data})
 
     # Write device information
