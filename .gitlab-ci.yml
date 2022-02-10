@@ -217,6 +217,7 @@ test_python3.7:
 #    <<: *PREPARE_TESTS
     <<: *TEST
     image: python:3.7-slim
+    allow_failure: true
 
 test_freia:
     <<: *PREPARE_TESTING_FREIA
@@ -224,6 +225,7 @@ test_freia:
     <<: *TEST
     tags:
       - freia
+    allow_failure: true
 
 update_docs:
 #    <<: *PREPARE_TESTING_FREIA
