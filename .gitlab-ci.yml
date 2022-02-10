@@ -10,7 +10,7 @@ stages:
   - build
   - pages
 
-.my_template: &FREIA_ENVIROMENT
+.my_template: &FREIA_SETUP
     before_script:
       - pwd
       - git status
@@ -39,9 +39,23 @@ stages:
       - echo pythonpath=$PYTHONPATH
       - which pip   # tmp
 
+.my_template: &UBUNTU_SETUP
+    before_script:
+      - pwd
+      - which python
+      - apt-get update -y
+      - apt-get install -y git
+      - apt-get install -y  python3-pip
+      - apt-get install -y libsm6 libxext6 libxrender-dev   # opencv dependencies
+      - apt-get install -y python3-sphinx
+      - python -m ensurepip --upgrade
+      - pip list
+      - pip install --user --upgrade pip setuptools
+
 setup_spinx:
     stage: build
-    <<: *FREIA_ENVIROMENT
+    <<: *UBUNTU_SETUP
+#    <<: *FREIA_SETUP
     script:
       - python -m pip install --upgrade pip setuptools
       - python -m pip install sphinx
@@ -50,6 +64,7 @@ update_docs:
     stage: pages
     script:
       - pwd
+      - python -m pip install sphinx
       - rm -rf public  # Delete public if already in repo
       - mkdir -p public
       - cd docs/sphinx/
@@ -62,6 +77,6 @@ update_docs:
       expire_in: 30 days
 
     tags:
-      - freia
-#      - ubuntu
-#      - lower-privacy
+#      - freia
+      - ubuntu
+      - lower-privacy
