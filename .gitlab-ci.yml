@@ -1,6 +1,4 @@
 before_script:
-  # - pip3 install dependencies/pyIpx/
-  # - pip3 install dependencies/pyIpx/requirements.txt
   - export PYTHONPATH=$PWD
   - export MODULE_PATH=$PWD
   - export IN_DOCKER=True
@@ -68,13 +66,21 @@ stages:
       - apt-get install -y git
       - apt-get install -y  python3-pip
       - apt-get install -y libsm6 libxext6 libxrender-dev   # opencv dependencies
-#      - apt-get install -y python3-sphinx
+      - apt-get install -y python3-sphinx
+      - sphinx-build --version
 
 setup_spinx:
     stage: build
     <<: *UBUNTU_SETUP
+#    <<: *INSTALL_PYTHON37
 #    <<: *FREIA_SETUP
     script:
+      - which pip3
+      - which python3
+      - python3 --version
+      - which pip
+      - which python
+      - python --version
       - python -m pip install --upgrade pip setuptools
       - python -m pip install sphinx
       - python -m pip list
@@ -83,7 +89,7 @@ update_docs:
     stage: pages
     script:
       - pwd
-      - python -m pip install sphinx
+#      - python -m pip install --upgrade sphinx
       - rm -rf public  # Delete public if already in repo
       - mkdir -p public
       - cd docs/sphinx/
@@ -98,5 +104,5 @@ update_docs:
     tags:
 #      - freia
 #      - ubuntu
+#      - lower-privacy
       - python:3.7-slim
-      - lower-privacy
