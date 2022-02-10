@@ -18,13 +18,13 @@ stages:
       - export LOGNAME=root
       - ls
       - ls /etc/
-      - ls /etc/profile/
+#      - ls /etc/profile/
       - ls /etc/profile.d/
       - ls /usr/
-      - ls /usr/share/
-      - ls /usr/share/Modules
-      - ls /usr/share/Modules/init
-      - ls /usr/share/Modules/init/csh
+      - ls /usr/share/ || true
+      - ls /usr/share/Modules || true
+      - ls /usr/share/Modules/init || true
+      - ls /usr/share/Modules/init/csh || true
       - source /etc/profile.d/modules.sh || true
       - source /usr/share/Modules/init/csh || true
       - module use /usr/local/modules/default
