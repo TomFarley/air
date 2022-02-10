@@ -47,6 +47,7 @@ stages:
       - which python3
       - python --version
       - python3 --version
+      - apt install software-properties-common
       - add-apt-repository ppa:deadsnakes/ppa
       - apt-get update -y
       - apt-get install python3.7
