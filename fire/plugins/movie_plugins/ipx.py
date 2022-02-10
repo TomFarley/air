@@ -290,7 +290,7 @@ def read_movie_data_with_mastmovie(path_fn: Union[str, Path],
                                    stride: Optional[int] = 1,
                                    frame_numbers: Optional[Union[Iterable, int]] = None,
                                    transforms: Optional[Iterable[str]] = (),
-                                   verbose: bool = True) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                                   verbose: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     from mastvideo import load_ipx_file
     from fire.misc.utils import make_iterable
 
