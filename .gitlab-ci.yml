@@ -72,7 +72,7 @@ stages:
 setup_sphinx:
     stage: build
     <<: *UBUNTU_SETUP
-#    <<: *INSTALL_PYTHON37
+    <<: *INSTALL_PYTHON37
 #    <<: *FREIA_SETUP
     script:
       - which pip3
@@ -86,9 +86,9 @@ setup_sphinx:
       - python -m pip list
     tags:
 #      - freia
-#      - ubuntu
+      - ubuntu
 #      - lower-privacy
-      - python:3.7-slim
+#      - python:3.7-slim
 
 update_docs:
     stage: pages
@@ -108,6 +108,6 @@ update_docs:
 
     tags:
 #      - freia
-#      - ubuntu
+      - ubuntu
 #      - lower-privacy
-      - python:3.7-slim
+#      - python:3.7-slim
