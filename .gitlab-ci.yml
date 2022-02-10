@@ -39,10 +39,8 @@ stages:
       - echo pythonpath=$PYTHONPATH
       - which pip   # tmp
 
-.my_template: &UBUNTU_SETUP
+.my_template: &INSTALL_PYTHON37
     before_script:
-      - pwd
-
       - which python
       - which python3
       - python --version
@@ -56,13 +54,17 @@ stages:
       - update-alternatives --install /usr/bin/python python /usr/bin/python3 10
       - update-alternatives --config python3
 
+      - alias python='python3.7'
+
       - which python
       - which python3
       - python --version
       - python3 --version
 
-      - alias python='python3.7'
-
+.my_template: &UBUNTU_SETUP
+    before_script:
+      - pwd
+      - apt-get update -y --fix-missing
       - apt-get install -y git
       - apt-get install -y  python3-pip
       - apt-get install -y libsm6 libxext6 libxrender-dev   # opencv dependencies
@@ -95,5 +97,6 @@ update_docs:
 
     tags:
 #      - freia
-      - ubuntu
+#      - ubuntu
+      - python:3.7-slim
       - lower-privacy
