@@ -136,7 +136,7 @@ def get_photon_coefs_from_calib_data(calib_coefs, integration_time):
 
     if (calib_coefs['c2'] is None):
         c2 = 0
-        logger.info(f'Set quadratic temperature calibration coefficient to zero: c2=0. Only have value for c1.')
+        logger.debug(f'Set quadratic temperature calibration coefficient to zero: c2=0. Only have value for c1.')
     elif (calib_coefs['c2_intcp'] is not None):
         c2 = (calib_coefs['c2_grad']) / (integration_time) + calib_coefs['c2_intcp']
     else:

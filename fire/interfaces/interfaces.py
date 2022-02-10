@@ -426,6 +426,9 @@ def archive_netcdf_output(path_fn_in, path_archive='{fire_user_dir}/archive_netc
     if meta_data is None:
         meta_data = {}
 
+    logger.debug(f'archive_netcdf path format string: {path_archive}')
+    logger.debug(f'fire_user_dir: {meta_data["fire_user_dir"]}')
+
     path_archive = path_archive.format(**meta_data)
 
     path_fn_in = Path(path_fn_in)

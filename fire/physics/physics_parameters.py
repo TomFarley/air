@@ -532,7 +532,7 @@ def calc_2d_profile_param_stats(data, stats=('min', ('percentile', 1), 'mean', '
                                 stat_format_str='{param}{roll_str}_{stat}({coord_keep_str}){path_str}'):
     stats = make_iterable(stats)
     kwargs = dict(kwargs)
-    logger.info(f'Calculating temporal stats (roll={roll_width}): {stats}')
+    logger.debug(f'Calculating temporal stats (roll={roll_width}): {stats}')
     out = xr.Dataset({})
     labels = {}
 

@@ -71,13 +71,14 @@ def apply_nuc_correction(frame_data: xr.DataArray, nuc_frames: xr.DataArray, rai
     # frame_data = frame_data - nuc_frames
     if np.any(frame_data < 0):
         frames_with_negatives = frame_data.where(frame_data < 0, drop=True).coords
-        message = (f'NUC corrected frame data contains negative intensities for '
-                   f'{len(frames_with_negatives["n"])}/{len(frame_data)} frame numbers:\n{frames_with_negatives}\n'
-                   f'Setting negative values to zero.')
+        message_1 = (f'NUC corrected frame data contains negative intensities for '
+                   f'{len(frames_with_negatives["n"])}/{len(frame_data)}. Setting negative values to zero. ')
+        message_2 = (f'NUC corrected frames with negative intensities:\n{frames_with_negatives}')
         if raise_on_negatives:
-            raise ValueError(message)
+            raise ValueError(message_1 + message_2)
         else:
-            logger.warning(message)
+            logger.warning(message_1)
+            logger.debug(message_2)
             frame_data = xr.apply_ufunc(np.clip, frame_data, 0, None)
     # TODO: Check for negative values etc
     assert not np.any(frame_data < 0), f'Negative values have not been clipped after NUC'

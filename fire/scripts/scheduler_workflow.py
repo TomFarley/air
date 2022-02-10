@@ -83,8 +83,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     """
     logger.info(f'Starting scheduler workflow run for inputs: {machine}, {camera}, {pulse}, {pass_no}')
-    logger.info(f'update_checkpoints={update_checkpoints}, scheduler={scheduler}')
-    logger.info(f'path_user={path_user}, path_calib={path_calib}, path_out={path_out}')
+    logger.debug(f'update_checkpoints={update_checkpoints}, scheduler={scheduler}')
+    logger.debug(f'path_user={path_user}, path_calib={path_calib}, path_out={path_out}')
 
     if analysis_steps is None:
         # TODO: Properly set up top level control of analysis steps
@@ -116,9 +116,9 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     settings, files, image_data, path_data_all, meta_data, meta_runtime = data_structures.init_data_structures()
     meta_data_extra = {}
 
-    base_paths = dict(fire_user_dir=path_user, path_uda_output=path_out, calib_dir=path_calib)
-    config, config_groups, config_path_fn = user_config.get_user_fire_config(base_paths=base_paths)
-    logger.info(f'config_groups={config_groups}')
+    fire_paths = dict(fire_user_dir=path_user, path_uda_output=path_out, calib_dir=path_calib)
+    config, config_groups, config_path_fn = user_config.get_user_fire_config(base_paths=fire_paths)
+    logger.debug(f'config_groups={config_groups}')
 
     settings['config'] = config
     fire_paths = config_groups['fire_paths']
@@ -393,7 +393,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # Perform bad pixel replacement (BPR)
     mask_bad_pixels = movie_meta.get('bad_pixel_frame')
-    frame0_raw = frame_data[0]
+    frame0_pre_bpr = copy(frame_data[0])
+    frame_mid_pre_bpr = copy(frame_data[n_middle])
     if mask_bad_pixels is None:
         # TODO: Lookup known anomalies to mask - eg stray LP cable, jammed shutter - replace image data with nans?
 
@@ -403,7 +404,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         detect_bpr = False
         if detect_bpr:
             # bad_pixels, frame_no_dead = image_processing.find_outlier_pixels(frame_raw, n_sigma_tol=10, check_edges=True)
-            bad_pixels = image_processing.identify_bad_pixels(frame0_raw, method='blur_diff',  # 'blur_diff', 'flicker_offset
+            bad_pixels = image_processing.identify_bad_pixels(frame_mid_pre_bpr, method='blur_diff',  # 'blur_diff', 'flicker_offset
                                                 n_sigma_tol=None, n_bad_pixels_expected=678*1e1, blur_axis=1)
             (bad_pixels, mask_bad_pixels, threshold_hot, detector_bands, images_blured) = bad_pixels
         elif (diag_tag_raw == 'rit'):
@@ -413,8 +414,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             mask_bad_pixels = image_processing.bpr_list_to_mask(bad_pixels, detector_window_display)
             logger.info(f'Read bad pixel coordinate list from file: {path_fn_bpr}')
 
-    # remove_bad_pixels = False
-    remove_bad_pixels = True
+    remove_bad_pixels = False
+    # remove_bad_pixels = True
     if remove_bad_pixels and (mask_bad_pixels is not None):
         # TODO: Else read BPR from file?
         image_data['frame_data'][:] = image_processing.apply_bpr_correction(frame_data, mask_bad_pixels,
@@ -424,7 +425,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         logger.info('NOT applying bad pixel replacement (BPR)')
 
     if (debug.get('bad_pixels', False)):  # TODO: Remove duplicate
-        debug_plots.plot_bad_pixels(mask_bad_pixels=mask_bad_pixels, frame_data=frame0_raw,
+        debug_plots.plot_bad_pixels(mask_bad_pixels=mask_bad_pixels, frame_data=frame_mid_pre_bpr,
                                     frame_data_corrected=frame_data)
         temporal_figures.plot_movie_intensity_stats(frame_data, meta_data=meta_data, num='movie_intensity_stats-bpr')
 
@@ -461,7 +462,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         frame_data = camera_checks.correct_dark_level_drift(image_data['frame_data'], dark_level_correction_factors)
         image_data['frame_data'] = frame_data
     else:
-        logger.info('NOT applying dark level drift correction')
+        logger.debug('NOT applying dark level drift correction')
 
     if (debug.get('dark_level', False)):
         camera_checks.plot_dark_level_variation(mask_dark=mask_dark, frame_data=image_data['frame_data'],
@@ -653,9 +654,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     subview_indices = set(list(subview_mask.flatten()))
     subview_names = calcam_calib.subview_names
 
-    logger.info(f'Camera calibration contains {calcam_calib.n_subviews} sub-views: {calcam_calib.subview_names}')
-
-    pass
+    message = f'Camera calibration contains {calcam_calib.n_subviews} sub-views: {calcam_calib.subview_names}'
+    logger.info(message) if (calcam_calib.n_subviews > 1) else logger.debug(message)
 
     # TODO: Set sensor subwindow if using full sensor calcam calibration for windowed view
     # calcam_calib.set_detector_window(window=(Left,Top,Width,Height))
@@ -814,8 +814,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         # TODO: Understand missing ~3 values at end of path
         n_non_monotonic = len(path_data_non_mono)
         if n_non_monotonic > 0:
-            logger.warning(f'Removed {n_non_monotonic} non-monotonic elements from analysis path {i_path}: '
-                           f'{path_data_non_mono.coords}')
+            logger.warning(f'Removed {n_non_monotonic} non-monotonic elements from analysis path {i_path}')
+            logger.debug(f'Path coordinates of non monotonic path elements: {path_data_non_mono.coords}')
 
         # TODO: itteratively remove negative and zero increments in R along path. Enables use of dataarray.sel(
         # method='nearest')
@@ -834,7 +834,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                     path_data[f'phi_deg_{path}'], path_data[f'z_{path}'], structure_coords_df,
                                                                        phi_in_deg=True)
         surface_ids_path, material_ids_path, visible_surfaces_path, visible_materials_path = visible_surfaces_path
-        logger.info(f'Surfaces visible along path "{analysis_path_name}": {visible_surfaces_path}')
+        logger.debug(f'Surfaces visible along path "{analysis_path_name}": {visible_surfaces_path}')
 
         # Add local spatial resolution along path
         s_local = s_coordinate.calc_local_s_along_path_data_array(path_data, analysis_path_key)
@@ -959,7 +959,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                                        heat_flux_thresh=heat_flux_thresh, meta_data=meta_data)
         if output_files.get('strike_point_loc', False):
             fn = f'strike_point_loc-{machine}-{diag_tag_analysed}-{pulse}-{analysis_path_name}.csv'
-            path_fn = Path(paths_output['csv_data']) / diag_tag_analysed / fn
+            path_fn = Path(str(paths_output['csv_data']).format(**fire_paths)) / diag_tag_analysed / fn
             io_basic.to_csv(path_fn, path_data, cols=f'heat_flux_R_peak_{path}', index='t', x_range=[0, 0.6],
                             drop_other_coords=True, verbose=True)
 
@@ -985,7 +985,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                     variable_names_path=output_variables['analysis_path'], variable_names_time=output_variables['time'],
                     variable_names_image=output_variables['image'],
                     device_info=device_details, header_info=output_header_info, meta_data=meta_data,
-                                                                   raise_on_fail=raise_on_fail, client=client)
+                    raise_on_fail=raise_on_fail,
+                    client=client, verbose=True)
     # write_processed_ir_to_netcdf(data, path_fn_out)
 
     archive_netcdf_output = True

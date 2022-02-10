@@ -110,6 +110,9 @@ def bpr_list_to_mask(bpr_list, detector_window):
 
     mask_bpr = np.zeros((height, width), dtype=bool)
     mask_bpr[bpr_list[0]-top, bpr_list[1]-left] = True
+    # mask_bpr = mask_bpr[::-1]  # Not sure if needed?
+
+    logger.debug(f'BPR mask needs checking - doesnt seem to align with bad pixels or BPR already applied?')
 
     return mask_bpr
 

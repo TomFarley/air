@@ -444,7 +444,8 @@ def save_fig(path_fn, fig=None, paths=None, transparent=True, bbox_inches='tight
             except Exception as e:
                 raise e
         if verbose:
-            logger.info('Saved {} plot to:\n{}'.format(description, path_fns))
+            path_fns_str = path_fns if len(path_fns) > 1 else list(path_fns.values())[0]
+            logger.info('Saved {} plot to: {}'.format(description, path_fns_str))
             print('Saved {} plot to:'.format(description))
             print(path_fns)
 
