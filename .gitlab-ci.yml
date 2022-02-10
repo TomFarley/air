@@ -5,24 +5,25 @@ stages:
 setup_spinx:
     stage: build
     script:
-    - python -m pip install --upgrade pip setuptools
-    - python -m pip install sphinx
+      - python -m pip install --upgrade pip setuptools
+      - python -m pip install sphinx
 
 update_docs:
     stage: pages
     script:
-    - pwd
-    - rm -rf public  # Delete public if already in repo
-    - mkdir -p public
-    - cd docs/sphinx/
-    - pwd
-    - make html
+      - pwd
+      - rm -rf public  # Delete public if already in repo
+      - mkdir -p public
+      - cd docs/sphinx/
+      - pwd
+      - make html
     artifacts:
       paths:
-      - public
+        - public
       when: always
       expire_in: 30 days
 
     tags:
-      - ubuntu
-      - lower-privacy
+      - freia
+#      - ubuntu
+#      - lower-privacy
