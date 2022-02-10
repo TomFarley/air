@@ -29,7 +29,7 @@ logger = logging.getLogger('fire.pickle_output')
 output_format_plugin_name = 'pickle_output'
 # Optional:
 output_filename_format = '{diag_tag_analysed}{shot:06d}.p'  # Filename of output
-output_path_format = '~/{fire_user_dir}/pickle_output_archive/{diag_tag_analysed}/'  # Path to save output
+output_path_format = '{fire_user_dir}/pickle_output_archive/{diag_tag_analysed}/'  # Path to save output
 # See bottom of file for function aliases
 # ====================================================================
 
@@ -49,6 +49,9 @@ def write_processed_ir_to_pickle_output_file(path_data, image_data, path_names,
         fn_output = output_filename_format
     if path_output is None:
         path_output = output_path_format
+
+    logger.debug(f'pickle path_output format string: {path_output}')
+    logger.debug(f'fire_user_dir: {meta_data.get("fire_user_dir")}')
 
     path = Path(str(path_output).format(**meta_data)).expanduser()
     fn = str(fn_output).format(**meta_data)
