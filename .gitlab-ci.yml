@@ -173,7 +173,8 @@ stages:
 #    - apt-get install -y make
 #    - apt-get install -y python3-sphinx
     script:
-    - mkdir public
+    - rm -rf public  # Delete public if already in repo
+    - mkdir -p public
     - cd docs/sphinx/
     - make html
     - cp -r build/html ../../public
