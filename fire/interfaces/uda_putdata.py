@@ -325,7 +325,7 @@ def putdata_variables_from_datasets(path_data, image_data, path_names, diag_tag,
             kwargs = {k: variable.attrs[k] for k in optional_dim_attrs if k in variable.attrs}
             putdata_variable(variable_name, dimensions, variable.values, file_id=file_id, group=group,
                              client=client, use_mast_client=use_mast_client, **kwargs)
-    logger.info(f'Wrote variables to file: \n   {variable_names_image+variable_names_path+variable_names_time}')
+    logger.info(f'Wrote variables to UDA nc file: {variable_names_image+variable_names_path+variable_names_time}')
 
 
 def putdata_dimension(dimension_name, dim_length, client=None, file_id=0, group='/', **kwargs):
