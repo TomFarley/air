@@ -260,13 +260,16 @@ def get_surface_coords(calcam_calib, cad_model, image_coords='Original', phi_pos
     logger.debug(f'Getting surface coords...'); t0 = time.time()
 
     ray_data = calcam.raycast_sightlines(calcam_calib, cad_model, coords=image_coords, force_subview=None,
-                                         exclusion_radius=exclusion_radius, intersecting_only=intersecting_only)
+                                         exclusion_radius=exclusion_radius, intersecting_only=intersecting_only,
+                                         calc_normals=True)
     # TODO: Set sensor subwindow if using full sensor calcam calibration for windowed view
     # ray_data.set_detector_window(window=(Left,Top,Width,Height))
     logger.debug(f'Setup CAD model and cast rays in {time.time()-t0:1.1f} s')
 
     surface_coords = ray_data.get_ray_end(coords=image_coords)
+    surface_normals = ray_data.get_model_normals(coords=image_coords)
     ray_lengths = ray_data.get_ray_lengths(coords=image_coords)
+
     # open rays that don't terminate in the vessel - should no longer be required now calcam.raycast_sightlines has
     # the keyword intersecting_only=True
     mask_bad_data = ray_lengths > outside_vesel_ray_length
@@ -301,6 +304,9 @@ def get_surface_coords(calcam_calib, cad_model, image_coords='Original', phi_pos
     data_out['phi_deg_im'] = (('y_pix', 'x_pix'), np.rad2deg(phi))  # Toroidal angle 'ϕ' in degrees
     data_out['theta_im'] = (('y_pix', 'x_pix'), theta)
     data_out['ray_lengths_im'] = (('y_pix', 'x_pix'), ray_lengths)  # Distance from camera pupil to surface
+    data_out['surface_normals_x_im'] = (('y_pix', 'x_pix'), surface_normals[:, :, 0])  # CAD surface normal x comp
+    data_out['surface_normals_y_im'] = (('y_pix', 'x_pix'), surface_normals[:, :, 1])  # CAD surface normal y comp
+    data_out['surface_normals_z_im'] = (('y_pix', 'x_pix'), surface_normals[:, :, 2])  # CAD surface normal z comp
     # Indices of sub calibrations due to mirrors etc
     data_out['subview_mask_im'] = (('y_pix', 'x_pix'), calcam_calib.get_subview_mask(coords=image_coords))
     data_out['bad_cad_coords_im'] = (('y_pix', 'x_pix'), mask_bad_data.astype(int))  # Pixels seeing holes in CAD model

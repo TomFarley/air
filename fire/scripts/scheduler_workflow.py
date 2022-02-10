@@ -506,6 +506,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         # frame_shake_ref = calcam_calib_image_windowed
         erroneous_displacement = 50
         # TODO: Apply for multiple camera shake ref frames to account for variation across movie (take min displacements)
+        # TODO: Try using calcam.movement.detect_movement(ref, moved) instead of own functions
         pixel_displacements, shake_stats = camera_shake.calc_camera_shake_displacements(image_data['frame_data'],
                                         frame_shake_ref,erroneous_displacement=erroneous_displacement, verbose=True)
         pixel_displacements = xr.DataArray(pixel_displacements, coords={'n': image_data['n'], 'pixel_coord': ['x', 'y']},
