@@ -43,14 +43,14 @@ stages:
     before_script:
       - pwd
       - which python
+      - which python3
+      - python --version
+      - python3 --version
       - apt-get update -y
       - apt-get install -y git
       - apt-get install -y  python3-pip
       - apt-get install -y libsm6 libxext6 libxrender-dev   # opencv dependencies
       - apt-get install -y python3-sphinx
-      - python -m ensurepip --upgrade
-      - pip list
-      - pip install --user --upgrade pip setuptools
 
 setup_spinx:
     stage: build
@@ -59,6 +59,7 @@ setup_spinx:
     script:
       - python -m pip install --upgrade pip setuptools
       - python -m pip install sphinx
+      - python -m pip list
 
 update_docs:
     stage: pages
