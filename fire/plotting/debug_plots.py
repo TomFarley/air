@@ -826,7 +826,7 @@ def plot_energy_to_target(data_paths, params=('heat_flux_R_peak', 'heat_flux_amp
 
     return fig, axes
 
-def debug_plot_timings(data_profiles, pulse, params=('heat_flux_amplitude_global_peak_{path}',
+def debug_plot_timings(data_profiles, pulse, params=('heat_flux_amplitude_peak_global_{path}',
                                                      'temperature_amplitude_peak_global_{path}',),
                        path_name='path0', comparison_signals=(('xim/da/hm10/t', 'xim/da/hm10/r'),
                                                                'xpx/clock/lwir-1'), separate_axes=True,
