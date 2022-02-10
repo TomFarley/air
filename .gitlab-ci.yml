@@ -11,7 +11,7 @@ before_script:
   - echo MODULE_PATH=$MODULE_PATH
 
 stages:
-  - pages
+  - documentation
   - test
 
 .my_template: &PREPARE_TESTING_FREIA
@@ -119,7 +119,7 @@ stages:
     - pip install --user .
 
 .my_template: &SPHINX
-    stage: pages
+    stage: documentation
     before_script:
     - git status
     - export USER=root
@@ -173,6 +173,7 @@ stages:
 #    - apt-get install -y make
 #    - apt-get install -y python3-sphinx
     script:
+    - mkdir public
     - cd docs/sphinx/
     - make html
     - cp -r build/html ../../public
@@ -229,3 +230,5 @@ update_docs:
     <<: *SPHINX
     tags:
       - freia  # python:3.7-slim
+    needs: []
+    allow_failure: true
