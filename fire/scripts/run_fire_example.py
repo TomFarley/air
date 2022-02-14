@@ -53,7 +53,7 @@ if __name__ == '__main__':
     # args = vars(parser.parse_args())
     # print(args)
 
-    copy_default_user_settings(replace_existing=True)
+    copy_default_user_settings(replace_existing=False)
 
     args = dict(camera='rit', pulse=45132, machine='mast-u', scheduler=True,
                 # path_user='/home/jmeasure/Scheduler/Shed_Mimic/Datac/Mast/scheduler/air/calib_release/user',
