@@ -328,7 +328,7 @@
             "~/data/movies/mast_u/rit_ipx_files/",
             "~/data/movies/mast_u/rir_ats_files/test/",
             "~/data/movies/mast_u/rir_ats_files/.*/",
-            "~/data/movies/diagnostic_pc_transfer/{diag_tag_raw}/{date}/"
+            "~/data/movies/diagnostic_pc_transfer/{diag_tag_raw}/{exp_date}/"
         ]
     },
     "paths_output": {
