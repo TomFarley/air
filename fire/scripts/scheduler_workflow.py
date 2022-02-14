@@ -54,6 +54,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                        equilibrium:bool=False, update_checkpoints:bool=False, analysis_steps: Optional[list]=None,
                        n_cores=1,
                        path_out=None, path_calib=None, path_user=None,
+                       alpha_user=None,
                        movie_plugins_filter=None,
                        image_coords='Display',
                        debug: Optional[dict]=None, figures: Optional[dict]=None, output_files: Optional[dict]=None):
@@ -73,6 +74,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         path_out            : (Optional) User supplied path for (default eg UDA) output file
         path_calib          : (Optional) User supplied path for calibration input files
         path_user           : (Optional) User supplied path for user config file and output (eg figures)
+        alpha_user          : (Optional) Number or two element list of surface alpha values to override theodor alpha
+                              values for all segments of analysis paths
         movie_plugins_filter: (Optional) List of movie plugin names to restrict use to
         image_coords        : (Optional) Whether to perform analysis in 'Display' or 'Original' coords (see Calcam defn)
         debug               : (Optional) Dict specifying which debug figures to plot
@@ -85,16 +88,18 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     logger.info(f'Starting scheduler workflow run for inputs: {machine}, {camera}, {pulse}, {pass_no}')
     logger.debug(f'update_checkpoints={update_checkpoints}, scheduler={scheduler}')
     logger.debug(f'path_user={path_user}, path_calib={path_calib}, path_out={path_out}')
+    if alpha_user is not None:
+        logger.warning(f'Using user supplied universal alpha parameter value of: {alpha_user}')
 
     if analysis_steps is None:
         # TODO: Properly set up top level control of analysis steps
         analysis_steps = dict(camera_shake_correction=False)
 
-    if debug is None:
+    if (debug is None) or scheduler:
         debug = {}
-    if figures is None:
+    if (figures is None) or scheduler:
         figures = {}
-    if output_files is None:
+    if (output_files is None) or scheduler:
         output_files = {}
 
     if n_cores > 1:
@@ -107,7 +112,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         nuc_frame_range = [2, 2]  # used 3rd frame like IDL sched code?
     else:
         # TODO: Look up frame range before plasma/t=0
-        nuc_frame_range = [1, 30]  # used first 30 frames before plasma, ignore first frame due to artifacts
+        nuc_frame_range = [3, 30]  # used first 30 frames before plasma, ignore first frame due to artifacts
 
     # TODO: Read temp_bg from file
     temp_bg = 23
@@ -138,12 +143,12 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # TODO: Separate camera name and diag_tag?
     camera_info = config['machines'][machine]['cameras'][camera]['device_details']
     diag_tag_raw = camera_info.get('diag_tag_raw', camera)
-    diag_tag_analysed = camera_info.get('diag_tag_analysed', uda_utils.get_analysed_diagnostic_tag(diag_tag_raw))
 
     meta_data.update(dict(pulse=pulse, shot=pulse, camera=camera, machine=machine, pass_no=pass_no, status=1,
-                          diag_tag_raw=diag_tag_raw, diag_tag_analysed=diag_tag_analysed,
-                          diag_tag_raw_upper=diag_tag_raw.upper(), diag_tag_analysed_upper=diag_tag_analysed.upper(),
                           fire_source_dir=fire_paths['fire_source_dir'], fire_user_dir=fire_paths['fire_user_dir']))
+    meta_data.update(uda_utils.get_diag_tag_variants(diag_tag_raw))
+    diag_tag_analysed = meta_data.get('diag_tag_analysed')
+
     # Get paths for inserting into path format string (format strings from fire_config.json and elsewhere)
     meta_data.update()
     kwarg_aliases = {'pulse': ['shot'], 'pass_no': ['pass', 'pass_number']}
@@ -879,16 +884,42 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         heat_flux, extra_results = heat_flux_module.calc_heatflux(image_data['t'], image_data['temperature_im'],
                                                                   path_data, analysis_path_key, theo_kwargs,
                                                                   force_material_sub_index=force_material_sub_index,
+                                                                  alpha_forced=alpha_user,
                                                                   meta=meta_data)
 
         # TODO: Consolidate variable_meta_dat from fire_config.json and data_structures.py
         heat_flux_key = f'heat_flux_{analysis_path_key}'
         path_data[heat_flux_key] = (('t', path_coord), heat_flux.T)
         path_data = data_structures.attach_standard_meta_attrs(path_data, heat_flux_key, key='q')
+        
+        if debug.get('alpha_scan', False):
+            load_pickle_alpha_scan = (debug.get('alpha_scan', False) in ('load', 1))
 
-        # path_data[heat_flux_key].attrs.update(meta_data['variables'].get('heat_flux', {}))
-        # if 'description' in path_data[heat_flux_key].attrs:
-        #     path_data[heat_flux_key].attrs['label'] = path_data[heat_flux_key].attrs['description']
+            alpha_original = theo_kwargs.get('alpha_top_org')
+            alpha_values = [np.array([a]) for a in [3e4, 5e4, 7e4, 9e4, 12e4, 30e4]]
+
+            r_path = np.array(path_data[f'R_{path}'])
+            s_path = np.array(path_data[f's_global_{path}'])  # spatial coordinate along tile surface
+            temperature_path = np.array(path_data[f'temperature_{path}']).T
+            path_fn_pickle = Path(f'alpha_scan-{len(alpha_values)}_alphas-{machine}-{diag_tag_raw}-{pulse}.p')
+
+            if (not load_pickle_alpha_scan) or (not path_fn_pickle.is_file()):
+                data, stats_dict, radial_average = heat_flux_module.calc_alpha_scan(temperature_path, t, s_path,
+                                                        theo_kwargs, alpha_values, test=True, meta=meta_data,
+                                                        r_path=r_path, path_fn_pickle=path_fn_pickle, verbose=True)
+            else:
+                data = io_basic.pickle_load(path_fn_pickle)
+                data, stats_dict, radial_average, alpha_values_loaded = [data[key] for key in
+                                                                         ('data', 'stats', 'radial_average',
+                                                                          'alpha_values')]
+                if not np.all(np.isclose(alpha_values, alpha_values_loaded)):
+                    logger.warning('Loaded different alpha values for scan')
+                    data, stats_dict, radial_average = heat_flux_module.calc_alpha_scan(temperature_path, t, s_path,
+                                                            theo_kwargs, alpha_values, test=True, meta=meta_data,
+                                                            r_path=r_path, path_fn_pickle=path_fn_pickle, verbose=True)
+                    heat_flux_module.plot_alpha_scan(data, stats_dict, radial_average, alpha_values, t, s_path,
+                                                     r_path=r_path, meta=meta_data, alpha_passed=alpha_original)
+
         path_data.coords['t'] = image_data.coords['t']
         path_data = path_data.swap_dims({'n': 't'})
 

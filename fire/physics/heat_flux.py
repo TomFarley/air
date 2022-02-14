@@ -190,7 +190,8 @@ def plot_alpha_scan(data, stats_dict, radial_average, alpha_values, t, s_path, r
     pass
 
 
-def calc_heatflux(t, temperatures, path_data, path_name, theo_kwargs, force_material_sub_index=None, meta=()):
+def calc_heatflux(t, temperatures, path_data, path_name, theo_kwargs, force_material_sub_index=None, alpha_forced=None,
+                  meta=()):
     """
 
     Args:
@@ -232,6 +233,7 @@ def calc_heatflux(t, temperatures, path_data, path_name, theo_kwargs, force_mate
             raise ValueError('Analysis path contains unknown materials')
     elif len(material_ids) > 1:
         raise NotImplementedError(f'Multiple materials along analysis path')
+    
     # TODO: Loop over sections of path with different material properties or tile gaps etc
     xpix_path, ypix_path = path_data[f'x_pix_{path}'], path_data[f'y_pix_{path}']
     temperature_path = np.array(temperatures[:, ypix_path.astype(int), xpix_path.astype(int)])
@@ -260,20 +262,6 @@ def calc_heatflux(t, temperatures, path_data, path_name, theo_kwargs, force_mate
                              f's_path dimension ({len(s_path)}). '
                              f'Mismatch will cause theodor to use integer index s values!')
 
-    # alpha_bot = alphas['tile_bottom']
-    # alpha_top = alphas['tile_surface']
-    #
-    # d_target=0.040
-    # diff = np.array([ 70.63, 48.25, 37.78])*1.0e-6
-    # lam = np.array([174.9274, 133.1148, 110.4595])
-    # #diff = np.array([240.87, 61.53, 34.86])*1e-6    # mm^2/s    Valerias JET data, 01/12/2008
-    # #lam  = np.array([305.28,175.68,117.12])         # W/m/K     Valerias JET data
-    # aniso=1.00
-    # alpha_bot=200.0
-    # acl=alphavector if alphavector is not None else np.array([1.])
-    # alpha_top = alpha*acl if alpha is not None else 220000.0*acl
-
-
     # For hints as to meanings to theodor arguments see:
     # https://users.euro-fusion.org/openwiki/index.php/THEODOR#theo_mul_33.28.29
     # NOTE: If location[x] is not the same size as the x dimension of data[x,t], the code uses the array indices as location[x].
@@ -284,7 +272,7 @@ def calc_heatflux(t, temperatures, path_data, path_name, theo_kwargs, force_mate
         gc.disable()
 
     """
-    Required arguments:
+    Required theo_mul_33 arguments:
     data            - float temperature array (location,time) [C]
     time            - temporal coordinates of data[1] [s]
     location        - spatial coordinates of data[0] [m]
@@ -299,48 +287,15 @@ def calc_heatflux(t, temperatures, path_data, path_name, theo_kwargs, force_mate
     - The remaining arguments are for visualisation/debugging and can be ignored
     - If location[x] is not the same size as the x dimension of data[x,t], the code uses the array indices as location[x].
     """
+    if alpha_forced is not None:
+        logger.warning(f'Replacing material specific alpha value of {theo_kwargs["alpha_top_org"]} with user supplied '
+                       f'alpha value of {alpha_forced}')
+        theo_kwargs['alpha_top_org'] = alpha_forced
+
     logger.info(f'Calling THEODOR with kwargs: {theo_kwargs}')
 
     heat_flux, extra_results = theodor.theo_mul_33(temperature_path, t, s_path, test=True, verbose=True, **theo_kwargs)
     #               d_target, alpha_bot, alpha_top, diff, lam, aniso, x_Tb=x_Tb, y_Tb=y_Tb,
-
-    scan_alphas = False
-    # scan_alphas = True
-    if scan_alphas:
-        r_path = np.array(path_data[f'R_{path}'])
-        # alpha_values = [[70000], [10000]]
-        # alpha_values = [[a] for a in np.arange(10e2, 250e3, 25e3)]
-        # alpha_values = [[a] for a in np.arange(10e2, 250e3, 50e3)]
-        # alpha_values = [[a] for a in np.logspace(3, 5, 3)]
-        # alpha_values = [[a] for a in [2e3, 5e3, 1e4, 3e4, 7e4, 1.5e5, 4e5]]
-        # alpha_values = [[a] for a in [1e4, 3.5e4, 7e4, 1.4e5, 3e5]]
-        alpha_values = [[a] for a in [3e4, 5e4, 7e4, 9e4, 12e4, 30e4]]
-        alpha_values = [np.array(a) for a in alpha_values]
-
-        load_pickle_alpha_scan = True
-        # load = False
-
-        pulse, diag_tag_raw, machine = dict(meta).get('pulse'), dict(meta).get('diag_tag_raw'), dict(meta).get(
-            'machine')
-        diag_tag_analysed = uda_utils.get_analysed_diagnostic_tag(diag_tag_raw)
-        alpha_passed = theo_kwargs.get('alpha_top_org')
-
-        path_fn_pickle = Path(f'alpha_scan-{len(alpha_values)}_alphas-{machine}-{diag_tag_raw}-{pulse}.p')
-
-        if (not load_pickle_alpha_scan) or (not path_fn_pickle.is_file()):
-            data, stats_dict, radial_average = calc_alpha_scan(temperature_path, t, s_path, theo_kwargs,
-                        alpha_values, test=True, meta=meta, r_path=r_path, path_fn_pickle=path_fn_pickle, verbose=True)
-        else:
-            data = io_basic.pickle_load(path_fn_pickle)
-            data, stats_dict, radial_average, alpha_values_loaded = [data[key] for key in
-                                                         ('data', 'stats', 'radial_average', 'alpha_values')]
-            if not np.all(np.isclose(alpha_values, alpha_values_loaded)):
-                logger.warning('Loaded different alpha values for scan')
-                data, stats_dict, radial_average = calc_alpha_scan(temperature_path, t, s_path, theo_kwargs,
-                                                                   alpha_values, test=True, meta=meta, r_path=r_path,
-                                                                   path_fn_pickle=path_fn_pickle, verbose=True)
-        plot_alpha_scan(data, stats_dict, radial_average, alpha_values, t, s_path, r_path=r_path, meta=meta,
-                        alpha_passed=alpha_passed)
 
     # Convert W -> MW
     heat_flux *= 1e-6
