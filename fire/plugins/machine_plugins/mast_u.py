@@ -587,14 +587,14 @@ def label_tiles_old(ax, coords, coords_axes=('i_path{path_no}', 't'),
 
     return tiles, r_tiles
 
-def pulse_meta_data(shot, keys=
+def pulse_meta_data(shot, diag_tag=None, tag_variants=True, machine=True, datetime_format='{date} {time}',
+                    keys=('exp_date', 'exp_time', 'date_time', 'tstart', 'tend', 'ip_max', 'tftstart', 'tftend'),
                     # ('exp_date', 'exp_time', 'preshot', 'postshot', 'creation', 'abort', 'useful', 'sl',
                     #            'term_code', 'tstart', 'tend','program', 'reference')
                     #     ('tstart', 'tend', 'ip_max', 'tftstart', 'tftend', 'bt_max', 'bt_ipmax', 'pohm_max',
                     #      'tstart_nbi', 'tend_nbi', 'pnbi_max', 'rmag_efit', 'te0_max', 'ngreenwald_ipmax',
                     #      'ngreenwaldratio_ipmax', 'q95_ipmax', 'zeff_max', 'zeff_ipmax', 'betmhd_ipmax', 'zmag_efit',
                     #      'rinner_efit', 'router_efit')
-('exp_date', 'exp_time', 'tstart', 'tend', 'ip_max', 'tftstart', 'tftend', )
                     ):
     try:
         from pycpf import pycpf
@@ -602,21 +602,32 @@ def pulse_meta_data(shot, keys=
         return e
 
     out = dict()
+
+    if tag_variants and diag_tag is not None:
+        out.update(uda_utils.get_diag_tag_variants(diag_tag))
+    if machine:
+        out['machine'] = 'mast_u'
+        out['machine_upper'] = out['machine'].upper()
+        out['pulse_prefix'] = str(shot)[:2]
+
     for key in keys:
         if key not in out:
-            try:
-                out[key] = pycpf.query([key], filters=['exp_number = {}'.format(shot)])[key]   # [0]
-                out['erc'] = 0
-            except Exception as e:
-                logger.debug(f'Failed to perform CPF query for {shot}, {key}')
-                if key in ('exp_date', 'exp_time'):
-                    try:
-                        uda_module, client = uda_utils.get_uda_client()
-                        out['exp_date'], out['exp_time'] = client.get_shot_date_time(shot=shot)
-                    except Exception as e:
-                        logger.warning('Failed to retrieve date and time from pyCPF or pyUDA')
-                    else:
-                        logger.debug(f'Successfully retrieved shot time with UDA: {out["exp_date"], out["exp_time"]}')
+            if key == 'date_time':
+                out[key] = get_shot_date_time(shot=shot, datetime_format=datetime_format)
+            else:
+                try:
+                    out[key] = pycpf.query([key], filters=['exp_number = {}'.format(shot)])[key]   # [0]
+                    out['erc'] = 0
+                except Exception as e:
+                    logger.debug(f'Failed to perform CPF query for {shot}, {key}')
+                    if key in ('exp_date', 'exp_time'):
+                        try:
+                            uda_module, client = uda_utils.get_uda_client()
+                            out['exp_date'], out['exp_time'] = client.get_shot_date_time(shot=shot)
+                        except Exception as e:
+                            logger.warning('Failed to retrieve date and time from pyCPF or pyUDA')
+                        else:
+                            logger.debug(f'Successfully retrieved shot time with UDA: {out["exp_date"], out["exp_time"]}')
     return out
 
 def get_shot_date_time(shot, datetime_format='{date} {time}'):
