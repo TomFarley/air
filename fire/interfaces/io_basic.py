@@ -413,6 +413,7 @@ def mkdir(dirs, start_dir=None, depth=None, accept_files=True, info=None, check_
                                                                                           os.path.relpath(start_dir)))
                 continue
             if check_characters and (not check_safe_path_string(d)):
+                logger.warning(f'Attempting to create path "{d}" which contains invalid character.')
                 if not ask_input_yes_no(f'Path "{d}" contains invalid character. Do you still want to create it?'):
                     continue
             try:
