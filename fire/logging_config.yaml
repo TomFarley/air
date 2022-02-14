@@ -7,13 +7,13 @@ formatters:
 handlers:
   console:
     class: logging.StreamHandler
-    level: DEBUG
+    level: INFO
     formatter: simple
     stream: ext://sys.stdout
   file_rotating:
     class: logging.handlers.RotatingFileHandler
     maxBytes: 102400
-    backupCount: 2
+    backupCount: 10
     mode: w
     level: DEBUG
     formatter: dated
