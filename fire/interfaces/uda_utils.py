@@ -713,13 +713,32 @@ def get_uda_scheduler_filename(fn_pattern='{diag_tag_analysed}{shot:06d}.nc', pa
         fn = Path(path) / fn
     return fn
 
-def get_analysed_diagnostic_tag(diag_tag):
+def change_tag_case(tag, upper=False, lower=False):
+    if upper:
+        tag = tag.upper()
+    if lower:
+        tag = tag.upper()
+    return tag
+
+def get_analysed_diagnostic_tag(diag_tag, upper=False, lower=False):
+    # TODO: allow caps input
     analysed_tag = re.sub("^r", 'a', diag_tag)  # Change diagnostic tag from raw to analysed
+    analysed_tag = change_tag_case(analysed_tag, upper=upper, lower=lower)
     return analysed_tag
 
-def get_raw_diagnostic_tag(diag_tag):
+def get_raw_diagnostic_tag(diag_tag, upper=False, lower=False):
     raw_tag = re.sub("^a", 'r', diag_tag)  # Change diagnostic tag from raw to analysed
+    raw_tag = change_tag_case(raw_tag, upper=upper, lower=lower)
     return raw_tag
+
+def get_diag_tag_variants(diag_tag):
+    diag_tag = diag_tag.lower()
+    tags = {}
+    tags['diag_tag_raw'] = get_raw_diagnostic_tag(diag_tag)
+    tags['diag_tag_raw_upper'] = get_raw_diagnostic_tag(diag_tag, upper=True)
+    tags['diag_tag_analysed'] = get_analysed_diagnostic_tag(diag_tag)
+    tags['diag_tag_analysed_upper'] = get_analysed_diagnostic_tag(diag_tag, upper=True)
+    return tags
 
 def check_for_required_args(kwargs, required_args, none_as_missing=True, application=None):
     # Record of missing required args
