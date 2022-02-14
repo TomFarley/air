@@ -462,7 +462,9 @@ def dirs_exist(paths: Iterable[Union[str, Path]], path_kws: Optional[dict]=None,
                 continue
 
         try:
-            path = Path(path).expanduser().resolve(strict=False)
+            path = Path(path).expanduser()
+            if not path.is_dir():  # Resolve can erroniously add /common/ to /projects paths
+                path = path.resolve(strict=False)
         except RuntimeError as e:
             if "Can't determine home directory" in str(e):
                 pass

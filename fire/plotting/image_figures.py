@@ -21,6 +21,7 @@ from fire.camera_tools.image_processing import find_outlier_pixels
 from fire.plotting import plot_tools
 from fire.misc import utils, data_structures
 from fire.misc.utils import make_iterable
+from fire.interfaces import io_basic
 
 from fire.plotting.plot_tools import get_fig_ax, legend
 
@@ -504,6 +505,7 @@ def animate_image_data(frames, ax=None, duration=None, interval=None,
             kwargs = dict(fps=30)
             if save_kwargs is not None:
                 kwargs.update(save_kwargs)
+            io_basic.mkdir(save_path_fn, depth=2, accept_files=True)
             if save_path_fn.suffix == '.gif':
                 anim.save(str(save_path_fn), writer='imagemagick', **kwargs)
                           # savefig_kwargs=dict(bbox_inches='tight', transparent=True))  # transparent makes blury
