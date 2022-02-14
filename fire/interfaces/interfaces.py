@@ -114,7 +114,7 @@ def identify_files(pulse, camera, machine, search_paths_inputs=None, fn_patterns
                                 f'{errors[list(errors.keys())[0]]}')
     # Checkpoint intermediate output files to speed up analysis
     # checkpoint_path = setup_checkpoint_path(paths_output['checkpoint_data'])
-    checkpoint_path = Path(paths_output['checkpoint_data']).expanduser().resolve()
+    checkpoint_path = Path(str(paths_output['checkpoint_data']).format(**base_paths)).expanduser().resolve()
     files['checkpoint_path'] = checkpoint_path
     params['calcam_calib_stem'] = files['calcam_calib'].stem
 
