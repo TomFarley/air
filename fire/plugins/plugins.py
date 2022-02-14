@@ -148,7 +148,7 @@ def get_compatible_plugins(plugin_paths: PathList,
 
     plugins, info = search_for_plugins(plugin_paths, attributes_required,
                                               attributes_optional=attributes_optional)
-    logger.info(f'Located {plugin_type} plugins for: {", ".join(list(plugins.keys()))} (filter: {plugin_filter})')
+    logger.debug(f'Located {plugin_type} plugins for: {", ".join(list(plugins.keys()))} (filter: {plugin_filter})')
     if plugins_required is not None:
         missing = []
         for plugin in make_iterable(plugins_required):

@@ -29,6 +29,7 @@ class MovieReader:
     # TODO: Read plugin module attributes definition from file?
     # movie_plugin_definition_file = 'movie_plugin_definition.json'
     _plugin_paths = ["{fire_source_dir}/plugins/movie_plugins/"]
+    _plugin_precedence_default = ['ipx', 'uda', 'raw_movie', 'ats_movie', 'imstack', 'npz']
 
     try:
         config, config_groups, config_path_fn = get_user_fire_config()
@@ -61,7 +62,7 @@ class MovieReader:
                  movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
                  movie_plugin_definition_file: Optional[Union[str,Path]]=None,
                  base_paths: Union[dict,tuple]=()):
-        self._plugin_precedence = plugin_precedence
+        self.plugin_precedence = plugin_precedence
         self.base_paths = dict(base_paths)  # property
         self.plugin_paths = movie_plugin_paths  # property
         self.plugin_filter = plugin_filter
@@ -78,12 +79,15 @@ class MovieReader:
                                self.plugin_attributes['required'],
                                attributes_optional=self.plugin_attributes['optional'],
                                plugin_filter=plugin_filter, plugin_type='movie', base_paths=self.base_paths)
+
         self._plugin_dicts = plugin_dicts
         self._plugin_info = plugin_info
         self._plugins = {}
         self._active_plugin = None  # Plugin used for last successful read
 
         self._instanciate_plugins(plugin_dicts, plugin_info)
+
+        logger.info(f'Located movie plugins for: {", ".join(list(self.plugins.keys()))} (filter: {plugin_filter})')
 
     def __repr__(self):
         plugins = self._plugins
@@ -164,8 +168,7 @@ class MovieReader:
                                                     n_start=n_start, n_end=n_end, stride=stride,
                                                     frame_numbers=frame_numbers,
                                                     movie_paths=self.movie_paths, movie_fns=self.movie_fns,
-                                                    transforms=transforms, **meta_filtered
-                                                           # check_output=check_output,
+                                                    transforms=transforms, **meta_filtered # check_output=check_output,
                                                     )
             except IOError as e:
                 exceptions.append(e)
@@ -183,15 +186,28 @@ class MovieReader:
         return movie_data, origin
 
     @property
+    def plugin_precedence(self):
+        """Return plugins dict ordered in active and precedence order"""
+        if self._plugin_precedence is not None:
+            plugin_precedence = self._plugin_precedence
+        else:
+            plugin_precedence = self._plugin_precedence_default
+        return plugin_precedence
+
+    @plugin_precedence.setter
+    def plugin_precedence(self, plugin_precedence):
+        self._plugin_precedence = plugin_precedence
+
+    @property
     def plugins(self):
         """Return plugins dict ordered in active and precedence order"""
         keys = []
         if self._active_plugin is not None:
             keys.append(self._active_plugin)
-        if self._plugin_precedence is not None:
-            for key in self._plugin_precedence:
-                if key not in keys:
-                    keys.append(key)
+
+        for key in self.plugin_precedence:
+            if (key not in keys) and (key in self._plugins):
+                keys.append(key)
         for key in self._plugins.keys():
             if key not in keys:
                 keys.append(key)
