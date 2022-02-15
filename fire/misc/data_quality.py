@@ -32,7 +32,7 @@ info_removed_frames = {'n_corrected': 0, 'corrected': [],
 
 def identify_bad_frames(frame_data, bit_depth=None, n_discontinuities_expected=0.01,
                         n_sigma_multiplier_high=1, n_sigma_multiplier_low=1, n_sigma_multiplier_start=1,
-                        debug_plot=False, scheduler=False, meta_data=None, raise_on_saturated=False,
+                        debug_plot=2, scheduler=False, meta_data=None, raise_on_saturated=False,
                         raise_on_uniform=False, raise_on_sudden_intensity_changes=False):
     t0 = time.time()
 
@@ -166,7 +166,7 @@ def shift_starting_diff_coords(discontinuous_mask):
 def identify_sudden_intensity_changes(frame_data: xr.DataArray, n_outliers_expected: float=1,
                                       n_sigma_multiplier_high=1, n_sigma_multiplier_low=1, n_sigma_multiplier_start=1,
                                       raise_on_sudden_intensity_changes: bool=True, meta_data=None,
-                                      debug_plot: bool=True, scheduler=False):
+                                      debug_plot=2, scheduler=False):
     """Useful for identifying dropped or faulty frames"""
 
     frame_data = data_structures.swap_xarray_dim(frame_data, 'n').astype(np.int32)  # Prevent sum giving overflow
@@ -263,7 +263,7 @@ def identify_sudden_intensity_changes(frame_data: xr.DataArray, n_outliers_expec
     discontinuous_frames = discontinuous_mask['n'].where(discontinuous_mask, drop=True)  # tmp before coord fix
     n_bad = len(discontinuous_frames['n'])
 
-    if debug_plot or (not scheduler and (n_bad > 1)):
+    if (not scheduler) and ((debug_plot is True) or (isinstance(debug_plot, int) and n_bad > debug_plot)):
         fig, ax, ax_passed = plot_tools.get_fig_ax()
 
         for stat in stats_combine:

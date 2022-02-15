@@ -436,11 +436,11 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     # Detect saturated pixels, uniform frames etc
     bad_frames_info = data_quality.identify_bad_frames(frame_data, bit_depth=movie_meta['bit_depth'],
-                                                       n_discontinuities_expected=1e-3, meta_data=meta_data, scheduler=scheduler,
-                                                       n_sigma_multiplier_high=1.5,  #  2.5, 4
-                                                       n_sigma_multiplier_low=1.5,
-                                                       n_sigma_multiplier_start=1,
-                                                       raise_on_saturated=False, debug_plot=debug.get('bad_frames_intensity', False))
+                                       n_discontinuities_expected=1e-3, meta_data=meta_data, scheduler=scheduler,
+                                       n_sigma_multiplier_high=1.5,  #  2.5, 4
+                                       n_sigma_multiplier_low=1.5,
+                                       n_sigma_multiplier_start=1,
+                                       raise_on_saturated=False, debug_plot=debug.get('bad_frames_intensity', 2))
     frames_nos_discontinuous = bad_frames_info['discontinuous']['frames']['n']
     frame_data_fixed, modified_frames = data_quality.remove_bad_frames(frame_data, frames_nos_discontinuous,
                             remove_opening_closing=True, interpolate_middle=True, nan_middle=False, meta_data=meta_data,
@@ -898,6 +898,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             alpha_original = theo_kwargs.get('alpha_top_org')
             alpha_values = [np.array([a]) for a in [3e4, 5e4, 7e4, 9e4, 12e4, 30e4]]
 
+            t = np.array(path_data[f't'])
             r_path = np.array(path_data[f'R_{path}'])
             s_path = np.array(path_data[f's_global_{path}'])  # spatial coordinate along tile surface
             temperature_path = np.array(path_data[f'temperature_{path}']).T
@@ -917,8 +918,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                     data, stats_dict, radial_average = heat_flux_module.calc_alpha_scan(temperature_path, t, s_path,
                                                             theo_kwargs, alpha_values, test=True, meta=meta_data,
                                                             r_path=r_path, path_fn_pickle=path_fn_pickle, verbose=True)
-                    heat_flux_module.plot_alpha_scan(data, stats_dict, radial_average, alpha_values, t, s_path,
-                                                     r_path=r_path, meta=meta_data, alpha_passed=alpha_original)
+            heat_flux_module.plot_alpha_scan(data, stats_dict, radial_average, alpha_values, t, s_path,
+                                             r_path=r_path, meta=meta_data, alpha_passed=alpha_original)
 
         path_data.coords['t'] = image_data.coords['t']
         path_data = path_data.swap_dims({'n': 't'})
@@ -1023,7 +1024,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
 
     archive_netcdf_output = True
     # archive_netcdf_output = False
-    if archive_netcdf_output and not scheduler:
+    if (not scheduler) and archive_netcdf_output:
         path_fn_netcdf = outputs.get('uda_putdata', {}).get('path_fn')
         interfaces.archive_netcdf_output(path_fn_netcdf, meta_data=meta_data)
 
