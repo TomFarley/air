@@ -311,7 +311,7 @@ class MoviePlugin:
 def read_movie_meta_data(pulse: Union[int, str], diag_tag_raw: str, machine: str, movie_plugins: dict,
                          movie_paths: Optional[PathList]=None, movie_fns: Optional[Sequence[str]]=None,
                          check_output: bool=True,
-                         substitute_unknown_values: bool=False, base_paths: Union[dict, tuple]=(),
+                         substitute_unknown_values: bool=False, base_paths: Union[dict, tuple]=(), verbose=True,
                          **meta) -> Tuple[Dict[str, Any], Dict[str, str]]:
     """Read movie header meta data
 
@@ -341,6 +341,9 @@ def read_movie_meta_data(pulse: Union[int, str], diag_tag_raw: str, machine: str
                           substitute_unknown_values=substitute_unknown_values, origin=origin['plugin'])
     meta_data = reformat_movie_meta_data(meta_data)
     meta_data = add_alternative_meta_data_representations(meta_data)
+
+    if verbose:
+        logger.info(f'Read meta data for "{diag_tag_raw}", pulse "{pulse}" from {str(origin)[1:-1]}')
 
     return meta_data, origin
 
@@ -465,7 +468,7 @@ def try_movie_plugins_dicts(plugin_key, pulse, diag_tag_raw, machine, movie_plug
                       f'for plugin args: \n'
                       f'{kwargs}')
     origin_str = ", ".join([f'{k}="{str(v)}"' for k, v in origin.items() if k not in ['plugin', 'path_fn']])
-    logger.info(f'Read movie "{plugin_key}" for ({machine}, {diag_tag_raw}, {pulse}) using plugin "{origin["plugin"]}": '
+    logger.debug(f'Read movie "{plugin_key}" for ({machine}, {diag_tag_raw}, {pulse}) using plugin "{origin["plugin"]}": '
                 f'{origin_str}')
 
     return data, origin
