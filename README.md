@@ -61,8 +61,8 @@ Several other ukaea repos also complement working with FIRE and are also recomme
 $ cd <directory_to_clone_repos>
 
 $ git clone git@git.ccfe.ac.uk:MAST-U_Scheduler/air_calib.git  # Calibration data
-$ git clone git@git.ccfe.ac.uk:tfarley/ir_analysis.git  # Scripts for performing analysis runs with FIRE, provenance capture etc.
-$ git clone git@git.ccfe.ac.uk:tfarley/ir_tools.git  # Scripts for working with IR data, producing calcam calibration images etc
+$ git clone git@git.ccfe.ac.uk:mast-u-diagnostics/ir_analysis.git  # Scripts for performing analysis runs with FIRE, provenance capture etc.
+$ git clone git@git.ccfe.ac.uk:mast-u-diagnostics/ir_tools.git# Scripts for working with IR data, producing calcam calibration images etc
 
 $ pip install -e ir_tools
 $ pip install -e ir_analysis
