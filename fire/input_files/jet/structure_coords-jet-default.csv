@@ -1,2 +1,0 @@
-id, R1, R2, phi1, phi2, z1, z2, toroidal_periodicity, mirror_z, structure, material, color, description, comments
-1, 0.000, 5, 0, 360, -2, +2, 1, False, everything, JET_T5_CFC, blue, For quick development testing treat everything in view as one structure

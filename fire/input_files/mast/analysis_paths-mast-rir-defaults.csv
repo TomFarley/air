@@ -1,7 +1,0 @@
-pulse_start,pulse_end,analysis_path_name,author,comments
-0,23585,MAST_S1_L3_centre_radial_2,Tom Farley,Test path
-23586,23586,MAST_louvre3-8b,Tom Farley,MAST IDL path from ldef.dat
-23587,26338,MAST_S1_L3_centre_radial_2,Tom Farley,Test path
-26339,26339,MAST_louvre12d_rotated_pix,Tom Farley,MAST IDL path extracted from IDL code
-26340,26530,MAST_S1_L3_centre_radial_2,Tom Farley,MAST IDL path extracted from IDL code
-26531,49999,MAST_S1_L3_centre_radial_2,Tom Farley,Test path

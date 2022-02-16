@@ -1,6 +1,0 @@
-# Record of settings for Santa Barbara Focal Plane SBF 125 MWIR camera air used on MAST
-pulse_start, pulse_end, camera, port   , window, window_transmission, NUC_shutter, ND_filter, wavelength_range, lens , t_int , t_offset, camera_settings_comments
-13724      , 18604    , SBF   , HL01   , ??    , 0.621              , True       , None     , [4.5e-6 5.0e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE M5?
-18695      , 18604    , SBF   , HL01   , ??    , 0.621              , True       , None     , [4.5e-6 5.0e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE M6
-19580      , 24934    , SBF   , HL01   , ??    , 0.621              , True       , None     , [4.5e-6 5.0e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE M7
-26339      , 30471    , SBF   , HL01   , ??    , 0.621              , True       , None     , [4.5e-6 5.0e-6] , 25e-3, 232e-6, 0       , Test settings for debugging FIRE M8-M9
