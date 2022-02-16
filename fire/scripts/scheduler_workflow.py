@@ -440,6 +440,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                        n_sigma_multiplier_high=1.5,  #  2.5, 4
                                        n_sigma_multiplier_low=1.5,
                                        n_sigma_multiplier_start=1,
+                                       n_sigma_multiplier_pre_pulse=0.05,
                                        raise_on_saturated=False, debug_plot=debug.get('bad_frames_intensity', 2))
     frames_nos_discontinuous = bad_frames_info['discontinuous']['frames']['n']
     frame_data_fixed, modified_frames = data_quality.remove_bad_frames(frame_data, frames_nos_discontinuous,
@@ -893,7 +894,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         path_data = data_structures.attach_standard_meta_attrs(path_data, heat_flux_key, key='q')
         
         if debug.get('alpha_scan', False):
-            load_pickle_alpha_scan = (debug.get('alpha_scan', False) in ('load', 1))
+            load_pickle_alpha_scan = (debug.get('alpha_scan', False) in ('load', 2))
 
             alpha_original = theo_kwargs.get('alpha_top_org')
             alpha_values = [np.array([a]) for a in [3e4, 5e4, 7e4, 9e4, 12e4, 30e4]]
@@ -905,20 +906,20 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             path_fn_pickle = Path(f'alpha_scan-{len(alpha_values)}_alphas-{machine}-{diag_tag_raw}-{pulse}.p')
 
             if (not load_pickle_alpha_scan) or (not path_fn_pickle.is_file()):
-                data, stats_dict, radial_average = heat_flux_module.calc_alpha_scan(temperature_path, t, s_path,
+                data, stats_global, stats_radial = heat_flux_module.calc_alpha_scan(temperature_path, t, s_path,
                                                         theo_kwargs, alpha_values, test=True, meta=meta_data,
                                                         r_path=r_path, path_fn_pickle=path_fn_pickle, verbose=True)
             else:
                 data = io_basic.pickle_load(path_fn_pickle)
-                data, stats_dict, radial_average, alpha_values_loaded = [data[key] for key in
-                                                                         ('data', 'stats', 'radial_average',
+                data, stats_global, stats_radial, alpha_values_loaded = [data[key] for key in
+                                                                         ('data', 'stats_global', 'stats_radial',
                                                                           'alpha_values')]
                 if not np.all(np.isclose(alpha_values, alpha_values_loaded)):
                     logger.warning('Loaded different alpha values for scan')
-                    data, stats_dict, radial_average = heat_flux_module.calc_alpha_scan(temperature_path, t, s_path,
+                    data, stats_global, stats_radial = heat_flux_module.calc_alpha_scan(temperature_path, t, s_path,
                                                             theo_kwargs, alpha_values, test=True, meta=meta_data,
                                                             r_path=r_path, path_fn_pickle=path_fn_pickle, verbose=True)
-            heat_flux_module.plot_alpha_scan(data, stats_dict, radial_average, alpha_values, t, s_path,
+            heat_flux_module.plot_alpha_scan(data, stats_global, stats_radial, alpha_values, t, s_path,
                                              r_path=r_path, meta=meta_data, alpha_passed=alpha_original)
 
         path_data.coords['t'] = image_data.coords['t']

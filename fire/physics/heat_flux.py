@@ -49,40 +49,47 @@ def calc_alpha_scan(temperature_path, t, s_path, theo_kwargs, alpha_values, test
     alpha_passed = theo_kwargs.get('alpha_top_org')
 
     data = {}
-    stats_dict = defaultdict(list)
-    radial_average = defaultdict(list)
-    radial_average['temperature_av'].append(np.mean(temperature_path, axis=0))
-    radial_average['temperature_min'].append(np.min(temperature_path, axis=0))
-    radial_average['temperature_max'].append(np.max(temperature_path, axis=0))
-    radial_average['temperature_98%'].append(np.percentile(temperature_path, 98, axis=0))
-    radial_average['temperature_95%'].append(np.percentile(temperature_path, 95, axis=0))
-
+    stats_global = defaultdict(list)
+    stats_radial = defaultdict(list)
+    stats_radial['temperature_av'].append(np.mean(temperature_path, axis=0))
+    stats_radial['temperature_min'].append(np.min(temperature_path, axis=0))
+    stats_radial['temperature_max'].append(np.max(temperature_path, axis=0))
+    stats_radial['temperature_98%'].append(np.percentile(temperature_path, 98, axis=0))
+    stats_radial['temperature_95%'].append(np.percentile(temperature_path, 95, axis=0))
+    
     for i, alpha in enumerate(alpha_values):
         theo_kwargs['alpha_top_org'] = alpha
         heat_flux, extra_results = theodor.theo_mul_33(temperature_path, t, s_path, test=test, verbose=verbose,
                                                        **theo_kwargs)
         heat_flux *= 1e-6
         data[tuple(alpha)] = heat_flux.T
-        stats_dict['max'].append(np.max(heat_flux))
-        stats_dict['99%'].append(np.percentile(heat_flux, 99))
-        stats_dict['98%'].append(np.percentile(heat_flux, 98))
-        stats_dict['mean'].append(np.mean(heat_flux))
-        stats_dict['median'].append(np.percentile(heat_flux, 50))
-        stats_dict['2%'].append(np.percentile(heat_flux, 2))
-        stats_dict['1%'].append(np.percentile(heat_flux, 1))
-        stats_dict['min'].append(np.min(heat_flux))
-        radial_average['heat_flux'].append(np.mean(heat_flux, axis=0))
+        stats_global['max'].append(np.max(heat_flux))
+        stats_global['99%'].append(np.percentile(heat_flux, 99))
+        stats_global['98%'].append(np.percentile(heat_flux, 98))
+        stats_global['mean'].append(np.mean(heat_flux))
+        stats_global['median'].append(np.percentile(heat_flux, 50))
+        stats_global['2%'].append(np.percentile(heat_flux, 2))
+        stats_global['1%'].append(np.percentile(heat_flux, 1))
+        stats_global['min'].append(np.min(heat_flux))
+
+        stats_radial['heat_flux_min'].append(np.min(heat_flux, axis=0))  # vs t
+        stats_radial['heat_flux_1%'].append(np.percentile(heat_flux, 1, axis=0))
+        stats_radial['heat_flux_2%'].append(np.percentile(heat_flux, 2, axis=0))
+        stats_radial['heat_flux_10%'].append(np.percentile(heat_flux, 10, axis=0))
+        stats_radial['heat_flux_median'].append(np.percentile(heat_flux, 50, axis=0))
+        stats_radial['heat_flux_mean'].append(np.mean(heat_flux, axis=0))
 
     # Pickle data
     if path_fn_pickle is not None:
         from fire.interfaces.io_basic import pickle_dump
-        pickle_dump(dict(alpha_values=alpha_values, data=data, stats=stats_dict, radial_average=radial_average, t=t,
-                    s_path=s_path, theo_kwargs=theo_kwargs, pulse=pulse, diag_tag_raw=diag_tag_raw, machine=machine),
+        pickle_dump(dict(alpha_values=alpha_values, data=data, stats_global=stats_global, stats_radial=stats_radial,
+                         t=t, s_path=s_path, theo_kwargs=theo_kwargs, pulse=pulse, diag_tag_raw=diag_tag_raw,
+                         machine=machine),
                     path=path_fn_pickle, verbose=True)
 
-    return data, stats_dict, radial_average
+    return data, stats_global, stats_radial
 
-def plot_alpha_scan(data, stats_dict, radial_average, alpha_values, t, s_path, r_path, meta, alpha_passed=None):
+def plot_alpha_scan(data, stats_global, stats_radial, alpha_values, t, s_path, r_path, meta, alpha_passed=None):
     from fire import theodor, base_paths
     from fire.plotting import plot_tools, debug_plots
     from fire.interfaces import uda_utils
@@ -150,7 +157,7 @@ def plot_alpha_scan(data, stats_dict, radial_average, alpha_values, t, s_path, r
     fig, ax, ax_passed = plot_tools.get_fig_ax(num=f'alpha_scan_q_stats-{machine}-{diag_tag_analysed}-{pulse}',
                                                ax_grid_dims=(1, 1))
     alphas_flat = [a[0] for a in alpha_values]
-    for stat, values in stats_dict.items():
+    for stat, values in stats_global.items():
         ax.plot(alphas_flat, values, marker='x', color=None, label=stat)
     # ax.plot(alphas_flat, medians, marker='.', color=None, label='median')
     # ax.plot(alphas_flat, maxs, marker='o', color=None, label='max')
@@ -163,29 +170,56 @@ def plot_alpha_scan(data, stats_dict, radial_average, alpha_values, t, s_path, r
                                      f'alpha_scan_q_stats-{machine}-{diag_tag_analysed}-{pulse}.png', mkdir_depth=3)
     plot_tools.show_if(show=True, tight_layout=True)
 
-    fig, axes, ax_passed = plot_tools.get_fig_ax(num=f'alpha_scan_radial_av-{machine}-{diag_tag_analysed}-{pulse}',
-                                               ax_grid_dims=(1, 2), sharex=True)
+    fig, axes, ax_passed = plot_tools.get_fig_ax(num=f'alpha_scan_radial_stats-{machine}-{diag_tag_analysed}-{pulse}',
+                                               ax_grid_dims=(4, 1), sharex=True, axes_flatten=True)
     ax = axes[0]
-    for alpha, profile in zip(alphas_flat, radial_average['heat_flux']):
-        ax.plot(t, profile, marker='.', color=None, label=r'$q_{av}$, $\alpha$='+fr'{alpha:0.3g}', alpha=0.7)
-    ax.set_ylabel('$q_{\perp,av}$ [MW/m$^2$]')
+    ax.axhline(0, ls=':', color='k', alpha=0.6)
+    for alpha, profile in zip(alphas_flat, stats_radial['heat_flux_min']):
+        ax.plot(t, profile, marker='.', color=None, label=r'$\alpha$='+fr'{alpha:0.3g}', alpha=0.6)
+    # ax.set_xlabel('$t$ [s]')
+    ax.set_ylabel('$q_{\perp, min}$ [MW/m$^2$]')
     plot_tools.annotate_providence(ax, meta_data=meta)
-    plot_tools.legend(ax=ax)
 
     ax = axes[1]
-    ax.plot(t, radial_average['temperature_max'][0], marker='.', ls='-', color=None, label=r'$T_{max}$')
-    ax.plot(t, radial_average['temperature_98%'][0], marker='.', ls='-', color=None, label=r'$T_{98}$')
-    ax.plot(t, radial_average['temperature_95%'][0], marker='.', ls='-', color=None, label=r'$T_{95}$')
-    ax.plot(t, radial_average['temperature_av'][0], marker='.', ls='-', color='k', label=r'$T_{av}$')
-    ax.plot(t, radial_average['temperature_min'][0], marker='.', ls='-', color=None, label=r'$T_{min}$')
-
+    percentile = 2
+    ax.axhline(0, ls=':', color='k', alpha=0.6)
+    for alpha, profile in zip(alphas_flat, stats_radial[f'heat_flux_{percentile}%']):
+        ax.plot(t, profile, marker='.', color=None, label=r'$\alpha$='+fr'{alpha:0.3g}', alpha=0.6)
+    # ax.set_xlabel('$t$ [s]')
+    ax.set_ylabel(f'$q_{{\perp,{percentile}\%}}$ [MW/m$^2$]')
     plot_tools.legend(ax=ax)
 
+    ax = axes[2]
+    percentile = 10
+    ax.axhline(0, ls=':', color='k', alpha=0.6)
+    for alpha, profile in zip(alphas_flat, stats_radial[f'heat_flux_{percentile}%']):
+        ax.plot(t, profile, marker='.', color=None, label=r'$\alpha$='+fr'{alpha:0.3g}', alpha=0.6)
     ax.set_xlabel('$t$ [s]')
-    ax.set_ylabel('$T$ [$^\circ$C]')
+    ax.set_ylabel(f'$q_{{\perp,{percentile}\%}}$ [MW/m$^2$]')
+
     plot_tools.save_fig(base_paths['fire_user_dir'] / 'figures/alpha_scan/radial_av/' /
                         f'alpha_scan_radial_av-{machine}-{diag_tag_analysed}-{pulse}.png', fig=fig, mkdir_depth=2)
-    plot_tools.show_if(show=True, tight_layout=True)
+    plot_tools.show_if(show=True, tight_layout=False)
+
+    ax = axes[3]
+    ax.set_xlabel('$t$ [s]')
+    # percentile = 1
+    # ax.axhline(0, ls=':', color='k', alpha=0.6)
+    # for alpha, profile in zip(alphas_flat, stats_radial[f'temperature_{percentile}%']):
+    #     ax.plot(t, profile, marker='.', color=None, label=r'$\alpha$='+fr'{alpha:0.3g}', alpha=0.6)
+    # ax.set_ylabel(f'$T_{{{percentile}\%}}$ [$^\circ C$]')
+
+    # for alpha, profile in zip(alphas_flat, stats_radial[f'temperature_min']):
+    #     ax.plot(t, profile, marker='.', color=None, label=r'$\alpha$=' + fr'{alpha:0.3g}', alpha=0.6)
+    # ax.set_ylabel('$T_{min}$ [$^\circ C$]')
+
+    for alpha, profile in zip(alphas_flat, stats_radial[f'temperature_av']):
+        ax.plot(t, profile, marker='.', color=None, label=r'$\alpha$=' + fr'{alpha:0.3g}', alpha=0.6)
+    ax.set_ylabel('$T_{av}$ [$^\circ$C]')
+
+    plot_tools.save_fig(base_paths['fire_user_dir'] / 'figures/alpha_scan/radial_av/' /
+                        f'alpha_scan_radial_av-{machine}-{diag_tag_analysed}-{pulse}.png', fig=fig, mkdir_depth=2)
+    plot_tools.show_if(show=True, tight_layout=False)
 
     pass
 
@@ -256,7 +290,7 @@ def calc_heatflux(t, temperatures, path_data, path_name, theo_kwargs, force_mate
     if temperature_path.shape[0] != len(s_path):
         if temperature_path.shape[1] == len(s_path):
             temperature_path = temperature_path.T
-            logger.warning(f'Transposed THEODOR temperature input data to start with spatial dimension (t,s) -> (s,t)')
+            logger.debug(f'Transposed THEODOR temperature input data to start with spatial dimension (t,s) -> (s,t)')
         else:
             raise ValueError(f'Spatial dimension of temperature path data ({temperature_path.shape}) does not match '
                              f's_path dimension ({len(s_path)}). '
