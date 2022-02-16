@@ -32,6 +32,7 @@ info_removed_frames = {'n_corrected': 0, 'corrected': [],
 
 def identify_bad_frames(frame_data, bit_depth=None, n_discontinuities_expected=0.01,
                         n_sigma_multiplier_high=1, n_sigma_multiplier_low=1, n_sigma_multiplier_start=1,
+                        n_sigma_multiplier_pre_pulse=0.2,
                         debug_plot=2, scheduler=False, meta_data=None, raise_on_saturated=False,
                         raise_on_uniform=False, raise_on_sudden_intensity_changes=False):
     t0 = time.time()
@@ -48,6 +49,7 @@ def identify_bad_frames(frame_data, bit_depth=None, n_discontinuities_expected=0
                              n_sigma_multiplier_high=n_sigma_multiplier_high,
                              n_sigma_multiplier_low=n_sigma_multiplier_low,
                              n_sigma_multiplier_start=n_sigma_multiplier_start,
+                             n_sigma_multiplier_pre_pulse=n_sigma_multiplier_pre_pulse,
                              meta_data=meta_data, scheduler=scheduler,
                              raise_on_sudden_intensity_changes=raise_on_sudden_intensity_changes, debug_plot=debug_plot)
     bad_frame_info['discontinuous'] = discontinuous_frames
@@ -165,19 +167,25 @@ def shift_starting_diff_coords(discontinuous_mask):
 
 def identify_sudden_intensity_changes(frame_data: xr.DataArray, n_outliers_expected: float=1,
                                       n_sigma_multiplier_high=1, n_sigma_multiplier_low=1, n_sigma_multiplier_start=1,
+                                      n_sigma_multiplier_pre_pulse=0.2,
                                       raise_on_sudden_intensity_changes: bool=True, meta_data=None,
                                       debug_plot=2, scheduler=False):
     """Useful for identifying dropped or faulty frames"""
 
-    frame_data = data_structures.swap_xarray_dim(frame_data, 'n').astype(np.int32)  # Prevent sum giving overflow
+    frame_data = data_structures.swap_xarray_dim(frame_data, 'n').astype(np.int32)  # Prevent sum giving int16 overflow
+    mask_pre_pulse = frame_data['t'] < 0  # Before plasma starts apply more stringent criteria
+    n_t0 = int(frame_data['n'][~mask_pre_pulse][0])
 
     nsigma = calc_outlier_nsigma_for_sample_size(len(frame_data), n_outliers_expected=n_outliers_expected)
+    nsigma_pre_pulse = calc_outlier_nsigma_for_sample_size(len(frame_data[mask_pre_pulse]),
+                                                           n_outliers_expected=1)
 
     # stats = ('min', ('percentile', 2), 'mean', ('percentile', 50), 'std', ('percentile', 98), 'max', 'ptp', 'sum')
     stats = (
         ('percentile', 2),
         # 'std', 'ptp', 'sum'
     )
+
 
     stats, labels = physics_parameters.calc_2d_profile_param_stats(frame_data, coords_reduce=('x_pix', 'y_pix'),
                     roll_width=None, stats=stats, kwargs=dict(skipna=True))
@@ -189,15 +197,29 @@ def identify_sudden_intensity_changes(frame_data: xr.DataArray, n_outliers_expec
         diffs_abs = np.abs(diffs)
         diffs_cumsum = diffs.cumsum(dim='n')
         diffs_cumsum_abs = np.abs(diffs_cumsum)
+        diffs_cumsum_pre_pulse = value[mask_pre_pulse].diff(dim='n').cumsum(dim='n')
+        mask_diffs_pre_pulse = diffs_cumsum['t'] < 0
 
         tol_diffs_abs = (diffs_abs.mean() + diffs_abs.std() * (nsigma * n_sigma_multiplier_high))
-        tol_diffs_cumsum_high = (diffs_cumsum.mean() + diffs_cumsum.std() * (nsigma * n_sigma_multiplier_high))
-        tol_diffs_cumsum_low = (diffs_cumsum.mean() - diffs_cumsum.std() * (nsigma * n_sigma_multiplier_low))
+        tol_diffs_cumsum_high = (diffs_cumsum.median() + diffs_cumsum.std() * (nsigma * n_sigma_multiplier_high))
+        tol_diffs_cumsum_low = (diffs_cumsum.median() - diffs_cumsum.std() * (nsigma * n_sigma_multiplier_low))
+
+        tol_diffs_cumsum_pre_pulse_high = float(diffs_cumsum_pre_pulse.median() + diffs_cumsum_pre_pulse.std() *
+                               (nsigma_pre_pulse * n_sigma_multiplier_pre_pulse))
+        tol_diffs_cumsum_pre_pulse_low = float(diffs_cumsum_pre_pulse.median() - diffs_cumsum_pre_pulse.std() *
+                                           (nsigma_pre_pulse * n_sigma_multiplier_pre_pulse))
 
         mask_diffs_abs = (diffs_abs >= tol_diffs_abs)
         mask_diffs_cumsum_high = (diffs_cumsum >= tol_diffs_cumsum_high)
         mask_diffs_cumsum_low = (diffs_cumsum <= tol_diffs_cumsum_low)
-        mask_diffs_cumsum = mask_diffs_cumsum_high + mask_diffs_cumsum_low
+
+        mask_diffs_cumsum_pre_pulse_high = (diffs_cumsum >= tol_diffs_cumsum_pre_pulse_high)
+        mask_diffs_cumsum_pre_pulse_low = (diffs_cumsum <= tol_diffs_cumsum_pre_pulse_low)
+        mask_diffs_cumsum_pre_pulse_high = mask_diffs_cumsum_pre_pulse_high.where(mask_diffs_pre_pulse, False)
+        mask_diffs_cumsum_pre_pulse_low = mask_diffs_cumsum_pre_pulse_low.where(mask_diffs_pre_pulse, False)
+
+        mask_diffs_cumsum = (mask_diffs_cumsum_high + mask_diffs_cumsum_low
+                             + mask_diffs_cumsum_pre_pulse_low + mask_diffs_cumsum_pre_pulse_high)
         mask_diffs_cumsum.name = 'mask_diffs_cumsum'
 
         tol_first_diff = diffs_cumsum.std() * (nsigma * n_sigma_multiplier_start)
@@ -263,8 +285,9 @@ def identify_sudden_intensity_changes(frame_data: xr.DataArray, n_outliers_expec
     discontinuous_frames = discontinuous_mask['n'].where(discontinuous_mask, drop=True)  # tmp before coord fix
     n_bad = len(discontinuous_frames['n'])
 
+    # Plot intensity changes vs frame num and tolerances
     if (not scheduler) and ((debug_plot is True) or (isinstance(debug_plot, int) and n_bad > debug_plot)):
-        fig, ax, ax_passed = plot_tools.get_fig_ax()
+        fig, ax, ax_passed = plot_tools.get_fig_ax(num='Bad frame intensity change thresholds')
 
         for stat in stats_combine:
             stats_diffs[stat].plot(ax=ax, label=stat, ls='-', alpha=0.6)
@@ -276,7 +299,13 @@ def identify_sudden_intensity_changes(frame_data: xr.DataArray, n_outliers_expec
                     pass
                 else:
                     color = plot_tools.get_previous_line_color(ax)
-                    ax.axhline(tol, label=key, color=color, alpha=0.6, lw=1)
+                    ax.hlines(tol, xmin=n_t0, xmax=len(diffs_cumsum), label=key, color=color, alpha=0.6, lw=1)
+
+        ax.hlines(tol_diffs_cumsum_pre_pulse_high, xmin=0, xmax=n_t0, label='pre-pulse high', color='k', alpha=0.6,
+                  lw=1)
+        ax.hlines(tol_diffs_cumsum_pre_pulse_low, xmin=0, xmax=n_t0, label='pre-pulse low', color='k', alpha=0.6, lw=1)
+        ax.axvline(n_t0, color='k', ls='--', alpha=0.6, lw=1)
+
         ax.axhline(0, ls=':')
 
         for n in discontinuous_frames['n']:
@@ -286,14 +315,15 @@ def identify_sudden_intensity_changes(frame_data: xr.DataArray, n_outliers_expec
         plot_tools.show_if(True, tight_layout=True)
 
     if n_bad > 0:
-        message = (f'Movie data contains sudden discontinuities in intensity '
-                   f'for {n_bad}/{len(frame_data)} frames (diff>mu+{nsigma:0.3f}*sigma):\n)'
-                   f'{discontinuous_frames}')
+        message1 = (f'Movie data contains sudden discontinuities in intensity '
+                   f'for {n_bad}/{len(frame_data)} frames (diff>mu+{nsigma:0.3f}*sigma): {discontinuous_frames["n"]}')
+        message2 = (f' {discontinuous_frames}')
         if raise_on_sudden_intensity_changes:
             diffs.plot()
-            raise ValueError(message)
+            raise ValueError(message1 + message2)
         else:
-            logger.warning(message)
+            logger.warning(message1)
+            logger.debug(message2)
 
     out = dict(frames=discontinuous_frames, n_bad_frames=n_bad, nsigma=nsigma, n_outliers_expected=n_outliers_expected)
 
@@ -332,7 +362,7 @@ def remove_bad_frames(frame_data, bad_frames, remove_opening_closing=True, inter
     info = copy(info_removed_frames)
 
     def plot_bad_frame(n, debug, meta_data=meta_data, num='Bad frame {n}'):
-        if debug:
+        if (not scheduler) and (debug is True):
             fig, ax = plt.subplots(num=num.format(n=int(n)))
             if meta_data is not None:
                 plot_tools.annotate_providence(ax, meta_data=meta_data)
@@ -347,11 +377,12 @@ def remove_bad_frames(frame_data, bad_frames, remove_opening_closing=True, inter
             info['n_removed_start'] += 1
             info["removed_start"].append(i)
             info["removed"].append(i)
-            debug = debug_plot or (not scheduler and (info['n_removed_start'] > 1))  # Only plot past first frame
+            debug = debug_plot and ((info['n_removed_start'] > debug_plot))  # Only plot past first
+            # frame
             plot_bad_frame(i, debug, meta_data=meta_data)
             i += 1
 
-        debug = debug_plot or (not scheduler)  # Always plot bad end and middle frames
+        debug = debug_plot is not False  # Always plot bad end and middle frames
 
         n = len(frame_data) - 1
         while n in np.array(bad_frames):
