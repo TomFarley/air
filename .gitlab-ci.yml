@@ -5,7 +5,6 @@ before_script:
   - echo MODULE_PATH=$MODULE_PATH
 
 stages:
-  - build
   - pages
 
 .my_template: &FREIA_SETUP
@@ -79,15 +78,7 @@ setup_sphinx:
     # <<: *INSTALL_PYTHON37
 #    <<: *FREIA_SETUP
     script:
-      - which pip3
-      - which python3
-      - python3 --version
-#      - which pip
-      - which python
-      - python --version
-      - python -m pip install --upgrade pip setuptools
-      - python -m pip install sphinx
-      - python -m pip list
+      
     tags:
 #      - freia
       - ubuntu
@@ -96,6 +87,21 @@ setup_sphinx:
 
 update_docs:
     stage: pages
+    image: python:3.7
+    before_script:
+      - pwd
+      - apt-get update -y --fix-missing
+      - apt-get install -y git
+      - apt-get install -y build-essential
+      - which pip3
+      - which python3
+      - python3 --version
+      - which pip
+      - which python
+      - python --version
+      - python -m pip install --upgrade pip setuptools
+      - python -m pip install sphinx
+      - python -m pip list
     script:
       - pwd
 #      - python -m pip install --upgrade sphinx
@@ -113,5 +119,5 @@ update_docs:
     tags:
 #      - freia
       - ubuntu
-#      - lower-privacy
+      - lower-privacy
 #      - python:3.7-slim
