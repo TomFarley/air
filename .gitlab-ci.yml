@@ -38,7 +38,7 @@ stages:
 
 
 
-update_docs:
+pages:
     stage: pages
     image: python:3.7
     before_script:
