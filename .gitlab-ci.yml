@@ -70,7 +70,7 @@ stages:
       # - apt-get install -y  python3-pip
       # - apt-get install -y libsm6 libxext6 libxrender-dev   # opencv dependencies
       # - apt-get install -y python3-sphinx
-      - sphinx-build --version
+      # - sphinx-build --version
 
 setup_sphinx:
     stage: build
