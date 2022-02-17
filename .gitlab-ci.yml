@@ -54,15 +54,15 @@ update_docs:
       - python --version
       - python -m pip install --upgrade pip setuptools
       - python -m pip install sphinx
+      - python -m pip install sphinx-rtd-theme
       - python -m pip list
     script:
       - pwd
 #      - python -m pip install --upgrade sphinx
       - rm -rf public  # Delete public if already in repo
       - mkdir -p public
-      - cd docs/sphinx/
-      - pwd
-      - make html
+      # - make html
+      - sphinx-build -b html docs/sphinx/source public
     artifacts:
       paths:
         - public
