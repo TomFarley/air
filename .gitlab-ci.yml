@@ -60,19 +60,23 @@ stages:
       - python3 --version
 
 .my_template: &UBUNTU_SETUP
+    image: python:3.7
     before_script:
       - pwd
       - apt-get update -y --fix-missing
       - apt-get install -y git
-      - apt-get install -y  python3-pip
-      - apt-get install -y libsm6 libxext6 libxrender-dev   # opencv dependencies
-      - apt-get install -y python3-sphinx
+      - apt-get install -y build-essential  
+      # cmake swig
+      # - apt-get install -y  python3-pip
+      # - apt-get install -y libsm6 libxext6 libxrender-dev   # opencv dependencies
+      # - apt-get install -y python3-sphinx
       - sphinx-build --version
 
 setup_sphinx:
     stage: build
+    image: python:3.7
     <<: *UBUNTU_SETUP
-    <<: *INSTALL_PYTHON37
+    # <<: *INSTALL_PYTHON37
 #    <<: *FREIA_SETUP
     script:
       - which pip3
