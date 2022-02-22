@@ -10,6 +10,10 @@ Known package incompatibilities
     ```python
     ImportError: cannot import name '_validate_lengths' from 'numpy.lib.arraypad'
     ```
+    Recommend installing specific scikit-image version:
+    ```python
+    pip install --upgrade scikit-image==0.18.3
+    ```
 
 
 System package requirements

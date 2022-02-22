@@ -5,6 +5,14 @@ FIRE
 
 FIRE (Fusion Infra Red Experiments) is the analysis code called by the MAST-U schedulers after each discharge to process infra-red camera data.
 
+Documentation
+--------------
+If you are on the ukaea network, the full FIRE gitlab pages documentation can be found
+[here](http://mast-u_scheduler.gitpages.ccfe.ac.uk/air) at:
+[http://mast-u_scheduler.gitpages.ccfe.ac.uk/air](http://mast-u_scheduler.gitpages.ccfe.ac.uk/air)
+
+For authorship information see AUTHORS.txt, and for details of how to cite the code in academic publications see CITE.txt.
+
 Installing FIRE
 ---------------
 
@@ -138,20 +146,8 @@ Summary for running the scheduler code
 * Contact for advice using FIRE code:
     - Tom Farley, tom.farley@ukaea.uk (RO for IR cameras)
 
-Documentation
---------------
-If you are on the ukaea network, the full FIRE documentation can be found
-[here](https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/docs/sphinx/build/html) at:
-[https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/](https://git.ccfe.ac.uk/MAST-U_Scheduler/air.gitlab.io/fire/)
-
-Alternatively open [``docs/sphinx/build/html/index.html``](docs/sphinx/build/html/index.html) from this repository.
-
-Gitlab pages path should be: https://mast-u_scheduler.gitpages.ccfe.ac.uk/air?
-
-For authorship information see AUTHORS.txt, and for details of how to cite the code in academic publications see CITE.txt.
-
-Troubleshooting
----------------
+Installation Troubleshooting
+----------------------------
 - skimage ImportError
     - Details: Sometimes the installation results in a more recent version of scikit-image being installed which causes issues.
     - Solution:
@@ -169,3 +165,10 @@ Troubleshooting
         - `>>> import calcam`
         - `>>> calcam.start_gui()`
         - Click 'Settings' and add path to .ccm CAD files in e.g. air_calib/cad
+
+See [BUGS_LOG.md](BUGS_LOG.md) for further information of package incompatibilities.
+
+Calcam calirbation
+Add analysis path
+Camera settings
+Change alpha
