@@ -316,8 +316,9 @@ def identify_sudden_intensity_changes(frame_data: xr.DataArray, n_outliers_expec
 
     if n_bad > 0:
         message1 = (f'Movie data contains sudden discontinuities in intensity '
-                   f'for {n_bad}/{len(frame_data)} frames (diff>mu+{nsigma:0.3f}*sigma): {discontinuous_frames["n"]}')
-        message2 = (f' {discontinuous_frames}')
+                   f'for {n_bad}/{len(frame_data)} frames (diff>mu+{nsigma:0.3f}*sigma): '
+                    f'{discontinuous_frames["n"].data}')
+        message2 = (f' {discontinuous_frames["n"]}')
         if raise_on_sudden_intensity_changes:
             diffs.plot()
             raise ValueError(message1 + message2)
