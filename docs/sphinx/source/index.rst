@@ -19,6 +19,11 @@ side of this page.
    concepts/concepts_and_conventions
    usage/installation
    usage/quick_start
+
+.. toctree::
+   :caption: Configuring FIRE
+   :maxdepth: 1
+   :name: conftoc
    usage/configuring_input_files
 
 .. toctree::
