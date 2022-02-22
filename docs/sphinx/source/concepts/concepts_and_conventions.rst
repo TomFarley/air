@@ -19,22 +19,26 @@ The table below summarises these base paths:
       - Where set
       - Example/default
     * - {air_repo_dir}
-      - Path to the air/ directory that is produced when you do git clone this repo
+      - Path to the air/ directory that is produced when you do clone this repo
       - Wherever you clone the air repo
       - N/A
     * - {fire_source_dir}
-      - Path `fire/` python source code directory inside the cloned `air/` directory
+      - Path to fire/ python source code directory inside cloned air/ directory
       - {air_repo_dir}/fire
       - N/A
     * - {fire_user_dir}
-      - | Location for users input and output files.
-        | Ideally not in the air source directory as it's contents is specific to the user.
-        | * Contains the users fire_config.json file that specifies the values of other paths in this table.
-      - Can be set with `export FIRE_USER_DIR=<my_fire_user_directory_path>`, othersise defaults to ~/fire/
+      - | Location for users input and output files. Ideally not in the air/
+        | source directory as its contents are specific to the user.
+        | * Contains the user's fire_config.json file that specifies other paths in this table.
+        | * Output directory for saving checkpoint cache files
+        | * Defult output directory for figures (see {figures_dir} below)
+      - |Can be set with `export FIRE_USER_DIR=<my_fire_user_directory_path>`,
+        |othersise defaults to ~/fire/
       - ~/fire/
     * - {calib_dir}
-      - Location of the cloned air_calib directory. If this is cloned from the same location the air repository was
-        cloned, these files will be located using the default user_config.json settings
+      - |Location of the cloned air_calib directory.
+        | If this is cloned from the same location as the air repository,
+        | these files will be located using the default user_config.json settings
       - | Set in user config file: {fire_user_dir}/fire_config.json
         | Entry in file at: config['user']['paths']['calibration_files']
       - "{air_repo_dir}/../air_calib/"
