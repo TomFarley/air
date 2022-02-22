@@ -10,10 +10,7 @@
         },
         "paths": {
             "calibration_files": [
-                "{fire_source_dir}/../../air_calib/",
-                "{fire_source_dir}/../../calib_release/",
-                "{fire_source_dir}/input_files/",
-                "{fire_source_dir}/input_files/calcam_calibrations/",
+                "{air_repo_dir}/../air_calib/",
                 "~/calcam2",
                 "~/data/calcam_calibrations/"
             ],
