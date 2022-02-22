@@ -10,15 +10,8 @@ Installing FIRE
 It is recommended that these instructions are followed using the bash shell. Make sure you have several GB of disk
 quota available for a smooth installation. Clone the air repository in a location of your choice:
 
-.. code-block:: shell
-
-    $ git clone --recursive -j8 git@git.ccfe.ac.uk:MAST-U_Scheduler/air.git
-
-    $ cd <path_to_clone_air_reposintory>  # location to clone air repo to
-    $ cd air
-    $ git checkout dev  # Switch to the up to date dev branch
-
-It is recommended to create a [virtual environment](https://realpython.com/python-virtual-environments-a-primer/#using-virtual-environments) for FIRE to isolate it's
+It is recommended to create a `virtual environment`<https://realpython
+.com/python-virtual-environments-a-primer/#using-virtual-environments>`_ for FIRE to isolate it's
 package dependencies from the rest of your system, while using the system
 packages as a base (for instructions using virtualenvwrapper see the [section below](#installing-venv-packages)). To clone FIRE and set up a virtual enviroment on freia:
 
@@ -36,12 +29,14 @@ packages as a base (for instructions using virtualenvwrapper see the [section be
 Now your shell prompt should be proceeded by `(env) $` indicating your venv is active. Now any python packages you install will be installed in your air/venv directory and the `--user` argument to pip is no longer necessary. Use the `deactivate` command to revert to central python environment.
 
 Install fire in developer mode along with it's pypy dependencies:
+
 .. code-block:: shell
 
     # From air/ directory
     $ pip install --user -e .
 
 The following ukaea gitlab repositories require ukaea credentials and so are most easily installed from cloned repositories (assuming [ssh keys](https://docs.gitlab.com/ee/ssh/#generate-an-ssh-key-pair) already set up):
+
 .. code-block:: shell
 
     $ cd <path_to_clone_reposintories>  # location to clone repos
@@ -64,6 +59,7 @@ The following ukaea gitlab repositories require ukaea credentials and so are mos
 
 
 Several other ukaea repos also complement working with FIRE and are also recommended. These can be cloned and installed as shown bellow
+
 .. code-block:: bash
 
     $ cd <directory_to_clone_repos>
@@ -78,52 +74,59 @@ Several other ukaea repos also complement working with FIRE and are also recomme
 If working on Freia you may need to configure several settings. It is recommended these commands are added to your
 `~/.bashrc` so you don't have to manually run them every time you want to work with FIRE. Alternatively you can
 source the example bashrc file in this repository (air/fire/input_files/user/bashrc_fire).
-```bash
-module purge
-module load FUN
-moudle swap python/3.7
-module load vtk7/3.5.1  # Needed for Calcam renders to work
-export FIRE_USER_DIR="<path_to_my_chosen_directory>"  # Only necessary if you don't want to use the default "~/fire" directory
 
-# If using virtualenvwrapper (see below):
-export WORKON_HOME=~/Envs
-source ~/.local/bin/virtualenvwrapper.sh
+.. code-block:: bash
 
-```
+    module purge
+    module load FUN
+    moudle swap python/3.7
+    module load vtk7/3.5.1  # Needed for Calcam renders to work
+    export FIRE_USER_DIR="<path_to_my_chosen_directory>"  # Only necessary if you don't want to use the default "~/fire" directory
+
+    # If using virtualenvwrapper (see below):
+    export WORKON_HOME=~/Envs
+    source ~/.local/bin/virtualenvwrapper.sh
+
 
 Run tests to confirm installation of FIRE is successful:
-```bash
-$ pytest tests/test_suite_fast.py  # Fast
 
-$ python setup.py test  # Slow
+.. code-block:: bash
+    $ pytest tests/test_suite_fast.py  # Fast
 
-$ python fire/scripts/run_fire_example.py  # Example run
-```
+    $ python setup.py test  # Slow
 
-#### Using virtualenvwrapper packages
+    $ python fire/scripts/run_fire_example.py  # Example run
+
+
+Using virtualenvwrapper packages
+================================
 As an alternative to creating a virtualenv directory in the air repo it can be nice to work with virtualenvwrapper (check installed with `pip show virtualenv`) which place all your venvs in one directory and provides some convenience functions. To use this follow the steps below before starting the installation process described above.
-```bash
-$ module unload python
-$ module load python/3.7  # Use python3.7 as base
-$ pip install --user virtualenv virtualenvwrapper
 
- # Add these two lines to your .bashrc to save running them each time
-$ export WORKON_HOME=~/Envs
-$ source /usr/local/bin/virtualenvwrapper.sh
+.. code-block:: bash
+    $ module unload python
+    $ module load python/3.7  # Use python3.7 as base
+    $ pip install --user virtualenv virtualenvwrapper
 
- # Create a venv named 'fire'
-$ mkvirtualenv fire --system-site-packages
+     # Add these two lines to your .bashrc to save running them each time
+    $ export WORKON_HOME=~/Envs
+    $ source /usr/local/bin/virtualenvwrapper.sh
 
- # Use workon every time you want to work with this venv:
-$ workon fire  # This should put (fire) at start of terminal prompt. Use deactivate to revert to central python enviroment
-```
+     # Create a venv named 'fire'
+    $ mkvirtualenv fire --system-site-packages
 
-## Configuring FIRE
+     # Use workon every time you want to work with this venv:
+    $ workon fire  # This should put (fire) at start of terminal prompt. Use deactivate to revert to central python enviroment
+
+
+Configuring FIRE
+================
 When FIRE is run for the first time, if it doesn't find user settings in the default location (`~/fire/`) it will default to creating this directory and populating it with a default user configuration file `fire_config.json`.
-If you would like your fire user directory (location for user settings and output figures and files etc) then your alternative path can either be passed to schduler_workflow(user_path=...) each time or it can be set more permanently by settings the `FIRE_USER_DIR` enviroment variable in your .bashrc:
-```bash
-export FIRE_USER_DIR=<my_fire_user_directory_path>
-```
+If you would like your fire user directory (location for user settings and output figures and files etc) then your alternative path can either be passed to schduler_workflow(user_path=...) each time or it can be set more permanently by settings the `FIRE_USER_DIR` enviroment variable in your
+
+.bashrc:.. code-block:: bash
+
+    export FIRE_USER_DIR=<my_fire_user_directory_path>
+
 
 Instruction for configuring your `fire_config.json` coming soon...
 
