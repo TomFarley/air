@@ -5,24 +5,18 @@
     },
     "user": {
         "details": {
-            "name": null,
+            "name": "Scheduler",
             "email": null
         },
         "paths": {
             "calibration_files": [
-                "{fire_source_dir}/../../air_calib/",
                 "{fire_source_dir}/../../calib_release/",
-                "{fire_source_dir}/input_files/",
-                "{fire_source_dir}/input_files/calcam_calibrations/",
-                "~/calcam2",
-                "~/data/calcam_calibrations/"
             ],
             "figures": [
                 "{fire_user_dir}/figures/",
-                "/projects/SOL/Data_analysis/IR/{{diag_tag_analysed}}/{{shot}}/"
             ],
             "output": {
-                "uda_putdata": "{air_repo_dir}/",
+                "uda_putdata": "/home/jmeasure/Scheduler/Shed_Mimic/Datac/Mast/scheduler/air/output/", 
                 "pickle_output": "{fire_user_dir}/pickle_output_archive/{{diag_tag_analysed}}/"
             }
         },
@@ -307,28 +301,10 @@
             "{calib_dir}/",
             "{calib_dir}/{machine}/",
             "{calib_dir}/{machine}/{diag_tag_raw}/",
-            "{calib_dir}/{machine}/calcam/calibrations/",
-            "~/input_files/{machine}/",
-            "~/input_files/",
-            "~/calcam/calibrations/",
-            "~/calcam2/calibrations/",
-            "~/data/calcam_calibrations/",
-            "/home/tfarley/calcam2/calibrations/"
+            "{calib_dir}/{machine}/calcam/calibrations/"
         ],
         "movie_files": [
             "/projects/SOL/Data/Cameras/IR/ipx/0{pulse_prefix}/{pulse}/",
-            "/projects/SOL/Data/Cameras/IR/{diag_tag_raw_upper}/{exp_date}/",
-            "~/data/movies/{machine}/{pulse}/{diag_tag_raw}/",
-            "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
-            "{fire_source_dir}/../tests/test_data/{machine}/",
-            "/scratch/ir_movies_mastu/{machine}/{pulse}/{diag_tag_raw}/",
-            "/home/tfarley/data/movies/{machine}/{pulse}/{diag_tag_raw}/",
-            "~/data/movies/mast_u/rit_ipx_files/",
-            "~/data/movies/mast_u/rir_ats_files/test/",
-            "~/data/movies/mast_u/rir_ats_files/.*/",
-            "~/data/movies/diagnostic_pc_transfer/{diag_tag_raw}/{exp_date}/",
-            "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
-            "/net/fuslsc/data/MAST_Data/{pulse}/LATEST/"
         ]
     },
     "paths_output": {
@@ -341,11 +317,6 @@
     "filenames_input": {
         "movie_files": [
             "{diag_tag_raw}0{pulse}.ipx",
-            "{pulse}.RAW",
-            "{diag_tag_raw}_{pulse}.npz",
-            "{diag_tag_raw}_{pulse}.raw",
-            "0{pulse}.ats",
-            "rir-0{pulse}.ats"
         ],
         "camera_settings": [
             "camera_settings-{machine}-{diag_tag_raw}.csv"
@@ -364,7 +335,6 @@
         ],
         "temperature_coefs": [
             "temperature_coefs-{machine}-{diag_tag_raw}.csv",
-            "temperature_coefs-{machine}-{diag_tag_raw}-{lens_in_mm:0.0f}mm-{exposure_in_us:0.0f}us.csv"
         ],
         "structure_coords": [
             "structure_coords-{machine}-default.csv"
@@ -375,7 +345,6 @@
     },
     "outputs": {
         "active_formats": [
-            "pickle_output",
             "uda_putdata"
         ],
         "output_filenames": {
