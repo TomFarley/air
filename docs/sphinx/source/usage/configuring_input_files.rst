@@ -15,7 +15,7 @@ This should lead to a clean git revision history for `air` where a commit indica
 User FIRE configuration
 -----------------------
 Personalisation of the fire configuration is handled through a user configuration file. This file should be located
-in the users `user`
+in the users `fire_user_dir` (see :ref:`path-conventions`)
 When FIRE is run for the first time, if it doesn't find user settings in the default location (`~/fire/`) it will default to creating this directory and populating it with a default user configuration file `fire_config.json`.
 If you would like your fire user directory (location for user settings and output figures and files etc) then your alternative path can either be passed to schduler_workflow(user_path=...) each time or it can be set more permanently by settings the `FIRE_USER_DIR` enviroment variable in your
 

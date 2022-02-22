@@ -1,6 +1,7 @@
 Concepts and conventions
 ========================
 
+.. _path-conventions:
 Path conventions
 ----------------
 FIRE makes use of a number of top level base paths that are substituted into path format strings in order to enable

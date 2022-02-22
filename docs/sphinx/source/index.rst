@@ -16,6 +16,7 @@ side of this page.
    :name: maintoc
 
    usage/introduction
+   concepts/concepts_and_conventions
    usage/installation
    usage/quick_start
    usage/configuring_input_files
