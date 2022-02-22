@@ -613,7 +613,7 @@ def pulse_meta_data(shot, diag_tag=None, tag_variants=True, machine=True, dateti
     for key in keys:
         if key not in out:
             if key == 'date_time':
-                out[key] = get_shot_date_time(shot=shot, datetime_format=datetime_format)
+                out[key] = get_shot_date_time(shot=shot, datetime_format=datetime_format, raise_on_fail=False)
             else:
                 try:
                     out[key] = pycpf.query([key], filters=['exp_number = {}'.format(shot)])[key]   # [0]
@@ -630,7 +630,7 @@ def pulse_meta_data(shot, diag_tag=None, tag_variants=True, machine=True, dateti
                             logger.debug(f'Successfully retrieved shot time with UDA: {out["exp_date"], out["exp_time"]}')
     return out
 
-def get_shot_date_time(shot, datetime_format='{date} {time}'):
+def get_shot_date_time(shot, datetime_format='{date} {time}', raise_on_fail=True):
     """Return datetime string for shot
     UDA uses: '{date}T{time}' ?
     Args:
@@ -642,13 +642,21 @@ def get_shot_date_time(shot, datetime_format='{date} {time}'):
     """
     meta_cpf = pulse_meta_data(shot, keys=['exp_time'])
     date = get_shot_date(shot)
-    time = meta_cpf["exp_time"]
-    if not isinstance(time, str):
+    time = meta_cpf.get("exp_time")
+    if isinstance(time, (list, tuple)):
         time = time[0]  # List/tuple?
-    time = time.strip("'")
-    # print(meta_cpf, date)
-    date_time = (datetime_format.format(date=date, time=time[:8]) if 'exp_time' in meta_cpf.keys() else
-                '<placeholder>')
+    if (time is None):
+        message = f'Failed to get shot date_time. Set value to None.'
+        if raise_on_fail:
+            raise ValueError(message)
+        else:
+            date_time = None
+            logger.warning(message)
+    else:
+        time = time.strip("'")
+        # print(meta_cpf, date)
+        date_time = (datetime_format.format(date=date, time=time[:8]) if 'exp_time' in meta_cpf.keys() else
+                    '<placeholder>')
     return date_time
 
 def get_shot_date(shot):
