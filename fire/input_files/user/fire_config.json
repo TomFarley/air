@@ -318,8 +318,6 @@
         "movie_files": [
             "/projects/SOL/Data/Cameras/IR/ipx/0{pulse_prefix}/{pulse}/",
             "/projects/SOL/Data/Cameras/IR/{diag_tag_raw_upper}/{exp_date}/",
-            "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
-            "/net/fuslsc/data/MAST_Data/{pulse}/LATEST/",
             "~/data/movies/{machine}/{pulse}/{diag_tag_raw}/",
             "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
             "{fire_source_dir}/../tests/test_data/{machine}/",
@@ -328,7 +326,9 @@
             "~/data/movies/mast_u/rit_ipx_files/",
             "~/data/movies/mast_u/rir_ats_files/test/",
             "~/data/movies/mast_u/rir_ats_files/.*/",
-            "~/data/movies/diagnostic_pc_transfer/{diag_tag_raw}/{exp_date}/"
+            "~/data/movies/diagnostic_pc_transfer/{diag_tag_raw}/{exp_date}/",
+            "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
+            "/net/fuslsc/data/MAST_Data/{pulse}/LATEST/"
         ]
     },
     "paths_output": {
@@ -395,7 +395,9 @@
             ],
             "time": [
                 "power_total_vs_t",
+                "energy_total_vs_R",
                 "cumulative_energy_vs_t",
+                "cumulative_energy_vs_R",
                 "heat_flux_amplitude_peak_global",
                 "heat_flux_s_global_peak",
                 "heat_flux_R_peak",
