@@ -23,13 +23,21 @@ side of this page.
 .. toctree::
    :caption: Configuring FIRE
    :maxdepth: 1
-   :name: conftoc
+   :name: config_toc
+
    usage/configuring_input_files
+
+.. toctree::
+   :caption: Performing custom analysis
+   :maxdepth: 1
+   :name: analysis_toc
+
+   usage/exercise
 
 .. toctree::
    :caption: API User Guide
    :maxdepth: 1
-   :name: apitoc
+   :name: api_toc
 
    api/io
 
