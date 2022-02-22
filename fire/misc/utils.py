@@ -436,6 +436,38 @@ def mkdir(dirs, start_dir=None, depth=None, accept_files=True, info=None, verbos
                 logger.info('Directory "' + d + '" already exists')
     return 0
 
+
+def exit_after(s):
+    '''
+    use as decorator to exit process if function takes longer than s seconds
+    '''
+    import threading, sys
+    try:
+        import thread
+    except ImportError:
+        import _thread as thread
+
+    def quit_function(fn_name):
+        # print to stderr, unbuffered in Python 2.
+        logger.debug('Function {0} timed out after {1}s'.format(fn_name, s))
+        sys.stderr.flush()  # Python 3 stderr is likely buffered.
+        thread.interrupt_main()  # raises KeyboardInterrupt
+
+    def outer(fn):
+        def inner(*args, **kwargs):
+            timer = threading.Timer(s, quit_function, args=[fn.__name__])
+            timer.start()
+            try:
+                result = fn(*args, **kwargs)
+            finally:
+                timer.cancel()
+            return result
+
+        return inner
+
+    return outer
+
+@exit_after(1)
 def dirs_exist(paths: Iterable[Union[str, Path]], path_kws: Optional[dict]=None, raise_on_missing_kws=True,
                ) -> Tuple[List[Path], List[str], List[str]]:
     paths = make_iterable(paths)
@@ -463,7 +495,7 @@ def dirs_exist(paths: Iterable[Union[str, Path]], path_kws: Optional[dict]=None,
 
         try:
             path = Path(path).expanduser()
-            if not path.is_dir():  # Resolve can erroniously add /common/ to /projects paths
+            if not path.is_dir():  # Resolve can erroniously add /common/ to /projects paths?
                 path = path.resolve(strict=False)
         except RuntimeError as e:
             if "Can't determine home directory" in str(e):
@@ -510,8 +542,14 @@ def locate_file(paths: Iterable[Union[str, Path]], fns: Iterable[str],
 
     located = False
     paths_dont_exist = []
-    paths_exist, paths_raw_exist, paths_raw_not_exist = dirs_exist(paths, path_kws=path_kws,
-                                                                   raise_on_missing_kws=raise_on_missing_kws)
+    try:
+        paths_exist, paths_raw_exist, paths_raw_not_exist = dirs_exist(paths, path_kws=path_kws,
+                                                                       raise_on_missing_kws=raise_on_missing_kws)
+    except KeyboardInterrupt as e:
+        logger.warning(f'Filesystem issue caused timeout? {str(e)}, paths={paths}')
+        path_out, fn_out = None, None
+        return path_out, fn_out
+
     for path, path_raw in zip(paths_exist, paths_raw_exist):
         for fn_raw in fns:
             try:
