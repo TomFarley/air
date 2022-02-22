@@ -89,6 +89,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     logger.debug(f'update_checkpoints={update_checkpoints}, scheduler={scheduler}')
     logger.debug(f'path_user={path_user}, path_calib={path_calib}, path_out={path_out}')
     if alpha_user is not None:
+        alpha_user = utils.make_iterable(alpha_user, ndarray=True)
         logger.warning(f'Using user supplied universal alpha parameter value of: {alpha_user}')
 
     if analysis_steps is None:
@@ -230,7 +231,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                         paths_output=paths_output, base_paths=fire_paths,
                                         fn_pattern_checkpoints=fn_pattern_checkpoints)
     meta_data['files'] = files
-    logger.info(f'Located input files for analysis: {files}')
+    logger.info(f'Located input files for analysis: {str(files)[1:-1]}')
     # TODO: Load camera state
     # TODO: Add camera port location to calcam lookup file?
     # TODO: Lookup camera lens, wavelength filter and neutral density filter from separate lookup file?
@@ -414,7 +415,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             (bad_pixels, mask_bad_pixels, threshold_hot, detector_bands, images_blured) = bad_pixels
         elif (diag_tag_raw == 'rit'):
             # TODO: Move to file lookup with calcam calibration etc
-            path_fn_bpr = '/home/tfarley/repos/air/fire/input_files/mast_u/badPixel_231864.BPR'
+            path_fn_bpr = '{calib_dir}/mast_u/badPixel_231864.BPR'.format(**fire_paths)
             bad_pixels = io_basic.read_csv(path_fn_bpr, names=('y_pix', 'x_pix'))
             mask_bad_pixels = image_processing.bpr_list_to_mask(bad_pixels, detector_window_display)
             logger.info(f'Read bad pixel coordinate list from file: {path_fn_bpr}')
@@ -1034,10 +1035,25 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     status = 'success'
     return {'status': status, 'outputs': outputs, 'meta_data': meta_data}
 
-def copy_output(outputs, clean_netcdf=True, copy_to_uda_scrach=True):
-    path_fn_netcdf = outputs.get('uda_putdata', {}).get('path_fn')
+def copy_uda_netcdf_output(outputs, path_archive=None, fn_archive=None, clean_netcdf=True, copy_to_uda_scrach=False):
+    path_fn_netcdf = outputs.get('outputs', outputs).get('uda_putdata', {}).get('path_fn')
+
+    if path_fn_netcdf is None:
+        logger.warning(f'Failed to write nc output to {path_fn_netcdf}')
+        return
 
     shot = outputs['meta_data']['shot']
+
+    if (path_archive is not None):
+        if fn_archive is None:
+            fn_archive = path_fn_netcdf.name
+
+        path_fn_archive = Path(path_archive) / fn_archive
+
+        path_fn_archive.parent.mkdir(exist_ok=True)
+
+        path_fn_archive.write_bytes(path_fn_netcdf.read_bytes())
+        logger.info(f'Copied uda output file to: {str(path_fn_archive)}')
 
     if copy_to_uda_scrach and (path_fn_netcdf is not None):
         path_fn_projects = Path(f'/projects/SOL/Data_analysis/IR/ait/{shot}') / path_fn_netcdf.name

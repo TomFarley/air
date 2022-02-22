@@ -51,7 +51,7 @@ def read_data_for_pulses_pickle(diag_tag_raw: str, pulses: dict, machine:str= 'm
             debug = {}
             outputs = scheduler_workflow.scheduler_workflow(pulse=pulse, camera=diag_tag_raw, pass_no=0, machine=machine,
                                                             scheduler=True, debug=debug)
-            scheduler_workflow.copy_output(outputs, copy_to_uda_scrach=True, clean_netcdf=True)
+            scheduler_workflow.copy_uda_netcdf_output(outputs, copy_to_uda_scrach=True, clean_netcdf=True)
 
             data[pulse], fn_pickle = read_output_file(diag_tag_raw, pulse, machine=machine)
         elif (not success) and (not generate):
