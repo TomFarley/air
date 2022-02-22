@@ -54,6 +54,7 @@ setup(
         'MarkupSafe==2.0.1',
         'matplotlib==3.5.1',
         'matplotlib-inline==0.1.3',
+        'myst-parser',
         'natsort==5.5.0',
         'netCDF4==1.4.2',
         'networkx==2.6.3',
