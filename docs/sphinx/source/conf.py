@@ -19,8 +19,8 @@ sys.path.insert(0, project_path)
 # -- Project information -----------------------------------------------------
 
 project = 'Fusion Infra-Red Experiments'
-copyright = '2019, Tom Farley, Scott Silburn'
-author = 'Tom Farley, Scott Silburn'
+copyright = '2019, Tom Farley'
+author = 'Tom Farley'
 
 # The full version, including alpha/beta/rc tags
 release = 'v2.0'
