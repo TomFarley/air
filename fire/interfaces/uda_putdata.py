@@ -67,7 +67,7 @@ def putdata_create(fn='{diag_tag_analysed}{shot:06d}.nc', path='./', shot=None, 
     # TODO: Modify comment message to specifically describe the particular analysis path/camera etc
     # Arguments with standard defaults
     # optional_args = ['directory', 'conventions', 'data_class', 'title', 'comment', 'code', 'version', 'status', 'xml', 'date', 'time', 'verbose']
-    passed_kwargs = {'directory': path, 'conventions': conventions, 'data_class': data_class, 'title': title,
+    passed_kwargs = {'directory': str(path), 'conventions': conventions, 'data_class': data_class, 'title': title,
                      'comment': comment, 'code': code, 'version': version, 'status': status, 'xml': xml, 'date': date,
                      'time': time, 'verbose': verbose}
     passed_kwargs = {k: v for k, v in passed_kwargs.items() if v is not None}
@@ -227,6 +227,12 @@ def putdata_attribute(name, value, group, client=None, use_mast_client=False, fi
         else:
             logger.debug(f'Successfully wrote attribute to group "{group}": "{name}"={value}')
 
+
+def putdata_settings(group, meta_data, keys):
+    pass
+
+def putdata_signal_aliases():
+    pass
 
 def putdata_variables_from_datasets(path_data, image_data, path_names, diag_tag,
                                     variable_names_path, variable_names_time, variable_names_image, file_id=0,

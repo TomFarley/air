@@ -136,6 +136,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     if path_calib is not None:
         config['user']['paths']['calibration_files'] = [path_calib]
 
+    path_uda_output = config['user']['paths']['output']['uda_putdata']
+
     # Load user's default call arguments
     pulse, camera, machine = utils.update_call_args(config['user']['default_params'], pulse, camera, machine)
     interfaces.check_settings_complete(config, machine, camera)
@@ -1021,7 +1023,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                     variable_names_image=output_variables['image'],
                     device_info=device_details, header_info=output_header_info, meta_data=meta_data,
                     raise_on_fail=raise_on_fail,
-                    client=client, verbose=True)
+                    client=client, path_uda_output=path_uda_output, verbose=True)
     # write_processed_ir_to_netcdf(data, path_fn_out)
 
     archive_netcdf_output = True
