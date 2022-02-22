@@ -482,10 +482,12 @@ def locate_strike_points(param_values, dim='t', coords=None, peak_kwargs=(('widt
         fom_threshold = 1e5
         for strike_point_index in np.arange(n_strike_points):
             # TODO: Pass in weightings from input file
-            foms = calc_strike_point_continutity_rating(peaks_info_i, strike_points_df, strike_point_index, t=coord,
-                                                        fom_threshold=fom_threshold)
-            strike_points_df = select_next_strike_point_peak(peaks_info_i, strike_points_df, strike_point_index, foms,
-                                                          t=coord, fom_threshold=fom_threshold)
+            apply_strikepoint_detection_algorithm = False  # Slow, needs parameters tuning
+            if apply_strikepoint_detection_algorithm:
+                foms = calc_strike_point_continutity_rating(peaks_info_i, strike_points_df, strike_point_index, t=coord,
+                                                            fom_threshold=fom_threshold)
+                strike_points_df = select_next_strike_point_peak(peaks_info_i, strike_points_df, strike_point_index, foms,
+                                                              t=coord, fom_threshold=fom_threshold)
             pass
 
         i_peak = peaks_info_i[f'ind_peak_global']
