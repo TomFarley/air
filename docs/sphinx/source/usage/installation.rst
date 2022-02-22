@@ -6,24 +6,24 @@ Installing FIRE
 ---------------
 
 It is recommended that these instructions are followed using the bash shell. Make sure you have seeral GB of disk quota available for a smooth installation. Clone the air repository in a location of your choice:
-```bash
-$ cd <path_to_clone_air_reposintory>  # location to clone air repo to
-$ cd air
-$ git checkout dev  # Switch to the up to date dev branch
-```
+.. code-block:: shell
+    $ cd <path_to_clone_air_reposintory>  # location to clone air repo to
+    $ cd air
+    $ git checkout dev  # Switch to the up to date dev branch
+
 It is recommended to create a [virtual environment](https://realpython.com/python-virtual-environments-a-primer/#using-virtual-environments) for FIRE to isolate it's
 package dependencies from the rest of your system, while using the system
 packages as a base (for instructions using virtualenvwrapper see the [section below](#installing-venv-packages)). To clone FIRE and set up a virtual enviroment on freia:
-```bash
- # From air/ directory
+.. code-block:: shell
+     # From air/ directory
 
-$ module switch python/3.7  # Use python3.7 as base for your venv
-$ pip install --user virtualenv  # If not already installed
-$ python3 -m venv env --system-site-packages --upgrade-deps  # build new venv from central python installation
+    $ module switch python/3.7  # Use python3.7 as base for your venv
+    $ pip install --user virtualenv  # If not already installed
+    $ python3 -m venv env --system-site-packages --upgrade-deps  # build new venv from central python installation
 
-# Every time you work with the venv you will need to do:
-$ source env/bin/activate  # Activate the virtual enviroment
-```
+    # Every time you work with the venv you will need to do:
+    $ source env/bin/activate  # Activate the virtual enviroment
+
 Now your shell prompt should be proceeded by `(env) $` indicating your venv is active. Now any python packages you install will be installed in your air/venv directory and the `--user` argument to pip is no longer necessary. Use the `deactivate` command to revert to central python environment.
 
 Install fire in developer mode along with it's pypy dependencies :
