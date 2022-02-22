@@ -167,8 +167,3 @@ Installation Troubleshooting
         - Click 'Settings' and add path to .ccm CAD files in e.g. air_calib/cad
 
 See [BUGS_LOG.md](BUGS_LOG.md) for further information of package incompatibilities.
-
-Calcam calirbation
-Add analysis path
-Camera settings
-Change alpha

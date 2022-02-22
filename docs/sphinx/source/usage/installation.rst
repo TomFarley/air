@@ -7,8 +7,12 @@ Installing FIRE
 
 .. highlight:: shell
 
-It is recommended that these instructions are followed using the bash shell. Make sure you have seeral GB of disk
-quota available for a smooth installation. Clone the air repository in a location of your choice:: shell
+It is recommended that these instructions are followed using the bash shell. Make sure you have several GB of disk
+quota available for a smooth installation. Clone the air repository in a location of your choice:
+
+.. code-block:: shell
+
+    $ git clone --recursive -j8 git@git.ccfe.ac.uk:MAST-U_Scheduler/air.git
 
     $ cd <path_to_clone_air_reposintory>  # location to clone air repo to
     $ cd air
@@ -19,6 +23,7 @@ package dependencies from the rest of your system, while using the system
 packages as a base (for instructions using virtualenvwrapper see the [section below](#installing-venv-packages)). To clone FIRE and set up a virtual enviroment on freia:
 
 .. code-block:: shell
+
     # From air/ directory
 
     $ module switch python/3.7  # Use python3.7 as base for your venv
@@ -70,7 +75,9 @@ Several other ukaea repos also complement working with FIRE and are also recomme
     $ pip install -e ir_tools
     $ pip install -e ir_analysis
 
-If working on Freia you may need to configure several settings. It is recommended these commands are added to your ~/.bashrc so you don't have to manually run them every time you want to work with FIRE. Alternatively you can source the example bashrc file in this repository (air/fire/input_files/user/bashrc_fire).
+If working on Freia you may need to configure several settings. It is recommended these commands are added to your
+`~/.bashrc` so you don't have to manually run them every time you want to work with FIRE. Alternatively you can
+source the example bashrc file in this repository (air/fire/input_files/user/bashrc_fire).
 ```bash
 module purge
 module load FUN

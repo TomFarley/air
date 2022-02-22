@@ -5,7 +5,7 @@ Introduction to FIRE
 Purpose of FIRE
 ---------------
 FIRE is designed to be a flexible tool for analysing infra-red camera images of divertor target tiles in tokamaks,
-unsing the THEODOR code to calculate heat fluxes to the tile surfaces.
+using the THEODOR code to calculate heat fluxes to the tile surfaces.
 The code has initially been written with application in the MAST-Upgrade and JET tokamaks, but it's modularity and
 plugin system should make it's use on other machines straighforward.
 This should make comparisons between different machines easier to interpret, when each machine has been analysed in a
@@ -13,7 +13,7 @@ consistent way.
 
 Input files required to run FIRE
 --------------------------------
-Machine and camera specific variables are stored in a number of input files in human readable json, tsv or csv files.
+Machine and camera specific variables are stored in a number of input files in human readable json, or csv files.
 
 .. list-table:: Input files
    :widths: 15 5 30 50

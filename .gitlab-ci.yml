@@ -56,7 +56,7 @@ pages:
       - python -m pip install sphinx
       - python -m pip install sphinx-rtd-theme
       - python -m pip install myst-parser
-#      - python -m pip install .
+      - python -m pip install .
       - python -m pip list
     script:
       - pwd

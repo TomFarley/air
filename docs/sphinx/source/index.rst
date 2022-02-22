@@ -18,7 +18,7 @@ side of this page.
    usage/introduction
    usage/installation
    usage/quick_start
-   usage/configuring_new_analysis
+   usage/configuring_input_files
 
 .. toctree::
    :caption: API User Guide
