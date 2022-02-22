@@ -5,8 +5,11 @@ Installation
 Installing FIRE
 ---------------
 
-It is recommended that these instructions are followed using the bash shell. Make sure you have seeral GB of disk quota available for a smooth installation. Clone the air repository in a location of your choice:
-.. code-block:: shell
+.. highlight:: shell
+
+It is recommended that these instructions are followed using the bash shell. Make sure you have seeral GB of disk
+quota available for a smooth installation. Clone the air repository in a location of your choice:: shell
+
     $ cd <path_to_clone_air_reposintory>  # location to clone air repo to
     $ cd air
     $ git checkout dev  # Switch to the up to date dev branch
@@ -14,8 +17,9 @@ It is recommended that these instructions are followed using the bash shell. Mak
 It is recommended to create a [virtual environment](https://realpython.com/python-virtual-environments-a-primer/#using-virtual-environments) for FIRE to isolate it's
 package dependencies from the rest of your system, while using the system
 packages as a base (for instructions using virtualenvwrapper see the [section below](#installing-venv-packages)). To clone FIRE and set up a virtual enviroment on freia:
+
 .. code-block:: shell
-     # From air/ directory
+    # From air/ directory
 
     $ module switch python/3.7  # Use python3.7 as base for your venv
     $ pip install --user virtualenv  # If not already installed
@@ -26,44 +30,46 @@ packages as a base (for instructions using virtualenvwrapper see the [section be
 
 Now your shell prompt should be proceeded by `(env) $` indicating your venv is active. Now any python packages you install will be installed in your air/venv directory and the `--user` argument to pip is no longer necessary. Use the `deactivate` command to revert to central python environment.
 
-Install fire in developer mode along with it's pypy dependencies :
-```bash
- # From air/ directory
+Install fire in developer mode along with it's pypy dependencies:
+.. code-block:: shell
 
-$ pip install --user -e .
-```
+    # From air/ directory
+    $ pip install --user -e .
+
 The following ukaea gitlab repositories require ukaea credentials and so are most easily installed from cloned repositories (assuming [ssh keys](https://docs.gitlab.com/ee/ssh/#generate-an-ssh-key-pair) already set up):
-```bash
-$ cd <path_to_clone_reposintories>  # location to clone repos
+.. code-block:: shell
 
-$ git clone git@github.com:euratom-software/calcam.git  # Spatial calibration classes.
- # If you don't have ssh keys set up with _github_ use https:
- #  $ git clone https://github.com/euratom-software/calcam.git
+    $ cd <path_to_clone_reposintories>  # location to clone repos
 
-$ git clone git@git.ccfe.ac.uk:jrh/mastu_exhaust_analysis.git  # Used for efit equilibria amongst other things
-$ git clone git@git.ccfe.ac.uk:MAST-U/mastvideo.git  # Required for reading local IPX files
-$ git clone git@git.ccfe.ac.uk:SOL_Transport/pyEquilibrium.git # Used for efit equilibria
-# Optional dependecies:
-$ git clone git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git  # Older alternative to mastvideo library
+    $ git clone git@github.com:euratom-software/calcam.git  # Spatial calibration classes.
+     # If you don't have ssh keys set up with _github_ use https:
+     #  $ git clone https://github.com/euratom-software/calcam.git
 
-# Install the packages in developer mode
-$ pip install -e calcam
-$ pip install -e mastu_exhaust_analysis
-$ pip install -e mastvideo
-$ pip install -e pyEquilibrium pyIpx
-```
+    $ git clone git@git.ccfe.ac.uk:jrh/mastu_exhaust_analysis.git  # Used for efit equilibria amongst other things
+    $ git clone git@git.ccfe.ac.uk:MAST-U/mastvideo.git  # Required for reading local IPX files
+    $ git clone git@git.ccfe.ac.uk:SOL_Transport/pyEquilibrium.git # Used for efit equilibria
+    # Optional dependecies:
+    $ git clone git@git.ccfe.ac.uk:SOL_Transport/pyIpx.git  # Older alternative to mastvideo library
+
+    # Install the packages in developer mode
+    $ pip install -e calcam
+    $ pip install -e mastu_exhaust_analysis
+    $ pip install -e mastvideo
+    $ pip install -e pyEquilibrium pyIpx
+
 
 Several other ukaea repos also complement working with FIRE and are also recommended. These can be cloned and installed as shown bellow
-```bash
-$ cd <directory_to_clone_repos>
+.. code-block:: bash
 
-$ git clone git@git.ccfe.ac.uk:MAST-U_Scheduler/air_calib.git  # Calibration data
-$ git clone git@git.ccfe.ac.uk:mast-u-diagnostics/ir_analysis.git  # Scripts for performing analysis runs with FIRE, provenance capture etc.
-$ git clone git@git.ccfe.ac.uk:mast-u-diagnostics/ir_tools.git# Scripts for working with IR data, producing calcam calibration images etc
+    $ cd <directory_to_clone_repos>
 
-$ pip install -e ir_tools
-$ pip install -e ir_analysis
-```
+    $ git clone git@git.ccfe.ac.uk:MAST-U_Scheduler/air_calib.git  # Calibration data
+    $ git clone git@git.ccfe.ac.uk:mast-u-diagnostics/ir_analysis.git  # Scripts for performing analysis runs with FIRE, provenance capture etc.
+    $ git clone git@git.ccfe.ac.uk:mast-u-diagnostics/ir_tools.git# Scripts for working with IR data, producing calcam calibration images etc
+
+    $ pip install -e ir_tools
+    $ pip install -e ir_analysis
+
 If working on Freia you may need to configure several settings. It is recommended these commands are added to your ~/.bashrc so you don't have to manually run them every time you want to work with FIRE. Alternatively you can source the example bashrc file in this repository (air/fire/input_files/user/bashrc_fire).
 ```bash
 module purge
