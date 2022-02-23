@@ -32,11 +32,11 @@ The table below summarises these base paths:
         | * Contains the user's fire_config.json file that specifies other paths in this table.
         | * Output directory for saving checkpoint cache files
         | * Defult output directory for figures (see {figures_dir} below)
-      - |Can be set with `export FIRE_USER_DIR=<my_fire_user_directory_path>`,
-        |othersise defaults to ~/fire/
+      - | Can be set with `export FIRE_USER_DIR=<my_fire_user_directory_path>`,
+        | othersise defaults to ~/fire/
       - ~/fire/
     * - {calib_dir}
-      - |Location of the cloned air_calib directory.
+      - | Location of the cloned air_calib directory.
         | If this is cloned from the same location as the air repository,
         | these files will be located using the default user_config.json settings
       - | Set in user config file: {fire_user_dir}/fire_config.json
