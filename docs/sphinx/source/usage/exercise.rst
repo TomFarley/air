@@ -47,6 +47,7 @@ This is achieved by adding a new row to the appropriate file
     :caption: calcam_calibs-{machine}-{diag_tag_raw}-defaults.csv
     :emphasize-lines: 2
     :name: calcam-calibs-lookup
+
     pulse_start,pulse_end,calcam_calibration_file,author,comments
     43123,43647,rit_43141_218_nuc_eq_glob-v1.ccc,Tom Farley,Manual alignment calibration from first diverted plasmas
 
@@ -74,6 +75,7 @@ Each coordinate point on the analysis path should specify:
     :caption: analysis_path_dfns-{machine}-{diag_tag_raw}-defaults.json
     :emphasize-lines: 2
     :name: calcam-calibs-lookup
+
     "MASTU_S3_lower_T2_radial_1":
     {
     "coords":
@@ -86,22 +88,39 @@ Each coordinate point on the analysis path should specify:
 
 Update the analysis path lookup file
 ------------------------------------
-air_calib/mast_u/analysis_paths-mast_u-rit-defaults.csv
+The analysis path lookup file follows the same principals as the calcam calibraiton lookup file discussed above. Add
+a row to specify the shot range for which the new analysis path should be used, specifying the name given in the path
+definition file.
+
+Example file: air_calib/mast_u/analysis_paths-mast_u-rit-defaults.csv
 
 Update the camera settings file
 -------------------------------
-air_calib/mast_u/camera_settings-mast_u-rit.csv
+This is also a shot lookup file similar to the calcam calibration lookup file.
+
+Example file: air_calib/mast_u/camera_settings-mast_u-rit.csv
 
 Update the temperature (black body) calibration
 -----------------------------------------------
-air_calib/mast_u/temperature_coefs-mast_u-rit.csv
+This is also a shot lookup file similar to the calcam calibration lookup file.
+
+Example file: air_calib/mast_u/temperature_coefs-mast_u-rit.csv
 
 Update the material properties (THEORDOR) input file
 ----------------------------------------------------
-air_calib/mast_u/material_props-mast_u-defaults.json
+This file specifies the parameters used by THEODOR including the alpha parameter.
+
+Example file: air_calib/mast_u/material_props-mast_u-defaults.json
 
 Produce an analysed UDA netcdf file
 -----------------------------------
+
+A scheduler run can be initiated with:
+
+.. code-block:: bash
+
+    $ python air/fire/scripts/run_fire.py <camera_tag> <shot_number> -pass <pass_number> -alpha <alpha_param>
+
 
 In the call to scheduler_workflow() you can specify `alpha_user` which will override the alpha parameter value
 specified in the material properties file.
@@ -110,5 +129,3 @@ In the logging output a line will be printed that lists all the input settings f
     INFO:fire.scheduler_workflow:scheduler_workflow:236:   Located input files for analysis: ...
 
 Confirm that all the identified files are as expected.
-
-Change alpha
