@@ -73,7 +73,6 @@ Each coordinate point on the analysis path should specify:
 
 .. code-block:: json
     :caption: analysis_path_dfns-{machine}-{diag_tag_raw}-defaults.json
-    :emphasize-lines: 2
     :name: calcam-calibs-lookup
 
     "MASTU_S3_lower_T2_radial_1":
@@ -125,7 +124,9 @@ A scheduler run can be initiated with:
 In the call to scheduler_workflow() you can specify `alpha_user` which will override the alpha parameter value
 specified in the material properties file.
 
-In the logging output a line will be printed that lists all the input settings files that are being used::
+In the logging output a line will be printed that lists all the input settings files that are being used:
+
+.. code-block:: 
     INFO:fire.scheduler_workflow:scheduler_workflow:236:   Located input files for analysis: ...
 
 Confirm that all the identified files are as expected.
