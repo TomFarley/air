@@ -279,7 +279,7 @@ def read_csv(path_fn: Union[Path, str], clean=True, convert_to_python_types=True
 
     """
 
-    path_fn = Path(path_fn)
+    path_fn = Path(path_fn).expanduser()
     if 'sep' not in kwargs:
         if path_fn.suffix == '.csv':
             kwargs['sep'] = '\s*,\s*'
