@@ -29,7 +29,7 @@ if __name__ == '__main__':
                         dest='pass_no')
     parser.add_argument("-machine", help="Name of machine (tokamak) being analysed", type=str,
                         default=MACHINE_DEFAULT, metavar='TOKAMAK_NAME')
-    parser.add_argument("-a", "--alpha",
+    parser.add_argument("-a", "--alpha", type=float,
                         help="User value for THEODOR alpha parameter to override value set in material properties file",
                         dest="alpha_user", default=None)
     parser.add_argument("-e", "--equilibrium", help="Whether to run analysis with efit as a dependency",
