@@ -49,7 +49,7 @@ def setup_fire_logger():
     # Set logging level for console output handler propagated throughout fire package
     handlers = logger_fire.handlers
     for handler in handlers:
-        print(f'FIRE logging handler {handler} set to level: {handler.level}')
+        logger_fire.debug(f'FIRE logging handler {handler} set to level: {handler.level}')
 
     if len(handlers) > 0:
         stream_handler = handlers[0]
