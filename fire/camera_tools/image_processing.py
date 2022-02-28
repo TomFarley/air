@@ -14,6 +14,7 @@ from datetime import datetime
 import collections
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from scipy import interpolate
 
@@ -99,8 +100,12 @@ def identify_bad_pixels(frame_data, method='blur_diff', n_sigma_tol=3, n_bad_pix
 
 def bpr_list_to_mask(bpr_list, detector_window):
     """Convert list of bad pixel coordinates to an image mask which is True where the pixels are bad"""
-    bpr_list = np.array(bpr_list)
+    logger.debug(f'bpr_list: {bpr_list}')
 
+    if not isinstance(bpr_list, (list, tuple, np.ndarray, pd.DataFrame, xr.DataArray)):
+        raise ValueError(f'Invalid bpr_list input: {bpr_list}')
+
+    bpr_list = np.array(bpr_list)
     if bpr_list.shape[-1] == 2:
         bpr_list = bpr_list.T
 
