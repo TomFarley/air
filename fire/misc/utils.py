@@ -870,7 +870,7 @@ def format_str(string, kwargs, kwarg_aliases=None, kwarg_aliases_key='key_mappin
 
     """
     try:
-        string_out = string.format(**kwargs)
+        string_out = str(string).format(**kwargs)
     except KeyError as e:
         if (kwarg_aliases is not None) or (kwarg_aliases_key in kwargs):
             if kwarg_aliases is None:
