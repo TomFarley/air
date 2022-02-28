@@ -111,7 +111,7 @@ output_signals = {
 def write_processed_ir_to_uda_netcdf_file(path_data, image_data, path_names,
                                           variable_names_path, variable_names_time, variable_names_image,
                                           header_info, device_info, meta_data,
-                                          fn_output='{diag_tag_analysed}{shot:06d}.nc', path_output='./',
+                                          fn_uda_output='{diag_tag_analysed}{shot:06d}.nc', path_uda_output='./',
                                           client=None, use_mast_client=False,
                                           verbose=None):
     """
@@ -121,11 +121,12 @@ def write_processed_ir_to_uda_netcdf_file(path_data, image_data, path_names,
     - Using puddata in development:
     module purge
     module load FUN
-module unload uda
-module use /projects/UDA/uda-install-develop/modulefiles
-module load uda/develop              #-fatclient
+    module unload uda
+    module use /projects/UDA/uda-install-develop/modulefiles
+    module load uda/develop              #-fatclient
 
     """
+    from fire.interfaces import uda_putdata
     from fire.interfaces.uda_putdata import putdata_close
     from fire.interfaces.uda_putdata import putdata_variables_from_datasets
     from fire.interfaces.uda_putdata import putdata_device
@@ -135,7 +136,7 @@ module load uda/develop              #-fatclient
         uda_module, client = uda_utils.get_uda_client(use_mast_client=use_mast_client, try_alternative=False)
 
     # Set up output file
-    file_id, path_fn = putdata_create(fn=fn_output, path=path_output, close=False,
+    file_id, path_fn = putdata_create(fn=fn_uda_output, path=path_uda_output, close=False,
                                       client=client, use_mast_client=use_mast_client, verbose=verbose,
                                       **{**header_info, **meta_data})
 
@@ -152,6 +153,10 @@ module load uda/develop              #-fatclient
     putdata_variables_from_datasets(path_data, image_data, path_names, diag_tag_analysed,
                                     variable_names_path, variable_names_time, variable_names_image,
                                     client=client, use_mast_client=use_mast_client, file_id=file_id)
+
+    uda_putdata.putdata_settings('settings', meta_data, keys=[])
+    
+    uda_putdata.putdata_signal_aliases()
 
     # TODO: Include mapping from old MAST signal names to new signal paths?
 
