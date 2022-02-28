@@ -15,6 +15,18 @@ Produce a new Calcam calibration
    A `script in ir_tools <https://git.ccfe.ac.uk/mast-u-diagnostics/ir_tools/-/blob/dev/ir_tools/calcam_calibration
    /generate_calcam_calib_images.py#L373>`_ can be used to identify, enhance and
    save suitable calibration images for a given shot.
+   To use this, make sure you can cloned the ir_tools repository and then edit generate_calcam_calib_images.py to set
+   the camera, shot and machine variables to your chosen values at the bottom of the script. It can then be run with:
+
+   .. code-block:: bash
+
+       $ python ir_tools/ir_tools/calcam_calibration/generate_calcam_calib_images.py
+
+   This will locate the movie data based on the movie paths in yoru fire_config.json file, select the most intense
+   frames from the movie and apply a range of image enhancements. A number of these enhanced images will be saved to
+   the specified directory (printed in python output), from which the best can be picked by eye and used in the
+   next step.
+
 #. Perform the calcam calibration. If the image contains sufficiently many clearly identifiable points a point pair
    calibration is preferable, otherwise (as in the case of the MWIR radial views) a manual alignment calibration might
    be necessary. If a calibration already exists for this view, it can often be useful to load that calibration as a
