@@ -316,7 +316,6 @@
             "/projects/SOL/Data/Cameras/IR/ipx/0{pulse_prefix}/{pulse}/",
             "/projects/SOL/Data/Cameras/IR/{diag_tag_raw_upper}/{exp_date}/",
             "~/data/movies/{machine}/{pulse}/{diag_tag_raw}/",
-            "/net/fuslsa/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
             "{fire_source_dir}/../tests/test_data/{machine}/",
             "/scratch/ir_movies_mastu/{machine}/{pulse}/{diag_tag_raw}/",
             "/home/tfarley/data/movies/{machine}/{pulse}/{diag_tag_raw}/",
@@ -324,8 +323,6 @@
             "~/data/movies/mast_u/rir_ats_files/test/",
             "~/data/movies/mast_u/rir_ats_files/.*/",
             "~/data/movies/diagnostic_pc_transfer/{diag_tag_raw}/{exp_date}/",
-            "/net/fuslsc.mast.l/data/MAST_IMAGES/0{pulse_prefix}/{pulse}/",
-            "/net/fuslsc/data/MAST_Data/{pulse}/LATEST/"
         ]
     },
     "paths_output": {
