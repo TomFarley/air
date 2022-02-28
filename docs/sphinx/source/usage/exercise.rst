@@ -15,8 +15,15 @@ Produce a new Calcam calibration
    A `script in ir_tools <https://git.ccfe.ac.uk/mast-u-diagnostics/ir_tools/-/blob/dev/ir_tools/calcam_calibration
    /generate_calcam_calib_images.py#L373>`_ can be used to identify, enhance and
    save suitable calibration images for a given shot.
-   To use this, make sure you can cloned the ir_tools repository and then edit generate_calcam_calib_images.py to set
-   the camera, shot and machine variables to your chosen values at the bottom of the script. It can then be run with:
+   To use this, make sure you can cloned the ir_tools repository and then edit the following variables at the bottom
+   of the generate_calcam_calib_images.py script:
+   #. camera - raw diagnotic tag name eg 'rit'
+   #. shot - pulse number
+   #. machine - eg 'mast_u'/'mast'
+   #. n_images - number of highest intensity frames to select and enhance
+   #. etc. ...
+
+   It can then be run with:
 
    .. code-block:: bash
 
@@ -27,13 +34,66 @@ Produce a new Calcam calibration
    the specified directory (printed in python console output), from which the best can be picked by eye and used in the
    next step.
 
-#. Perform the calcam calibration. If the image contains sufficiently many clearly identifiable points a point pair
-   calibration is preferable, otherwise (as in the case of the MWIR radial views) a manual alignment calibration might
+#. Perform the calcam calibration.
+   Calcam has good `online documentation <https://euratom-software.github.io/calcam/html/gui_intro.html>`_ to follow at
+   this stage.
+   However an overview of the key steps is given here also:
+   #. Clone and pip instal Calcam from the eurofusion github page
+   #. Launch the calibration GUI from the command line with:
+
+   .. code-block:: bash
+
+       $ calcam
+
+   #. If you haven't used you're calcam installation before you may need to point it to the calcam CAD files
+   in air_calib/cad. The settings GUI can also be used point to the Image Sources plugins located in
+   air_calib/mast_u/calcam/image_sources which enable reading images into calcam directly from ipx files etc.
+   #. If the calibration image contains sufficiently many clearly identifiable points a point pair
+   calibration is preferable. Otherwise (as in the case of the MWIR radial views) a manual alignment calibration might
    be necessary. If a calibration already exists for this view, it can often be useful to load that calibration as a
    starting point, load your new calibration image and save the resulting calibration under a new filename.
-   Calcam has good `online documentation <https://euratom-software.github.io/calcam/html/gui_intro.html>`_ to follow at
-   this stage. Save the calibration with an informative name indicating the camera, shot number, calibration image and
-   calibration quality (eg RMS pixel fit value).
+   The key steps to perform a point pair calibration are:
+   #. Camera Image Tab: Load in the enhanced camera image and set the image orientation to “original”.
+   #. Rotate image to display "right way up" (e.g. RIT needs clockwise by 90 degrees)
+   #. Machine Model Tab: Load the machine model: Jan 2017 variant (or your own custom variant) for MAST-U
+   #. 3D Viewport Tab: Select a 3D viewport e.g. HL04 or a custom made one or use an existing calibration (.ccc) file
+    to set the view (e.g. from ~/air_calib/mast_u/calcam/calibrations). Click back on this whenever you need to "reset"
+     the view.
+   #. Click and drag the right mouse button to adjust the view direction. Click and drag the middle mouse button/use
+      the scroll wheel to adjust the camera pupil location. The calibration image can also be zoomed into with the
+      scroll wheel to select points in more detail.
+   #. Calibration Points Tab: Select the point pairs for the calibration:
+      * Select point on cad and then on image
+      * Ctrl click to start a new point pair
+      * Click next to an existing point to select and modify it
+      * Press Delete key to remove the selected point pair
+   #. Calibration Fitting Tab: When you have at least ~5 point pairs click "Do Fit" whenever a point is modified.
+      Click the "Set CAD view to match fit" button to update the camera pupil location whenever the fit is updated.
+   #. Tick the "Show CAD overlay" "Wireframe" option to see the CAD edges overlaid on the calibration
+      image. Seeing the wireframe overlay is then useful for:
+      * Interpreting origin of structures in the image that were otherwise ambiguous
+      * Identifying poorly fitted regions of the image that require new/improved point pairs
+      * Assessing the overal quality of the fit.
+   #. Refine distortion parameters:
+      * Typically disable k3 distortion
+      * May need to disable k2 and k1 etc. if unable to select enough point pairs or there are parts of the image
+      that are poorly constrained.
+   #. Add and remove calibration points as necessary in order to:
+      * Aim for an RMS fit residual <1.0 pixels i.e. Selected points are self consistent. This can often be improved
+      by looking at where the fit places the reprojected blue points after a fit is performed and refining the red
+      input points accordingly.
+      * Ensure the wireframe features align well with the image features across the whole image.
+      Things to note:
+      * Avoid selecting points at edges that are influenced by the current camera pupil position. Such points can
+      make a fit a lot worse. Stick to clear tile/structure corners rather than the grazing edge of a structure.
+      * Try removing points with poor blue point fits - these points may be making the whole fit a lot worse.
+      * Try tweaking the distortion parameters and looking at the effect on the wireframe overlay.
+      * Overlay the wireframe from another calibration to compare with.
+      * Try to add points in the foreground, background and at different toroidal locations if possible to get a good
+        fit across the whole extent of the image. Look out for wavy edges to wireframe overlay features.
+    #. Save the new calibration (using disk icon at top left) e.g. to ~/air_calib/mast_u/calcam/calibrations.
+       Save the calibration with an informative name indicating the camera, shot number, calibration image and
+       calibration quality (eg RMS pixel fit value).
 #. Copy the new calcam calibration .ccc file to a location where FIRE can find it based on the calibration file paths
    in you fire_config.json. Typically this should be in the `air_calib` repository
    (e.g. air_calib/mast_u/calcam/calibrations) so that all calibrations are collected together. While the calibration
@@ -47,7 +107,7 @@ The Calcam calibration lookup file now needs updating to tell FIRE which shots t
 This is achieved by adding a new row to the appropriate file
 (e.g. air_calib/mast_u/calcam_calibs-mast_u-rit-defaults.csv). Specify:
 
-#. The stand *and* end (inclusive) shot range numbers for which the calibration should be used. Ensure the shot range
+#. The start *and* end (inclusive) shot range numbers for which the calibration should be used. Ensure the shot range
    doesn't overlap with that specified in any other rows as this will result in an error when the file is read. By
    specifying the end shot it is possible to leave shot ranges without a specified calibration file, so that trying to
    analyse a shot without a valid calibration will raise an error and prompt the user to produce a new calibration.
@@ -82,6 +142,7 @@ Each coordinate point on the analysis path should specify:
 #. The order of the point in the path sequence.
 #. Whether to include the next interval between this point and the next in the sequence in the analysis path.
    Specifying `false` enables obstructions in the view to be skipped so the path jumps to another point in the image.
+Below is an example of an analysis path definition:
 
 .. code-block:: json
     :caption: analysis_path_dfns-{machine}-{diag_tag_raw}-defaults.json
@@ -96,6 +157,15 @@ Each coordinate point on the analysis path should specify:
         ],
     "description": "Outward radial path down lower divertor tile 2 in sector 3."
     },
+
+NOTE:
+* Some paths have additional label and label_long attributes – these are just additional meta data used for extra
+  logging information, plotting etc
+* There are several RIT MASTU_lower_T2T3T4T5 radial paths – used to go around the LP cable – radial 3 tries to keep to
+  the same phi relative to the toroidal ripple periodicity. In Muo2 when the LP cable is not there then could go
+  from T2_start to T3_bot in one go but would need to choose phi appropriately.
+* Whilst the reconstruction is done in continuously in R, the parts are set into labelled segments. A segment
+  starts at each point where "include_next_interval" is true.
 
 Update the analysis path lookup file
 ------------------------------------
