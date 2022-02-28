@@ -102,6 +102,8 @@ Update the analysis path lookup file
 The analysis path lookup file follows the same principals as the calcam calibraiton lookup file discussed above. Add
 a row to specify the shot range for which the new analysis path should be used, specifying the name given in the path
 definition file.
+Note: Multiple analysis paths can be specified for the same shot range by separating them with a semicolon (';').
+Data for each analysis path will be saved under a different path{i} group within the uda netcdf output file.
 
 Example file: air_calib/mast_u/analysis_paths-mast_u-rit-defaults.csv
 
@@ -130,8 +132,8 @@ A scheduler run can be initiated with:
 
 .. code-block:: bash
 
-    $ python air/fire/scripts/run_fire.py <camera_tag> <shot_number> -p <pass_number> -a <alpha_param>
-    # e.g.
+    # CLI syntax: python air/fire/scripts/run_fire.py <camera_tag> <shot_number> -p <pass_number> -a <alpha_param>
+    # For help see python air/fire/scripts/run_fire.py --help
     $ python air/fire/scripts/run_fire.py rit 45272 -p 1 --alpha=50000
 
 In the call to scheduler_workflow() you can specify `alpha_user` which will override the alpha parameter value
@@ -145,14 +147,15 @@ In the logging output a line will be printed that lists all the input settings f
 
 Confirm that all the identified files are as expected.
 
-At the conclusion of the scheduler workflow run, the nc output file will be produced (by default) in the air repodirectory (or the output directory specified in the scheduler_workflow call or your fire_config.json file).
-    hdfview is a useful tool for inspecting the contents of a netcdf file:
+At the conclusion of the scheduler workflow run, the nc output file will be produced (by default) in the air
+repodirectory (or the output directory specified in the scheduler_workflow call or your fire_config.json file).
+`hdfview` is a useful tool for inspecting the contents of a netcdf file:
 
 .. code-block:: bash
 
-    $ hdfview <path_to_air>/rit0<shot_no>.nc &
-    # e.g. hdfview ~repos/air/rit045360.nc &
+    # hdfview <path_to_air>/rit0<shot_no>.nc. e.g.:
+    $ hdfview ~repos/air/rit045360.nc &
 
-Documentation on reading a local UDA produced netcdf file with pyUDA can be found `here<https://users.mastu.ukaea
+Documentation on reading a local UDA produced netcdf file with pyUDA can be found `here <https://users.mastu.ukaea
 .uk/data-access-and-tools/uda/other-file-access>`_. Note you may need to copy the nc file to /common/uda-scratch/ for
- uda to be able to see it.
+uda to be able to see it.
