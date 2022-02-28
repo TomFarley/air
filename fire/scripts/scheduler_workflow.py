@@ -417,10 +417,10 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
             (bad_pixels, mask_bad_pixels, threshold_hot, detector_bands, images_blured) = bad_pixels
         elif (diag_tag_raw == 'rit'):
             # TODO: Move to file lookup with calcam calibration etc
-            path_fn_bpr = '{calib_dir}/mast_u/badPixel_231864.BPR'.format(**fire_paths)
+            path_fn_bpr = Path('{calib_dir}/mast_u/badPixel_231864.BPR'.format(**fire_paths)).expanduser()
             bad_pixels = io_basic.read_csv(path_fn_bpr, names=('y_pix', 'x_pix'))
-            mask_bad_pixels = image_processing.bpr_list_to_mask(bad_pixels, detector_window_display)
             logger.info(f'Read bad pixel coordinate list from file: {path_fn_bpr}')
+            mask_bad_pixels = image_processing.bpr_list_to_mask(bad_pixels, detector_window_display)
 
     remove_bad_pixels = False
     # remove_bad_pixels = True
