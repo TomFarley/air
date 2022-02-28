@@ -22,9 +22,9 @@ Produce a new Calcam calibration
 
        $ python ir_tools/ir_tools/calcam_calibration/generate_calcam_calib_images.py
 
-   This will locate the movie data based on the movie paths in yoru fire_config.json file, select the most intense
+   This will locate the movie data based on the movie paths in your fire_config.json file, select the most intense
    frames from the movie and apply a range of image enhancements. A number of these enhanced images will be saved to
-   the specified directory (printed in python output), from which the best can be picked by eye and used in the
+   the specified directory (printed in python console output), from which the best can be picked by eye and used in the
    next step.
 
 #. Perform the calcam calibration. If the image contains sufficiently many clearly identifiable points a point pair
@@ -138,7 +138,8 @@ specified in the material properties file.
 
 In the logging output a line will be printed that lists all the input settings files that are being used:
 
-.. code-block:: 
+.. code-block::
+
     INFO:fire.scheduler_workflow:scheduler_workflow:236:   Located input files for analysis: ...
 
 Confirm that all the identified files are as expected.
@@ -147,8 +148,9 @@ At the conclusion of the scheduler workflow run, the nc output file will be prod
     hdfview is a useful tool for inspecting the contents of a netcdf file:
 
 .. code-block:: bash
+
     $ hdfview <path_to_air>/rit0<shot_no>.nc &
-# e.g. hdfview ~repos/air/rit045360.nc &
+    # e.g. hdfview ~repos/air/rit045360.nc &
 
 Documentation on reading a local UDA produced netcdf file with pyUDA can be found `here<https://users.mastu.ukaea
 .uk/data-access-and-tools/uda/other-file-access>`_. Note you may need to copy the nc file to /common/uda-scratch/ for
