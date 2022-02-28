@@ -672,9 +672,10 @@ def debug_plot_profile_2d(data_paths, param='temperature', path_names='path0', c
             ax_i.set_xlim(data[coord_path].values.min(), data[coord_path].values.max())
 
         if label_tiles:
+            path_no = int(path_name[-1])
             plugins.get_and_call_plugin_func('label_tiles', plugins_dict=machine_plugins, plugin_type='machine',
                                              plugin_defaults=dict(machine='mast_u'),
-                                             kwargs_plugin=dict(ax=ax, coords=data.coords, path_no=0))
+                                             kwargs_plugin=dict(ax=ax, coords=data.coords, path_no=path_no))
 
         if t_wins is not None:  # Add horizontal lines labeling times
             plot_tools.label_axis_windows(windows=t_wins, labels=t_wins, ax=ax_i, axis='y', line_kwargs=None)
