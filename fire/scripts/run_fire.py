@@ -25,10 +25,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run the Fusion Infra Red Experiments scheduler code')
     parser.add_argument("camera", help="Raw tag name of camera to analyse e.g. 'rir'", type=str)
     parser.add_argument("pulse", help="Shot/pulse number to analyse e.g. 50000", type=int, metavar='shot')
-    parser.add_argument("-p", "-passno", help="Pass number of analysis", type=int, default=0, metavar='PASS_NO',
+    parser.add_argument("-p", "--pass", help="Pass number of analysis", type=int, default=0, metavar='PASS_NO',
                         dest='pass_no')
     parser.add_argument("-machine", help="Name of machine (tokamak) being analysed", type=str,
                         default=MACHINE_DEFAULT, metavar='TOKAMAK_NAME')
+    parser.add_argument("-a", "--alpha",
+                        help="User value for THEODOR alpha parameter to override value set in material properties file",
+                        dest="alpha_user", default=None)
     parser.add_argument("-e", "--equilibrium", help="Whether to run analysis with efit as a dependency",
                         action="store_true", default=False)
     parser.add_argument("-c", "--checkpoints", help="Whether to reproduce cached data files",
