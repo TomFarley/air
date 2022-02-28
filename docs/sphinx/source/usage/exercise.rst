@@ -130,8 +130,9 @@ A scheduler run can be initiated with:
 
 .. code-block:: bash
 
-    $ python air/fire/scripts/run_fire.py <camera_tag> <shot_number> -pass <pass_number> -alpha <alpha_param>
-
+    $ python air/fire/scripts/run_fire.py <camera_tag> <shot_number> -p <pass_number> -a <alpha_param>
+    # e.g.
+    $ python air/fire/scripts/run_fire.py rit 45272 -p 1 --alpha=50000
 
 In the call to scheduler_workflow() you can specify `alpha_user` which will override the alpha parameter value
 specified in the material properties file.
