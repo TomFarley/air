@@ -37,3 +37,8 @@ requirements_freia_all.txt
 # Scheduler will use this path as user directory so don't track any output put there
 fire/input_files/scheduler/**
 !fire/input_files/scheduler/fire_config.json
+
+venv
+env
+venv_fire
+fire_venv
