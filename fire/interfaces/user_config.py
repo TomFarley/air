@@ -56,10 +56,10 @@ def get_fire_user_directory(fire_user_dir=None):
             if Path(fire_user_dir) != fire.user_path:
                 logger.info(f'Using FIRE user directory "{fire_user_dir}" from env var '
                          f'{_FIRE_USER_DIR_ENV_VAR}="{fire_user_dir}"')
-    fire_user_dir = Path(fire_user_dir)
+    fire_user_dir = Path(fire_user_dir).expanduser()
 
     if not fire_user_dir.is_dir():
-        fire_user_dir.mkdir()
+        fire_user_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f'Created FIRE user directory at: {fire_user_dir}')
 
     fire.user_path = Path(fire_user_dir)
