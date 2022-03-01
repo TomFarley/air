@@ -500,6 +500,75 @@ def save_image(path_fn, image_data, path=None, save=True, image_formats=None, im
         logger.info('Saved {} image to:\n{}'.format(description, path_fns))
         print('Saved {} image to: {}'.format(description, path_fns))
 
+def seg_line_plot(x, y, z, ax=None, z_out='color', in_range=None, out_range=None, fig=None, color='b', lw = 2, ls='-',
+                  cmap='Spectral_r', label=None, alpha=1, **kwargs):
+    """ Colour line plot. Plot 2D line with z value represented by colour of points on line
+    """
+    from matplotlib.collections import LineCollection
+
+    if ax is None:
+        ax = plt.gca()
+    points = np.array([x, y]).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+    # Scale z values to [0,1] over z_range
+    if in_range is None:  # scale z values linearly between 0 and 1 over full range of z values
+        if np.min(z) < 0:
+            z += np.abs(np.min(z))
+        z_scaled = (z.astype(float) - z.min()) / (np.max(z) - np.min(z))
+    else:  # scale z linearly so that inp_range[0] becomes 0 and inp_range[1] becomes 1
+        z_scaled = (z.astype(float) - in_range[0]) / (in_range[1] - in_range[0])
+
+    if out_range is not None:
+        out_range = [np.min(out_range), np.max(out_range)]
+        # Scale values to range [z_range]
+        z_scaled *= (out_range[1] - out_range[0])
+        z_scaled += out_range[0]
+
+    if 'color' in z_out:
+        lc = LineCollection(segments, cmap=plt.get_cmap(cmap), **kwargs)#, norm=plt.Normalize(250, 1500))
+        lc.set_array(z_scaled)
+    else:
+        lc = LineCollection(segments, cmap=None, **kwargs)#, norm=plt.Normalize(250, 1500))
+        try:
+            lc.set_color(color)
+        except ValueError as e:
+            lc.set_color('k')
+            logger.exception(e)
+
+    if 'linewidth' in z_out:
+        # Scale z values between min and max linewidths
+        lw = z_scaled
+    if 'alpha' in z_out:
+        from matplotlib import colors as mcolors  # Need uptodate matplotlib
+        color = mcolors.to_rgba_array(color)
+        color = np.repeat(color, len(z), axis=0)
+        color[:,3] = z_scaled  # set alpha to z
+        lc.set_color(color)
+    else:
+        lc.set_alpha(alpha)
+
+    lc.set_linewidth(lw)
+    lc.set_linestyle(ls)
+    # elif z_out=='color+linewidth':
+    #     lc = LineCollection(segments, cmap=plt.get_cmap(cmap))#, norm=plt.Normalize(250, 1500))
+    #     lc.set_array(z_scaled)
+    #     # Scale z values between min and max linewidths
+    #     linewidth = lw_range[0] + lw_range[1] * z_scaled
+    #     lc.set_linewidth(linewidth)
+    if 'color' not in z_out and 'linewidth' not in z_out and 'alpha' not in z_out:
+        print('WARNING: {} not recognised. Aborting seg_line_plot.'.format(z_out))
+
+    ax.add_collection(lc)
+
+    ## Colorbar for line
+    if fig and 'color' in z_out:
+        axcb = fig.colorbar(lc, shrink=1.0, pad=0.02)#, format='%.0f')
+        if label: axcb.set_label('cota (m)')
+        plt.tight_layout()
+    if label is not None:
+        lc.set_label(label)
+    return lc
+
 def get_previous_artist_color(ax=None, artist_ranking=('line', 'pathcollection'), artist_ranking_str=None):
     artist_type_options = ('line', 'pathcollection')
     if ax is None:
