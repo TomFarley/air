@@ -77,16 +77,18 @@ def get_fig_ax(ax=None, num=None, ax_grid_dims=(1, 1), dimensions=2, axes_flatte
                             fig.subplots_adjust(wspace=0.03)  # reduce axes horizontal width spacing
                             fig.tight_layout_off = True
 
-            if axes_flatten:  #  and isinstance(ax, (np.ndarray)):
-                axes = make_iterable(axes, ndarray=True)
-                axes = axes.flatten()
+
 
         ax_passed = False
     else:
         fig = ax.figure
         axes = ax
         ax_passed = True
-        
+
+    if axes_flatten:  # and isinstance(ax, (np.ndarray)):
+        axes = make_iterable(axes, ndarray=True)
+        axes = axes.flatten()
+
     return fig, axes, ax_passed
 
 def get_ax_grid_dims(n_ax, n_max_ax_per_row=3):
