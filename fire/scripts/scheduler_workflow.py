@@ -1060,11 +1060,15 @@ def copy_uda_netcdf_output(outputs, path_archive=None, fn_archive=None, clean_ne
     if copy_to_uda_scrach and (path_fn_netcdf is not None):
         path_fn_projects = Path(f'/projects/SOL/Data_analysis/IR/ait/{shot}') / path_fn_netcdf.name
         path_fn_scratch = Path('/common/uda-scratch/IR') / path_fn_netcdf.name
-        path_fn_scratch.parent.mkdir(exist_ok=True)
-        path_fn_projects.parent.mkdir(exist_ok=True)
-        path_fn_scratch.write_bytes(path_fn_netcdf.read_bytes())
-        path_fn_projects.write_bytes(path_fn_netcdf.read_bytes())
-        logger.info(f'Copied uda output file to: {str(path_fn_scratch)}, {str(path_fn_projects)}')
+        try:
+            path_fn_scratch.parent.mkdir(exist_ok=True)
+            path_fn_projects.parent.mkdir(exist_ok=True)
+            path_fn_scratch.write_bytes(path_fn_netcdf.read_bytes())
+            path_fn_projects.write_bytes(path_fn_netcdf.read_bytes())
+        except Exception as e:
+            logger.warning(f'Failed to copy uda output file to: {str(path_fn_scratch)}, {str(path_fn_projects)}')
+        else:
+            logger.info(f'Copied uda output file to: {str(path_fn_scratch)}, {str(path_fn_projects)}')
 
     if clean_netcdf:
         if ('uda_putdata' in outputs) and (outputs['uda_putdata']['success']):
@@ -1072,9 +1076,9 @@ def copy_uda_netcdf_output(outputs, path_archive=None, fn_archive=None, clean_ne
             if path_fn_netcdf.is_file():
                 io_basic.copy_file(path_fn_netcdf, path_fn_scratch)
 
-                path_fn_netcdf.unlink()
-                logger.info(f'Deleted uda output file to avoid clutter since run from main in scheduler_workflow.py: '
-                            f'{path_fn_netcdf}')
+                io_basic.delete_file(path_fn_netcdf)
+                logger.info(f'Deleted uda output file to avoid clutter in air directory from running '
+                            f'scheduler_workflow.py: {path_fn_netcdf}')
 
 
 
