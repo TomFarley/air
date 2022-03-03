@@ -36,25 +36,25 @@ output_path_format = '{fire_user_dir}/pickle_output_archive/{diag_tag_analysed}/
 not_set = object()
 
 def write_processed_ir_to_pickle_output_file(path_data, image_data, path_names,
-                                         variable_names_path=None, variable_names_time=None, variable_names_image=None,
-                                         header_info=None, device_info=None, meta_data=None,
-                                         fn_output=None, path_output=None, filter_output=False):
+                                             variable_names_path=None, variable_names_time=None, variable_names_image=None,
+                                             header_info=None, device_info=None, meta_data=None,
+                                             fn_output_pickle=None, path_output_pickle=None, filter_output=False):
     """"""
     from fire.interfaces.io_basic import pickle_dump
 
     if meta_data is None:
         meta_data = {}
 
-    if fn_output is None:
-        fn_output = output_filename_format
-    if path_output is None:
-        path_output = output_path_format
+    if fn_output_pickle is None:
+        fn_output_pickle = output_filename_format
+    if path_output_pickle is None:
+        path_output_pickle = output_path_format
 
-    logger.debug(f'pickle path_output format string: {path_output}')
+    logger.debug(f'pickle path_output format string: {path_output_pickle}')
     logger.debug(f'fire_user_dir: {meta_data.get("fire_user_dir")}')
 
-    path = Path(str(path_output).format(**meta_data)).expanduser()
-    fn = str(fn_output).format(**meta_data)
+    path = Path(str(path_output_pickle).format(**meta_data)).expanduser()
+    fn = str(fn_output_pickle).format(**meta_data)
     path_fn = path / fn
 
     if not path.is_dir():
