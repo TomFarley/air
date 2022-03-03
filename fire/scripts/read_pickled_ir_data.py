@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
+from fire.interfaces import user_config
 from fire.misc.utils import make_iterable
 from fire.plugins.output_format_plugins.pickle_output import read_output_file
 
@@ -24,13 +25,17 @@ def read_data_for_pulses_pickle(diag_tag_raw: str, pulses: dict, machine:str= 'm
 
     pulse_values = list(pulses.keys()) if isinstance(pulses, dict) else make_iterable(pulses)
 
+    config, config_groups, config_path_fn = user_config.get_user_fire_config()
+    path_output_pickle = config['user']['paths']['output']['pickle_output']
+
     for pulse in pulse_values:
         if isinstance(pulse, (tuple, list)):  # When pulse is passed in tuple with dict of kwargs for that pulse
             pulse = pulse[0]
         pulse = int(pulse)
         if not recompute:
             try:
-                data[pulse], fn_pickle = read_output_file(diag_tag_raw, pulse, machine=machine)
+                data[pulse], fn_pickle = read_output_file(diag_tag_raw, pulse, machine=machine,
+                                                          path_archive=path_output_pickle)
             except FileNotFoundError as e:
                 exception = e
                 success = False
