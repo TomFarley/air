@@ -54,11 +54,12 @@ def read_data_for_pulses_pickle(diag_tag_raw: str, pulses: dict, machine:str= 'm
             # debug = {'movie_intensity_stats': True}
             from fire.scripts import scheduler_workflow
             debug = {}
-            outputs = scheduler_workflow.scheduler_workflow(pulse=pulse, camera=diag_tag_raw, pass_no=0, machine=machine,
-                                                            scheduler=True, debug=debug)
+            outputs = scheduler_workflow.scheduler_workflow(pulse=pulse, camera=diag_tag_raw, pass_no=0,
+                                                            machine=machine, scheduler=True, debug=debug)
             scheduler_workflow.copy_uda_netcdf_output(outputs, copy_to_uda_scrach=True, clean_netcdf=True)
 
-            data[pulse], fn_pickle = read_output_file(diag_tag_raw, pulse, machine=machine)
+            data[pulse], fn_pickle = read_output_file(diag_tag_raw, pulse, machine=machine,
+                                                      path_archive=path_output_pickle)
         elif (not success) and (not generate):
             raise exception
 
