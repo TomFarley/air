@@ -668,7 +668,7 @@ def format_extension(extension, with_dot=False, none_for_empty=False):
             extension = extension[1:]
     return extension
 
-def check_path_characters_are_safe(path_fn, allow_home_tilde=True, raise_error=True):
+def check_path_characters_are_safe(path_fn, allow_home_tilde=True, fail_none_dir=True, raise_error=True):
     """"Check path only contains safe characters: A-Z a-z 0-9 _ - / ."""
     assert isinstance(path_fn, (str, Path))
     path_fn = str(path_fn)
@@ -685,6 +685,13 @@ def check_path_characters_are_safe(path_fn, allow_home_tilde=True, raise_error=T
             out = False
     else:
         out = True
+
+    if fail_none_dir and '/None/' in path_fn:
+        if raise_error:
+            raise ValueError('Path_fn "{}" contains a directory called "/None/" indicating a format string error: '
+                             '{}'.format(path_fn, m))
+        else:
+            out = False
     return out
 
 def regexp_int_range(low, high, compile=False):

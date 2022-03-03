@@ -112,6 +112,7 @@ def write_processed_ir_to_uda_netcdf_file(path_data, image_data, path_names,
                                           variable_names_path, variable_names_time, variable_names_image,
                                           header_info, device_info, meta_data,
                                           fn_uda_output='{diag_tag_analysed}{shot:06d}.nc', path_uda_output='./',
+                                          output_meta_data_keys=None,
                                           client=None, use_mast_client=False,
                                           verbose=None):
     """
@@ -154,9 +155,10 @@ def write_processed_ir_to_uda_netcdf_file(path_data, image_data, path_names,
                                     variable_names_path, variable_names_time, variable_names_image,
                                     client=client, use_mast_client=use_mast_client, file_id=file_id)
 
-    uda_putdata.putdata_settings('settings', meta_data, keys=[])
+    uda_putdata.putdata_settings('meta_data', meta_data, keys=output_meta_data_keys, client=client, file_id=file_id)
     
-    uda_putdata.putdata_signal_aliases()
+    uda_putdata.putdata_signal_aliases(group='', signal_aliases=meta_data.get('signal_aliases'), name='signal_aliases',
+                                       client=client, file_id=file_id)
 
     # TODO: Include mapping from old MAST signal names to new signal paths?
 

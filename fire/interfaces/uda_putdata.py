@@ -196,6 +196,9 @@ def putdata_device(device_name, device_info, attributes=None, client=None, use_m
 def putdata_attribute(name, value, group, client=None, use_mast_client=False, file_id=0):
     """Write an attribute (misc information) to a file group using UDA putdata interface
 
+    Values that are dicts or lists are written to attributes of subgroups.
+    Path objects are resolved and cast to strings.
+
     Args:
         name: Name of attribute
         value: Value
@@ -218,6 +221,8 @@ def putdata_attribute(name, value, group, client=None, use_mast_client=False, fi
         for i, v in enumerate(value):
             putdata_attribute(str(i), v, subgroup)
     else:
+        if isinstance(value, Path):
+            value = str(value.expanduser().resolve())
         try:
             client.put(value, name=name, file_id=file_id, group=group, step_id='attribute')
         # except pyuda.UDAException as err:
@@ -228,11 +233,23 @@ def putdata_attribute(name, value, group, client=None, use_mast_client=False, fi
             logger.debug(f'Successfully wrote attribute to group "{group}": "{name}"={value}')
 
 
-def putdata_settings(group, meta_data, keys):
+def putdata_settings(group, meta_data, keys, client=None, file_id=None):
+    if keys is not None:
+        for key in keys:
+            if key in meta_data:
+                # putdata_attribute handles dicts and lists to subgroups and casts Path objects to strings
+                putdata_attribute(key, meta_data[key], group, client=client, file_id=file_id)
+            else:
+                logger.warning(f'Could not find requested setting "{key}" in meta_data')
+        logger.debug(f'Wrote analysis settings to group {group} in uda output file')
+    else:
+        logger.warning(f'Didnt write analysis settings as not passed')
     pass
 
-def putdata_signal_aliases():
-    pass
+def putdata_signal_aliases(group, signal_aliases, name='signal_aliases', client=None, file_id=None):
+    if signal_aliases is not None:
+        putdata_attribute(name, signal_aliases, group, client=client, file_id=file_id)
+
 
 def putdata_variables_from_datasets(path_data, image_data, path_names, diag_tag,
                                     variable_names_path, variable_names_time, variable_names_image, file_id=0,

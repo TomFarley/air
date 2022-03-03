@@ -10,7 +10,8 @@ import fire.camera_tools.camera_checks
 import fire.plugins.machine_plugins.mast_u
 
 print(f'Scheduler workflow: Importing modules')
-import logging
+import logging, datetime
+import getpass, socket
 from typing import Union, Optional
 from pathlib import Path
 from copy import copy
@@ -162,7 +163,14 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     # Generate id_strings
     meta_data['id_strings'] = interfaces.generate_pulse_id_strings({}, pulse, camera, machine, pass_no)
     meta_data['variables'] = config['variable_meta_data']
+    meta_data['device_details'] = (config['machines'][machine]['cameras'][diag_tag_raw]['device_details'])
     meta_data.update(config['machines'][machine]['cameras'][diag_tag_raw]['device_details'])
+    meta_data['signal_aliases'] = config['outputs'].get('signal_aliases')
+
+    # Get information about who and when analysis was performed for writing to uda output etc
+    meta_data['host'] = socket.gethostname().upper()
+    meta_data['username'] = getpass.getuser()
+    meta_data['datatime_analysis'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     # Load machine plugins
     machine_plugin_paths = config['paths_input']['plugins']['machine']
@@ -214,7 +222,11 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     #                                                 movie_paths=movie_paths, movie_fns=movie_fns,
     #                                                 substitute_unknown_values=(not scheduler))
 
+    # Add whole group of settings so can be saved as group to output file
+    meta_data['movie_meta_data'] = movie_meta
+    # Also add values directly into meta_data so they can be easily used to populate format string etc.
     meta_data.update(movie_meta)
+
     # TODO: format strings to numbers eg lens exposure etc
     lens_focal_length_mm = meta_data.get('lens_in_mm', meta_data['lens'])
     meta_data.update(field_of_view.calc_field_of_view(lens_focal_length_mm, pixel_pitch=meta_data['pixel_pitch'],
@@ -694,7 +706,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
     image_data.attrs['material_properties'] = material_properties
     # TODO: Segment path according to changes in tile properties
 
-    calib_coefs = lookup_info['temperature_coefs'].to_dict()
+    temperature_calib_coefs = lookup_info['temperature_coefs'].to_dict()
     # calib_coefs = lookup_pulse_row_in_csv(files['calib_coefs'], pulse=pulse, header=4)
     # TODO: Switch to plugin for temperature calculation if methods on different machines can't be standardised?
     if False and (machine == 'mast'):  # pulse < 40000:
@@ -703,15 +715,16 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         files['black_body_curve'] = Path('/home/tfarley/repos/air/fire/input_files/mast/legacy/legacy_air/planckBB.dat')
         bb_curve = io_basic.read_csv(files['black_body_curve'], sep=r'\s+',
                                      names=['temperature_celcius', 'photon_flux'], index_col='temperature_celcius')
-        image_data['temperature_im'] = temperature.dl_to_temerature_legacy(frame_data_nuc, calib_coefs, bb_curve,
-                                                           exposure=movie_meta['exposure'],
-                                                           solid_angle_pixel=meta_data['solid_angle_pixel'],
-                                                           trans_correction=1.61,
-                                                           temperature_bg_nuc=temp_bg, meta_data=meta_data['variables'])
+        image_data['temperature_im'] = temperature.dl_to_temerature_legacy(
+                                                   frame_data_nuc, temperature_calib_coefs, bb_curve,
+                                                   exposure=movie_meta['exposure'],
+                                                   solid_angle_pixel=meta_data['solid_angle_pixel'],
+                                                   trans_correction=1.61,
+                                                   temperature_bg_nuc=temp_bg, meta_data=meta_data['variables'])
     else:
         # TODO: Update camera settings input files with correct window transmittance for known window numbers
         # TODO: Pass in solid_angle_pixel (requires modifying calibration coeffs as produced using 2 pi)
-        image_data['temperature_im'] = temperature.dl_to_temerature(frame_data_nuc, calib_coefs,
+        image_data['temperature_im'] = temperature.dl_to_temerature(frame_data_nuc, temperature_calib_coefs,
                                                     wavelength_range=camera_settings['wavelength_range'],
                                                     integration_time=movie_meta['exposure'],
                                                     transmittance=lookup_info['camera_settings']['window_transmission'],
@@ -721,6 +734,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                                                     meta_data=meta_data['variables'])
     image_data = data_structures.attach_standard_meta_attrs(image_data, varname='temperature_im', key='temperature',
                                                             replace=True)
+    meta_data['temperature_calib_coefs'] = temperature_calib_coefs
+    meta_data['camera_settings'] = camera_settings
 
     # TODO: Identify hotspots: MOI 3.2: Machine protection peak tile surface T from IR is 1300 C
     # (bulk tile 250C from T/C)
@@ -896,7 +911,8 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
         heat_flux_key = f'heat_flux_{analysis_path_key}'
         path_data[heat_flux_key] = (('t', path_coord), heat_flux.T)
         path_data = data_structures.attach_standard_meta_attrs(path_data, heat_flux_key, key='q')
-        
+
+        # TODO: Remove as redundant now have script in ir_analysis/alpha_param_refinement?
         if debug.get('alpha_scan', False):
             load_pickle_alpha_scan = (debug.get('alpha_scan', False) in ('load', 2))
 
@@ -1022,6 +1038,7 @@ def scheduler_workflow(pulse:Union[int, str], camera:str='rir', pass_no:int=0, m
                     path_data=path_data_all, image_data=image_data,
                     variable_names_path=output_variables['analysis_path'], variable_names_time=output_variables['time'],
                     variable_names_image=output_variables['image'],
+                    output_meta_data_keys=config['outputs'].get('meta_data_keys'),
                     device_info=device_details, header_info=output_header_info, meta_data=meta_data,
                     raise_on_fail=raise_on_fail,
                     client=client, path_uda_output=path_output_uda, path_output_pickle=path_output_pickle, verbose=True)

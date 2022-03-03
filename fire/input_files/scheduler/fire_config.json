@@ -376,7 +376,24 @@
             ],
             "image": [
 
-            ]
+            ],
+        "meta_data_keys": [
+            "camera_settings",
+            "movie_meta_data",
+            "temperature_calib_coefs",
+            "theo_kwargs",
+            "theo_visible_material",
+            "files",
+            "analysis_path_names"
+            ],
+        "signal_aliases": {
+            "AIT_ALPHACONST_OSP": "/ait/meta_data/theo_kwargs/alpha_top_org",
+            "AIR_CAMERA VIEW_OSP" : "/ait/meta_data/movie_meta_data/view",
+            "AIR_ETOTSUM_OSP" : "/ait/path0/cumulative_energy_vs_t",
+            "AIR_PTOT_OSP" : "/ait/path0/power_total_vs_t",
+            "AIR_TEMPERATURE_OSP" : "/ait/path0/temperature",
+            "AIR_PEAKPOWER_POS_OSP" : "/ait/path0/heat_flux_R_peak"
+        }
         }
     },
     "variable_meta_data": {
