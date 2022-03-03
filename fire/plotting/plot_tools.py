@@ -48,7 +48,7 @@ def get_fig_ax(ax=None, num=None, ax_grid_dims=(1, 1), dimensions=2, axes_flatte
             if np.sum(ax_grid_dims) > 2:
                 raise NotImplementedError
             from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
-            fig = plt.figure(num=num)
+            fig = plt.figure(num=num, figsize=figsize)
             axes = fig.add_subplot(1, 1, 1, projection='3d')
         else:
             n_rows, n_cols = ax_grid_dims
@@ -57,7 +57,7 @@ def get_fig_ax(ax=None, num=None, ax_grid_dims=(1, 1), dimensions=2, axes_flatte
             constrained_layout = (sharex is 'none') and (sharey is 'none')
 
             fig, axes = plt.subplots(*ax_grid_dims, num=num, constrained_layout=constrained_layout,
-                                   sharex=sharex, sharey=sharey, **kwargs)
+                                   figsize=figsize, sharex=sharex, sharey=sharey, **kwargs)
 
             if np.any(ax_grid_dims > 1):
                 for i_row in np.arange(n_rows):
