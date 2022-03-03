@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 from fire.plotting import plot_tools
 from matplotlib import pyplot as plt
 
+from fire.interfaces import uda_utils
 from fire.misc.utils import make_iterable
 from fire.misc import data_structures
 
@@ -73,18 +74,23 @@ def plot_movie_intensity_stats(data_movie, ax=None, bit_depth=14, meta_data=None
     data_1p = np.percentile(data_movie, 1, axis=(1, 2))
     data_99p = np.percentile(data_movie, 99, axis=(1, 2))
 
-    ax.axhline(2**bit_depth, label='max DL', color='k', ls='--')
+    if bit_depth is not None:
+        ax.axhline(2**bit_depth, label='max DL', color='k', ls='--')
 
     ax.plot(t, data_max, label='max', ls=':')
     ax.plot(t, data_99p, label='99%', ls='--')
     ax.plot(t, data_av, label='mean', ls='-')
     ax.plot(t, data_1p, label='1%', ls='--')
     ax.plot(t, data_min, label='min', ls=':')
-
-    ax.set_ylabel(r'Raw frame intensity [DL]')
+    
+    label = uda_utils.gen_axis_label_from_meta_data(data_movie.attrs)
+    ax.set_ylabel(label)  # r'Raw frame intensity [DL]')
 
     plot_tools.annotate_providence(ax, meta_data=meta_data, annotate=(meta_data is not None))
-    plot_tools.annotate_axis(ax, r'$t_{int}=$'+f'{meta_data.get("exposure")*1e3:0.3g} ms', loc='bottom right')
+    if data_movie.name == 'frame_data':
+        plot_tools.annotate_axis(ax, r'$t_{int}=$'+f'{meta_data.get("exposure")*1e3:0.3g} ms', loc='bottom right')
+        ax.set_ylabel(r'Raw frame intensity [DL]')
+
     plot_tools.legend(ax)
 
     ax_n = plot_tools.add_second_x_scale(ax, x_axis_values=n,
