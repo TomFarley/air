@@ -27,7 +27,7 @@ setup(
         'attrs==21.4.0',
         'Babel==2.9.1',
         'backcall==0.2.0',
-        'certifi==2021.10.8',
+        'certifi>=2023.7.22',
         'cftime==1.5.1.1',
         'charset-normalizer==2.0.10',
         'cloudpickle==2.0.0',
